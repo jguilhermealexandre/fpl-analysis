@@ -50,17 +50,17 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=255">
-    <link rel="stylesheet" href="styles/teams.css?v=255">
-    <link rel="stylesheet" href="styles/v2-design.css?v=255">
-    <link rel="stylesheet" href="styles/responsive.css?v=255">
-    <script src="scripts/error-monitor.js?v=255"></script>
-    <script src="scripts/common.js?v=255"></script>
+    <link rel="stylesheet" href="styles/common.css?v=256">
+    <link rel="stylesheet" href="styles/teams.css?v=256">
+    <link rel="stylesheet" href="styles/v2-design.css?v=256">
+    <link rel="stylesheet" href="styles/responsive.css?v=256">
+    <script src="scripts/error-monitor.js?v=256"></script>
+    <script src="scripts/common.js?v=256"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=255"></script>
-    <script src="scripts/notifications.js?v=255"></script>
-    <script src="scripts/sidebar-nav.js?v=255"></script>
+    <script src="scripts/push-alerts.js?v=256"></script>
+    <script src="scripts/notifications.js?v=256"></script>
+    <script src="scripts/sidebar-nav.js?v=256"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -1417,14 +1417,13 @@
                                 <span class="swings-panel-icon"><i data-lucide="circle-check" style="width:16px;height:16px;"></i></span>
                                 <span class="swings-panel-title">Best Targetable Fixture Patches</span>
                                 <span class="swings-panel-count">${futureRuns.length} found</span>
-                                <label class="patch-filter">
-                                    <span class="patch-filter-label">Covering</span>
-                                    <select class="patch-filter-select" onchange="setPatchGwFilter(this.value)" aria-label="Show patches covering a gameweek">
-                                        <option value="">Any gameweek</option>
-                                        ${displayGWs.map(gw =>
-                                            `<option value="${gw}"${gw === patchGwFilter ? ' selected' : ''}>GW${gw}</option>`).join('')}
-                                    </select>
-                                </label>
+                                ${v2MenuHTML({
+                                    key: 'patch-gw', icon: 'calendar', label: 'Covering',
+                                    value: patchGwFilter == null ? '' : String(patchGwFilter),
+                                    onPick: 'setPatchGwFilter',
+                                    options: [{ value: '', label: 'Any gameweek' }]
+                                        .concat(displayGWs.map(gw => ({ value: String(gw), label: `GW${gw}` })))
+                                })}
                             </div>
                             <div class="swings-panel-body">
                                 ${futureRuns.length === 0 ? 
@@ -1636,6 +1635,7 @@
 
         function setSwingsCalendarColor(mode) {
             swingsCalendarColorMode = mode;
+            if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
             renderCurrentView();
         }
 
@@ -1715,18 +1715,20 @@
                             <h2 class="calendar-title" style="font-size: 18px;"><i data-lucide="target" style="width:16px;height:16px;display:inline-block;vertical-align:middle;"></i> Targetable Patches Calendar</h2>
                             <p class="calendar-subtitle">${colorModeDesc[swingsCalendarColorMode]} · Showing ${teamsToShow.length} teams with premium & great patches</p>
                         </div>
-                        <div class="calendar-legend" id="swingsCalendarLegend">
-                            ${legendHtml}
-                        </div>
-                    </div>
-
-                    <div class="calendar-controls">
-                        <div class="control-group">
-                            <span class="control-label">Color by:</span>
-                            <button class="calendar-control-btn ${swingsCalendarColorMode === 'fdr' ? 'active' : ''}" onclick="setSwingsCalendarColor('fdr')">FDR</button>
-                            <button class="calendar-control-btn ${swingsCalendarColorMode === 'attack' ? 'active' : ''}" onclick="setSwingsCalendarColor('attack')"><i data-lucide="crosshair" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Attackers</button>
-                            <button class="calendar-control-btn ${swingsCalendarColorMode === 'defense' ? 'active' : ''}" onclick="setSwingsCalendarColor('defense')"><i data-lucide="shield-check" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Defenders</button>
-                            <button class="calendar-control-btn ${swingsCalendarColorMode === 'cs' ? 'active' : ''}" onclick="setSwingsCalendarColor('cs')"><i data-lucide="hand" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> CS %</button>
+                        <div class="calendar-head-tail">
+                            ${v2MenuHTML({
+                                key: 'swings-colour', icon: 'palette', label: 'Colour by',
+                                value: swingsCalendarColorMode, onPick: 'setSwingsCalendarColor',
+                                options: [
+                                    { value: 'fdr', label: 'FDR', note: 'The official difficulty rating' },
+                                    { value: 'attack', label: 'Attackers', note: 'How much the opponent concedes' },
+                                    { value: 'defense', label: 'Defenders', note: 'How little the opponent scores' },
+                                    { value: 'cs', label: 'CS %', note: 'Chance of a clean sheet' }
+                                ]
+                            })}
+                            <div class="calendar-legend" id="swingsCalendarLegend">
+                                ${legendHtml}
+                            </div>
                         </div>
                     </div>
 
@@ -2023,11 +2025,13 @@
         // shortlist that grows with the horizon stops being a shortlist.
         function setPatchGwFilter(gw) {
             patchGwFilter = gw === '' || gw == null ? null : parseInt(gw, 10);
+            if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
             renderCurrentView();
         }
 
         function setGoldMineWindow(n) {
             goldMineWindow = Math.max(2, Math.min(10, parseInt(n, 10) || 5));
+            if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
             renderCurrentView();
         }
 
@@ -4731,13 +4735,11 @@
                         <span class="analysis-card-icon"><i data-lucide="star" style="width:16px;height:16px;"></i></span>
                         <span class="analysis-card-title">Best Next ${span} GW${span === 1 ? '' : 's'}</span>
                         <span class="gm-subtitle">GW${upcoming5[0]}–${upcoming5[upcoming5.length - 1]}</span>
-                        <label class="gm-window">
-                            <span class="gm-window-label">Over</span>
-                            <select class="gm-window-select" onchange="setGoldMineWindow(this.value)" aria-label="Gameweeks to rank over">
-                                ${[2,3,4,5,6,7,8,9,10].map(n =>
-                                    `<option value="${n}"${n === goldMineWindow ? ' selected' : ''}>${n} GWs</option>`).join('')}
-                            </select>
-                        </label>
+                        ${v2MenuHTML({
+                            key: 'gm-window', icon: 'calendar', label: 'Over',
+                            value: String(goldMineWindow), onPick: 'setGoldMineWindow',
+                            options: [2,3,4,5,6,7,8,9,10].map(n => ({ value: String(n), label: `${n} GWs` }))
+                        })}
                     </div>
                     <div class="gm-list">
                         ${top5.map((team, i) => {
