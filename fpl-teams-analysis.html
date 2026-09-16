@@ -50,17 +50,17 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=243">
-    <link rel="stylesheet" href="styles/teams.css?v=243">
-    <link rel="stylesheet" href="styles/v2-design.css?v=243">
-    <link rel="stylesheet" href="styles/responsive.css?v=243">
-    <script src="scripts/error-monitor.js?v=243"></script>
-    <script src="scripts/common.js?v=243"></script>
+    <link rel="stylesheet" href="styles/common.css?v=244">
+    <link rel="stylesheet" href="styles/teams.css?v=244">
+    <link rel="stylesheet" href="styles/v2-design.css?v=244">
+    <link rel="stylesheet" href="styles/responsive.css?v=244">
+    <script src="scripts/error-monitor.js?v=244"></script>
+    <script src="scripts/common.js?v=244"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=243"></script>
-    <script src="scripts/notifications.js?v=243"></script>
-    <script src="scripts/sidebar-nav.js?v=243"></script>
+    <script src="scripts/push-alerts.js?v=244"></script>
+    <script src="scripts/notifications.js?v=244"></script>
+    <script src="scripts/sidebar-nav.js?v=244"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -1758,8 +1758,123 @@
         // the season stays readable while attention narrows.
         // ===== FULL SEASON CALENDAR =====
         let fullSeasonFixtures = [];
-        let calendarViewMode = 'all'; // 'all', 'remaining', 'next10'
+        /* 'week' is the default now. The tab used to open on the full season
+           table — twenty rows by thirty-eight columns of three-letter codes,
+           which is a reference document rather than something to look at, and
+           is almost never the question anyone arrives with. That question is
+           "who plays who this week". The table is still a click away, and the
+           week view has arrows for walking through the season. */
+        let calendarViewMode = 'week'; // 'week', 'next10', 'remaining', 'all'
+        let calendarWeekGW = null;     // resolved to the planning gameweek on first render
         let calendarColorMode = 'fdr'; // 'fdr', 'attack', 'defense', 'cs'
+
+        /* ---- the gameweek view ----
+           One card per fixture: both crests, the score if it has been played
+           and the kickoff if it has not, and each side's difficulty for that
+           match — which is the thing this page is for and the thing a grid of
+           three-letter codes makes you decode. Modelled on the dashboard's
+           matchday panel so the two read as the same object. */
+        function calWeekGws() {
+            const set = new Set((window.rawFixturesData || []).map(f => f.event).filter(n => n != null));
+            return [...set].sort((a, b) => a - b);
+        }
+
+        function calResolveWeek() {
+            const gws = calWeekGws();
+            if (!gws.length) return null;
+            if (calendarWeekGW == null || !gws.includes(calendarWeekGW)) {
+                calendarWeekGW = gws.includes(planningGW) ? planningGW : gws[0];
+            }
+            return calendarWeekGW;
+        }
+
+        function calStepWeek(delta) {
+            const gws = calWeekGws();
+            const i = gws.indexOf(calResolveWeek());
+            const next = gws[Math.min(gws.length - 1, Math.max(0, i + delta))];
+            if (next === calendarWeekGW) return;
+            calendarWeekGW = next;
+            renderCurrentView();
+        }
+
+        function calKickoff(iso) {
+            if (!iso) return 'TBC';
+            const d = new Date(iso);
+            if (isNaN(d)) return 'TBC';
+            return d.toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function calCrest(team) {
+            if (!team || team.code == null) return '<span class="calw-crest-blank"></span>';
+            return `<img class="calw-crest" width="30" height="30" loading="lazy" alt=""
+                src="https://resources.premierleague.com/premierleague/badges/50/t${team.code}.png"
+                onerror="this.remove()">`;
+        }
+
+        function renderCalendarWeekView() {
+            const gw = calResolveWeek();
+            const gws = calWeekGws();
+            const fixtures = (window.rawFixturesData || []).filter(f => f.event === gw)
+                .sort((a, b) => String(a.kickoff_time || '').localeCompare(String(b.kickoff_time || '')));
+
+            const map = buildFullSeasonMap();
+            const fdrOf = (teamId, oppId) => {
+                const row = map[teamId] && map[teamId][gw];
+                /* The map calls it fdr. `difficulty` is what the player-side
+                   fixture objects use, and reading that here returned
+                   undefined for every match — so every pill was dropped. */
+                const one = Array.isArray(row) ? row.find(x => x.opponentId === oppId) : row;
+                return one && one.fdr ? one.fdr : null;
+            };
+
+            const cards = fixtures.map(f => {
+                const home = allTeamsData.find(t => t.id === f.team_h);
+                const away = allTeamsData.find(t => t.id === f.team_a);
+                const played = f.finished_provisional;
+                const live = f.started && !f.finished_provisional;
+                const hFdr = fdrOf(f.team_h, f.team_a), aFdr = fdrOf(f.team_a, f.team_h);
+                const pill = (v, who) => v
+                    ? `<span class="calw-fdr v2-fdr-${v}" data-tooltip="${escHTML(who)} rate this fixture ${v} out of 5 for difficulty.">${v}</span>`
+                    : '';
+                return `<div class="calw-card${live ? ' is-live' : ''}${played ? ' is-done' : ''}">
+                    <div class="calw-when">${live ? '<i class="md-dot"></i>LIVE' : played ? 'Full time' : escHTML(calKickoff(f.kickoff_time))}</div>
+                    <div class="calw-body">
+                        <span class="calw-side">${calCrest(home)}<b>${escHTML(home ? (home.shortName || '?') : '?')}</b>${pill(hFdr, home ? home.name : 'They')}</span>
+                        <span class="calw-mid">${played || live
+                            ? `${f.team_h_score ?? 0}<i>\u2013</i>${f.team_a_score ?? 0}`
+                            : '<em>v</em>'}</span>
+                        <span class="calw-side a">${pill(aFdr, away ? away.name : 'They')}<b>${escHTML(away ? (away.shortName || '?') : '?')}</b>${calCrest(away)}</span>
+                    </div>
+                </div>`;
+            }).join('');
+
+            const i = gws.indexOf(gw);
+            return `<div class="v2-section calw-section">
+                <div class="section-header">
+                    <h2><i data-lucide="calendar" style="width:18px;height:18px;display:inline;"></i> Gameweek ${gw}</h2>
+                    <span class="v2-filter-row-tail">
+                        <span class="calw-nav">
+                            <button class="calw-arrow" onclick="calStepWeek(-1)" ${i <= 0 ? 'disabled' : ''} aria-label="Previous gameweek">\u2039</button>
+                            <span class="calw-nav-l">GW${gw}</span>
+                            <button class="calw-arrow" onclick="calStepWeek(1)" ${i >= gws.length - 1 ? 'disabled' : ''} aria-label="Next gameweek">\u203a</button>
+                        </span>
+                        ${v2MenuHTML({
+                            key: 'cal-view', icon: 'calendar', label: 'Show',
+                            value: calendarViewMode, onPick: 'setCalendarView',
+                            options: [
+                                { value: 'week', label: 'One gameweek', note: 'The fixtures, week by week' },
+                                { value: 'next10', label: 'Next 10 GWs', note: 'The planning horizon, as a table' },
+                                { value: 'remaining', label: 'Remaining', note: 'From here on, as a table' },
+                                { value: 'all', label: 'All season', note: 'Every gameweek, as a table' }
+                            ]
+                        })}
+                    </span>
+                </div>
+                ${fixtures.length
+                    ? `<div class="calw-grid">${cards}</div>`
+                    : '<div class="calw-empty">No fixtures scheduled in this gameweek.</div>'}
+            </div>`;
+        }
 
         function renderFullCalendar(container) {
             // Build full season fixture map for all teams
@@ -1788,6 +1903,12 @@
                 cs: 'Clean sheet probability (green = high CS chance)'
             };
 
+            if (calendarViewMode === 'week') {
+                container.innerHTML = renderCalendarWeekView();
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
             const html = `
                 <div class="calendar-section">
                     <div class="calendar-header">
@@ -1800,9 +1921,10 @@
                                 key: 'cal-view', icon: 'calendar', label: 'Show',
                                 value: calendarViewMode, onPick: 'setCalendarView',
                                 options: [
-                                    { value: 'all', label: 'All season', note: 'Every gameweek, played and to come' },
-                                    { value: 'remaining', label: 'Remaining', note: 'From this gameweek on' },
-                                    { value: 'next10', label: 'Next 10 GWs', note: 'The planning horizon' }
+                                    { value: 'week', label: 'One gameweek', note: 'The fixtures, week by week' },
+                                    { value: 'next10', label: 'Next 10 GWs', note: 'The planning horizon, as a table' },
+                                    { value: 'remaining', label: 'Remaining', note: 'From here on, as a table' },
+                                    { value: 'all', label: 'All season', note: 'Every gameweek, as a table' }
                                 ]
                             })}
                             ${v2MenuHTML({
