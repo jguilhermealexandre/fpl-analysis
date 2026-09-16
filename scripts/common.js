@@ -2088,7 +2088,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=233')
+    fetch('footer.html?v=234')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
@@ -2430,5 +2430,81 @@ function showFeatureHint(targetSelector, hintKey, message) {
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+    });
+}
+
+/* ===== THE CONTROL MENU =====
+ *
+ * One dropdown, used by every filter bar on the site. See the matching block
+ * in styles/v2-design.css for why these exist: the screens had each grown
+ * their own stack of control rows, and a page whose top third is chrome is a
+ * page you have to scroll before you can read anything.
+ *
+ * A menu is one question with a fixed set of answers — weighting, sort, view
+ * mode, tier. The button carries the current answer so the row still says
+ * what the page is showing while the panel is shut.
+ */
+let v2MenuOpen = null;
+
+/* options: [{ value, label, note, tip }]; onPick is the name of a global
+   function taking the value, called as an inline handler. */
+function v2MenuHTML({ key, icon, label, value, options, onPick, tip }) {
+    const current = (options || []).find(o => o.value === value) || (options || [])[0] || {};
+    return `<div class="v2-menu" id="v2menu-${key}">
+        <button class="v2-menu-btn" onclick="v2MenuToggle('${key}', event)"
+            aria-expanded="false" aria-haspopup="true"${tip ? ` data-tooltip="${escHTML(tip)}"` : ''}>
+            ${icon && typeof v2Icon === 'function' ? v2Icon(icon) : ''}${label ? escHTML(label) : ''}
+            <span class="v2-menu-v">${escHTML(current.label || '')}</span>
+            <span class="v2-menu-caret"></span>
+        </button>
+        <div class="v2-menu-panel" hidden>
+            <div class="v2-menu-group">
+                ${label ? `<span class="v2-menu-label">${escHTML(label)}</span>` : ''}
+                ${(options || []).map(o => `<button class="v2-menu-opt${o.value === current.value ? ' is-on' : ''}"
+                    onclick="${onPick}('${o.value}')"${o.tip ? ` data-tooltip="${escHTML(o.tip)}"` : ''}>
+                    <span>${escHTML(o.label)}${o.note ? `<span class="v2-menu-opt-note">${escHTML(o.note)}</span>` : ''}</span>
+                </button>`).join('')}
+            </div>
+        </div>
+    </div>`;
+}
+
+function v2MenuToggle(key, event) {
+    if (event) event.stopPropagation();
+    const opening = v2MenuOpen !== key;
+    v2MenuCloseAll();
+    if (!opening) return;
+    const host = document.getElementById(`v2menu-${key}`);
+    if (!host) return;
+    v2MenuOpen = key;
+    const panel = host.querySelector('.v2-menu-panel');
+    const btn = host.querySelector('.v2-menu-btn');
+    if (panel) panel.hidden = false;
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+    host.classList.add('is-open');
+}
+
+function v2MenuCloseAll() {
+    v2MenuOpen = null;
+    document.querySelectorAll('.v2-menu').forEach(host => {
+        host.classList.remove('is-open');
+        const panel = host.querySelector('.v2-menu-panel');
+        const btn = host.querySelector('.v2-menu-btn');
+        if (panel) panel.hidden = true;
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+    });
+}
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('click', (ev) => {
+        if (!v2MenuOpen) return;
+        /* closest() rather than contains(): picking an option usually rebuilds
+           the panel it was in, so by the time this runs the clicked node has
+           been replaced and the document no longer holds it. */
+        if (ev.target instanceof Element && ev.target.closest('.v2-menu')) return;
+        v2MenuCloseAll();
+    });
+    document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && v2MenuOpen) v2MenuCloseAll();
     });
 }

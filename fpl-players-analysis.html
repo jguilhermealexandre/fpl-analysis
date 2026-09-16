@@ -45,13 +45,13 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=233">
-    <link rel="stylesheet" href="styles/players.css?v=233">
+    <link rel="stylesheet" href="styles/common.css?v=234">
+    <link rel="stylesheet" href="styles/players.css?v=234">
     <!-- The shared player profile card. Loaded after this page's own sheet so
          either can still override the other, exactly as on the squad page. -->
-    <link rel="stylesheet" href="styles/player-profile.css?v=233">
-    <link rel="stylesheet" href="styles/v2-design.css?v=233">
-    <link rel="stylesheet" href="styles/responsive.css?v=233">
+    <link rel="stylesheet" href="styles/player-profile.css?v=234">
+    <link rel="stylesheet" href="styles/v2-design.css?v=234">
+    <link rel="stylesheet" href="styles/responsive.css?v=234">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -81,20 +81,20 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=233">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=233">
-    <link rel="preload" as="script" href="scripts/routes-engine.js?v=233">
-    <link rel="preload" as="script" href="scripts/form-trend.js?v=233">
-    <link rel="preload" as="script" href="scripts/purple-patch.js?v=233">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=233">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=233">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=233">
-    <link rel="preload" as="script" href="scripts/player-profile.js?v=233">
-    <link rel="preload" as="script" href="scripts/players-ai.js?v=233">
-    <link rel="preload" as="script" href="scripts/common.js?v=233">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=233">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=233">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=233">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=234">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=234">
+    <link rel="preload" as="script" href="scripts/routes-engine.js?v=234">
+    <link rel="preload" as="script" href="scripts/form-trend.js?v=234">
+    <link rel="preload" as="script" href="scripts/purple-patch.js?v=234">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=234">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=234">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=234">
+    <link rel="preload" as="script" href="scripts/player-profile.js?v=234">
+    <link rel="preload" as="script" href="scripts/players-ai.js?v=234">
+    <link rel="preload" as="script" href="scripts/common.js?v=234">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=234">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=234">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=234">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -442,12 +442,11 @@
             const filterBar = document.getElementById('filterBar');
             if (posPills) {
                 const hasPos = tab.dataset.hasPos === 'true';
+                /* Routes used to override this, hiding the pills whenever its
+                   squad-shaped default view was showing. That view is gone and
+                   the tab is one ranked list, so the pills apply there like
+                   everywhere else. */
                 posPills.classList.toggle('hidden', !hasPos);
-                // Routes overrides this: its default view spans every position.
-                if (hasPos && tab.dataset.position === 'ROUTES') {
-                    const top15Active = !!document.querySelector('.routes-top15-view.active');
-                    posPills.classList.toggle('hidden', top15Active);
-                }
                 /* The bar itself is retired and permanently hidden — see the
                    comment on #filterBar. Nothing to show or hide here. */
                 void filterBar;
@@ -1294,15 +1293,17 @@
                 { pos: 'FWD', name: 'Forwards' }
             ];
 
-            let globalRank = 1;
-            const top15Html = posConfigs.map(cfg => {
-                const posPlayers = byPos[cfg.pos].slice(0, top15Counts[cfg.pos]);
-                if (posPlayers.length === 0) return '';
-                const cards = posPlayers.map(p => renderRouteCard(p, globalRank++)).join('');
-                return `<div class="routes-pos-subheader">${cfg.name}</div><div class="routes-grid">${cards}</div>`;
-            }).join('');
+            /* One list, best first. It used to open on a "Top 15 Squad" —
+               two keepers, five defenders, five midfielders, three forwards,
+               each position cut to a squad shape and grouped under its own
+               subheading. That is a squad builder's view, and this tab is not
+               a squad builder: the question here is who has the most ways of
+               scoring, which has one answer and reads down a single ranked
+               column. The shape also fought the position pills, which had to
+               be hidden whenever it was showing.
 
-            // Database view: first 30 players (rendered on demand)
+               void: the per-position caps go with it. */
+            void top15Counts; void posConfigs;
             const dbInitial = scored.slice(0, 30);
             const dbHtml = dbInitial.map((p, i) => renderRouteCard(p, i + 1)).join('');
             const hasMore = scored.length > 30;
@@ -1311,29 +1312,26 @@
               <div class="pa-panel">
                 <div class="pa-panel-head">
                     <span class="pa-panel-title">${paIcon('routes')}Routes to points</span>
-                    <p class="pa-panel-note">How many different ways a player has of scoring — goals, assists, clean sheets, saves, bonus. A player with four is less dependent on any one of them going right.</p>
                     <div class="pa-panel-controls">
                         <div class="pa-filter-pills">${paPositionPills()}</div>
-                    </div>
-                </div>
-                <div class="routes-section mode-prop" id="routesSection">
-                    <div class="section-toolbar">
-                        <div class="section-toolbar-left">
-                            <div class="routes-view-toggle">
-                                <button class="routes-view-btn active" onclick="switchRoutesView('top15', this)">Top 15 Squad</button>
-                                <button class="routes-view-btn" onclick="switchRoutesView('database', this)">Full Database</button>
-                            </div>
-                            <div class="rp-mode-toggle">
-                                <button class="rp-mode-btn active" onclick="switchRoutesMode('prop', this)" data-tooltip="Every bar fills the width, so you read the split within one player.">${paIcon('chart')} Proportional</button>
-                                <button class="rp-mode-btn" onclick="switchRoutesMode('raw', this)" data-tooltip="Bar length scales against the best player in the same position, so you can compare players.">${paIcon('table')} Raw stats</button>
-                            </div>
-                        </div>
-                        <div class="section-toolbar-right">
+                        <div class="v2-filter-row-tail">
+                            ${v2MenuHTML({
+                                key: 'routes-mode', icon: 'chart', label: 'Bars',
+                                value: routesMode, onPick: 'switchRoutesMode',
+                                options: [
+                                    { value: 'prop', label: 'Proportional', note: 'Read one player\u2019s split',
+                                      tip: 'Every bar fills the width, so you read the split within one player.' },
+                                    { value: 'raw', label: 'Raw stats', note: 'Compare players',
+                                      tip: 'Bar length scales against the best player in the same position, so you can compare players.' }
+                                ]
+                            })}
                             <button class="legend-toggle" onclick="this.classList.toggle('active'); document.getElementById('routesLegend').classList.toggle('show')">
-                                <span><i data-lucide="info" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Legend</span><span class="legend-caret">▾</span>
+                                <span><i data-lucide="info" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Legend</span><span class="legend-caret">\u25be</span>
                             </button>
                         </div>
                     </div>
+                </div>
+                <div class="routes-section mode-${routesMode}" id="routesSection">
                     <div class="legend-panel" id="routesLegend">
                         <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#94A3B8"></span> Appearance</span>
                         <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#F87171"></span> Goals</span>
@@ -1344,10 +1342,7 @@
                         <span class="legend-panel-item" style="margin-left:8px;opacity:.75;">Penalties and creativity count as routes but get no slice — pens are already inside xG, creativity predicts assists rather than scoring separately.</span>
                         <span class="legend-panel-item" style="margin-left:8px;"><i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> = Nailed on</span>
                     </div>
-                    <div class="routes-top15-view active">
-                        ${top15Html || '<div class="no-players">No players with 2+ routes found</div>'}
-                    </div>
-                    <div class="routes-database-view">
+                    <div class="routes-database-view active">
                         <div class="routes-search-wrap">
                             <i data-lucide="search" class="search-icon" style="width:14px;height:14px;"></i>
                             <input type="text" class="routes-search-input" placeholder="Search players..." oninput="filterRoutesDatabase(this.value)">
@@ -1608,14 +1603,26 @@
                         <span class="pa-panel-title">${paIcon('target')}Recommendations</span>
                         <div class="pa-panel-controls">
                             <div class="pa-filter-pills">${paPositionPills()}</div>
-                            <div class="rec-mode" role="group" aria-label="How much fixtures count">
-                                <span class="rec-mode-l">Weighting</span>
-                                <button class="rec-mode-btn ${recFixtureMode === 'balanced' ? 'active' : ''}"
-                                    onclick="setRecFixtureMode('balanced')"
-                                    data-tooltip="Form, underlying numbers and value lead; fixtures are one term among many. This is the standard ranking.">Balanced</button>
-                                <button class="rec-mode-btn ${recFixtureMode === 'fixtures' ? 'active' : ''}"
-                                    onclick="setRecFixtureMode('fixtures')"
-                                    data-tooltip="Weights the next three fixtures — opponent strength, venue, clean-sheet odds and whether the run is easing — so a hard run costs a player his place. Same players, same form, re-ranked on who they face.">Fixture-first</button>
+                            <div class="v2-filter-row-tail">
+                                ${v2MenuHTML({
+                                    key: 'rec-tier', icon: 'coins', label: 'Tier',
+                                    value: recActiveTier(), onPick: 'setRecTier',
+                                    options: [
+                                        { value: 'budget', label: 'Budget', note: 'Cheap enough to free money elsewhere' },
+                                        { value: 'premium', label: 'Premium', note: 'The players worth building around' },
+                                        { value: 'differential', label: 'Differentials', note: 'Under 10% owned' }
+                                    ]
+                                })}
+                                ${v2MenuHTML({
+                                    key: 'rec-weight', icon: 'sliders', label: 'Weighting',
+                                    value: recFixtureMode, onPick: 'setRecFixtureMode',
+                                    options: [
+                                        { value: 'balanced', label: 'Balanced', note: 'Form and value lead',
+                                          tip: 'Form, underlying numbers and value lead; fixtures are one term among many. This is the standard ranking.' },
+                                        { value: 'fixtures', label: 'Fixture-first', note: 'Next three opponents lead',
+                                          tip: 'Weights the next three fixtures — opponent strength, venue, clean-sheet odds and whether the run is easing — so a hard run costs a player his place. Same players, same form, re-ranked on who they face.' }
+                                    ]
+                                })}
                             </div>
                         </div>
                     </div>
@@ -1798,11 +1805,6 @@
 
             return `
                 <div class="pos-rec-section">
-                    <div class="rec-category-tabs" id="recCatTabs-${pos}">
-                        <button class="rec-category-tab budget ${activeRecCat === 'budget' ? 'active' : ''}" onclick="switchRecCategory('${pos}', 'budget', this)"><i data-lucide="coins" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Budget${isAll ? '' : ` (≤£${config.budgetCap.toFixed(1)}m)`}</button>
-                        <button class="rec-category-tab premium ${activeRecCat === 'premium' ? 'active' : ''}" onclick="switchRecCategory('${pos}', 'premium', this)"><i data-lucide="star" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Premium${isAll ? '' : ` (>£${config.budgetCap.toFixed(1)}m)`}</button>
-                        <button class="rec-category-tab differential ${activeRecCat === 'differential' ? 'active' : ''}" onclick="switchRecCategory('${pos}', 'differential', this)"><i data-lucide="gem" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> Differentials (<10%)</button>
-                    </div>
                     <div class="rec-category-panel ${activeRecCat === 'budget' ? 'active' : ''}" id="recCat-${pos}-budget">
                         ${budgetPlayers.length > 0 ? recCardList(budgetPlayers, pos, false) : '<div class="no-players">No players found</div>'}
                     </div>
@@ -1877,6 +1879,11 @@
 
         function setRecFixtureMode(mode) {
             const next = mode === 'fixtures' ? 'fixtures' : 'balanced';
+            /* Always close first. The re-render below replaces the menu node,
+               so a module-level "which menu is open" left pointing at the old
+               one makes the next click on the new button read as a second
+               click and shut it again. */
+            if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
             if (next === recFixtureMode) return;
             recFixtureMode = next;
             document.getElementById('section-RECOMMENDATIONS').innerHTML = generateRecommendations(allAnalyses);
@@ -2594,37 +2601,40 @@
         // Track active rec category per position
         window._activeRecCat = { ALL: 'budget', GK: 'budget', DEF: 'budget', MID: 'budget', FWD: 'budget' };
 
-        function switchRecCategory(pos, category, btn) {
-            window._activeRecCat[pos] = category;
-            // Deactivate all category tabs & panels for this position
-            document.querySelectorAll(`#recCatTabs-${pos} .rec-category-tab`).forEach(t => t.classList.remove('active'));
-            document.querySelectorAll(`[id^="recCat-${pos}-"]`).forEach(p => p.classList.remove('active'));
-            btn.classList.add('active');
-            document.getElementById(`recCat-${pos}-${category}`)?.classList.add('active');
-            // Sync global category pills
-            syncGlobalCatPills(category);
+        function switchRecCategory(pos, category) {
+            setRecTier(category);
         }
 
-        function switchGlobalCategory(category, btn) {
-            // Update global category pills
-            document.querySelectorAll('#catPills .fc-chip').forEach(p => p.classList.remove('active'));
-            if (btn) btn.classList.add('active');
+        /* The tier the Recommendations panel is showing. It was three buttons
+           repeated inside every position panel plus a fourth copy in the
+           retired global filter bar, all writing the same per-position map;
+           it is one menu in the panel head now, and one answer for the whole
+           tab — you do not want budget forwards and premium defenders at the
+           same time, and nothing in the page ever let you see both at once
+           anyway. */
+        function recActiveTier() {
+            return (window._activeRecCat && window._activeRecCat[activeGlobalPosition]) || 'budget';
+        }
 
-            // Apply to all positions
-            ['GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
+        function setRecTier(category) {
+            ['ALL', 'GK', 'DEF', 'MID', 'FWD'].forEach(pos => {
                 window._activeRecCat[pos] = category;
-                document.querySelectorAll(`#recCatTabs-${pos} .rec-category-tab`).forEach(t => t.classList.remove('active'));
                 document.querySelectorAll(`[id^="recCat-${pos}-"]`).forEach(p => p.classList.remove('active'));
-                const posBtn = document.querySelector(`#recCatTabs-${pos} .rec-category-tab.${category}`);
-                if (posBtn) posBtn.classList.add('active');
                 document.getElementById(`recCat-${pos}-${category}`)?.classList.add('active');
             });
+            if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
+            const label = { budget: 'Budget', premium: 'Premium', differential: 'Differentials' }[category] || category;
+            const host = document.getElementById('v2menu-rec-tier');
+            if (host) {
+                const v = host.querySelector('.v2-menu-v');
+                if (v) v.textContent = label;
+                host.querySelectorAll('.v2-menu-opt').forEach(o =>
+                    o.classList.toggle('is-on', (o.getAttribute('onclick') || '').includes(`'${category}'`)));
+            }
         }
 
-        function syncGlobalCatPills(category) {
-            document.querySelectorAll('#catPills .fc-chip').forEach(p => p.classList.remove('active'));
-            const pill = document.querySelector(`#catPills .fc-chip[data-cat="${category}"]`);
-            if (pill) pill.classList.add('active');
+        function switchGlobalCategory(category) {
+            setRecTier(category);
         }
 
         // ============================================
@@ -2653,9 +2663,6 @@
             document.querySelectorAll('[id^="rec-panel-"]').forEach(p => p.classList.remove('active'));
             document.getElementById('rec-panel-' + pos)?.classList.add('active');
 
-            // Sync global category pills to this position's active category
-            syncGlobalCatPills(window._activeRecCat?.[pos] || 'budget');
-
             // Switch Rising panel
             document.querySelectorAll('[id^="rising-panel-"]').forEach(p => p.classList.remove('active'));
             document.getElementById('rising-panel-' + pos)?.classList.add('active');
@@ -2681,8 +2688,13 @@
             switchGlobalPosition(pos);
         }
 
-        // Routes view toggle: Top 15 Squad / Full Database
         window._routesDbOffset = 30;
+
+        /* Proportional or raw, for the stacked bar on every routes card.
+           Module state rather than a class poked onto the section, so the
+           menu in the panel head can be built already showing the right
+           answer when the tab re-renders. */
+        let routesMode = 'prop';
 
         function getFilteredRoutesPlayers() {
             if (!window._allRoutesPlayers) return [];
@@ -2706,31 +2718,21 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        // Top 15 is a whole squad across all four positions, so a position filter
-        // cannot apply to it. Full Database is a flat list, where it can.
-        function syncRoutesPosPills(view) {
-            const pills = document.getElementById('posPills');
-            if (pills) pills.classList.toggle('hidden', view === 'top15');
-        }
-
-        function switchRoutesMode(mode, btn) {
-            document.querySelectorAll('.rp-mode-btn').forEach(b => b.classList.remove('active'));
-            if (btn) btn.classList.add('active');
+        function switchRoutesMode(mode) {
+            routesMode = mode === 'raw' ? 'raw' : 'prop';
             const sec = document.getElementById('routesSection');
-            if (!sec) return;
-            sec.classList.toggle('mode-raw', mode === 'raw');
-            sec.classList.toggle('mode-prop', mode !== 'raw');
-        }
-
-        function switchRoutesView(view, btn) {
-            // Toggle buttons
-            document.querySelectorAll('.routes-view-toggle .routes-view-btn').forEach(b => b.classList.remove('active'));
-            if (btn) btn.classList.add('active');
-            // Toggle views
-            document.querySelector('.routes-top15-view')?.classList.toggle('active', view === 'top15');
-            document.querySelector('.routes-database-view')?.classList.toggle('active', view === 'database');
-            syncRoutesPosPills(view);
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+            if (sec) {
+                sec.classList.toggle('mode-raw', routesMode === 'raw');
+                sec.classList.toggle('mode-prop', routesMode !== 'raw');
+            }
+            const host = document.getElementById('v2menu-routes-mode');
+            if (host) {
+                const v = host.querySelector('.v2-menu-v');
+                if (v) v.textContent = routesMode === 'raw' ? 'Raw stats' : 'Proportional';
+                host.querySelectorAll('.v2-menu-opt').forEach(o =>
+                    o.classList.toggle('is-on', (o.getAttribute('onclick') || '').includes(`'${routesMode}'`)));
+            }
+            if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
         }
 
         function filterRoutesDatabase(query) {
@@ -3433,23 +3435,23 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=233"></script>
+    <script src="scripts/error-monitor.js?v=234"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=233"></script>
-    <script src="scripts/routes-engine.js?v=233"></script>
-    <script src="scripts/form-trend.js?v=233"></script>
-    <script src="scripts/purple-patch.js?v=233"></script>
-    <script src="scripts/players-tables.js?v=233"></script>
-    <script src="scripts/compare-report.js?v=233"></script>
+    <script src="scripts/xp-engine.js?v=234"></script>
+    <script src="scripts/routes-engine.js?v=234"></script>
+    <script src="scripts/form-trend.js?v=234"></script>
+    <script src="scripts/purple-patch.js?v=234"></script>
+    <script src="scripts/players-tables.js?v=234"></script>
+    <script src="scripts/compare-report.js?v=234"></script>
     <!-- The price meter and the season's price path, from the game's own price
          engine. Pure functions, no DOM — the profile card renders them. -->
-    <script src="scripts/price-watch.js?v=233"></script>
+    <script src="scripts/price-watch.js?v=234"></script>
     <!-- Everything the site knows about one player, in one card. Shared with the
          squad page; the trend charts this page adds to it are wired up in the
          inline block below via pdmPageSections()/pdmAfterRender(). -->
-    <script src="scripts/player-profile.js?v=233"></script>
+    <script src="scripts/player-profile.js?v=234"></script>
     <script>
         // buildStatWindows / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -5402,14 +5404,14 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=233"></script>
+    <script src="scripts/players-ai.js?v=234"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/common.js?v=233"></script>
+    <script src="scripts/common.js?v=234"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=233"></script>
-    <script src="scripts/notifications.js?v=233"></script>
-    <script src="scripts/sidebar-nav.js?v=233"></script>
+    <script src="scripts/push-alerts.js?v=234"></script>
+    <script src="scripts/notifications.js?v=234"></script>
+    <script src="scripts/sidebar-nav.js?v=234"></script>
     <script>
         loadSidebarNav();
         initIcons();

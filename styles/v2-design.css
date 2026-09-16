@@ -3329,3 +3329,199 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     margin-top: 1px;
 }
 .dp-xp-run-u { font-size: 8px; margin-left: 2px; opacity: 0.85; }
+
+/* =====================================================================
+   THE CONTROL MENU
+   =====================================================================
+   Every analysis screen had grown its own filter bar: a row of position
+   pills, then a second row of tier buttons, then a third of view toggles,
+   each styled slightly differently and each costing a band of vertical
+   space above the content it filtered. Four rows of controls over a grid
+   of cards is a page that is mostly chrome.
+
+   So the split is the same everywhere now. What you steer the page with
+   constantly stays visible as pills — position, search. Everything set
+   once and left — tier, weighting, sort, view mode — goes behind one of
+   these, aligned to the right of the same row.
+
+   Defined once for both class names: .apf-* is the All Players bar this
+   pattern started on, .v2-menu is the shared component the other screens
+   use. Same object, so it cannot drift into two looks.
+   ===================================================================== */
+.v2-menu, .apf-menu { position: relative; display: inline-flex; }
+.v2-menu-btn, .apf-menu-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1.5px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    font-family: var(--font-display); font-size: 12.5px; font-weight: 700;
+    cursor: pointer;
+    transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+.v2-menu-btn svg, .apf-menu-btn svg { width: 14px; height: 14px; color: inherit; }
+.v2-menu-btn:hover, .apf-menu-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.v2-menu.is-open .v2-menu-btn,
+.apf-menu.is-open .apf-menu-btn { border-color: var(--color-primary); color: var(--color-primary); background: var(--surface-2); }
+/* Something behind it is on, and how many. */
+.v2-menu-btn.is-on, .apf-menu-btn.is-on { border-color: var(--color-primary); color: var(--color-primary); }
+.v2-menu-n, .apf-menu-n {
+    min-width: 18px; height: 18px; padding: 0 5px;
+    display: inline-grid; place-items: center;
+    border-radius: 999px;
+    background: var(--color-primary); color: #fff;
+    font-size: 10.5px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+/* The label of a single-choice menu carries its current value, so the row
+   still says what the page is showing without the panel being open. */
+.v2-menu-v { color: var(--text-primary); font-weight: 800; }
+.v2-menu-caret { width: 0; height: 0; margin-left: -2px;
+    border-left: 4px solid transparent; border-right: 4px solid transparent;
+    border-top: 5px solid currentColor; opacity: .55; }
+
+/* display:flex below would override the UA stylesheet's [hidden] rule, so the
+   panel has to say this itself — otherwise hiding it does nothing at all. */
+.v2-menu-panel[hidden], .apf-panel[hidden] { display: none; }
+.v2-menu-panel, .apf-panel {
+    position: absolute; top: calc(100% + 8px); z-index: 60;
+    display: flex; flex-direction: column; gap: 12px;
+    padding: 14px;
+    border-radius: var(--v2-card-radius, 16px);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-1);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .16);
+}
+.apf-panel { left: 0; min-width: 340px; max-width: min(460px, calc(100vw - 32px)); }
+/* These sit at the right-hand end of their row, so they open leftwards —
+   a panel anchored left would hang off the edge of the page. */
+.v2-menu-panel { right: 0; min-width: 232px; max-width: min(340px, calc(100vw - 32px)); gap: 10px; }
+.apf-panel .apf-group { display: flex; flex-direction: column; gap: 6px; }
+.apf-panel .apf-controls { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.v2-menu-group { display: flex; flex-direction: column; gap: 6px; }
+.v2-menu-label {
+    font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-muted);
+}
+.v2-menu-opt {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-display); font-size: 12.5px; font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+.v2-menu-opt:hover { background: var(--surface-2); color: var(--text-primary); }
+.v2-menu-opt.is-on {
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+    color: var(--text-primary);
+}
+/* The tick reserves its width whether or not it is showing, so the labels
+   do not shift sideways as the choice moves down the list. */
+.v2-menu-opt::before {
+    content: '✓'; flex: none; width: 12px;
+    font-size: 11px; font-weight: 800; color: var(--color-primary);
+    opacity: 0;
+}
+.v2-menu-opt.is-on::before { opacity: 1; }
+.v2-menu-opt-note { display: block; font-size: 10.5px; font-weight: 500; color: var(--text-muted); margin-top: 1px; }
+
+/* The row these sit in: what you steer with on the left, what you set once
+   on the right, on one line. */
+.v2-filter-row {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+    margin-bottom: 14px;
+}
+.v2-filter-row-tail { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+@media (max-width: 768px) {
+    .apf-panel { left: auto; right: 0; min-width: 0; width: min(380px, calc(100vw - 24px)); }
+    .v2-menu-panel { width: min(320px, calc(100vw - 24px)); }
+    .v2-filter-row-tail { margin-left: 0; }
+}
+
+/* ---- the collapsible legend ----
+   Lived in players.css, where the Routes tab first needed it. The fixture
+   calendar's colour key is the same object — a block of swatches you look
+   at once and then want out of the way — so it moves here where both pages
+   load it rather than being drawn twice. */
+.legend-toggle {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 150ms;
+    white-space: nowrap;
+}
+.legend-toggle:hover {
+    color: var(--text-secondary);
+    border-color: rgba(255,255,255,0.15);
+}
+.legend-toggle.active {
+    color: var(--text-secondary);
+    background: var(--surface-3);
+}
+.legend-toggle .legend-caret {
+    font-size: 8px;
+    transition: transform 200ms;
+}
+.legend-toggle.active .legend-caret {
+    transform: rotate(180deg);
+}
+
+/* Collapsible legend panel */
+.legend-panel {
+    display: none;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+.legend-panel.show {
+    display: flex;
+}
+.legend-panel-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+.legend-panel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+
+/* On a row of pill-shaped menus the toggle has to be one too, or it reads
+   as a different kind of control than the two beside it. */
+.v2-filter-row-tail .legend-toggle {
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1.5px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    font-family: var(--font-display); font-size: 12.5px; font-weight: 700;
+    gap: 7px;
+}
+.v2-filter-row-tail .legend-toggle:hover,
+.v2-filter-row-tail .legend-toggle.active { border-color: var(--color-primary); color: var(--color-primary); }

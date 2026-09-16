@@ -3271,7 +3271,13 @@
                 // Closest to a change first; on a tie the one dropping outranks the
                 // one rising, because a drop is the only one of the two that costs
                 // money and needs a decision before tonight.
-                const ordered = filterPlayers(squadPlayers.slice()).sort((a, b) => {
+                /* NOT filterPlayers(). The position and price buttons belong to
+                   the market panel beside this one, and running your own squad
+                   through them made picking "MID" over there silently delete
+                   ten men from your price watch — a filter that appears to
+                   scope one list quietly reaching into another. Your squad is
+                   fifteen players and is always all fifteen. */
+                const ordered = squadPlayers.slice().sort((a, b) => {
                     const d = Math.abs(b.threshold) - Math.abs(a.threshold);
                     if (Math.abs(d) > 0.01) return d;
                     return a.threshold - b.threshold;

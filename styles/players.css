@@ -224,14 +224,14 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-/* Routes view containers */
-.routes-top15-view,
+/* Routes view container. The squad-shaped sibling this used to switch
+   against is gone — the tab is one ranked list — so the class stays only
+   because the fade on first paint is worth keeping. */
 .routes-database-view {
     display: none;
     opacity: 0;
     transition: opacity 200ms ease;
 }
-.routes-top15-view.active,
 .routes-database-view.active {
     display: block;
     opacity: 1;
@@ -2642,65 +2642,8 @@
 }
 
 /* Legend toggle button */
-.legend-toggle {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 12px;
-    background: var(--surface-2);
-    border: 1px solid var(--border-default);
-    border-radius: 6px;
-    color: var(--text-muted);
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 150ms;
-    white-space: nowrap;
-}
-.legend-toggle:hover {
-    color: var(--text-secondary);
-    border-color: rgba(255,255,255,0.15);
-}
-.legend-toggle.active {
-    color: var(--text-secondary);
-    background: var(--surface-3);
-}
-.legend-toggle .legend-caret {
-    font-size: 8px;
-    transition: transform 200ms;
-}
-.legend-toggle.active .legend-caret {
-    transform: rotate(180deg);
-}
-
-/* Collapsible legend panel */
-.legend-panel {
-    display: none;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 10px 14px;
-    background: var(--surface-2);
-    border: 1px solid var(--border-default);
-    border-radius: 8px;
-    margin-bottom: 16px;
-    font-size: 11px;
-    color: var(--text-secondary);
-}
-.legend-panel.show {
-    display: flex;
-}
-.legend-panel-item {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    white-space: nowrap;
-}
-.legend-panel-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 2px;
-    flex-shrink: 0;
-}
+/* The legend toggle and its panel are shared — see v2-design.css. The
+   calendar on the Teams page opens the same control. */
 
 /* Charts inline filter bar */
 .charts-filter-bar {
@@ -5310,48 +5253,9 @@ tr.pl-row-click .row-action { cursor: pointer; }
 
    Position and search are what the bar is steered with, constantly; the rest
    is set once and left. So the rest lives in these. */
-.apf-menu { position: relative; display: inline-flex; }
-.apf-menu-btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 8px 14px;
-    border-radius: 999px;
-    border: 1.5px solid var(--v2-card-border, var(--border-emphasis));
-    background: var(--surface-1);
-    color: var(--text-secondary);
-    font-family: var(--font-display); font-size: 12.5px; font-weight: 700;
-    cursor: pointer;
-    transition: border-color .15s ease, color .15s ease, background .15s ease;
-}
-.apf-menu-btn svg { width: 14px; height: 14px; color: inherit; }
-.apf-menu-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.apf-menu.is-open .apf-menu-btn { border-color: var(--color-primary); color: var(--color-primary); background: var(--surface-2); }
-/* Something behind it is on, and how many. */
-.apf-menu-btn.is-on { border-color: var(--color-primary); color: var(--color-primary); }
-.apf-menu-n {
-    min-width: 18px; height: 18px; padding: 0 5px;
-    display: inline-grid; place-items: center;
-    border-radius: 999px;
-    background: var(--color-primary); color: #fff;
-    font-size: 10.5px; font-weight: 800; font-variant-numeric: tabular-nums;
-}
-
-/* display:flex below would override the UA stylesheet's [hidden] rule, so the
-   panel has to say this itself — otherwise hiding it does nothing at all. */
-.apf-panel[hidden] { display: none; }
-.apf-panel {
-    position: absolute; top: calc(100% + 8px); left: 0; z-index: 60;
-    min-width: 340px; max-width: min(460px, calc(100vw - 32px));
-    display: flex; flex-direction: column; gap: 12px;
-    padding: 14px;
-    border-radius: var(--v2-card-radius, 16px);
-    border: 1px solid var(--v2-card-border, var(--border-emphasis));
-    background: var(--surface-1);
-    box-shadow: 0 18px 44px rgba(0, 0, 0, .16);
-}
-.apf-panel .apf-group { display: flex; flex-direction: column; gap: 6px; }
-.apf-panel .apf-controls { display: flex; flex-wrap: wrap; gap: 6px; }
-/* The club list opens from inside a panel that is already floating, so it
-   drops below its own button rather than trying to escape. */
+/* The menu itself is defined once, in v2-design.css, as the shared
+   .v2-menu component every filter bar on the site now uses. Only the two
+   things particular to this bar stay here. */
 .apf-panel .team-filter-dropdown { position: static; display: none; box-shadow: none; border: none; padding: 8px 0 0; min-width: 0; }
 .apf-panel .team-filter-dropdown.show { display: block; }
 
