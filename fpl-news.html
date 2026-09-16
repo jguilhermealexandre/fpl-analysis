@@ -47,9 +47,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=239">
-    <link rel="stylesheet" href="styles/v2-design.css?v=239">
-    <link rel="stylesheet" href="styles/responsive.css?v=239">
+    <link rel="stylesheet" href="styles/common.css?v=240">
+    <link rel="stylesheet" href="styles/v2-design.css?v=240">
+    <link rel="stylesheet" href="styles/responsive.css?v=240">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -162,30 +162,11 @@
         /* The section's own padding is the frame; the last card group must
            not add a second one under it. */
         .news-panel .news-section:last-child { margin-bottom: 0; }
-        .news-filter-bar {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            padding: 4px;
-            background: var(--surface-1);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-lg);
-        }
-        .news-filter-btn {
-            padding: 6px 14px;
-            border: none;
-            border-radius: var(--radius-md);
-            background: transparent;
-            color: var(--text-secondary);
-            font-family: var(--font-body);
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 150ms;
-            white-space: nowrap;
-        }
-        .news-filter-btn:hover { color: var(--text-primary); background: var(--surface-2); }
-        .news-filter-btn.active { color: #fff; background: var(--color-primary); }
+        /* The bar and its buttons are defined once, further down, as the
+           masthead nav. This was a third copy — a tray with a filled green
+           pill in it — and because it set the background and the border and
+           the nav rules below it did not, the tray survived every attempt to
+           restyle the nav from there. */
 
         /* ===== TAG PILLS ===== */
         .news-tag {
@@ -438,22 +419,76 @@
            further left and ran 20px wider than the page you clicked in
            from — different in a way you cannot name but can see. */
         .news-container { max-width: 1440px; margin: 0 auto; padding: 0 var(--v2-page-gutter, 32px) 24px; }
-        .news-filter-bar { display: flex; gap: 6px; padding: 5px; background: var(--surface-2); border-radius: var(--radius-lg); border: 1px solid var(--border-default); overflow-x: auto; }
-        .news-filter-btn { padding: 7px 16px; font-size: 12px; font-weight: 500; color: var(--text-secondary); background: transparent; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: all 150ms; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-body); }
-        .news-filter-btn:hover { color: var(--text-primary); background: var(--surface-1); }
-        .news-filter-btn.active { color: var(--color-primary); background: var(--surface-1); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        /* The panel was a single white card wrapped round the whole feed, so
+           every section inside it sat on the same sheet and the page read as
+           one long box. The sections carry their own ground now and the
+           shell is just the column. */
+        .news-panel { background: transparent; border: none; box-shadow: none; padding: 0; }
+        .news-section { margin-bottom: 34px; }
+        /* ---- the masthead nav ----
+           These were pill buttons in a grey tray, which is what a filter
+           looks like — something you set on a tool. They are not filters in
+           the reader's mind, they are the sections of a publication, so they
+           are drawn as what a publication draws: a rule across the page with
+           the current section marked under it. The second row is the desks
+           inside the section, lighter, in the same shape. */
+        .news-filter-bar {
+            display: flex; gap: 2px;
+            border-bottom: 2px solid var(--border-default);
+            overflow-x: auto; scrollbar-width: none;
+        }
+        .news-filter-bar::-webkit-scrollbar { display: none; }
+        .news-filter-btn {
+            position: relative;
+            padding: 11px 16px 12px;
+            font-family: var(--font-display);
+            font-size: 13px; font-weight: 700; letter-spacing: -0.01em;
+            color: var(--text-muted); background: transparent; border: none;
+            cursor: pointer; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 7px;
+            transition: color 150ms;
+        }
+        .news-filter-btn::after {
+            content: ''; position: absolute; left: 10px; right: 10px; bottom: -2px;
+            height: 2px; background: transparent; transition: background 150ms;
+        }
+        .news-filter-btn:hover { color: var(--text-primary); background: transparent; }
+        .news-filter-btn.active { color: var(--text-primary); background: transparent; box-shadow: none; }
+        .news-filter-btn.active::after { background: var(--color-primary); }
+        .news-filter-btn.active .news-count { color: var(--color-primary); }
+        .news-filter-btn .news-count { font-size: 11px; font-weight: 600; color: var(--text-muted); opacity: .8; }
         .news-filter-btn .btn-icon { display: inline-flex; align-items: center; }
         .news-filter-btn .btn-icon svg { width: 14px; height: 14px; stroke-width: 2; }
-        .news-filter-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
-        .news-filter-top-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .news-sub-bar { margin-bottom: 0; }
+
+        .news-sub-bar { border-bottom: 1px solid var(--border-subtle); margin-top: 2px; }
+        .news-sub-bar .news-filter-btn {
+            padding: 8px 13px 9px; font-size: 11.5px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: .04em;
+        }
+        .news-sub-bar .news-filter-btn.active::after { background: var(--text-primary); }
+
+        .news-filter-group { display: flex; flex-direction: column; gap: 0; margin-bottom: 26px; }
+        .news-filter-top-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+        .news-filter-top-row .news-filter-bar { flex: 1 1 auto; }
+        .news-filter-top-row .v2-filter-row-tail { padding-bottom: 6px; }
         .news-team-select { padding: 7px 30px 7px 12px; font-size: 12px; font-weight: 500; color: var(--text-primary); background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-sm); cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 12px; min-width: 140px; }
         .news-team-select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(99,102,241,0.15); }
         .news-count { opacity: 0.6; font-weight: 400; }
         .news-section { margin-bottom: 32px; }
-        .news-section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .news-section-title {
+            font-family: var(--font-display);
+            font-size: 15px; font-weight: 800; letter-spacing: -0.01em;
+            text-transform: none;
+            color: var(--text-primary);
+            margin-bottom: 14px;
+            padding-left: 11px;
+            display: flex; align-items: center; gap: 9px;
+            border-left: 4px solid var(--color-primary);
+            min-height: 22px;
+        }
         .news-section-title svg { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
         .news-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-default); }
+        .news-section-title svg { color: var(--color-primary); }
         .news-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
         /* ---- the front page's shapes ----
            A magazine says what matters by how much room it gives a thing. This
@@ -462,9 +497,54 @@
            a three-up for the FPL desks, the old two-up for longer reads, and
            a plain numbered list. */
         .news-lead-grid { display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); gap: 18px; align-items: start; }
-        .news-lead-main .news-card-hero { min-height: 300px; align-items: stretch; }
+        /* ---- the lead ----
+           It was a picture on the left and a headline on the right, which
+           left a third of the card as white space under three lines of text
+           and made the most important thing on the page look like the
+           emptiest. The picture is the card now and the words sit on it,
+           which is how a front page has always done this. */
+        .news-lead-main .news-card-hero {
+            display: block; position: relative;
+            min-height: 360px; height: 100%;
+            border-radius: var(--radius-lg); overflow: hidden;
+        }
         .news-lead-main .news-card-hero .news-card-img,
-        .news-lead-main .news-card-hero .news-card-graphic { align-self: stretch; height: auto; }
+        .news-lead-main .news-card-hero .news-card-graphic {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%; min-height: 0;
+            object-fit: cover;
+        }
+        /* The scrim. Without it a headline over a light photograph is not
+           readable, and over a dark one it has no edge. */
+        .news-lead-main .news-card-hero::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(to top, rgba(5, 12, 8, .92) 0%, rgba(5, 12, 8, .72) 32%, rgba(5, 12, 8, .12) 62%, rgba(5, 12, 8, 0) 100%);
+            pointer-events: none;
+        }
+        .news-lead-main .news-card-hero .news-card-content {
+            position: absolute; inset: auto 0 0 0; z-index: 1;
+            display: flex; flex-direction: column; justify-content: flex-end;
+            padding: 26px 28px 24px;
+        }
+        /* The source and the timestamp sit above the headline, in the picture,
+           so they need to be legible on it rather than on a panel. */
+        .news-lead-main .news-card-hero .news-card-top { margin-bottom: 10px; }
+        .news-lead-main .news-card-hero .news-card-category {
+            background: rgba(255, 255, 255, .16); color: #fff; border-color: rgba(255, 255, 255, .28);
+        }
+        .news-lead-main .news-card-hero .news-card-time { color: rgba(255, 255, 255, .8); }
+        .news-lead-main .news-card-hero .news-card-headline {
+            font-size: 30px; line-height: 1.16; color: #fff;
+            -webkit-line-clamp: 4; line-clamp: 4;
+            text-shadow: 0 2px 18px rgba(0, 0, 0, .45);
+        }
+        .news-lead-main .news-card-hero:hover .news-card-headline { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+        .news-lead-main .news-card-hero .news-card-detail { color: rgba(255, 255, 255, .84); -webkit-line-clamp: 2; line-clamp: 2; }
+        .news-lead-main .news-card-hero .news-card-time,
+        .news-lead-main .news-card-hero .news-card-top { color: rgba(255, 255, 255, .78); }
+        .news-lead-main .news-card-hero .news-card-footer { display: none; }
+        .news-lead-main .news-card-hero .news-card-graphic-icon,
+        .news-lead-main .news-card-hero .news-card-graphic-id { opacity: .55; }
         .news-lead-main .news-card-hero .news-card-headline { font-size: 26px; -webkit-line-clamp: 4; line-clamp: 4; }
         .news-grid-trio { grid-template-columns: repeat(3, 1fr); }
 
@@ -684,13 +764,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=239"></script>
-    <script src="scripts/common.js?v=239"></script>
+    <script src="scripts/error-monitor.js?v=240"></script>
+    <script src="scripts/common.js?v=240"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=239"></script>
-    <script src="scripts/notifications.js?v=239"></script>
-    <script src="scripts/sidebar-nav.js?v=239"></script>
+    <script src="scripts/push-alerts.js?v=240"></script>
+    <script src="scripts/notifications.js?v=240"></script>
+    <script src="scripts/sidebar-nav.js?v=240"></script>
     <script>
         loadSidebarNav();
         initIcons();

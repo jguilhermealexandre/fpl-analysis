@@ -3133,9 +3133,6 @@
         let tmSquadSort = { col: 'pressure', asc: false };
         let tmRisingSort = { col: 'netTransfers', asc: false };
         let tmFallingSort = { col: 'netTransfers', asc: true };
-        let tmShowAllRising = false;
-        let tmShowAllFalling = false;
-
         function getTransferPressure(player) {
             const owners = Math.max(totalFplPlayers * (player.ownership / 100), 1);
             const net = player.transfersIn - player.transfersOut;
@@ -3165,13 +3162,6 @@
             if (netTransfers <= -50000) return `<span class="tm-velocity plummeting">▼▼ <span class="tm-velocity-label">Plummet</span></span>`;
             if (netTransfers <= -10000) return `<span class="tm-velocity falling">▼ <span class="tm-velocity-label">Falling</span></span>`;
             return `<span class="tm-velocity steady">— <span class="tm-velocity-label">Steady</span></span>`;
-        }
-
-        function tmToggleViewAll(section) {
-            if (section === 'rising') tmShowAllRising = !tmShowAllRising;
-            else if (section === 'falling') tmShowAllFalling = !tmShowAllFalling;
-            transferMarketRendered = false;
-            renderTransferMarket();
         }
 
         function renderTransferMarket() {
@@ -3307,10 +3297,16 @@
                 { key: 'enablers', label: 'Budget enablers', list: enablers }
             ];
             const active = tabs.find(t => t.key === tmMarketTab) || tabs[0];
-            const showAll = active.key === 'fallers' ? tmShowAllFalling : tmShowAllRising;
-            const display = showAll ? active.list.slice(0, 50) : active.list.slice(0, 8);
+            /* The whole list, always. It used to open on eight with a "View
+               all 81" under it, which meant the panel beside your squad was
+               showing a tenth of what it had and the button that fixed that
+               grew the page by a screen and a half. The column has its own
+               height and its own scrollbar now, so the full market fits
+               inside it and you reach the rest by scrolling rather than by
+               reflowing the document. */
+            const display = active.list;
 
-            html += `<div class="tm-section">
+            html += `<div class="tm-section tm-market-col">
                 <div class="tm-section-header market-header">
                     <h2><i data-lucide="trending-up" style="width:16px;height:16px;display:inline;"></i> The wider market</h2>
                     <span class="tm-section-count green">${active.list.length}</span>
@@ -3332,9 +3328,6 @@
                 ${display.length
                     ? `${renderTmWatchLegend()}<div class="tm-watch">${display.map(p => renderTmWatchRow(p, true)).join('')}</div>`
                     : `<div class="tm-market-empty">No players match this filter right now.</div>`}
-                ${active.list.length > 8 ? `<div style="text-align:center;margin-top:10px;">
-                    <button class="tm-view-all-btn" onclick="tmToggleViewAll('${active.key === 'fallers' ? 'falling' : 'rising'}')">${showAll ? 'Show top 8' : `View all ${active.list.length} →`}</button>
-                </div>` : ''}
                 <div class="tm-watch-note">Your own players are in the column beside this one rather than repeated here.</div>
             </div>`;
 

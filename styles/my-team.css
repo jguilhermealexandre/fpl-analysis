@@ -1325,7 +1325,11 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
-    align-items: start;
+    /* stretch, not start: the two panels are the same object seen twice —
+       what you own and what you could own — and one of them ending halfway
+       down the other made them read as unrelated blocks that happened to be
+       side by side. */
+    align-items: stretch;
     /* The transfer board below is a sibling, and the panels inside here have
        their own margin zeroed — so without this the board's top edge touched
        the taller column's bottom edge with nothing between them. */
@@ -1343,6 +1347,14 @@
     background: var(--surface-1);
     border: 1px solid var(--v2-card-border, var(--border-emphasis));
     box-shadow: var(--v2-card-shadow, none);
+    /* One height for the row, set here rather than by whichever list happens
+       to be longer. Fifteen squad rows would otherwise make the row 900px
+       tall and the market's eighty would make it unbounded. The column is a
+       window; the lists scroll inside it. */
+    height: 660px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
 /* Inside a panel the header is the panel's own title, so it drops the second
@@ -4560,7 +4572,12 @@ select[data-tooltip],
    none here, unlike the ticker and the pill rails elsewhere in this file
    where nothing is lost if you never scroll them. */
 .tm-columns > .tm-section > .tm-watch {
-    max-height: 520px;
+    /* Fills whatever the header above it leaves. The market's header carries
+       two rows of filters and the squad's does not, so a fixed height here
+       would leave the two lists ending at different points inside panels
+       that are themselves level. */
+    flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
     padding-right: 6px;
@@ -4601,8 +4618,12 @@ select[data-tooltip],
 
 @media (max-width: 1100px) {
     /* Stacked, the panels are full width and there is no second column to
-       stay level with — so the lists run their full length again. */
-    .tm-columns > .tm-section > .tm-watch { max-height: none; overflow-y: visible; padding-right: 0; }
+       stay level with. The squad list runs its full length again; the market
+       keeps a window, because eighty rows between you and the rest of the
+       page is not a list any more. */
+    .tm-columns > .tm-section { height: auto; display: block; }
+    .tm-columns > .tm-section > .tm-watch { overflow-y: visible; padding-right: 0; }
+    .tm-columns > .tm-section.tm-market-col > .tm-watch { max-height: 560px; overflow-y: auto; padding-right: 6px; }
     .tm-columns > .tm-section > .tm-watch-legend { padding-right: 0; }
 }
 
