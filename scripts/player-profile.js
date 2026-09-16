@@ -1014,9 +1014,26 @@
             const parts = bd.sources.map(s => ({ key: s.key, label: s.label, color: s.color, value: s.pts }));
             const sum = bd.total || 1;
 
+            /* The things that are true before any of the routes above fire.
+
+               Set-piece duty was already here; minutes were not, and they are
+               the one that decides whether any of it happens. A man with three
+               routes who starts half the time has three routes half the time.
+               Same 85-minute mark the card's own Nailed On positive uses, so the
+               two cannot disagree on the same screen. */
+            const dutyMins = player.minsPerGame != null ? player.minsPerGame
+                : (player.minutes != null && typeof computePlayerGamesPlayed === 'function'
+                    ? player.minutes / Math.max(1, computePlayerGamesPlayed(player)) : null);
+
             const duty = [];
+            if (dutyMins != null && dutyMins >= 85) {
+                duty.push({ txt: 'Nailed on', tone: 'prime',
+                    tip: `${dutyMins.toFixed(0)} minutes of every gameweek his club has played` });
+            }
             if (player.penaltiesOrder != null && player.penaltiesOrder <= 2) {
-                duty.push({ txt: player.penaltiesOrder === 1 ? 'First-choice penalties' : 'Second-choice penalties', tone: player.penaltiesOrder === 1 ? 'prime' : '' });
+                duty.push({ txt: player.penaltiesOrder === 1 ? 'First-choice penalties' : 'Second-choice penalties',
+                    tone: player.penaltiesOrder === 1 ? 'prime' : '',
+                    tip: 'Published by FPL, not inferred from his goals.' });
             }
             if (player.freekicksOrder === 1) duty.push({ txt: 'Direct free kicks', tone: '' });
             if (player.cornersOrder === 1) duty.push({ txt: 'Corners', tone: '' });
@@ -1035,8 +1052,8 @@
                     ${parts.map(p => `<span class="rtp-key"><span class="rtp-dot" style="background:${p.color}"></span>${p.label}<b>${p.value.toFixed(2)}</b></span>`).join('')}
                 </div>
                 ${duty.length ? `<div class="rtp-duty">
-                    <span class="rtp-duty-label">Set-piece duty</span>
-                    ${duty.map(x => `<span class="rtp-duty-chip ${x.tone}">${x.txt}</span>`).join('')}
+                    <span class="rtp-duty-label">Minutes &amp; set pieces</span>
+                    ${duty.map(x => `<span class="rtp-duty-chip ${x.tone}"${x.tip ? ` data-tooltip="${escHTML(x.tip)}"` : ''}>${escHTML(x.txt)}</span>`).join('')}
                 </div>` : ''}
             </div>`;
         }
