@@ -416,23 +416,8 @@
 
             if (!candidates.length) return `<div class="lw-side-empty">No outfield players in the XI yet.</div>`;
 
-            /* Two of these can be the same bet.
-
-               The armband is ranked on the one-gameweek projection, and the gap
-               between the middle candidates is routinely smaller than the model's
-               own precision — 4.99 against 4.87 is a tenth of a point, printed as
-               rank 3 above rank 4 in numerals half an inch tall. That reads as a
-               finding. It is a sort order.
-
-               Anyone within this of the man above him is marked level with him,
-               so the card stops asserting a difference it cannot support. The
-               figure is deliberately generous: a tenth of a projected point is
-               noise, and so is a quarter. */
-            const CAP_LEVEL = 0.35;
 
             const cards = candidates.map((p, i) => {
-                const prev = i > 0 ? candidates[i - 1] : null;
-                const levelWith = prev && (prev.gwScore - p.gwScore) <= CAP_LEVEL ? prev : null;
                 const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
                 const ctx = fx && typeof opponentContext === 'function' ? opponentContext(p.teamId, fx, ranks) : null;
                 const per90 = typeof regressedPer90 === 'function' ? regressedPer90(p) : { xg90: 0, xa90: 0 };
@@ -465,7 +450,6 @@
 
                 return `<div class="lw-cap-card ${isCap ? 'is-cap' : ''}">
                     <div class="lw-cap-rank">${i + 1}</div>
-                    ${levelWith ? `<div class="lw-cap-level" data-tooltip="${escHTML(`${p.web_name} projects ${p.gwScore.toFixed(2)} against ${levelWith.web_name}'s ${levelWith.gwScore.toFixed(2)} — inside the model's own precision. Pick on whatever else decides it for you: ownership, fixture, or who you trust.`)}">level with ${escHTML(levelWith.web_name)}</div>` : ''}
                     <div class="lw-cap-name">${escHTML(p.web_name)}</div>
                     <div class="lw-cap-team">${escHTML(p.team)} · ${POSITION_CONFIG[p.pos]?.short || ''}</div>
                     ${fx ? `<span class="dp-fix fdr-${fx.difficulty || 3}" data-tooltip="${fx.isHome ? 'Home to' : 'Away at'} ${escHTML(fx.opponent || '?')} — FDR ${fx.difficulty || 3}">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">(${fx.isHome ? 'H' : 'A'})</span></span>` : ''}
