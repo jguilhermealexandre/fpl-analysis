@@ -52,9 +52,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=254">
-    <link rel="stylesheet" href="styles/v2-design.css?v=254">
-    <link rel="stylesheet" href="styles/responsive.css?v=254">
+    <link rel="stylesheet" href="styles/common.css?v=255">
+    <link rel="stylesheet" href="styles/v2-design.css?v=255">
+    <link rel="stylesheet" href="styles/responsive.css?v=255">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -537,7 +537,7 @@
            which is right — it says what you are looking at. */
         .news-section-title {
             font-family: var(--font-display);
-            font-size: 26px; font-weight: 800; font-style: italic;
+            font-size: 26px; font-weight: 800;
             letter-spacing: -0.03em;
             text-transform: none;
             color: var(--text-primary);
@@ -567,6 +567,18 @@
         .news-lead-beside .news-card .news-card-detail { display: none; }
         .news-lead-beside .news-card .news-card-headline { font-size: 14.5px; line-height: 1.35; }
         .news-lead-beside .news-card .news-card-content { padding: 11px 13px 13px; }
+        /* ---- the split ----
+           One story wide across the top with its picture beside the words,
+           then four ordinary cards under it. It borrows the plain hero
+           rather than the lead's overlay on purpose: the lead is the only
+           thing on the page allowed to print its headline over a photograph,
+           so this reads as second-loudest instead of competing with it. */
+        .news-split-main { margin-bottom: 16px; }
+        .news-split-main .news-card-hero { min-height: 260px; }
+        .news-split-main .news-card-hero .news-card-img,
+        .news-split-main .news-card-hero .news-card-graphic { width: 46%; min-height: 260px; }
+        .news-split-main .news-card-hero .news-card-headline { font-size: 25px; line-height: 1.25; }
+        .news-split-main .news-card-hero .news-card-detail { -webkit-line-clamp: 3; line-clamp: 3; }
         /* ---- the lead ----
            It was a picture on the left and a headline on the right, which
            left a third of the card as white space under three lines of text
@@ -663,7 +675,6 @@
         .news-section.is-accent .news-section-title { color: var(--color-primary); }
         .news-section.is-accent .news-section-title::after { background: color-mix(in srgb, var(--color-primary) 28%, transparent); }
         .news-section-n {
-            font-style: normal;
             min-width: 20px; height: 20px; padding: 0 7px;
             display: inline-grid; place-items: center;
             border-radius: 999px; background: var(--surface-3); color: var(--text-secondary);
@@ -847,6 +858,10 @@
             .news-lead-grid { grid-template-columns: 1fr; }
             .news-grid-trio, .news-grid-quad { grid-template-columns: repeat(2, 1fr); }
             .news-lead-main .news-card-hero { min-height: 340px; }
+            .news-split-main .news-card-hero { min-height: 220px; }
+            .news-split-main .news-card-hero .news-card-img,
+            .news-split-main .news-card-hero .news-card-graphic { min-height: 220px; }
+            .news-split-main .news-card-hero .news-card-headline { font-size: 20px; }
         }
         @media (max-width: 760px) {
             .news-grid, .news-grid-trio, .news-grid-quad, .news-brief-list, .news-row-list { grid-template-columns: 1fr; }
@@ -969,6 +984,10 @@
             .news-card-hero .news-card-graphic { width: 100%; min-height: 140px; }
             .news-card-hero .news-card-content { padding: 18px; }
             .news-card-hero .news-card-headline { font-size: 18px; }
+            .news-split-main .news-card-hero { min-height: auto; }
+            .news-split-main .news-card-hero .news-card-img { width: 100%; min-height: 160px; }
+            .news-split-main .news-card-hero .news-card-graphic { width: 100%; min-height: 140px; }
+            .news-split-main .news-card-hero .news-card-headline { font-size: 18px; }
             .news-filter-bar { gap: 4px; padding: 3px; }
             .news-filter-btn { padding: 5px 10px; font-size: 11px; }
             .news-filter-top-row { gap: 6px; }
@@ -1005,13 +1024,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=254"></script>
-    <script src="scripts/common.js?v=254"></script>
+    <script src="scripts/error-monitor.js?v=255"></script>
+    <script src="scripts/common.js?v=255"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=254"></script>
-    <script src="scripts/notifications.js?v=254"></script>
-    <script src="scripts/sidebar-nav.js?v=254"></script>
+    <script src="scripts/push-alerts.js?v=255"></script>
+    <script src="scripts/notifications.js?v=255"></script>
+    <script src="scripts/sidebar-nav.js?v=255"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1956,6 +1975,18 @@
                             <div class="news-row-list">${items.map(renderDeskRow).join('')}</div>
                         </div>`;
                     }
+                    if (shape === 'split') {
+                        /* One wide story with its picture beside the words,
+                           then a row of four under it. The third shape on the
+                           page: the lead block is a hero against a 2x2, this
+                           is a banner over a row, and the desks are lists.
+                           Three rhythms rather than one grid repeated. */
+                        const [first, ...rest] = items;
+                        return `<div class="${cls} news-split">${head}
+                            <div class="news-split-main">${renderCard(first, true)}</div>
+                            ${rest.length ? `<div class="news-grid news-grid-quad">${rest.slice(0, 4).map(it => renderCard(it, false)).join('')}</div>` : ''}
+                        </div>`;
+                    }
                     if (shape === 'briefs') {
                         return `<div class="${cls}">${head}
                             <div class="news-brief-list">${items.map((it, i) => renderBrief(it, i + (o.from || 1))).join('')}</div>
@@ -2019,7 +2050,7 @@
                             transfer: CAT_ICONS.transfer + ' Transfer activity'
                         };
                         return renderSection(titles[subFilter] || subFilter,
-                            fpl.filter(i => i.category === subFilter), { shape: 'quad', count: true });
+                            fpl.filter(i => i.category === subFilter), { shape: 'rows', count: true });
                     }
 
                     let html = '';
@@ -2029,13 +2060,19 @@
                         { shape: 'briefs', from: 6, hideWhenEmpty: true });
                     html += renderSection(CAT_ICONS.squad + ' Your squad', squad.slice(0, 8),
                         { shape: 'quad', accent: true, count: true, hideWhenEmpty: true });
-                    html += renderSection(CAT_ICONS.injury + ' Injuries &amp; availability', inCat('injury').slice(0, 8),
-                        { shape: 'quad', count: true, hideWhenEmpty: true });
-                    html += renderSection(CAT_ICONS.price + ' Price changes', inCat('price').slice(0, 8),
-                        { shape: 'quad', count: true, hideWhenEmpty: true });
-                    html += renderSection(CAT_ICONS.transfer + ' Transfer activity', inCat('transfer').slice(0, 8),
-                        { shape: 'quad', count: true, hideWhenEmpty: true });
-                    html += renderSection(CAT_ICONS.external + ' Around the league', ext.slice(7, 15),
+                    /* The three desks are lists again. They were cards for one
+                       revision and it made three near-identical grids of
+                       club-coloured rectangles in a row — these are one-line
+                       facts and they belong in a list, small. */
+                    html += renderSection(CAT_ICONS.injury + ' Injuries &amp; availability', inCat('injury').slice(0, 10),
+                        { shape: 'rows', count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.price + ' Price changes', inCat('price').slice(0, 10),
+                        { shape: 'rows', count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.transfer + ' Transfer activity', inCat('transfer').slice(0, 10),
+                        { shape: 'rows', count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.external + ' Around the league', ext.slice(11, 16),
+                        { shape: 'split', count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.all + ' More from the league', ext.slice(16, 28),
                         { shape: 'quad', count: true, hideWhenEmpty: true });
 
                     return html || '<div class="news-empty">Nothing matches this filter right now.</div>';
@@ -2046,9 +2083,12 @@
 
                     if (primaryFilter === 'external') {
                         const ext = byTeam([...externalItems], teamId);
-                        return renderSection('', ext.slice(0, 6), { shape: 'lead', hideWhenEmpty: true })
-                            + renderSection(CAT_ICONS.external + ' More from around the league', ext.slice(6),
-                                { shape: 'grid', count: true, hideWhenEmpty: true })
+                        return renderSection('', ext.slice(0, 5), { shape: 'lead', hideWhenEmpty: true })
+                            + renderSection('Also in the news', ext.slice(5, 11), { shape: 'briefs', from: 6, hideWhenEmpty: true })
+                            + renderSection(CAT_ICONS.external + ' In depth', ext.slice(11, 16),
+                                { shape: 'split', count: true, hideWhenEmpty: true })
+                            + renderSection(CAT_ICONS.all + ' More from around the league', ext.slice(16),
+                                { shape: 'quad', count: true, hideWhenEmpty: true })
                             || '<div class="news-empty">No external news right now.</div>';
                     }
 
@@ -2056,15 +2096,15 @@
                     const squad = byTeam(fplItems.filter(i => i.isSquad), teamId);
                     if (subFilter && subFilter !== 'all') {
                         return renderSection(CAT_ICONS.squad + ' Your squad',
-                            squad.filter(i => i.category === subFilter), { shape: 'quad', count: true });
+                            squad.filter(i => i.category === subFilter), { shape: 'rows', count: true });
                     }
                     const cat = c => squad.filter(i => i.category === c);
                     const html = renderSection(CAT_ICONS.injury + ' Injuries &amp; availability', cat('injury'),
-                            { shape: 'quad', accent: true, count: true, hideWhenEmpty: true })
+                            { shape: 'rows', accent: true, count: true, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.price + ' Price changes', cat('price'),
-                            { shape: 'quad', count: true, hideWhenEmpty: true })
+                            { shape: 'rows', count: true, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.transfer + ' Transfer activity', cat('transfer'),
-                            { shape: 'quad', count: true, hideWhenEmpty: true });
+                            { shape: 'rows', count: true, hideWhenEmpty: true });
                     return html || '<div class="news-empty">No news about your squad right now.</div>';
                 }
 
