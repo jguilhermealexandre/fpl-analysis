@@ -116,11 +116,16 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- data/injuries.json; then
+          # Stage first, then compare the index against HEAD. `git diff` on its
+          # own only reports tracked files, so on the very first run — when
+          # injuries.json is untracked because it has never been committed — it
+          # reported no change and this step exited 0 without committing. The
+          # scrape had worked; its output was thrown away at the last line.
+          git add data/injuries.json
+          if git diff --cached --quiet -- data/injuries.json; then
             echo "no change"
             exit 0
           fi
-          git add data/injuries.json
           git commit -m "Update Premier League injuries - $(date -u '+%Y-%m-%d %H:%M UTC')"
           # The data lane is shared, so another writer may have pushed since
           # checkout. Rebase onto it rather than failing the run.
