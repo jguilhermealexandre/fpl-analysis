@@ -344,6 +344,34 @@
     border-bottom: 1px solid var(--border-subtle);
 }
 .sd-block > *:last-child { margin-bottom: 0; }
+
+/* The opener. A piece should not start at the same weight it runs at, so the
+   first section is tinted and carries the brand edge; everything after it is
+   the plain card. */
+.sd-block--lead {
+    background: color-mix(in srgb, var(--color-primary) 5%, var(--surface-1));
+    border-color: color-mix(in srgb, var(--color-primary) 26%, transparent);
+    border-left: 3px solid var(--color-primary);
+    padding-left: 20px;
+}
+.sd-block--lead > p:first-of-type {
+    font-size: 16px;
+    line-height: 1.68;
+    color: var(--text-primary);
+}
+/* A block built around a table wants the table to be the block, not a table
+   floating inside a box of padding. */
+.sd-block--table { padding-bottom: 0; overflow: hidden; }
+.sd-block--table > .sd-table-wrap:last-child { margin-bottom: 0; }
+/* A callout is already a card. Two nested cards is one card too many, so the
+   outer one keeps only its heading. */
+.sd-block--callout {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+}
+.sd-block--callout > .sd-block-h { border-bottom: none; padding-bottom: 4px; }
 /* A table inside a block already has the block's edge round it, so it drops
    its own and runs to the block's full width. */
 .sd-block .sd-table-wrap { margin-left: -22px; margin-right: -22px; width: calc(100% + 44px); }

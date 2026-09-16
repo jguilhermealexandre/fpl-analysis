@@ -44,8 +44,11 @@
     margin-left: var(--space-3);
 }
 
+/* No margin-left:auto here. It dates from when the search sat at the right of
+   a bar of pills; with the .stats-search-box margin-right:auto that replaced
+   that arrangement, two auto margins made the box centre itself in the
+   toolbar instead of sitting flush left. */
 .search-box {
-    margin-left: auto;
     position: relative;
 }
 
@@ -1035,6 +1038,17 @@
     gap: var(--space-4);
 }
 
+/* The calendar's controls used to sit in a labelled band under the title,
+   which is the one place on this site a control is never meant to be. They
+   ride the title row now, at its right end, with the legend under them. */
+.calendar-head-tail {
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+
 .calendar-title {
     font-family: 'Space Grotesk', sans-serif;
     font-size: 22px;
@@ -1148,12 +1162,13 @@
 
 .calendar-table th {
     background: var(--surface-2);
-    padding: var(--space-2) var(--space-1);
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--text-muted);
+    padding: 9px 4px;
+    font-family: var(--font-display);
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--text-secondary);
     text-transform: uppercase;
-    border-bottom: 1px solid var(--border-default);
+    border-bottom: 1px solid var(--border-emphasis);
     position: sticky;
     top: 0;
     z-index: 10;
@@ -1164,9 +1179,12 @@
     text-align: center;
 }
 
+/* The round being planned, in the brand green — it was --color-info's
+   blue, the only blue on the page. */
 .calendar-table th.gw-current {
-    background: rgba(96, 165, 250, 0.2);
-    color: var(--color-info);
+    background: color-mix(in srgb, var(--color-primary) 18%, var(--surface-2));
+    color: var(--color-primary);
+    box-shadow: inset 0 -2px 0 var(--color-primary);
 }
 
 .calendar-table th.team-header {
@@ -1180,16 +1198,19 @@
 }
 
 .calendar-table td {
-    padding: var(--space-1);
+    padding: 3px 4px;
     text-align: center;
     border-bottom: 1px solid var(--border-subtle);
-    transition: all 150ms;
+    transition: background 150ms ease;
 }
 
 .calendar-table tr:hover td {
     background: var(--surface-2);
 }
 
+/* The pinned column needs to look pinned. Without an edge the team names
+   slide under the fixtures as you scroll and the table reads as broken
+   rather than as held in place. */
 .calendar-table td.team-cell {
     position: sticky;
     left: 0;
@@ -1197,6 +1218,10 @@
     z-index: 5;
     text-align: left;
     padding-left: var(--space-3);
+    box-shadow: 1px 0 0 var(--border-default), 6px 0 8px -6px rgba(0, 0, 0, .10);
+}
+.calendar-table th.team-header {
+    box-shadow: 1px 0 0 var(--border-emphasis), 6px 0 8px -6px rgba(0, 0, 0, .10);
 }
 
 .calendar-table tr:hover td.team-cell {
@@ -3128,13 +3153,13 @@
     .tm-hero-badge img { width: 66px; height: 66px; }
 }
 
-/* The two local controls: how many gameweeks Best Next N ranks over, and which
-   gameweek the patch list has to cover. Both sit in their panel's header and
-   belong to that panel alone. */
-.gm-window, .patch-filter {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+/* The two local controls -- how many gameweeks Best Next N ranks over, and
+   which gameweek the patch list has to cover -- are v2 menus now, like every
+   other filter on the site. What is left is the shove that keeps them at the
+   right-hand end of their panel's header. */
+.gm-window, .patch-filter,
+.analysis-card-header > .v2-menu,
+.swings-panel-header > .v2-menu {
     margin-left: auto;
 }
 .gm-window-label, .patch-filter-label {
@@ -3277,3 +3302,10 @@
     color: var(--text-primary); min-width: 40px; text-align: center;
 }
 .calw-empty { padding: 26px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+/* The average column closes the row, so it is separated like the team column
+   opens it rather than being an inline grey swatch stuck on the end. */
+.calendar-table th.calendar-avg-h {
+    background: var(--surface-2);
+    box-shadow: inset 1px 0 0 var(--border-emphasis);
+}

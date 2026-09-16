@@ -1646,11 +1646,25 @@ html.v2-theme body {
 
 /* Inside a box, a rule under the heading and a border around the box are two
    lines doing one job. */
-.v2-section > .section-header {
+.v2-section > .section-header,
+.pa-panel > .section-header,
+.sq-panel > .section-header {
     border-bottom: none;
     padding-bottom: 0;
     margin-bottom: 6px;
+    /* The heading is a flex box so its icon sits on the text's baseline, which
+       makes it full width and drops anything after it onto its own line. Every
+       screen that puts a control at the end of its title row was therefore
+       getting the control under the title, on the left. The row is the flex
+       box; the tail's own margin-left:auto then carries it to the right. */
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
 }
+.v2-section > .section-header > h2,
+.pa-panel > .section-header > h2,
+.sq-panel > .section-header > h2 { margin-right: auto; }
 .v2-section > .section-header h2 svg,
 .v2-section > .section-header h2 i {
     color: var(--color-primary);

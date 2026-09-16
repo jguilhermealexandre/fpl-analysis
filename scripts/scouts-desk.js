@@ -1689,10 +1689,32 @@ function sdMarkdown(md) {
     const lines = md.split('\n');
     let html = '', i = 0;
     let open = false;
-    const closeBlock = () => { if (open) { html += '</section>'; open = false; } };
+    /* The blocks were all one shape, so a piece made of eight of them read as
+       eight identical boxes. They vary by what is actually inside them now,
+       which is the only variation worth having: the opener is the lead and is
+       tinted, a block built around a table gets the tighter treatment a table
+       wants, and a block that is only a callout does not need a card drawn
+       round a card. The class is decided at close, once the contents are
+       known, and spliced into the tag that was already written. */
+    let blockN = 0, blockClassAt = -1, blockContentAt = -1;
+    const closeBlock = () => {
+        if (!open) return;
+        const inner = html.slice(blockContentAt);
+        const mods = [];
+        if (blockN === 1) mods.push('sd-block--lead');
+        if (/class="sd-table-wrap/.test(inner)) mods.push('sd-block--table');
+        if (/^\s*<aside class="scout-callout/.test(inner) && !/<p[ >]/.test(inner)) mods.push('sd-block--callout');
+        if (mods.length) html = html.slice(0, blockClassAt) + ' ' + mods.join(' ') + html.slice(blockClassAt);
+        html += '</section>';
+        open = false;
+    };
     const openBlock = (heading) => {
         closeBlock();
-        html += `<section class="sd-block"><h2 class="sd-block-h">${heading}</h2>`;
+        blockN++;
+        const tag = '<section class="sd-block';
+        blockClassAt = html.length + tag.length;
+        html += `${tag}"><h2 class="sd-block-h">${heading}</h2>`;
+        blockContentAt = html.length;
         open = true;
     };
 

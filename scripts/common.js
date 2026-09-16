@@ -2088,7 +2088,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=254')
+    fetch('footer.html?v=258')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
@@ -2482,6 +2482,27 @@ function v2MenuToggle(key, event) {
     if (panel) panel.hidden = false;
     if (btn) btn.setAttribute('aria-expanded', 'true');
     host.classList.add('is-open');
+}
+
+/* Re-points a menu at a new value without re-rendering the markup around it.
+   A page that rebuilds its whole view on every change does not need this; one
+   that updates a chart in place — where re-rendering the controls would tear
+   out the node the click came from — does, or the button keeps showing the
+   value you just moved away from. */
+function v2MenuSet(key, value) {
+    const host = document.getElementById(`v2menu-${key}`);
+    if (!host) return;
+    let label = '';
+    host.querySelectorAll('.v2-menu-opt').forEach(opt => {
+        const on = opt.getAttribute('onclick') || '';
+        const m = on.match(/\('([^']*)'\)/);
+        const v = m ? m[1] : null;
+        const hit = v === String(value);
+        opt.classList.toggle('is-on', hit);
+        if (hit) label = (opt.querySelector('span') || opt).firstChild?.textContent || opt.textContent.trim();
+    });
+    const out = host.querySelector('.v2-menu-v');
+    if (out && label) out.textContent = label;
 }
 
 function v2MenuCloseAll() {

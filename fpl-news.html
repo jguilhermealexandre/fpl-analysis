@@ -52,9 +52,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=254">
-    <link rel="stylesheet" href="styles/v2-design.css?v=254">
-    <link rel="stylesheet" href="styles/responsive.css?v=254">
+    <link rel="stylesheet" href="styles/common.css?v=258">
+    <link rel="stylesheet" href="styles/v2-design.css?v=258">
+    <link rel="stylesheet" href="styles/responsive.css?v=258">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -428,82 +428,90 @@
            every section inside it sat on the same sheet and the page read as
            one long box. The sections carry their own ground now and the
            shell is just the column. */
-        /* One white sheet for the whole page, nav included — the sections sit
-           on it rather than each carrying their own ground. */
-        .news-panel {
+        /* The masthead gets the white sheet; the feed does not.
+
+           Wrapping the whole page in one made every card a white card on a
+           white ground, which is why they stopped reading as cards at all.
+           The references all do the same thing for the same reason: white
+           cards, grey page. */
+        .news-panel { background: transparent; border: none; box-shadow: none; padding: 0; }
+        .news-masthead-sheet {
             background: var(--surface-1);
             border: 1px solid var(--v2-card-border, var(--border-emphasis));
             border-radius: var(--v2-card-radius, 16px);
             box-shadow: var(--v2-card-shadow, none);
-            padding: 20px 24px 26px;
+            padding: 6px 22px 16px;
+            margin-bottom: 26px;
         }
-        .news-brief, .news-row-list, .news-lead-side { background: var(--surface-1); }
         .news-section { margin-bottom: 34px; }
-        /* ---- the masthead nav ----
-           These were pill buttons in a grey tray, which is what a filter
-           looks like — something you set on a tool. They are not filters in
-           the reader's mind, they are the sections of a publication, so they
-           are drawn as what a publication draws: a rule across the page with
-           the current section marked under it. The second row is the desks
-           inside the section, lighter, in the same shape. */
+        /* ---- the masthead ----
+           These read as pages, not as filters. A filter is a pill you set on
+           a tool and unset afterwards; a section of a publication is a place
+           you are, and it is drawn the way a masthead draws one — the name
+           at reading size, a generous target around it, and the current one
+           marked by a bar it stands on rather than by being coloured in.
+
+           So neither tier is a pill. They differ by scale, the way a page
+           and its subpages do: the sections set in the display face at 15px,
+           the desks under them at 11.5px in caps. Nothing is filled, nothing
+           is boxed, and the counts are set small and quiet so they read as
+           "how much is in here" rather than as a filter's result count. */
+        .news-masthead { margin-bottom: 0; }
         .news-filter-bar {
-            display: flex; gap: 2px;
-            border-bottom: 2px solid var(--border-default);
+            display: flex; gap: 4px;
+            border-bottom: 1px solid var(--border-default);
             overflow-x: auto; scrollbar-width: none;
         }
         .news-filter-bar::-webkit-scrollbar { display: none; }
         .news-filter-btn {
             position: relative;
-            padding: 11px 16px 12px;
+            padding: 12px 4px 13px;
+            margin-right: 22px;
             font-family: var(--font-display);
-            font-size: 13px; font-weight: 700; letter-spacing: -0.01em;
+            font-size: 15px; font-weight: 700; letter-spacing: -0.015em;
             color: var(--text-muted); background: transparent; border: none;
             cursor: pointer; white-space: nowrap;
-            display: inline-flex; align-items: center; gap: 7px;
+            display: inline-flex; align-items: baseline; gap: 7px;
             transition: color 150ms;
         }
+        .news-filter-btn:last-child { margin-right: 0; }
         .news-filter-btn::after {
-            content: ''; position: absolute; left: 10px; right: 10px; bottom: -2px;
-            height: 2px; background: transparent; transition: background 150ms;
+            content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+            height: 3px; border-radius: 3px 3px 0 0;
+            background: transparent; transition: background 150ms;
         }
         .news-filter-btn:hover { color: var(--text-primary); background: transparent; }
-        /* Where you are has to be obvious without hunting for a hairline: the
-           label goes to full weight and full ink, and the rule under it is
-           3px in the brand green. */
+        /* The page you are on: full ink, and standing on a green bar that
+           overlaps the rule the row sits on. */
         .news-filter-btn.active { color: var(--text-primary); background: transparent; box-shadow: none; font-weight: 800; }
-        .news-filter-btn.active::after { background: var(--color-primary); height: 3px; bottom: -2px; left: 4px; right: 4px; }
-        .news-filter-btn.active .news-count { color: var(--color-primary); }
-        .news-filter-btn .news-count { font-size: 11px; font-weight: 600; color: var(--text-muted); opacity: .8; }
-        .news-filter-btn .btn-icon { display: inline-flex; align-items: center; }
-        .news-filter-btn .btn-icon svg { width: 14px; height: 14px; stroke-width: 2; }
+        .news-filter-btn.active::after { background: var(--color-primary); }
+        .news-filter-btn .news-count {
+            font-family: var(--font-body);
+            font-size: 10.5px; font-weight: 600; color: var(--text-muted); opacity: .75;
+        }
+        .news-filter-btn.active .news-count { color: var(--color-primary); opacity: 1; }
+        .news-filter-btn .btn-icon { display: none; }
 
-        /* The desks are the section's own tier, so they sit tight under it —
-           they were a full row apart, which read as an unrelated control
-           rather than as what is inside the section above. Marked with a
-           filled pill rather than an underline, so the two tiers cannot be
-           confused for each other at a glance. */
+        /* The desks are subpages of the section above: the same object, one
+           step down in scale, indented so the hierarchy is visible without a
+           second style of control. */
         .news-sub-bar {
             border-bottom: none;
-            margin-top: 8px;
-            gap: 6px;
+            margin-top: 0;
+            padding: 9px 0 0 2px;
+            gap: 0;
         }
         .news-sub-bar .news-filter-btn {
-            padding: 6px 12px; font-size: 11.5px; font-weight: 700;
-            text-transform: uppercase; letter-spacing: .04em;
-            border-radius: 999px;
-            color: var(--text-muted);
+            padding: 4px 2px 5px;
+            margin-right: 18px;
+            font-size: 11.5px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .06em;
         }
-        .news-sub-bar .news-filter-btn::after { display: none; }
-        .news-sub-bar .news-filter-btn:hover { background: var(--surface-2); color: var(--text-primary); }
-        .news-sub-bar .news-filter-btn.active {
-            background: color-mix(in srgb, var(--color-primary) 14%, transparent);
-            color: var(--color-primary);
-        }
-        .news-sub-bar .news-filter-btn.active .news-count { color: var(--color-primary); }
+        .news-sub-bar .news-filter-btn::after { height: 2px; bottom: 0; }
+        .news-sub-bar .news-filter-btn.active { font-weight: 800; }
+        .news-sub-bar .news-filter-btn.active::after { background: var(--text-primary); }
+        .news-sub-bar .news-filter-btn.active .news-count { color: var(--text-secondary); }
 
-        /* The club rail is a third thing, not a third tier — it narrows
-           whatever the two above have chosen. It gets its own labelled row,
-           separated by a rule, so it stops reading as a child of the desks. */
         .news-clubs-row {
             display: flex; align-items: center; gap: 12px;
             margin-top: 14px; padding-top: 13px;
@@ -523,19 +531,26 @@
         .news-team-select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(99,102,241,0.15); }
         .news-count { opacity: 0.6; font-weight: 400; }
         .news-section { margin-bottom: 32px; }
+        /* The section name, set the way the references set it: heavy, italic,
+           at reading size rather than as a 13px grey label, behind a green
+           bar. It is the loudest type on the page after the lead's headline,
+           which is right — it says what you are looking at. */
         .news-section-title {
             font-family: var(--font-display);
-            font-size: 15px; font-weight: 800; letter-spacing: -0.01em;
+            font-size: 26px; font-weight: 800;
+            letter-spacing: -0.03em;
             text-transform: none;
             color: var(--text-primary);
-            margin-bottom: 14px;
-            padding-left: 11px;
-            display: flex; align-items: center; gap: 9px;
-            border-left: 4px solid var(--color-primary);
-            min-height: 22px;
+            margin-bottom: 16px;
+            padding-left: 14px;
+            display: flex; align-items: center; gap: 11px;
+            border-left: 5px solid var(--color-primary);
+            min-height: 30px;
+            line-height: 1.1;
         }
+        .news-section-title svg { width: 20px; height: 20px; }
         .news-section-title svg { width: 16px; height: 16px; stroke-width: 2; flex-shrink: 0; }
-        .news-section-title::after { content: ''; flex: 1; height: 1px; background: var(--border-default); }
+        .news-section-title::after { content: none; }
         .news-section-title svg { color: var(--color-primary); }
         .news-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
         /* ---- the front page's shapes ----
@@ -545,6 +560,25 @@
            a three-up for the FPL desks, the old two-up for longer reads, and
            a plain numbered list. */
         .news-grid-quad { grid-template-columns: repeat(4, 1fr); }
+        .news-lead-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+        .news-lead-beside { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .news-lead-beside .news-card .news-card-img,
+        .news-lead-beside .news-card .news-card-graphic { height: 118px; min-height: 0; aspect-ratio: auto; }
+        .news-lead-beside .news-card .news-card-detail { display: none; }
+        .news-lead-beside .news-card .news-card-headline { font-size: 14.5px; line-height: 1.35; }
+        .news-lead-beside .news-card .news-card-content { padding: 11px 13px 13px; }
+        /* ---- the split ----
+           One story wide across the top with its picture beside the words,
+           then four ordinary cards under it. It borrows the plain hero
+           rather than the lead's overlay on purpose: the lead is the only
+           thing on the page allowed to print its headline over a photograph,
+           so this reads as second-loudest instead of competing with it. */
+        .news-split-main { margin-bottom: 16px; }
+        .news-split-main .news-card-hero { min-height: 260px; }
+        .news-split-main .news-card-hero .news-card-img,
+        .news-split-main .news-card-hero .news-card-graphic { width: 46%; min-height: 260px; }
+        .news-split-main .news-card-hero .news-card-headline { font-size: 25px; line-height: 1.25; }
+        .news-split-main .news-card-hero .news-card-detail { -webkit-line-clamp: 3; line-clamp: 3; }
         /* ---- the lead ----
            It was a picture on the left and a headline on the right, which
            left a third of the card as white space under three lines of text
@@ -598,18 +632,26 @@
         .news-grid-trio { grid-template-columns: repeat(3, 1fr); }
 
         /* The headline column beside the lead. */
-        .news-brief-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 16px; }
+        .news-brief-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        /* These are cards, and the sheet behind them is white — so a white
+           card with a hairline border was invisible on it. They carry the
+           page's second surface and a real edge, like every other card here. */
         .news-brief {
             display: flex; align-items: center; gap: 14px;
-            padding: 14px 16px;
+            padding: 15px 17px;
             position: relative;
             background: var(--surface-1);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-lg);
-            transition: border-color 140ms ease, transform 140ms ease;
+            border: 1px solid var(--v2-card-border, var(--border-emphasis));
+            border-radius: var(--v2-card-radius, 16px);
+            transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
         }
-        .news-brief:hover { border-color: var(--color-primary); transform: translateY(-1px); }
+        .news-brief:hover {
+            border-color: var(--color-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, .08);
+        }
         .news-brief:first-child { box-shadow: inset 4px 0 0 var(--color-primary); }
+        .news-brief:first-child:hover { box-shadow: inset 4px 0 0 var(--color-primary), 0 8px 22px rgba(0, 0, 0, .08); }
         .news-brief-n {
             flex: none; width: 26px;
             font-family: var(--font-display); font-size: 23px; font-weight: 800;
@@ -633,7 +675,7 @@
         .news-section.is-accent .news-section-title { color: var(--color-primary); }
         .news-section.is-accent .news-section-title::after { background: color-mix(in srgb, var(--color-primary) 28%, transparent); }
         .news-section-n {
-            min-width: 18px; height: 18px; padding: 0 6px;
+            min-width: 20px; height: 20px; padding: 0 7px;
             display: inline-grid; place-items: center;
             border-radius: 999px; background: var(--surface-3); color: var(--text-secondary);
             font-size: 10.5px; font-weight: 800; font-variant-numeric: tabular-nums;
@@ -651,6 +693,15 @@
         /* The cover sits over the whole card. Everything that has its own
            destination — the footer's link — is lifted above it. */
         .news-card-cover { position: absolute; inset: 0; z-index: 3; border-radius: inherit; }
+        /* The whole card is the link, so a "Read more" in its corner is a
+           second control for the same destination — and the references put
+           nothing there. The footer stays on cards that carry real figures
+           (price, ownership) rather than just a repeat of the click. */
+        .news-grid .news-card .news-card-cta,
+        .news-grid-quad .news-card .news-card-cta,
+        .news-lead-beside .news-card .news-card-cta { display: none; }
+        .news-grid .news-card .news-card-footer:empty,
+        .news-grid-quad .news-card .news-card-footer:empty { display: none; }
         .news-card-footer, .news-card-cta, .news-card-team-tag { position: relative; z-index: 4; }
         .news-card:hover .news-card-headline, .news-card-hero:hover .news-card-headline { color: var(--color-primary); }
 
@@ -804,8 +855,13 @@
         .news-section-more:hover { text-decoration: underline; }
 
         @media (max-width: 1100px) {
+            .news-lead-grid { grid-template-columns: 1fr; }
             .news-grid-trio, .news-grid-quad { grid-template-columns: repeat(2, 1fr); }
             .news-lead-main .news-card-hero { min-height: 340px; }
+            .news-split-main .news-card-hero { min-height: 220px; }
+            .news-split-main .news-card-hero .news-card-img,
+            .news-split-main .news-card-hero .news-card-graphic { min-height: 220px; }
+            .news-split-main .news-card-hero .news-card-headline { font-size: 20px; }
         }
         @media (max-width: 760px) {
             .news-grid, .news-grid-trio, .news-grid-quad, .news-brief-list, .news-row-list { grid-template-columns: 1fr; }
@@ -821,7 +877,7 @@
         .news-card-hero .news-card-detail { font-size: 13.5px; line-height: 1.5; -webkit-line-clamp: 3; line-clamp: 3; color: var(--text-secondary); }
         .news-card-hero .news-card-footer { margin-top: auto; padding-top: 14px; }
         .news-card-hero.is-squad { border: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent); box-shadow: 0 0 24px color-mix(in srgb, var(--color-primary) 14%, transparent); }
-        .news-card { display: flex; flex-direction: column; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-md); overflow: hidden; transition: transform 200ms, box-shadow 200ms; position: relative; }
+        .news-card { display: flex; flex-direction: column; background: var(--surface-1); border: 1px solid var(--v2-card-border, var(--border-emphasis)); border-radius: var(--v2-card-radius, 16px); overflow: hidden; transition: transform 200ms, box-shadow 200ms; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
         .news-card:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(0,0,0,0.1); }
         .news-card.is-squad { border: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--color-primary) 12%, transparent); }
         .news-card-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
@@ -928,6 +984,10 @@
             .news-card-hero .news-card-graphic { width: 100%; min-height: 140px; }
             .news-card-hero .news-card-content { padding: 18px; }
             .news-card-hero .news-card-headline { font-size: 18px; }
+            .news-split-main .news-card-hero { min-height: auto; }
+            .news-split-main .news-card-hero .news-card-img { width: 100%; min-height: 160px; }
+            .news-split-main .news-card-hero .news-card-graphic { width: 100%; min-height: 140px; }
+            .news-split-main .news-card-hero .news-card-headline { font-size: 18px; }
             .news-filter-bar { gap: 4px; padding: 3px; }
             .news-filter-btn { padding: 5px 10px; font-size: 11px; }
             .news-filter-top-row { gap: 6px; }
@@ -964,13 +1024,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=254"></script>
-    <script src="scripts/common.js?v=254"></script>
+    <script src="scripts/error-monitor.js?v=258"></script>
+    <script src="scripts/common.js?v=258"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=254"></script>
-    <script src="scripts/notifications.js?v=254"></script>
-    <script src="scripts/sidebar-nav.js?v=254"></script>
+    <script src="scripts/push-alerts.js?v=258"></script>
+    <script src="scripts/notifications.js?v=258"></script>
+    <script src="scripts/sidebar-nav.js?v=258"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1895,29 +1955,41 @@
                     const cls = `news-section${o.accent ? ' is-accent' : ''}`;
 
                     if (shape === 'lead') {
-                        /* The lead takes the whole width. It shared the row with
-                           a column of headlines, which capped the picture at two
-                           thirds and left the page opening on something no bigger
-                           than the blocks under it. The headlines get a section of
-                           their own below, numbered, two across. */
+                        /* The front page's main block, as the references draw
+                           it: the lead down the left at two-thirds, and a 2x2
+                           of ordinary cards beside it. A hero across the full
+                           width reads as a banner; a hero with four cards
+                           against it reads as a front page, because the eye
+                           gets the relative sizes in one look. */
                         const [first, ...rest] = items;
-                        const briefs = rest.slice(0, 6).map((it, i) => renderBrief(it, i + 2)).join('');
+                        const beside = rest.slice(0, 4).map(it => renderCard(it, false)).join('');
                         return `<div class="${cls} news-lead">${head}
-                            <div class="news-lead-main">${renderCard(first, true)}</div>
-                        </div>`
-                        + (briefs ? `<div class="news-section news-trending">
-                            <div class="news-section-title">${CAT_ICONS.all || ''} Also in the news</div>
-                            <div class="news-brief-list">${briefs}</div>
-                        </div>` : '');
+                            <div class="news-lead-grid">
+                                <div class="news-lead-main">${renderCard(first, true)}</div>
+                                ${beside ? `<div class="news-lead-beside">${beside}</div>` : ''}
+                            </div>
+                        </div>`;
                     }
                     if (shape === 'rows') {
                         return `<div class="${cls}">${head}
                             <div class="news-row-list">${items.map(renderDeskRow).join('')}</div>
                         </div>`;
                     }
+                    if (shape === 'split') {
+                        /* One wide story with its picture beside the words,
+                           then a row of four under it. The third shape on the
+                           page: the lead block is a hero against a 2x2, this
+                           is a banner over a row, and the desks are lists.
+                           Three rhythms rather than one grid repeated. */
+                        const [first, ...rest] = items;
+                        return `<div class="${cls} news-split">${head}
+                            <div class="news-split-main">${renderCard(first, true)}</div>
+                            ${rest.length ? `<div class="news-grid news-grid-quad">${rest.slice(0, 4).map(it => renderCard(it, false)).join('')}</div>` : ''}
+                        </div>`;
+                    }
                     if (shape === 'briefs') {
                         return `<div class="${cls}">${head}
-                            <div class="news-brief-list">${items.map((it, i) => renderBrief(it, i + 1)).join('')}</div>
+                            <div class="news-brief-list">${items.map((it, i) => renderBrief(it, i + (o.from || 1))).join('')}</div>
                         </div>`;
                     }
                     const gridCls = shape === 'trio' ? 'news-grid news-grid-trio'
@@ -1978,21 +2050,29 @@
                             transfer: CAT_ICONS.transfer + ' Transfer activity'
                         };
                         return renderSection(titles[subFilter] || subFilter,
-                            fpl.filter(i => i.category === subFilter), { shape: 'quad', count: true });
+                            fpl.filter(i => i.category === subFilter), { shape: 'rows', count: true });
                     }
 
                     let html = '';
                     const lead = ext.length ? ext : fpl;
-                    html += renderSection('', lead.slice(0, 6), { shape: 'lead', hideWhenEmpty: true });
+                    html += renderSection('', lead.slice(0, 5), { shape: 'lead', hideWhenEmpty: true });
+                    html += renderSection('Also in the news', lead.slice(5, 11),
+                        { shape: 'briefs', from: 6, hideWhenEmpty: true });
                     html += renderSection(CAT_ICONS.squad + ' Your squad', squad.slice(0, 8),
                         { shape: 'quad', accent: true, count: true, hideWhenEmpty: true });
-                    html += renderSection(CAT_ICONS.injury + ' Injuries &amp; availability', inCat('injury').slice(0, 8),
-                        { shape: 'quad', count: true, hideWhenEmpty: true });
-                    html += renderSection(CAT_ICONS.price + ' Price changes', inCat('price').slice(0, 8),
-                        { shape: 'quad', count: true, hideWhenEmpty: true });
-                    html += renderSection(CAT_ICONS.transfer + ' Transfer activity', inCat('transfer').slice(0, 8),
-                        { shape: 'quad', count: true, hideWhenEmpty: true });
-                    html += renderSection(CAT_ICONS.external + ' Around the league', ext.slice(7, 15),
+                    /* The three desks are lists again. They were cards for one
+                       revision and it made three near-identical grids of
+                       club-coloured rectangles in a row — these are one-line
+                       facts and they belong in a list, small. */
+                    html += renderSection(CAT_ICONS.injury + ' Injuries &amp; availability', inCat('injury').slice(0, 10),
+                        { shape: 'rows', count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.price + ' Price changes', inCat('price').slice(0, 10),
+                        { shape: 'rows', count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.transfer + ' Transfer activity', inCat('transfer').slice(0, 10),
+                        { shape: 'rows', count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.external + ' Around the league', ext.slice(11, 16),
+                        { shape: 'split', count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.all + ' More from the league', ext.slice(16, 28),
                         { shape: 'quad', count: true, hideWhenEmpty: true });
 
                     return html || '<div class="news-empty">Nothing matches this filter right now.</div>';
@@ -2003,9 +2083,12 @@
 
                     if (primaryFilter === 'external') {
                         const ext = byTeam([...externalItems], teamId);
-                        return renderSection('', ext.slice(0, 6), { shape: 'lead', hideWhenEmpty: true })
-                            + renderSection(CAT_ICONS.external + ' More from around the league', ext.slice(6),
-                                { shape: 'grid', count: true, hideWhenEmpty: true })
+                        return renderSection('', ext.slice(0, 5), { shape: 'lead', hideWhenEmpty: true })
+                            + renderSection('Also in the news', ext.slice(5, 11), { shape: 'briefs', from: 6, hideWhenEmpty: true })
+                            + renderSection(CAT_ICONS.external + ' In depth', ext.slice(11, 16),
+                                { shape: 'split', count: true, hideWhenEmpty: true })
+                            + renderSection(CAT_ICONS.all + ' More from around the league', ext.slice(16),
+                                { shape: 'quad', count: true, hideWhenEmpty: true })
                             || '<div class="news-empty">No external news right now.</div>';
                     }
 
@@ -2013,15 +2096,15 @@
                     const squad = byTeam(fplItems.filter(i => i.isSquad), teamId);
                     if (subFilter && subFilter !== 'all') {
                         return renderSection(CAT_ICONS.squad + ' Your squad',
-                            squad.filter(i => i.category === subFilter), { shape: 'quad', count: true });
+                            squad.filter(i => i.category === subFilter), { shape: 'rows', count: true });
                     }
                     const cat = c => squad.filter(i => i.category === c);
                     const html = renderSection(CAT_ICONS.injury + ' Injuries &amp; availability', cat('injury'),
-                            { shape: 'quad', accent: true, count: true, hideWhenEmpty: true })
+                            { shape: 'rows', accent: true, count: true, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.price + ' Price changes', cat('price'),
-                            { shape: 'quad', count: true, hideWhenEmpty: true })
+                            { shape: 'rows', count: true, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.transfer + ' Transfer activity', cat('transfer'),
-                            { shape: 'quad', count: true, hideWhenEmpty: true });
+                            { shape: 'rows', count: true, hideWhenEmpty: true });
                     return html || '<div class="news-empty">No news about your squad right now.</div>';
                 }
 
@@ -2032,7 +2115,7 @@
                 let newsTeamFilter = 'all';
 
 
-                const filtersHTML = `<div class="news-filter-group" id="newsFilterGroup">
+                const filtersHTML = `<div class="news-masthead-sheet"><div class="news-filter-group" id="newsFilterGroup">
                     <div class="news-filter-top-row">
                         <div class="news-filter-bar" id="newsFilterBar">
                             <button class="news-filter-btn active" data-filter="all"><span class="btn-icon">${CAT_ICONS.all}</span> Front page <span class="news-count">(${filterCounts.all})</span></button>
@@ -2064,7 +2147,7 @@
                         </span>`).join('')}
                     </div>
                     </div>
-                </div>`;
+                </div></div>`;
 
                 /* Filters and cards inside one section, the way every other
                    page presents a set of cards. They were both laid straight

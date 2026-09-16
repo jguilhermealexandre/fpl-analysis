@@ -533,8 +533,10 @@
             // initSquadChart() runs and corrects .value in JS (e.g. before Chart.js
             // has finished loading, the <select>s would otherwise default to the
             // first metric in SQ_CHART_METRICS for both axes: "Price (£m)" vs "Price (£m)").
-            const metricOptions = selected => Object.keys(SQ_CHART_METRICS)
-                .map(k => `<option value="${k}" ${k === selected ? 'selected' : ''}>${SQ_CHART_METRICS[k].label}</option>`).join('');
+            const metricOptions = Object.keys(SQ_CHART_METRICS)
+                .map(k => ({ value: k, label: SQ_CHART_METRICS[k].label }));
+            const presetIdx = SQ_CHART_PRESETS.findIndex(pr => pr.x === sqChartXMetric && pr.y === sqChartYMetric);
+            const presetIndex = presetIdx === -1 ? 'custom' : String(presetIdx);
             /* A modal rather than an accordion. Expanded inline it pushed the
                whole squad table a screen down the page, so the two things you
                compare — a point on the chart and the row it belongs to — could
@@ -550,25 +552,37 @@
                         <button class="modal-close" onclick="toggleSquadChart()" aria-label="Close">&times;</button>
                     </div>
                     <div class="sq-chart-body-inner">
+                        <!-- Four menus, not four <select>s. These were the last raw
+                             form controls left on the site, and a control that
+                             looks like the browser's default next to a page of
+                             pills reads as a different kind of thing. -->
                         <div class="sq-chart-controls">
-                            <label class="sq-chart-field">
-                                <span class="sq-chart-field-label">Players</span>
-                                <select id="sq-chart-scope-select" onchange="setSquadChartScope(this.value)">
-                                    <option value="squad" ${sqChartScope === 'squad' ? 'selected' : ''}>My Squad</option>
-                                    <option value="all" ${sqChartScope === 'all' ? 'selected' : ''}>All Players</option>
-                                </select>
-                            </label>
-                            <label class="sq-chart-field">
-                                <span class="sq-chart-field-label">Template</span>
-                                <select id="sq-chart-preset-select" onchange="applySquadChartPreset(this.value)">
-                                    ${SQ_CHART_PRESETS.map((p, i) => `<option value="${i}" ${p.x === sqChartXMetric && p.y === sqChartYMetric ? 'selected' : ''}>${p.label}</option>`).join('')}
-                                    <option value="custom" ${SQ_CHART_PRESETS.some(p => p.x === sqChartXMetric && p.y === sqChartYMetric) ? '' : 'selected'}>Custom…</option>
-                                </select>
-                            </label>
+                            ${v2MenuHTML({
+                                key: 'sq-chart-scope', icon: 'users', label: 'Players',
+                                value: sqChartScope, onPick: 'setSquadChartScope',
+                                options: [
+                                    { value: 'squad', label: 'My Squad' },
+                                    { value: 'all', label: 'All Players' }
+                                ]
+                            })}
+                            ${v2MenuHTML({
+                                key: 'sq-chart-preset', icon: 'chart', label: 'Template',
+                                value: presetIndex, onPick: 'applySquadChartPreset',
+                                options: SQ_CHART_PRESETS.map((p, i) => ({ value: String(i), label: p.label }))
+                                    .concat([{ value: 'custom', label: 'Custom…' }])
+                            })}
                             <span class="sq-chart-axis-picker">
-                                <select id="sq-chart-x-select" onchange="onSquadChartMetricChange()">${metricOptions(sqChartXMetric)}</select>
+                                ${v2MenuHTML({
+                                    key: 'sq-chart-x', icon: 'ruler', label: 'X',
+                                    value: sqChartXMetric, onPick: 'setSquadChartX',
+                                    options: metricOptions
+                                })}
                                 <span>vs</span>
-                                <select id="sq-chart-y-select" onchange="onSquadChartMetricChange()">${metricOptions(sqChartYMetric)}</select>
+                                ${v2MenuHTML({
+                                    key: 'sq-chart-y', icon: 'ruler', label: 'Y',
+                                    value: sqChartYMetric, onPick: 'setSquadChartY',
+                                    options: metricOptions
+                                })}
                             </span>
                         </div>
                         <div class="sq-chart-compare-hint" id="sq-chart-compare-hint">Click any two points to compare those players.</div>
@@ -687,16 +701,31 @@
         function setSquadChartMetrics(xKey, yKey) {
             sqChartXMetric = xKey;
             sqChartYMetric = yKey;
-            const xSel = document.getElementById('sq-chart-x-select');
-            const ySel = document.getElementById('sq-chart-y-select');
-            if (xSel) xSel.value = xKey;
-            if (ySel) ySel.value = yKey;
+            if (typeof v2MenuSet === 'function') {
+                v2MenuSet('sq-chart-x', xKey);
+                v2MenuSet('sq-chart-y', yKey);
+            }
             syncSquadChartPresetSelect();
             updateSquadChart();
         }
 
+        /* One axis at a time, from its own menu. The old pair read both <select>
+           elements back out of the DOM on every change; the menus hand the value
+           straight over, so there is nothing to read back. */
+        function setSquadChartX(key) {
+            if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
+            setSquadChartMetrics(key, sqChartYMetric);
+        }
+
+        function setSquadChartY(key) {
+            if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
+            setSquadChartMetrics(sqChartXMetric, key);
+        }
+
         function setSquadChartScope(scope) {
             sqChartScope = scope;
+            if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
+            if (typeof v2MenuSet === 'function') v2MenuSet('sq-chart-scope', scope);
             // Scope change swaps the whole point set, so any half-finished
             // click-to-compare selection no longer refers to what's on screen.
             sqChartCompareIds = [];
@@ -705,6 +734,7 @@
         }
 
         function applySquadChartPreset(value) {
+            if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
             const preset = SQ_CHART_PRESETS[Number(value)];
             if (!preset) return; // "Custom…" — leave the axis pickers as-is
             setSquadChartMetrics(preset.x, preset.y);
@@ -713,10 +743,9 @@
         // Keeps the preset dropdown honest when the axis pickers are changed
         // directly: if the pair no longer matches a template, show "Custom…".
         function syncSquadChartPresetSelect() {
-            const sel = document.getElementById('sq-chart-preset-select');
-            if (!sel) return;
+            if (typeof v2MenuSet !== 'function') return;
             const idx = SQ_CHART_PRESETS.findIndex(p => p.x === sqChartXMetric && p.y === sqChartYMetric);
-            sel.value = idx === -1 ? 'custom' : String(idx);
+            v2MenuSet('sq-chart-preset', idx === -1 ? 'custom' : String(idx));
         }
 
         function updateSquadChartCompareHint() {
@@ -754,14 +783,6 @@
             updateSquadChartCompareHint();
         }
 
-        function onSquadChartMetricChange() {
-            const xSel = document.getElementById('sq-chart-x-select');
-            const ySel = document.getElementById('sq-chart-y-select');
-            sqChartXMetric = xSel ? xSel.value : sqChartXMetric;
-            sqChartYMetric = ySel ? ySel.value : sqChartYMetric;
-            syncSquadChartPresetSelect();
-            updateSquadChart();
-        }
 
         function buildSquadChartDatasets() {
             const xDef = SQ_CHART_METRICS[sqChartXMetric];
