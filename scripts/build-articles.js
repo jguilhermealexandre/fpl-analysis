@@ -77,7 +77,8 @@ function articlePage(a) {
 <!-- The site's mark. Every other page carries it; these were generated
      without one, so the archive was the only part of EasyFPL that showed
      the browser's blank page icon in a tab. -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='20'%20fill='%2310B981'/%3E%3Ctext%20x='50'%20y='72'%20font-size='65'%20font-family='Arial,sans-serif'%20font-weight='bold'%20fill='%230a0f1a'%20text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="alternate icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='20'%20fill='%2310B981'/%3E%3Ctext%20x='50'%20y='72'%20font-size='65'%20font-family='Arial,sans-serif'%20font-weight='bold'%20fill='%230a0f1a'%20text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
 <link rel="canonical" href="${url}">
 <meta property="og:type" content="article">
 <meta property="og:title" content="${esc(a.title)}">

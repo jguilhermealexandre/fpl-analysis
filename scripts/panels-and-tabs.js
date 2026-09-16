@@ -625,6 +625,19 @@
         }
 
         // ===== TAB SWITCHING =====
+        /* True only while re-applying a tab the browser navigated to, so
+           restoring a state does not create a new one. */
+        let mtRestoringHistory = false;
+
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+            window.addEventListener('popstate', () => {
+                const fromHash = { squad: 'team', transfers: 'transfers', news: 'news', draft: 'draft', transfer: 'transfer', lineup: 'lineup' };
+                const tab = fromHash[window.location.hash.replace('#', '')] || 'team';
+                mtRestoringHistory = true;
+                try { switchTab(tab); } finally { mtRestoringHistory = false; }
+            });
+        }
+
         let lineupRendered = false;
         let draftTabRendered = false;
         function switchTab(tab) {
@@ -655,8 +668,16 @@
             tabLineup.classList.remove('active');
             tabDraft.classList.remove('active');
 
+            /* pushState, not replace: six tabs sharing one history entry meant
+               Back from the Lineup Wizard left My Team altogether rather than
+               returning to the tab you came from. The popstate handler below
+               re-applies a tab without pushing another entry for it. */
             const hashMap = { team: 'squad', transfers: 'transfers', news: 'news', draft: 'draft', transfer: 'transfer', lineup: 'lineup' };
-            history.replaceState(null, '', '#' + (hashMap[tab] || tab));
+            const nextHash = '#' + (hashMap[tab] || tab);
+            if (nextHash !== window.location.hash) {
+                if (mtRestoringHistory) history.replaceState(null, '', nextHash);
+                else history.pushState(null, '', nextHash);
+            }
 
             document.getElementById('settingsBtn').style.display = (tab === 'team') ? '' : 'none';
 

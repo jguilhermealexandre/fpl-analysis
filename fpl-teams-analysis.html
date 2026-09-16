@@ -35,7 +35,12 @@
     <title>EasyFPL — Teams Analysis</title>
     <meta name="description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth analysis for smarter FPL decisions.">
     <meta name="theme-color" content="#0a0f1a">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='20'%20fill='%2310B981'/%3E%3Ctext%20x='50'%20y='72'%20font-size='65'%20font-family='Arial,sans-serif'%20font-weight='bold'%20fill='%230a0f1a'%20text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <!-- The data URI stays as the fallback for anything that will not take an
+         SVG icon. The file is what every current browser uses: one URL for the
+         whole origin, so it is cached once and cannot resolve differently from
+         one page to the next the way a per-page data URI can. -->
+    <link rel="alternate icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='20'%20fill='%2310B981'/%3E%3Ctext%20x='50'%20y='72'%20font-size='65'%20font-family='Arial,sans-serif'%20font-weight='bold'%20fill='%230a0f1a'%20text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="EasyFPL">
     <meta property="og:title" content="EasyFPL — Teams Analysis">
@@ -45,17 +50,17 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=241">
-    <link rel="stylesheet" href="styles/teams.css?v=241">
-    <link rel="stylesheet" href="styles/v2-design.css?v=241">
-    <link rel="stylesheet" href="styles/responsive.css?v=241">
-    <script src="scripts/error-monitor.js?v=241"></script>
-    <script src="scripts/common.js?v=241"></script>
+    <link rel="stylesheet" href="styles/common.css?v=242">
+    <link rel="stylesheet" href="styles/teams.css?v=242">
+    <link rel="stylesheet" href="styles/v2-design.css?v=242">
+    <link rel="stylesheet" href="styles/responsive.css?v=242">
+    <script src="scripts/error-monitor.js?v=242"></script>
+    <script src="scripts/common.js?v=242"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=241"></script>
-    <script src="scripts/notifications.js?v=241"></script>
-    <script src="scripts/sidebar-nav.js?v=241"></script>
+    <script src="scripts/push-alerts.js?v=242"></script>
+    <script src="scripts/notifications.js?v=242"></script>
+    <script src="scripts/sidebar-nav.js?v=242"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -178,7 +183,7 @@
         /* The sidebar's section links are same-page hash links. Following one from
            this page — #rankings to #targets, say — changes the URL without a
            reload, so without this the nav item appears to do nothing at all.
-           The tab buttons use history.replaceState, which does not fire
+           The tab buttons use history.pushState, which does not fire
            hashchange, so there is no loop back into this. */
         window.addEventListener('hashchange', () => {
             const hash = window.location.hash.replace('#', '');
@@ -195,7 +200,13 @@
                     document.querySelectorAll('.tabs-container .tab').forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
                     currentView = tab.dataset.view;
-                    history.replaceState(null, '', '#' + currentView);
+                    /* pushState, not replaceState. Replacing meant five tabs
+                       shared one history entry, so Back from the Stats Table
+                       left the page entirely instead of going where the
+                       reader had actually come from. The hashchange listener
+                       above already knows how to restore a view, so this is
+                       all that was needed. */
+                    history.pushState(null, '', '#' + currentView);
                     renderCurrentView();
                 });
             });
@@ -982,13 +993,48 @@
         }
 
         // ===== RENDERING =====
+        /* Re-sorts the twenty cards in place. It used to call
+           renderCurrentView(), which tears down and rebuilds the whole tab —
+           momentum matrix, chart instance and all — so choosing a different
+           measure flashed the page like a reload for a change that only
+           reorders one grid. */
+        /* One map. There were two copies of this, and they had already drifted:
+           one ranked fixtures on avgFdr and the other on avgFdrNum, so the
+           full render and the in-place re-sort would have ordered the same
+           twenty clubs differently. */
+        const RANKING_SORTS = {
+            attack:   { key: 'xgFor',     asc: false },
+            defense:  { key: 'xgAgainst', asc: true  },
+            fixtures: { key: 'avgFdrNum', asc: true  },
+            form:     { key: 'last5Ppg',  asc: false }
+        };
+
         function setRankingsSort(sort) {
             rankingsSort = sort;
-            /* renderCurrentView() rebuilds the menu node, so the open-menu
-               pointer has to be cleared or the next click on the fresh button
-               reads as a second click and shuts it. */
             if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
-            renderCurrentView();
+
+            const grid = document.getElementById('teams-grid');
+            if (!grid || !allTeamsData.length) { renderCurrentView(); return; }
+
+            const spec = RANKING_SORTS[rankingsSort] || RANKING_SORTS.form;
+            const highlightMode = rankingsSort === 'defense' ? 'defense'
+                : rankingsSort === 'fixtures' ? 'fixture'
+                : rankingsSort === 'form' ? 'form' : 'attack';
+            const sorted = favClubsSort([...allTeamsData].sort((a, b) => {
+                const av = a[spec.key] ?? 0, bv = b[spec.key] ?? 0;
+                return spec.asc ? av - bv : bv - av;
+            }), t => t.id);
+            grid.innerHTML = sorted.map((team, i) => createTeamCard(team, i + 1, highlightMode)).join('');
+
+            const host = document.getElementById('v2menu-rankings-sort');
+            if (host) {
+                const label = { attack: 'Attack', defense: 'Defence', fixtures: 'Fixtures', form: 'Form' }[rankingsSort];
+                const v = host.querySelector('.v2-menu-v');
+                if (v && label) v.textContent = label;
+                host.querySelectorAll('.v2-menu-opt').forEach(o =>
+                    o.classList.toggle('is-on', (o.getAttribute('onclick') || '').includes(`'${rankingsSort}'`)));
+            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         function renderCurrentView() {
@@ -1005,18 +1051,15 @@
                        it is expected to concede, and a fixture run by its FDR.
                        So the direction travels with the key rather than being
                        assumed descending. */
-                    const SORTS = {
-                        attack:   { key: 'xgFor',      asc: false },
-                        defense:  { key: 'xgAgainst',  asc: true  },
-                        fixtures: { key: 'avgFdrNum',  asc: true  },
-                        form:     { key: 'last5Ppg',   asc: false }
-                    };
-                    const sortSpec = SORTS[rankingsSort] || SORTS.form;
+                    const sortSpec = RANKING_SORTS[rankingsSort] || RANKING_SORTS.form;
                     const highlightMode = rankingsSort === 'defense' ? 'defense' : rankingsSort === 'fixtures' ? 'fixture' : rankingsSort === 'form' ? 'form' : 'attack';
-                    const sorted = [...allTeamsData].sort((a, b) => {
+                    /* Starred clubs lead, and keep the chosen measure's order
+                       among themselves — the rank number still counts from the
+                       top of the list you are looking at. */
+                    const sorted = favClubsSort([...allTeamsData].sort((a, b) => {
                         const av = a[sortSpec.key] ?? 0, bv = b[sortSpec.key] ?? 0;
                         return sortSpec.asc ? av - bv : bv - av;
-                    });
+                    }), t => t.id);
                     /* The measure is one question with four answers, so it is
                        one menu at the end of the section's own title row —
                        not a labelled band of pills between the heading and
@@ -1805,6 +1848,20 @@
             container.innerHTML = html;
         }
 
+        /* The two marks the grid draws on top of the colour, neither of which
+           the legend named — so a green bracket round four cells and a flame
+           in the corner of one were both things the page showed you and never
+           explained. They are overlays, so they apply whichever colour mode
+           is on and are appended to every branch below. */
+        function calendarOverlayLegend() {
+            return `<div class="legend-item" data-tooltip="A run of three or more fixtures rated easy back to back. The bracket marks where the run starts and ends.">
+                    <span class="legend-run"></span><span>Easy run</span>
+                </div>
+                <div class="legend-item" data-tooltip="Both teams are expected to score in this fixture — good for attackers on either side, bad for a clean sheet.">
+                    <span class="legend-flame"><i data-lucide="flame" style="width:11px;height:11px;"></i></span><span>Both teams to score</span>
+                </div>`;
+        }
+
         function getCalendarLegend() {
             const dot = (v, text, tip) =>
                 `<div class="legend-item"${tip ? ` data-tooltip="${escHTML(tip)}"` : ''}><div class="legend-dot" style="background: var(--fdr-${v});"></div><span>${text}</span></div>`;
@@ -1814,19 +1871,21 @@
                    else. The first two entries used to read "Very Easy (1-2)" and
                    "Easy (2)", which claimed 2 twice and left 1 unaccounted. */
                 return dot(1, 'Very Easy (1)') + dot(2, 'Easy (2)') + dot(3, 'Medium (3)')
-                     + dot(4, 'Hard (4)') + dot(5, 'Very Hard (5)');
+                     + dot(4, 'Hard (4)') + dot(5, 'Very Hard (5)') + calendarOverlayLegend();
             } else if (calendarColorMode === 'attack') {
                 // Rating the opponent's DEFENCE, because that is what a forward
                 // or an attacking midfielder has to get past.
                 return dot(1, `Leaky — target`, `Opponent expected to concede more than ${GPG_CUTS.softish} goals a game`)
                      + dot(3, 'Average', `Opponent expected to concede ${GPG_CUTS.firm}–${GPG_CUTS.softish} a game`)
-                     + dot(5, 'Tight — avoid', `Opponent expected to concede under ${GPG_CUTS.firm} a game`);
+                     + dot(5, 'Tight — avoid', `Opponent expected to concede under ${GPG_CUTS.firm} a game`)
+                     + calendarOverlayLegend();
             } else if (calendarColorMode === 'defense') {
                 // Rating the opponent's ATTACK, because that is what a defender
                 // or a keeper has to keep out.
                 return dot(1, 'Blunt — safe', `Opponent expected to score under ${GPG_CUTS.firm} goals a game`)
                      + dot(3, 'Average', `Opponent expected to score ${GPG_CUTS.firm}–${GPG_CUTS.softish} a game`)
-                     + dot(5, 'Dangerous — avoid', `Opponent expected to score more than ${GPG_CUTS.softish} a game`);
+                     + dot(5, 'Dangerous — avoid', `Opponent expected to score more than ${GPG_CUTS.softish} a game`)
+                     + calendarOverlayLegend();
             } else { // cs
                 return `
                     <div class="legend-item"><div class="legend-dot" style="background: #4ADE80;"></div><span>50%+ CS</span></div>
@@ -1834,7 +1893,7 @@
                     <div class="legend-item"><div class="legend-dot" style="background: #A3A3A3;"></div><span>30-40%</span></div>
                     <div class="legend-item"><div class="legend-dot" style="background: #FB923C;"></div><span>20-30%</span></div>
                     <div class="legend-item"><div class="legend-dot" style="background: #EF4444;"></div><span>&lt;20%</span></div>
-                `;
+                ` + calendarOverlayLegend();
             }
         }
 

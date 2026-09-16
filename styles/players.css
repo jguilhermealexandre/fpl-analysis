@@ -253,9 +253,21 @@
 }
 
 /* Routes search input */
+/* In the control row beside the pills, as on All Players — it used to sit
+   on its own line under them, so the same two controls were laid out two
+   different ways on two tabs of the same page. */
 .routes-search-wrap {
-    margin-bottom: 16px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-bottom: 0;
 }
+.routes-search-wrap .search-icon {
+    position: absolute; left: 10px;
+    color: var(--text-muted); pointer-events: none;
+    display: inline-flex;
+}
+.pa-panel-controls .routes-search-input { padding-left: 30px; }
 .routes-search-input {
     width: 100%;
     max-width: 320px;
@@ -2652,30 +2664,36 @@
     gap: 6px;
     flex-wrap: wrap;
 }
+/* The same pill every other tab on this page uses. These were 5px-radius
+   squares with a coloured dot in a tinted tray — a third filter language on
+   a page that already had one. They stay multi-select, because on a scatter
+   plot showing two positions at once is the point; only the look changes. */
 .charts-filter-bar .pos-chip {
-    padding: 4px 10px;
-    background: var(--surface-2);
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
     border: 1px solid var(--border-default);
-    border-radius: 5px;
-    font-size: 11px;
-    font-weight: 600;
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    font-size: 12px; font-weight: 600;
+    font-family: inherit;
     cursor: pointer;
-    transition: all 150ms;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
 }
-.charts-filter-bar .pos-chip:hover {
-    background: var(--surface-3);
-}
+.charts-filter-bar .pos-chip:not(.active):hover { border-color: var(--color-primary); }
 .charts-filter-bar .pos-chip.active {
-    border-color: rgba(74, 222, 128, 0.3);
-    background: rgba(74, 222, 128, 0.08);
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
 }
+/* On a filled pill the dot has to read against the brand green, not against
+   the panel it used to sit on. */
 .charts-filter-bar .pos-chip .pos-dot {
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
+    flex: none;
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, .55);
 }
 .charts-filter-bar .reset-link {
     font-size: 11px;
@@ -5187,7 +5205,9 @@ tr.pl-row-click .row-action { cursor: pointer; }
     flex-wrap: wrap;
     align-items: flex-start;
     gap: 12px 18px;
-    padding: 0 16px 14px;
+    /* The top was 0, so the POSITION and SEARCH labels sat against the
+       panel's own top border with nothing between them. */
+    padding: 16px 16px 14px;
     border-bottom: 1px solid var(--border-subtle);
     margin-bottom: 12px;
 }

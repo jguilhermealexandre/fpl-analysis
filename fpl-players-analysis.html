@@ -35,7 +35,12 @@
     <title>EasyFPL — Player Analysis</title>
     <meta name="description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, fixture-difficulty ratings, and advanced stats for every Premier League player.">
     <meta name="theme-color" content="#0a0f1a">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='20'%20fill='%2310B981'/%3E%3Ctext%20x='50'%20y='72'%20font-size='65'%20font-family='Arial,sans-serif'%20font-weight='bold'%20fill='%230a0f1a'%20text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <!-- The data URI stays as the fallback for anything that will not take an
+         SVG icon. The file is what every current browser uses: one URL for the
+         whole origin, so it is cached once and cannot resolve differently from
+         one page to the next the way a per-page data URI can. -->
+    <link rel="alternate icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='20'%20fill='%2310B981'/%3E%3Ctext%20x='50'%20y='72'%20font-size='65'%20font-family='Arial,sans-serif'%20font-weight='bold'%20fill='%230a0f1a'%20text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="EasyFPL">
     <meta property="og:title" content="EasyFPL — Player Analysis">
@@ -45,13 +50,13 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=241">
-    <link rel="stylesheet" href="styles/players.css?v=241">
+    <link rel="stylesheet" href="styles/common.css?v=242">
+    <link rel="stylesheet" href="styles/players.css?v=242">
     <!-- The shared player profile card. Loaded after this page's own sheet so
          either can still override the other, exactly as on the squad page. -->
-    <link rel="stylesheet" href="styles/player-profile.css?v=241">
-    <link rel="stylesheet" href="styles/v2-design.css?v=241">
-    <link rel="stylesheet" href="styles/responsive.css?v=241">
+    <link rel="stylesheet" href="styles/player-profile.css?v=242">
+    <link rel="stylesheet" href="styles/v2-design.css?v=242">
+    <link rel="stylesheet" href="styles/responsive.css?v=242">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -81,20 +86,20 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=241">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=241">
-    <link rel="preload" as="script" href="scripts/routes-engine.js?v=241">
-    <link rel="preload" as="script" href="scripts/form-trend.js?v=241">
-    <link rel="preload" as="script" href="scripts/purple-patch.js?v=241">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=241">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=241">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=241">
-    <link rel="preload" as="script" href="scripts/player-profile.js?v=241">
-    <link rel="preload" as="script" href="scripts/players-ai.js?v=241">
-    <link rel="preload" as="script" href="scripts/common.js?v=241">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=241">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=241">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=241">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=242">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=242">
+    <link rel="preload" as="script" href="scripts/routes-engine.js?v=242">
+    <link rel="preload" as="script" href="scripts/form-trend.js?v=242">
+    <link rel="preload" as="script" href="scripts/purple-patch.js?v=242">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=242">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=242">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=242">
+    <link rel="preload" as="script" href="scripts/player-profile.js?v=242">
+    <link rel="preload" as="script" href="scripts/players-ai.js?v=242">
+    <link rel="preload" as="script" href="scripts/common.js?v=242">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=242">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=242">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=242">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -459,10 +464,28 @@
             if (catPills) catPills.style.display = showCats ? '' : 'none';
             if (catDivider) catDivider.style.display = showCats ? '' : 'none';
 
-            // Update hash
+            /* pushState, not replace: six tabs sharing one history entry meant
+               Back from All Players left the page rather than returning to the
+               tab you came from. activateTab is also called by the popstate
+               handler below, which must NOT push again — hence the flag. */
             const hash = TAB_TO_HASH[pos];
-            if (hash) history.replaceState(null, '', '#' + hash);
+            if (hash && hash !== window.location.hash.replace('#', '')) {
+                if (paRestoringHistory) history.replaceState(null, '', '#' + hash);
+                else history.pushState(null, '', '#' + hash);
+            }
         }
+
+        /* True only while we are re-applying a tab the browser navigated to,
+           so restoring a state does not create a new one. */
+        let paRestoringHistory = false;
+
+        window.addEventListener('popstate', () => {
+            const tabPos = HASH_TO_TAB[window.location.hash.replace('#', '')] || 'RECOMMENDATIONS';
+            const tab = document.querySelector(`.tabs-container .tab[data-position="${tabPos}"]`);
+            if (!tab || tab.classList.contains('active')) return;
+            paRestoringHistory = true;
+            try { activateTab(tab); } finally { paRestoringHistory = false; }
+        });
 
         document.querySelectorAll('.tabs-container .tab').forEach(tab => {
             tab.addEventListener('click', () => activateTab(tab));
@@ -1314,6 +1337,10 @@
                     <span class="pa-panel-title">${paIcon('routes')}Routes to points</span>
                     <div class="pa-panel-controls">
                         <div class="pa-filter-pills">${paPositionPills()}</div>
+                        <div class="routes-search-wrap">
+                            <i data-lucide="search" class="search-icon" style="width:14px;height:14px;"></i>
+                            <input type="text" class="routes-search-input" placeholder="Search players..." oninput="filterRoutesDatabase(this.value)">
+                        </div>
                         <div class="v2-filter-row-tail">
                             ${v2MenuHTML({
                                 key: 'routes-mode', icon: 'chart', label: 'Bars',
@@ -1343,10 +1370,6 @@
                         <span class="legend-panel-item" style="margin-left:8px;"><i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> = Nailed on</span>
                     </div>
                     <div class="routes-database-view active">
-                        <div class="routes-search-wrap">
-                            <i data-lucide="search" class="search-icon" style="width:14px;height:14px;"></i>
-                            <input type="text" class="routes-search-input" placeholder="Search players..." oninput="filterRoutesDatabase(this.value)">
-                        </div>
                         <div class="routes-grid" id="routesDatabaseGrid">${dbHtml}</div>
                         <div class="routes-load-more-wrap" style="text-align:center;margin-top:16px;${hasMore ? '' : 'display:none;'}"><button class="routes-view-btn" style="background:var(--surface-2);border:1px solid var(--border-default);" onclick="loadMoreRoutes()">Load more</button></div>
                     </div>
@@ -3435,23 +3458,23 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=241"></script>
+    <script src="scripts/error-monitor.js?v=242"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=241"></script>
-    <script src="scripts/routes-engine.js?v=241"></script>
-    <script src="scripts/form-trend.js?v=241"></script>
-    <script src="scripts/purple-patch.js?v=241"></script>
-    <script src="scripts/players-tables.js?v=241"></script>
-    <script src="scripts/compare-report.js?v=241"></script>
+    <script src="scripts/xp-engine.js?v=242"></script>
+    <script src="scripts/routes-engine.js?v=242"></script>
+    <script src="scripts/form-trend.js?v=242"></script>
+    <script src="scripts/purple-patch.js?v=242"></script>
+    <script src="scripts/players-tables.js?v=242"></script>
+    <script src="scripts/compare-report.js?v=242"></script>
     <!-- The price meter and the season's price path, from the game's own price
          engine. Pure functions, no DOM — the profile card renders them. -->
-    <script src="scripts/price-watch.js?v=241"></script>
+    <script src="scripts/price-watch.js?v=242"></script>
     <!-- Everything the site knows about one player, in one card. Shared with the
          squad page; the trend charts this page adds to it are wired up in the
          inline block below via pdmPageSections()/pdmAfterRender(). -->
-    <script src="scripts/player-profile.js?v=241"></script>
+    <script src="scripts/player-profile.js?v=242"></script>
     <script>
         // buildStatWindows / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -5404,14 +5427,14 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=241"></script>
+    <script src="scripts/players-ai.js?v=242"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/common.js?v=241"></script>
+    <script src="scripts/common.js?v=242"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=241"></script>
-    <script src="scripts/notifications.js?v=241"></script>
-    <script src="scripts/sidebar-nav.js?v=241"></script>
+    <script src="scripts/push-alerts.js?v=242"></script>
+    <script src="scripts/notifications.js?v=242"></script>
+    <script src="scripts/sidebar-nav.js?v=242"></script>
     <script>
         loadSidebarNav();
         initIcons();

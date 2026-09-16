@@ -35,7 +35,12 @@
     <title>EasyFPL — PL News Hub</title>
     <meta name="description" content="Stay on top of Fantasy Premier League news — injury updates, press-conference summaries, lineup predictions, and transfer rumours that affect your FPL squad.">
     <meta name="theme-color" content="#0a0f1a">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='20'%20fill='%2310B981'/%3E%3Ctext%20x='50'%20y='72'%20font-size='65'%20font-family='Arial,sans-serif'%20font-weight='bold'%20fill='%230a0f1a'%20text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <!-- The data URI stays as the fallback for anything that will not take an
+         SVG icon. The file is what every current browser uses: one URL for the
+         whole origin, so it is cached once and cannot resolve differently from
+         one page to the next the way a per-page data URI can. -->
+    <link rel="alternate icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='20'%20fill='%2310B981'/%3E%3Ctext%20x='50'%20y='72'%20font-size='65'%20font-family='Arial,sans-serif'%20font-weight='bold'%20fill='%230a0f1a'%20text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="EasyFPL">
     <meta property="og:title" content="EasyFPL — PL News Hub">
@@ -47,9 +52,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=241">
-    <link rel="stylesheet" href="styles/v2-design.css?v=241">
-    <link rel="stylesheet" href="styles/responsive.css?v=241">
+    <link rel="stylesheet" href="styles/common.css?v=242">
+    <link rel="stylesheet" href="styles/v2-design.css?v=242">
+    <link rel="stylesheet" href="styles/responsive.css?v=242">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -697,6 +702,26 @@
         .news-club img { width: 25px; height: 25px; object-fit: contain; }
         .news-club:hover { transform: translateY(-2px); border-color: var(--border-emphasis); }
         .news-club.is-on { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 12%, transparent); }
+        .news-club-wrap { position: relative; flex: none; display: inline-flex; }
+        .news-club.is-fav { border-color: var(--color-primary); }
+        .news-club-star {
+            position: absolute; top: -3px; right: -4px;
+            width: 17px; height: 17px;
+            display: grid; place-items: center;
+            border-radius: 50%;
+            border: 1.5px solid var(--surface-1);
+            background: var(--surface-3);
+            color: var(--text-muted);
+            font-size: 9px; line-height: 1;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 140ms ease, color 140ms ease, background 140ms ease;
+        }
+        .news-club-wrap:hover .news-club-star, .news-club-star.is-on { opacity: 1; }
+        .news-club-star.is-on { background: var(--color-primary); color: #fff; }
+        .news-club-star:hover { color: var(--color-primary); }
+        .news-club-star.is-on:hover { color: #fff; }
+
         .news-club-all {
             font-family: var(--font-display); font-size: 11px; font-weight: 800;
             color: var(--text-secondary); letter-spacing: -0.01em;
@@ -874,13 +899,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=241"></script>
-    <script src="scripts/common.js?v=241"></script>
+    <script src="scripts/error-monitor.js?v=242"></script>
+    <script src="scripts/common.js?v=242"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=241"></script>
-    <script src="scripts/notifications.js?v=241"></script>
-    <script src="scripts/sidebar-nav.js?v=241"></script>
+    <script src="scripts/push-alerts.js?v=242"></script>
+    <script src="scripts/notifications.js?v=242"></script>
+    <script src="scripts/sidebar-nav.js?v=242"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1828,6 +1853,16 @@
                     return `<div class="${cls}">${head}<div class="${gridCls}">${items.map(it => renderCard(it, false)).join('')}</div></div>`;
                 }
 
+                /* Starred clubs first, everything else behind them in the order
+                   it already had. Applied per section rather than to the feed
+                   as a whole, so a starred club leads each desk it appears in
+                   instead of monopolising the top of the page. */
+                function favFirst(list) {
+                    return typeof favClubsSort === 'function'
+                        ? favClubsSort(list, i => (i.player && i.player.teamId) || (i.matchedTeamIds || [])[0])
+                        : list;
+                }
+
                 function byTeam(list, teamId) {
                     if (!teamId || teamId === 'all') return list;
                     const tid = parseInt(teamId);
@@ -1855,8 +1890,8 @@
                    them. A section with nothing in it does not appear at all
                    rather than printing "no news in this category" six times. */
                 function renderFrontPage(teamId, subFilter) {
-                    const ext = byTeam([...externalItems], teamId);
-                    const fpl = byTeam([...fplItems], teamId);
+                    const ext = favFirst(byTeam([...externalItems], teamId));
+                    const fpl = favFirst(byTeam([...fplItems], teamId));
                     const squad = fpl.filter(i => i.isSquad);
                     const inCat = c => fpl.filter(i => i.category === c && !i.isSquad);
 
@@ -1943,12 +1978,17 @@
                     </div>
                     <div class="news-clubs" id="newsClubs">
                         <button class="news-club news-club-all is-on" data-club="all" onclick="setNewsTeam('all')" data-tooltip="Every club">ALL</button>
-                        ${Object.values(localTeams).sort((a, b) => a.name.localeCompare(b.name)).map(t => `
-                        <button class="news-club" data-club="${t.id}" onclick="setNewsTeam('${t.id}')" data-tooltip="${escHTML(t.name)}">
-                            <img alt="${escHTML(t.name)}" loading="lazy"
-                                src="https://resources.premierleague.com/premierleague/badges/50/t${t.code}.png"
-                                onerror="this.remove()">
-                        </button>`).join('')}
+                        ${favClubsSort(Object.values(localTeams).sort((a, b) => a.name.localeCompare(b.name)), t => t.id).map(t => `
+                        <span class="news-club-wrap">
+                            <button class="news-club${favClubsHas(t.id) ? ' is-fav' : ''}" data-club="${t.id}" onclick="setNewsTeam('${t.id}')" data-tooltip="${escHTML(t.name)} \u2014 click to show only their news">
+                                <img alt="${escHTML(t.name)}" loading="lazy"
+                                    src="https://resources.premierleague.com/premierleague/badges/50/t${t.code}.png"
+                                    onerror="this.remove()">
+                            </button>
+                            <button class="news-club-star${favClubsHas(t.id) ? ' is-on' : ''}" data-club-star="${t.id}"
+                                onclick="toggleFavClub(${t.id}, event)"
+                                data-tooltip="${favClubsHas(t.id) ? 'Starred — their news comes first' : 'Star ' + escHTML(t.name) + ' to bring their news to the top'}">\u2605</button>
+                        </span>`).join('')}
                     </div>
                     <div class="news-filter-bar news-sub-bar" id="newsSubBar">
                         <button class="news-filter-btn active" data-sub="all"><span class="btn-icon">${CAT_ICONS.all}</span> All</button>
@@ -2030,6 +2070,19 @@
                    next to a row of pill buttons it read as part of a different
                    page. setNewsTeam is global so the menu's inline handler can
                    reach it; it calls back into this closure's applyFilters. */
+                /* Starring reorders rather than filters, so the page it rebuilds
+                   is the same page with the starred clubs' items lifted to the
+                   front of each section. */
+                window.toggleFavClub = (id, ev) => {
+                    if (ev) ev.stopPropagation();
+                    const on = favClubsToggle(id);
+                    const star = document.querySelector(`[data-club-star="${id}"]`);
+                    const crest = document.querySelector(`#newsClubs .news-club[data-club="${id}"]`);
+                    if (star) star.classList.toggle('is-on', on);
+                    if (crest) crest.classList.toggle('is-fav', on);
+                    applyFilters();
+                };
+
                 window.setNewsTeam = (id) => {
                     newsTeamFilter = id;
                     document.querySelectorAll('#newsClubs .news-club').forEach(btn =>

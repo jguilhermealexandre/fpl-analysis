@@ -2088,7 +2088,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=241')
+    fetch('footer.html?v=242')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
@@ -2507,4 +2507,54 @@ if (typeof document !== 'undefined' && typeof document.addEventListener === 'fun
     document.addEventListener('keydown', (ev) => {
         if (ev.key === 'Escape' && v2MenuOpen) v2MenuCloseAll();
     });
+}
+
+/* ===== FAVOURITE CLUBS =====
+ *
+ * The clubs a manager actually cares about — usually the one they support and
+ * the two or three they own players from. Stored per browser, like the team
+ * id, because it is a preference rather than anything FPL knows about.
+ *
+ * What it changes is order, never inclusion: a starred club's news and its
+ * row in a ranking come first, and everything else still follows underneath.
+ * A filter that quietly dropped the other nineteen clubs would be a different
+ * feature, and a worse one.
+ */
+const FAV_CLUBS_KEY = 'easyfpl_fav_clubs';
+
+function favClubsRead() {
+    try {
+        const raw = localStorage.getItem(FAV_CLUBS_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list.map(Number).filter(n => Number.isFinite(n)) : [];
+    } catch (e) {
+        // Storage unreadable (private window, blocked site data): no favourites.
+        return [];
+    }
+}
+
+function favClubsHas(teamId) {
+    return favClubsRead().includes(Number(teamId));
+}
+
+function favClubsToggle(teamId) {
+    const id = Number(teamId);
+    const list = favClubsRead();
+    const i = list.indexOf(id);
+    if (i >= 0) list.splice(i, 1);
+    else list.push(id);
+    try { localStorage.setItem(FAV_CLUBS_KEY, JSON.stringify(list)); } catch (e) { /* not fatal */ }
+    return list.includes(id);
+}
+
+/* Starred first, everything else in the order it already had. A stable sort
+   is required, not incidental: within each group the caller's ranking — by
+   attack, by recency — is the whole point and must survive. */
+function favClubsSort(list, teamIdOf) {
+    const fav = favClubsRead();
+    if (!fav.length) return list;
+    return list
+        .map((item, i) => ({ item, i, fav: fav.includes(Number(teamIdOf(item))) }))
+        .sort((a, b) => (a.fav === b.fav ? a.i - b.i : (a.fav ? -1 : 1)))
+        .map(x => x.item);
 }

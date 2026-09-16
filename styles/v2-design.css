@@ -3535,3 +3535,28 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 [title]:not([title=""]) {
     cursor: help;
 }
+
+/* A tooltip on a button is not the reason the button is there. Anything
+   actually interactive keeps the pointer; help is left to the things that
+   only explain themselves.
+
+   This override used to live in my-team.css — which two pages load. The
+   rule it corrects was in there too, so they agreed. Moving only the help
+   rule to the shared sheet left every other page's navigation, tabs and
+   menu buttons showing a question mark, because the half that said
+   "except these" never arrived. They travel together now. */
+/* The :not() guards are not decoration — they are what makes these win.
+   [title]:not([title=""]) scores (0,2,0); a bare a[title] scores (0,1,1) and
+   loses to it, which is why the sidebar still showed a question mark after
+   the override was supposedly in place. Matching the guard takes these to
+   (0,2,1). */
+button[data-tooltip]:not([data-tooltip=""]), button[title]:not([title=""]),
+a[data-tooltip]:not([data-tooltip=""]), a[title]:not([title=""]),
+label[data-tooltip]:not([data-tooltip=""]), label[title]:not([title=""]),
+summary[data-tooltip]:not([data-tooltip=""]), summary[title]:not([title=""]),
+select[data-tooltip]:not([data-tooltip=""]), select[title]:not([title=""]),
+[role="button"][data-tooltip]:not([data-tooltip=""]), [role="button"][title]:not([title=""]),
+[role="tab"][data-tooltip]:not([data-tooltip=""]), [role="tab"][title]:not([title=""]),
+[onclick][data-tooltip]:not([data-tooltip=""]), [onclick][title]:not([title=""]) {
+    cursor: pointer;
+}
