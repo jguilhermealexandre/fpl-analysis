@@ -1675,8 +1675,26 @@ function sdMarkdown(md) {
         return '';
     }
 
+    /* ---- the article reads as cards, not as one column ----
+       Every other screen on this site is built from cards; the reader was a
+       single unbroken run of prose, tables and callouts, which is why a
+       2,000-word debrief looked like a document and not like part of the
+       site. Each ## becomes its own block, so the piece has joints: you can
+       see where a section starts, and skim to the one you want.
+
+       Done at assembly rather than by wrapping afterwards, because the
+       directives and tables emit their own markup and post-processing a
+       flat string to find section boundaries is how you end up with a
+       parser that is wrong about nested tags. */
     const lines = md.split('\n');
     let html = '', i = 0;
+    let open = false;
+    const closeBlock = () => { if (open) { html += '</section>'; open = false; } };
+    const openBlock = (heading) => {
+        closeBlock();
+        html += `<section class="sd-block"><h2 class="sd-block-h">${heading}</h2>`;
+        open = true;
+    };
 
     while (i < lines.length) {
         const line = lines[i];
@@ -1694,7 +1712,7 @@ function sdMarkdown(md) {
         }
 
         if (/^###\s/.test(line)) { html += `<h3>${inline(line.replace(/^###\s/, ''))}</h3>`; i++; continue; }
-        if (/^##\s/.test(line)) { html += `<h2>${inline(line.replace(/^##\s/, ''))}</h2>`; i++; continue; }
+        if (/^##\s/.test(line)) { openBlock(inline(line.replace(/^##\s/, ''))); i++; continue; }
 
         if (/^>\s?/.test(line)) {
             let quote = [];
@@ -1726,6 +1744,7 @@ function sdMarkdown(md) {
         while (i < lines.length && !/^\s*$/.test(lines[i]) && !/^[#>|]|^[-*]\s|^:::/.test(lines[i])) { para.push(lines[i]); i++; }
         if (para.length) html += `<p>${inline(para.join(' '))}</p>`;
     }
+    closeBlock();
     return html;
 }
 
@@ -1742,35 +1761,71 @@ function renderArticlesPage() {
         return;
     }
 
-    const featured = sdArticles.find(a => a.featured) || sdArticles[0];
-    const rest = sdArticles.filter(a => a !== featured);
+    /* ---- grouped by gameweek, newest first ----
+       The archive was one featured article and then everything else in a
+       single grid, ordered by whatever sdBuildArchive happened to push. Two
+       dozen pieces like that is a pile, not an archive: nothing said which
+       round anything belonged to, and the round you actually want — the one
+       that just finished — was wherever it fell.
 
-    el.innerHTML = `
-        <a class="sd-featured" href="${sdPermalink(featured)}" onclick="return sdCardClick(event, '${featured.id}')">
-            <div class="sd-featured-art" aria-hidden="true"><span class="sd-featured-glyph">${sdArtMark(featured.category)}</span></div>
+       So the latest gameweek leads, with its best piece given the room, and
+       every earlier round is its own section underneath. The evergreen
+       pieces belong to no round and close the page. */
+    const byGw = new Map();
+    sdArticles.forEach(a => {
+        const key = a.gw == null ? 'evergreen' : a.gw;
+        if (!byGw.has(key)) byGw.set(key, []);
+        byGw.get(key).push(a);
+    });
+    const rounds = [...byGw.keys()].filter(k => k !== 'evergreen').sort((a, b) => b - a);
+
+    const card = a => `
+        <a class="sd-card" href="${sdPermalink(a)}" onclick="return sdCardClick(event, '${a.id}')">
+            <div class="sd-card-art" aria-hidden="true"><span class="sd-card-glyph">${sdArtMark(a.category)}</span></div>
+            <div class="sd-card-body">
+                <div class="sd-card-top">
+                    <span class="sd-tag">${escHTML(a.category)}</span>
+                    <span class="sd-read">${a.readTime} min</span>
+                </div>
+                <h3 class="sd-card-title">${escHTML(a.title)}</h3>
+                <p class="sd-card-dek">${escHTML(a.dek)}</p>
+                <div class="sd-meta">${sdFormatDate(a.date)}</div>
+            </div>
+        </a>`;
+
+    const lead = a => `
+        <a class="sd-featured" href="${sdPermalink(a)}" onclick="return sdCardClick(event, '${a.id}')">
+            <div class="sd-featured-art" aria-hidden="true"><span class="sd-featured-glyph">${sdArtMark(a.category)}</span></div>
             <div class="sd-featured-body">
                 <div class="sd-tags">
-                    <span class="sd-tag primary">${escHTML(featured.category)}</span>
-                    <span class="sd-read">${featured.readTime} min read</span>
+                    <span class="sd-tag primary">${escHTML(a.category)}</span>
+                    <span class="sd-read">${a.readTime} min read</span>
                 </div>
-                <h2 class="sd-featured-title">${escHTML(featured.title)}</h2>
-                <p class="sd-featured-dek">${escHTML(featured.dek)}</p>
-                <div class="sd-meta">${sdFormatDate(featured.date)} · ${escHTML(featured.source)}</div>
+                <h2 class="sd-featured-title">${escHTML(a.title)}</h2>
+                <p class="sd-featured-dek">${escHTML(a.dek)}</p>
+                <div class="sd-meta">${sdFormatDate(a.date)} · ${escHTML(a.source)}</div>
             </div>
-        </a>
+        </a>`;
 
-        <div class="sd-grid">
-            ${rest.map(a => `
-                <a class="sd-card" href="${sdPermalink(a)}" onclick="return sdCardClick(event, '${a.id}')">
-                    <div class="sd-card-top">
-                        <span class="sd-tag">${escHTML(a.category)}</span>
-                        <span class="sd-read">${a.readTime} min</span>
-                    </div>
-                    <h3 class="sd-card-title">${escHTML(a.title)}</h3>
-                    <p class="sd-card-dek">${escHTML(a.dek)}</p>
-                    <div class="sd-meta">${sdFormatDate(a.date)}</div>
-                </a>`).join('')}
-        </div>`;
+    const section = (label, note, items, isLead) => {
+        if (!items.length) return '';
+        const [first, ...rest] = items;
+        return `<section class="sd-round${isLead ? ' is-lead' : ''}">
+            <div class="sd-round-head">
+                <h2 class="sd-round-title">${escHTML(label)}</h2>
+                <span class="sd-round-n">${items.length} ${items.length === 1 ? 'piece' : 'pieces'}</span>
+                ${note ? `<span class="sd-round-note">${escHTML(note)}</span>` : ''}
+            </div>
+            ${isLead ? lead(first) : ''}
+            <div class="sd-grid">${(isLead ? rest : items).map(card).join('')}</div>
+        </section>`;
+    };
+
+    const latest = rounds[0];
+    el.innerHTML =
+        (latest != null ? section(`Gameweek ${latest}`, 'The latest round', byGw.get(latest), true) : '')
+        + rounds.slice(1).map(gw => section(`Gameweek ${gw}`, '', byGw.get(gw), false)).join('')
+        + section('Always true', 'Not about any one round', byGw.get('evergreen') || [], false);
 }
 
 // Archived articles have a real page of their own. Live-generated ones do not,
