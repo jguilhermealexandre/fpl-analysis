@@ -7,7 +7,7 @@
    at any point in a season without waiting for one. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadScript, browserStubs } from './helpers/load.mjs';
+import { loadScript, loadFunction, browserStubs } from './helpers/load.mjs';
 
 const md = loadScript('scripts/matchday.js', browserStubs({
     escHTML: s => String(s ?? ''),
@@ -180,4 +180,31 @@ test('a team with no code renders no image rather than a broken one', () => {
 
 test('the crest is decorative — the short name beside it carries the team', () => {
     assert.match(mdCrest({ code: 43 }), /alt=""/);
+});
+
+/* Which round the match list shows.
+
+   Between the last whistle of one round and the deadline of the next, the site
+   is "about" the next gameweek — that is what drives the countdown. The match
+   list is not about that: it is about matches, and the only matches that exist
+   in that window are the ones just played. Showing the upcoming round instead
+   replaced ten results with ten fixtures reading "v". */
+const mdPanelGW = loadFunction('scripts/matchday.js', 'mdPanelGW');
+
+test('between rounds the panel stays on the round that was played', () => {
+    assert.equal(mdPanelGW({ phase: 'upcoming', gw: 5, currentGW: 4 }), 4);
+});
+
+test('during a round it is that round', () => {
+    assert.equal(mdPanelGW({ phase: 'live', gw: 4, currentGW: 4 }), 4);
+    assert.equal(mdPanelGW({ phase: 'locked', gw: 4, currentGW: 4 }), 4);
+});
+
+test('preseason has no played round, so it shows the one coming', () => {
+    // The only case where there is nothing behind us to show.
+    assert.equal(mdPanelGW({ phase: 'preseason', gw: 1, currentGW: null }), 1);
+});
+
+test('after the last round of the season it stays on it', () => {
+    assert.equal(mdPanelGW({ phase: 'season-over', gw: 38, currentGW: 38 }), 38);
 });

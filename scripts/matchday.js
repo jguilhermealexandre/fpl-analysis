@@ -310,12 +310,35 @@
             </div>`;
         }
 
+        /* Which round's matches the panel is about.
+
+           state.gw is the round the SITE is about — once a round finishes that
+           becomes the next one, which is right for a deadline countdown and
+           wrong for a list of matches. This panel IS the matches.
+
+           It used to exclude 'upcoming' here, so the moment the last game of a
+           round ended the results you had just watched were replaced by ten
+           fixtures nobody had played, every one reading "v" instead of a score,
+           until the next deadline. The header below already had a branch for
+           "All matches finished" guarded on state.currentGW === gw — a condition
+           that line made impossible to satisfy. It was written for the behaviour
+           that was intended; the line disagreed with it.
+
+           Preseason is the one case with no completed round to show, so it falls
+           through to the upcoming one.
+
+           Its own function so it can be tested without a DOM. */
+        function mdPanelGW(state) {
+            if (!state) return null;
+            return state.currentGW != null && state.phase !== 'preseason'
+                ? state.currentGW : state.gw;
+        }
+
         function mdRenderPanel(now) {
             if (!mdCtx) return '';
             const t = now != null ? now : Date.now();
             const state = mdGameweekState(mdCtx.events, mdCtx.fixtures, t);
-            const gw = state.currentGW != null && state.phase !== 'upcoming' && state.phase !== 'preseason'
-                ? state.currentGW : state.gw;
+            const gw = mdPanelGW(state);
             const fx = (mdCtx.fixtures || []).filter(f => f.event === gw);
             if (!fx.length) return '';
 
@@ -340,7 +363,8 @@
                 : state.phase === 'locked'
                     ? `<span class="md-h-note">Locked${state.nextKickoff ? ` · first kick-off ${escHTML(mdKickoffLabel(state.nextKickoff))}` : ''}</span>`
                     : state.phase === 'upcoming' && state.currentGW === gw
-                        ? '<span class="md-h-note">All matches finished</span>'
+                        ? `<span class="md-h-note">All matches finished${state.nextGW
+                            ? ` · GW${state.nextGW} deadline ${escHTML(mdKickoffLabel(state.deadline))}` : ''}</span>`
                         : `<span class="md-h-note">${state.fixtures.total} matches</span>`;
 
             return `<div class="md-panel">
