@@ -6899,10 +6899,17 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    every renderer: the panels stay where they are and the step says which
    of them it is asking about. */
 .tw-container[data-tw-step="1"] #twBudgetBar { display: none; }
-.tw-container:not([data-tw-step="1"]) #twRecoPanel { display: none; }
-/* Ownership against the field rides on the pitch now, so it is on screen
-   wherever the pitch is — which is both steps. It used to be gated to step 4,
-   and step 4 no longer exists, so that rule hid it permanently. */
+.tw-container:not([data-tw-step="1"]) #twRecoPanel,
+.tw-container:not([data-tw-step="1"]):not([data-tw-step="2"]) #wcPanel { display: none; }
+/* Ownership against the field is a question about a finished plan, not one
+   you answer while deciding who to sell.
+
+   Both of these lost their gating in the same bad merge as the squad pane:
+   the two-step rework dropped the #wcPanel clause and deleted the .eo-panel
+   rule outright, because with only two steps there was no step 4 to gate on.
+   There is again, so they are back — otherwise the wildcard builder and the
+   ownership strip sit on every step of a four-step wizard. */
+.tw-container:not([data-tw-step="4"]) .eo-panel { display: none; }
 
 /* One screen at a time.
 
@@ -6913,27 +6920,24 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    on step 1, your squad on step 2, the market from step 3 on. */
 .twc-body { grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
 
-/* The pitch is on screen at both steps, because it is the thing being changed.
+/* The swap step is the one that is two things at once: your squad on the
+   left, who can replace them on the right. Every other step is one screen —
+   the plan on 1, the comparison on 3, the summary on 4 — and the squad pane
+   is switched off for all of them.
 
-   This block used to hide #twSquadPane at every step but 2 — correct when step
-   1 was a chooser with no squad on it, and the reason the pitch appeared to not
-   exist once step 1 became the pitch: it was rendering into a pane the
-   stylesheet had switched off.
-
-   Step 1 gives it the room, since there is nothing to compare yet. Step 2
-   narrows it to make space for the market beside it. */
-/* Step 1 asks one question — how are you transferring — and shows nothing
-   else. The squad was beside it, which put a fifteen-row table next to the
-   only decision on the screen and made the four cards look like a sidebar.
-   The squad arrives at step 2, where it becomes the thing you click. */
-.tw-container[data-tw-step="1"] .twc-body { grid-template-columns: minmax(0, 1fr); }
-.tw-container[data-tw-step="1"] #twSquadPane { display: none; }
-.tw-container[data-tw-step="1"] .twc-pane { width: 100%; max-width: 980px; margin: 0 auto; }
+   That last rule is load-bearing and was lost once. The two-step rework
+   replaced it with a flat `#twSquadPane, #twMarketPane { display: block }`,
+   which is right when step 1 IS the squad. Reverting to four steps through a
+   three-way merge kept the replacement, so the squad list rendered full width
+   on steps 3 and 4 and pushed the comparison and the summary — the actual
+   content of those steps — off the bottom of the page. */
+.tw-container[data-tw-step="2"] .twc-body { grid-template-columns: minmax(0, 320px) minmax(0, 1fr); }
+.tw-container[data-tw-step="2"] #twSquadPane,
+.tw-container[data-tw-step="2"] #twMarketPane { display: block; }
+.tw-container:not([data-tw-step="2"]) #twSquadPane { display: none; }
 /* Four cards across the width they are given, rather than two columns of
    220px floating in the middle of an empty row. */
 .tw-container[data-tw-step="1"] .tw-plans { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.tw-container[data-tw-step="2"] .twc-body { grid-template-columns: minmax(0, 360px) minmax(0, 1fr); }
-#twSquadPane, #twMarketPane { display: block; }
 /* Both of these say who is being replaced, and the card on the left says it
    with a face on it. Two more copies in text above and beside it is three. */
 .tw-container[data-tw-step="2"] .twc-plan { display: none; }
@@ -6945,7 +6949,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    the finished swaps stay, because those are the plan. */
 .twc-plan-row.open { display: none; }
 @media (max-width: 900px) {
-    .tw-container[data-tw-step="1"] .twc-body,
     .tw-container[data-tw-step="2"] .twc-body { grid-template-columns: minmax(0, 1fr); }
 }
 
