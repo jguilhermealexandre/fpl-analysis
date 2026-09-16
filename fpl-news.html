@@ -52,9 +52,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=260">
-    <link rel="stylesheet" href="styles/v2-design.css?v=260">
-    <link rel="stylesheet" href="styles/responsive.css?v=260">
+    <link rel="stylesheet" href="styles/common.css?v=261">
+    <link rel="stylesheet" href="styles/v2-design.css?v=261">
+    <link rel="stylesheet" href="styles/responsive.css?v=261">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -443,67 +443,6 @@
             padding: 6px 22px 16px;
             margin-bottom: 26px;
         }
-
-        /* ===== Injuries =====
-           A story is one club article and the players it covers, so the card
-           leads with the headline and lists the names under it rather than
-           repeating the headline once per player. The whole card is the link,
-           because the article is the point of the row. */
-        .inj-list { display: flex; flex-direction: column; gap: 10px; }
-        .inj-story {
-            display: block;
-            padding: 14px 16px;
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-lg);
-            background: var(--surface-1);
-            box-shadow: var(--shadow-sm);
-            text-decoration: none;
-            color: inherit;
-            transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
-        }
-        a.inj-story:hover {
-            border-color: var(--color-primary);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }
-        /* The rows with no article behind them are not links, so they must not
-           look like one: no lift, no hover, a quieter ground. */
-        .inj-story-flat { background: var(--surface-2); box-shadow: none; }
-        .inj-story-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-        .inj-crest { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
-        .inj-club { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
-        .inj-when { font-size: 12px; color: var(--text-muted); margin-left: auto; flex-shrink: 0; }
-        .inj-title {
-            font-family: var(--font-display);
-            font-size: 16px; font-weight: 700; line-height: 1.35;
-            color: var(--text-primary);
-            margin-bottom: 8px;
-        }
-        .inj-players { display: flex; flex-wrap: wrap; gap: 6px; }
-        .inj-player {
-            display: inline-flex; align-items: center; gap: 5px;
-            padding: 3px 9px;
-            border-radius: var(--radius-full);
-            background: var(--surface-2);
-            font-size: 12px; font-weight: 600;
-            color: var(--text-primary);
-        }
-        .inj-story-flat .inj-player { background: var(--surface-1); }
-        /* The injury itself is one word from the table - Knock, Muscle, ACL -
-           and it is a qualifier on the name, not a heading of its own. */
-        .inj-tag {
-            font-size: 11px; font-weight: 700;
-            color: var(--color-warning);
-            text-transform: none;
-        }
-        .inj-bare-note { font-size: 12px; color: var(--text-muted); margin: -6px 0 12px; line-height: 1.5; }
-        .inj-source {
-            margin-top: 18px; padding-top: 14px;
-            border-top: 1px solid var(--border-subtle);
-            font-size: 12px; color: var(--text-muted); line-height: 1.6;
-        }
-        .inj-source a { color: var(--color-primary); }
-
         .news-section { margin-bottom: 34px; }
         /* ---- the masthead ----
            These read as pages, not as filters. A filter is a pill you set on
@@ -1085,13 +1024,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=260"></script>
-    <script src="scripts/common.js?v=260"></script>
+    <script src="scripts/error-monitor.js?v=261"></script>
+    <script src="scripts/common.js?v=261"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=260"></script>
-    <script src="scripts/notifications.js?v=260"></script>
-    <script src="scripts/sidebar-nav.js?v=260"></script>
+    <script src="scripts/push-alerts.js?v=261"></script>
+    <script src="scripts/notifications.js?v=261"></script>
+    <script src="scripts/sidebar-nav.js?v=261"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1637,29 +1576,10 @@
         async function renderNews() {
             const container = document.getElementById('newsDisplay');
             container.innerHTML = `<div class="news-container"><div class="news-loading"><div class="spinner"></div> Loading news...</div></div>`;
-
-            /* data/injuries.json is written by .github/workflows/fetch-pl-injuries.yml,
-               which renders the Premier League's club-by-club table and follows each
-               "Details" link to the club's own article. Absent or unreadable, the
-               Injuries view says so rather than the page failing: the wire feed
-               beside it does not depend on this. */
-            async function fetchInjuries() {
-                try {
-                    const res = await fetch('data/injuries.json?v=' + Math.floor(Date.now() / 300000));
-                    if (!res.ok) return null;
-                    const d = await res.json();
-                    return d && Array.isArray(d.items) ? d : null;
-                } catch (e) {
-                    console.warn('No injury data:', e);
-                    return null;
-                }
-            }
-
             try {
-                const [bootData, rawExternal, injuryData] = await Promise.all([
+                const [bootData, rawExternal] = await Promise.all([
                     DataCache.fetchJSON(DATA_URLS.bootstrap),
-                    fetchExternalNews(),
-                    fetchInjuries()
+                    fetchExternalNews()
                 ]);
 
                 buildTeamLookup(bootData.teams);
@@ -2047,114 +1967,6 @@
                    them. A section with nothing in it does not appear at all
                    rather than printing "no news in this category" six times. */
 
-                /* ---- injuries ----
-                   A different thing from the wire feed, which is why it is a
-                   view rather than a section under it. The Premier League's
-                   table gives a player, a one-word injury and a link; the link
-                   leaves for the club's own site, and that article is the news.
-
-                   One article usually covers several players — "Arteta's update
-                   on White, Mosquera and Timber" is one story about three of
-                   them — so rows are grouped by the article they point at
-                   rather than repeating its headline once per player. The feed
-                   arrives already sorted newest first, so rows sharing an
-                   article are adjacent and grouping is a fold, not a re-sort.
-
-                   Players whose row carries no link cannot be dated and are not
-                   a story; they are listed under the clubs at the end, so the
-                   page still accounts for everyone the table named. */
-                function injuryWhen(iso) {
-                    if (!iso) return '';
-                    const t = Date.parse(iso);
-                    if (!Number.isFinite(t)) return '';
-                    const days = Math.floor((Date.now() - t) / 86400000);
-                    if (days <= 0) return 'today';
-                    if (days === 1) return 'yesterday';
-                    if (days < 7) return days + ' days ago';
-                    return new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-                }
-
-                function injuryCrest(clubId) {
-                    const t = clubId != null ? localTeams[clubId] : null;
-                    if (!t) return '';
-                    return `<img class="inj-crest" alt="" loading="lazy"
-                        src="https://resources.premierleague.com/premierleague/badges/50/t${t.code}.png"
-                        onerror="this.remove()">`;
-                }
-
-                function injuryNames(rows) {
-                    return rows.map(r => `<span class="inj-player">${escHTML(r.player)}${
-                        r.injury ? `<span class="inj-tag">${escHTML(r.injury)}</span>` : ''}</span>`).join('');
-                }
-
-                function renderInjuries() {
-                    if (!injuryData || !injuryData.items.length) {
-                        return `<div class="news-empty">
-                            No injury table yet. It is fetched from the Premier League's
-                            club-by-club page a couple of times a day; if this persists,
-                            the scrape needs a look.</div>`;
-                    }
-                    const items = injuryData.items;
-                    const linked = items.filter(i => i.url);
-                    const bare = items.filter(i => !i.url);
-
-                    // Fold adjacent rows that share an article into one story.
-                    const stories = [];
-                    for (const row of linked) {
-                        const last = stories[stories.length - 1];
-                        if (last && last.url === row.url) last.rows.push(row);
-                        else stories.push({ url: row.url, title: row.articleTitle, published: row.published,
-                                            club: row.club, clubId: row.clubId, rows: [row] });
-                    }
-
-                    let html = '';
-                    if (stories.length) {
-                        html += `<div class="news-section"><div class="news-section-title">
-                            ${CAT_ICONS.injury} Latest team news
-                            <span class="news-count">(${stories.length})</span></div>
-                            <div class="inj-list">${stories.map(st => `
-                            <a class="inj-story" href="${escHTML(st.url)}" target="_blank" rel="noopener noreferrer">
-                                <div class="inj-story-head">
-                                    ${injuryCrest(st.clubId)}
-                                    <span class="inj-club">${escHTML(st.club || '')}</span>
-                                    ${st.published ? `<span class="inj-when">${escHTML(injuryWhen(st.published))}</span>` : ''}
-                                </div>
-                                <div class="inj-title">${escHTML(st.title || 'Club injury update')}</div>
-                                <div class="inj-players">${injuryNames(st.rows)}</div>
-                            </a>`).join('')}</div></div>`;
-                    }
-
-                    if (bare.length) {
-                        // Grouped by club, in the order the sort already put them.
-                        const byClub = [];
-                        for (const row of bare) {
-                            const last = byClub[byClub.length - 1];
-                            if (last && last.club === row.club) last.rows.push(row);
-                            else byClub.push({ club: row.club, clubId: row.clubId, rows: [row] });
-                        }
-                        html += `<div class="news-section"><div class="news-section-title">
-                            ${CAT_ICONS.all} Also on the list
-                            <span class="news-count">(${bare.length})</span></div>
-                            <div class="inj-bare-note">Named on the Premier League's table with no club article behind them yet.</div>
-                            <div class="inj-list">${byClub.map(g => `
-                            <div class="inj-story inj-story-flat">
-                                <div class="inj-story-head">
-                                    ${injuryCrest(g.clubId)}
-                                    <span class="inj-club">${escHTML(g.club || '')}</span>
-                                </div>
-                                <div class="inj-players">${injuryNames(g.rows)}</div>
-                            </div>`).join('')}</div></div>`;
-                    }
-
-                    const stamp = injuryData.pageUpdated || (injuryData.fetched
-                        ? 'checked ' + injuryWhen(injuryData.fetched) : '');
-                    html += `<div class="inj-source">From the Premier League's
-                        <a href="${escHTML(injuryData.sourceUrl || 'https://www.premierleague.com/en/latest-player-injuries')}"
-                           target="_blank" rel="noopener noreferrer">club-by-club injury table</a>${
-                        stamp ? ' \u00b7 ' + escHTML(stamp) : ''}. Each story links to the club's own report.</div>`;
-                    return html;
-                }
-
                 /* The page is the wire feed now. It was three views behind a filter
                    bar - a front page, the reader's own squad, and this - with a
                    row of categories under it and every club crest under that.
@@ -2178,38 +1990,15 @@
                         || '<div class="news-empty">No news right now.</div>';
                 }
 
-                /* Two views, and only two. There used to be three bars stacked -
-                   the view, a row of categories, then every club crest - over a
-                   page whose categories were slicing FPL API strings. What is
-                   left is the wire feed and the injury table, which are
-                   different things rather than two cuts of one thing: one is
-                   what was written about the league, the other is who is fit.
-                   Hence a bar, not a section under the feed. */
-                const injuryCount = injuryData ? injuryData.items.length : 0;
+                /* Nothing between the masthead and the news. The page carries one
+                   thing, so a bar to choose it is a control with no choice in
+                   it. */
                 container.innerHTML = `<div class="news-container">
                     <section class="v2-section news-panel">
-                        <div class="news-masthead-sheet"><div class="news-filter-group">
-                            <div class="news-filter-bar" id="newsViewBar">
-                                <button class="news-filter-btn active" data-view="league">Around the league
-                                    <span class="news-count">(${externalItems.length})</span></button>
-                                <button class="news-filter-btn" data-view="injuries">Injuries${
-                                    injuryCount ? ` <span class="news-count">(${injuryCount})</span>` : ''}</button>
-                            </div>
-                        </div></div>
                         <div id="newsContent">${renderAroundTheLeague()}</div>
                     </section>
                 </div>`;
 
-                container.querySelectorAll('#newsViewBar .news-filter-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        container.querySelectorAll('#newsViewBar .news-filter-btn')
-                            .forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        document.getElementById('newsContent').innerHTML =
-                            btn.dataset.view === 'injuries' ? renderInjuries() : renderAroundTheLeague();
-                        if (typeof initIcons === 'function') initIcons();
-                    });
-                });
             } catch (err) {
                 console.error('News init error:', err);
                 container.innerHTML = renderErrorState(

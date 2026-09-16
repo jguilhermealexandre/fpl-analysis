@@ -79,11 +79,47 @@ export function publishedFrom(html) {
     return null;
 }
 
+/* Meta content is HTML-escaped, so a headline arrives as "Sarr &amp; Nketiah"
+   and would render with the entity showing — the page escapes what it is given,
+   as it must, and double-escaping is what that produces. */
+export function decodeEntities(s) {
+    return String(s == null ? '' : s)
+        .replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (whole, code) => {
+            if (code[0] === '#') {
+                const n = code[1] === 'x' || code[1] === 'X'
+                    ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
+                return Number.isFinite(n) && n > 0 && n < 0x110000 ? String.fromCodePoint(n) : whole;
+            }
+            const named = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0',
+                            rsquo: '\u2019', lsquo: '\u2018', rdquo: '\u201d', ldquo: '\u201c',
+                            ndash: '\u2013', mdash: '\u2014', hellip: '\u2026' };
+            return Object.prototype.hasOwnProperty.call(named, code.toLowerCase())
+                ? named[code.toLowerCase()] : whole;
+        });
+}
+
 export function titleFrom(html) {
     const og = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
         || html.match(/<title[^>]*>([^<]+)<\/title>/i);
     if (!og) return null;
-    return og[1].replace(/\s+/g, ' ').trim().slice(0, 200) || null;
+    return decodeEntities(og[1]).replace(/\s+/g, ' ').trim().slice(0, 200) || null;
+}
+
+/* Does this look like the table was read a column out of step? That is what the
+   first run produced, and every shape check it had to pass — ten rows, a name on
+   each, a quarter carrying links, no campaign tags — passed on data in which not
+   one player was actually named. The tell is the injury column: it holds a dozen
+   different words across eighty players, and if instead it holds one word over
+   and over, that word is the link's label and the columns have slipped. */
+export function looksMisaligned(items) {
+    const named = items.filter(i => i.injury);
+    if (named.length < 8) return null;
+    const counts = new Map();
+    for (const i of named) counts.set(i.injury, (counts.get(i.injury) || 0) + 1);
+    const [word, n] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+    return n / named.length > 0.5
+        ? `"${word}" is the injury on ${n} of ${named.length} rows — the columns have slipped`
+        : null;
 }
 
 /* Club name -> FPL team id, so the page can draw a crest. Matching is exact
@@ -197,7 +233,13 @@ async function render() {
             }
 
             for (const tr of rows.slice(1)) {
-                const cells = [...tr.querySelectorAll('td')];
+                /* th AND td. The player's name is the row header — <th scope="row">
+                   — not a cell, so reading only td shifted every row one column
+                   left: the first run stored "Groin" and "Ankle" as player names
+                   and "Details", the link's own text, as the injury. Not one real
+                   name came back. The header row is read the same way, so the
+                   indices line up on both. */
+                const cells = [...tr.querySelectorAll('th,td')];
                 if (!cells.length) continue;
                 const player = clean(cells[iPlayer]?.textContent);
                 if (!player) continue;
@@ -290,6 +332,12 @@ const items = sortItems(scraped.map(r => {
         published: meta?.published || null
     };
 }));
+
+const slipped = looksMisaligned(items);
+if (slipped) {
+    console.error(`::error::${slipped}`);
+    process.exit(1);
+}
 
 const payload = {
     source: 'premierleague.com',

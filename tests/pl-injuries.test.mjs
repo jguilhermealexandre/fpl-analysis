@@ -20,7 +20,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { cleanUrl, publishedFrom, titleFrom, buildClubMap, sortItems }
+import { cleanUrl, publishedFrom, titleFrom, buildClubMap, sortItems, decodeEntities, looksMisaligned }
     from '../tools/fetch-pl-injuries.mjs';
 
 // The real link behind "Ben White / Knock / Details".
@@ -111,4 +111,46 @@ test('an all-undated table still comes out in a stable order', () => {
     assert.equal(sortItems(items).map(x => x.player).join(','), 'Saliba,White,Onana');
     // Sorting twice must not shuffle it.
     assert.deepEqual(sortItems(sortItems(items)).map(x => x.player), sortItems(items).map(x => x.player));
+});
+
+/* The first live run passed every shape check the workflow had — ten or more
+   rows, a player name on each, a quarter carrying links, no campaign tags — on
+   data in which not one player was actually named. The table puts the name in
+   the row's <th>, the extractor read only <td>, and so every row came back one
+   column out of step: "Groin" and "Ankle" stored as players, and "Details", the
+   link's own label, stored as the injury on 71 of 71 rows.
+
+   A shape check cannot catch that, because the shape was right. This one looks
+   at the content instead. */
+test('a table read one column out of step is refused', () => {
+    // What the broken run produced: one value repeated down the injury column.
+    const slipped = Array.from({ length: 20 }, () => ({ player: 'Knee', injury: 'Details', club: 'Arsenal' }));
+    const verdict = looksMisaligned(slipped);
+    assert.ok(verdict, 'this is the exact failure that shipped');
+    assert.match(verdict, /Details/);
+    assert.match(verdict, /slipped/);
+});
+
+test('a real spread of injuries is not refused', () => {
+    const real = ['Knock', 'Muscle', 'Back', 'ACL', 'Thigh', 'Foot', 'Calf', 'Quad', 'Knee', 'Hamstring']
+        .map((injury, n) => ({ player: `P${n}`, injury, club: 'Arsenal' }));
+    assert.equal(looksMisaligned(real), null);
+});
+
+test('a handful of rows is too few to condemn', () => {
+    // Two players with the same injury is a coincidence, not a parsing fault.
+    assert.equal(looksMisaligned([
+        { player: 'A', injury: 'Knock' }, { player: 'B', injury: 'Knock' }
+    ]), null);
+});
+
+test('headlines come out of meta content decoded', () => {
+    // Meta attributes are escaped, and the page escapes again when it renders —
+    // so an undecoded "&amp;" reaches the reader as "&amp;".
+    assert.equal(titleFrom('<meta property="og:title" content="Sage hints at Sarr &amp; Nketiah returns">'),
+        'Sage hints at Sarr & Nketiah returns');
+    assert.equal(decodeEntities('Arteta&#39;s update'), "Arteta's update");
+    assert.equal(decodeEntities('Arteta&rsquo;s update'), 'Arteta\u2019s update');
+    assert.equal(decodeEntities('5 &lt; 6'), '5 < 6');
+    assert.equal(decodeEntities('&notanentity; survives'), '&notanentity; survives');
 });
