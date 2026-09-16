@@ -3048,12 +3048,11 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
    job is to show that number. */
 .dp-score {
     display: flex; align-items: baseline; justify-content: center; gap: 3px;
-    font-family: var(--font-mono); color: #0F172A; line-height: 1.15; cursor: help;
-}
+    font-family: var(--font-mono); color: #0F172A; line-height: 1.15;}
 .dp-score b { font-size: 16px; font-weight: 800; }
 .dp-score .u { font-size: 9.5px; font-weight: 700; color: rgba(15, 23, 42, 0.55); }
 .dp-meta { font-size: 9px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dp-xp { font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); cursor: help; line-height: 1.1; }
+.dp-xp { font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); line-height: 1.1; }
 .dp-xp-u { font-size: 9px; color: var(--text-muted); margin-left: 1px; }
 
 /* ---- who they play ----
@@ -3091,7 +3090,7 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
    Availability and bench order in the corner opposite the armband, both of
    them inside the card now that it has padding to hold them. */
 .dp-badges { position: absolute; top: 2px; left: 3px; display: flex; gap: 2px; z-index: 3; }
-.dp-badge { font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 3px; cursor: help; line-height: 1.5; }
+.dp-badge { font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 3px; line-height: 1.5; }
 .dp-badge.in { background: var(--verdict-hold); color: #fff; }
 .dp-badge.out { background: var(--verdict-sell); color: #fff; }
 .dp-badge.doubt { background: var(--verdict-monitor); color: #111827; }
@@ -3115,7 +3114,6 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     justify-content: center;
     border: 2px solid #fff;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-    cursor: help;
 }
 /* The run total the draft and the lineup optimiser rank on. The dashboard
    has no equivalent — it reports one gameweek — so this is the one line
@@ -3127,7 +3125,6 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     font-weight: 700;
     line-height: 1.2;
     color: rgba(15, 23, 42, 0.55);
-    cursor: help;
     margin-top: 0;
 }
 .dp-card .dp-xp-run-u { font-size: 8px; margin-left: 2px; opacity: .85; }
@@ -3188,8 +3185,7 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 }
 .planner-pos-header .dp-group-stat {
     font-size: 9px; font-weight: 700; text-transform: none; letter-spacing: 0;
-    color: var(--text-muted); text-align: center; cursor: help;
-}
+    color: var(--text-muted); text-align: center;}
 .planner-pos-header .dp-group-stat.recent { color: var(--text-secondary); }
 .dp-gw-head {
     border: none; background: none; cursor: pointer;
@@ -3198,8 +3194,7 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 .dp-dgw-tag { font-size: 8px; font-weight: 800; color: var(--color-info); }
 .dp-xp-cell {
     padding: 4px 6px; border-radius: 5px; text-align: center;
-    font-size: 12px; font-weight: 700; font-family: var(--font-mono); cursor: help;
-}
+    font-size: 12px; font-weight: 700; font-family: var(--font-mono);}
 .dp-xp-cell.xp-great { background: color-mix(in srgb, var(--verdict-hold) 22%, transparent); color: var(--verdict-hold); }
 .dp-xp-cell.xp-good { background: color-mix(in srgb, var(--verdict-hold) 12%, transparent); color: var(--text-primary); }
 .dp-xp-cell.xp-ok { background: var(--surface-2); color: var(--text-secondary); }
@@ -3273,7 +3268,7 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 .dp-move-out { color: var(--text-muted); text-decoration: line-through; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dp-move-arrow { color: var(--text-muted); flex-shrink: 0; }
 .dp-move-in { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dp-move-gain { font-weight: 700; cursor: help; }
+.dp-move-gain { font-weight: 700; }
 .dp-move-gain.good { color: var(--verdict-hold); }
 .dp-move-gain.bad { color: var(--text-muted); }
 .dp-move-apply {
@@ -3324,7 +3319,6 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     font-weight: 600;
     font-family: var(--font-mono);
     color: var(--text-muted);
-    cursor: help;
     line-height: 1.1;
     margin-top: 1px;
 }
@@ -3525,3 +3519,19 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 }
 .v2-filter-row-tail .legend-toggle:hover,
 .v2-filter-row-tail .legend-toggle.active { border-color: var(--color-primary); color: var(--color-primary); }
+
+/* ---- the question-mark cursor ----
+   It promises an explanation, so it appears only where there is one. It used
+   to be [data-tooltip] flat, plus `cursor: help` written into 132 class
+   rules — so an element whose tooltip resolved to an empty string, or whose
+   class simply carried the declaration with no tooltip on it at all, still
+   changed the pointer and then showed nothing when you stopped there.
+
+   Both forms of explanation count, and both must be non-empty: escHTML(null)
+   is "", which is exactly how several of these ended up promising nothing.
+   The declaration now lives here and nowhere else, so it cannot drift back
+   onto a class. */
+[data-tooltip]:not([data-tooltip=""]),
+[title]:not([title=""]) {
+    cursor: help;
+}
