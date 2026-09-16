@@ -296,17 +296,49 @@
                 const avgGoals = totalScored / gamesPlayed;
                 const avgConceded = totalConceded / gamesPlayed;
 
-                // Attack Power (0-100): blend actual goals with FPL strength
-                const fplAttackStrength = (team.strength_attack_home + team.strength_attack_away) / 2;
-                const fplAttNorm = Math.min(1, Math.max(0, (fplAttackStrength - 900) / 500));
-                const goalRate = Math.min(1, avgGoals / 2.0);
-                const attackPower = Math.round(Math.min(100, Math.max(0, (goalRate * 0.55 + fplAttNorm * 0.45) * 100)));
+                /* Attack and defence as 0-100, where 50 is a league-average side.
 
-                // Defense Power (0-100) - inverted
+                   It was not. Two faults compounded, and five separate features
+                   read the result as though 50 were the middle.
+
+                   The normaliser divided by a fixed 2.0, so a league-average
+                   1.43 goals landed at 0.71 for attack and 0.29 for defence —
+                   average sides were rated well above the middle going forward
+                   and well below it at the back. And the FPL strength term is
+                   zero in this feed for every club, so the 0.45 it carries was
+                   not redistributed; it was simply lost, scaling every rating
+                   down by nearly half. Measured: attackPower ran 0-55 with a
+                   median of 41, defensePower 0-48 with a median of 21, on a
+                   scale everything downstream pivots on 50.
+
+                   Centred on the league's own scoring rate now, and the blend
+                   renormalises when FPL publishes nothing rather than quietly
+                   keeping the gap. The teams page has guarded for absent
+                   strength for a while — see fplHasStrength there. */
+                /* Regressed toward the league average by how much football has
+                   been played, on the same six-match clock the projection uses,
+                   so the rating a user reads and the rating that moves their
+                   expected points are the same judgement. Without it four
+                   rounds rated Arsenal 91 and Palace 2 — which is not what four
+                   matches can tell you, and the bands downstream (35 and 65) are
+                   written for a settled season, not for August. */
+                const settle = (rate, n) => {
+                    const w = n / (n + XP_RATE_K);
+                    return LEAGUE_GOALS_PER_TEAM * (1 - w) + rate * w;
+                };
+                const idxFor = (rate, n) => Math.min(100, Math.max(0, 50 * (settle(rate, n) / LEAGUE_GOALS_PER_TEAM)));
+                const idxAgainst = (rate, n) => Math.min(100, Math.max(0, 100 - 50 * (settle(rate, n) / LEAGUE_GOALS_PER_TEAM)));
+                const blend = (measured, prior, hasPrior) =>
+                    Math.round(hasPrior ? measured * 0.55 + prior * 0.45 : measured);
+
+                const fplAttackStrength = (team.strength_attack_home + team.strength_attack_away) / 2;
                 const fplDefenseStrength = (team.strength_defence_home + team.strength_defence_away) / 2;
+                const hasStrength = fplAttackStrength > 0 && fplDefenseStrength > 0;
+                const fplAttNorm = Math.min(1, Math.max(0, (fplAttackStrength - 900) / 500));
                 const fplDefNorm = Math.min(1, Math.max(0, (fplDefenseStrength - 900) / 500));
-                const concedeRate = Math.min(1, Math.max(0, 1 - (avgConceded / 2.0)));
-                const defensePower = Math.round(Math.min(100, Math.max(0, (concedeRate * 0.55 + fplDefNorm * 0.45) * 100)));
+
+                const attackPower = blend(idxFor(avgGoals, gamesPlayed), fplAttNorm * 100, hasStrength);
+                const defensePower = blend(idxAgainst(avgConceded, gamesPlayed), fplDefNorm * 100, hasStrength);
 
                 // Home/Away splits
                 const fplAttHomeNorm = Math.min(1, Math.max(0, (team.strength_attack_home - 900) / 500));
@@ -314,14 +346,18 @@
                 const fplDefHomeNorm = Math.min(1, Math.max(0, (team.strength_defence_home - 900) / 500));
                 const fplDefAwayNorm = Math.min(1, Math.max(0, (team.strength_defence_away - 900) / 500));
 
-                const attackPowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
-                    (Math.min(1, homeStats.goals / homeStats.games / 2.0) * 0.55 + fplAttHomeNorm * 0.45) * 100))) : attackPower;
-                const attackPowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
-                    (Math.min(1, awayStats.goals / awayStats.games / 2.0) * 0.55 + fplAttAwayNorm * 0.45) * 100))) : attackPower;
-                const defensePowerHome = homeStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
-                    (Math.min(1, Math.max(0, 1 - (homeStats.conceded / homeStats.games / 2.0))) * 0.55 + fplDefHomeNorm * 0.45) * 100))) : defensePower;
-                const defensePowerAway = awayStats.games > 0 ? Math.round(Math.min(100, Math.max(0,
-                    (Math.min(1, Math.max(0, 1 - (awayStats.conceded / awayStats.games / 2.0))) * 0.55 + fplDefAwayNorm * 0.45) * 100))) : defensePower;
+                /* Same centring for the venue splits, regressed on the venue's
+                   own sample — a side has played half as many home matches as
+                   matches, so a home split is half as sure as the overall one
+                   and must be pulled twice as hard toward the average. */
+                const attackPowerHome = homeStats.games > 0
+                    ? blend(idxFor(homeStats.goals / homeStats.games, homeStats.games), fplAttHomeNorm * 100, hasStrength) : attackPower;
+                const attackPowerAway = awayStats.games > 0
+                    ? blend(idxFor(awayStats.goals / awayStats.games, awayStats.games), fplAttAwayNorm * 100, hasStrength) : attackPower;
+                const defensePowerHome = homeStats.games > 0
+                    ? blend(idxAgainst(homeStats.conceded / homeStats.games, homeStats.games), fplDefHomeNorm * 100, hasStrength) : defensePower;
+                const defensePowerAway = awayStats.games > 0
+                    ? blend(idxAgainst(awayStats.conceded / awayStats.games, awayStats.games), fplDefAwayNorm * 100, hasStrength) : defensePower;
 
                 // Form Rating (0-100) - recency-weighted W/D/L from last 5
                 const formWeights = [5, 4, 3, 2, 1];
@@ -664,36 +700,57 @@
            or with a season of team news from GW1. Home advantage is separately
            under-modelled — the model concedes 0.929 at home for every 1 away,
            where the season ran at 0.819 — and that one was not tested on its own. */
+        /* A club's scoring or conceding rate as a ratio to the league average,
+           regressed toward it by how much football it has actually played.
+
+           1.0 is a league-average side, by construction, which is the property
+           the old ratings did not have. k = 6 is the house clock — the same
+           "half weight at six matches" used for bonus, for team xG windows and
+           for expectedGoalsAgainst's own blend. Four rounds in, a club that has
+           conceded nothing still only reaches about 0.6 rather than 0.02,
+           because four matches is not proof of a great defence.
+
+           Chosen empirically over the committed feed: k of 2, 4, 6 and 10 were
+           all scored against 430 out-of-sample player-appearances and separated
+           by less than the noise, so 6 is picked for consistency with the rest
+           of the engine rather than because the data demanded it. */
+        const XP_RATE_K = 6;
+
+        function xpTeamRate(ta, key) {
+            if (!ta) return 1;
+            const n = ta.matchesPlayed || 0;
+            const w = n / (n + XP_RATE_K);
+            const own = Number.isFinite(ta[key]) ? ta[key] : LEAGUE_GOALS_PER_TEAM;
+            return (LEAGUE_GOALS_PER_TEAM * (1 - w) + own * w) / LEAGUE_GOALS_PER_TEAM;
+        }
+
         function expectedGoalsAgainst(teamId, fixture) {
             const ta = teamAnalysis[teamId];
             const isHome = fixture ? !!fixture.isHome : true;
             const oppId = fixture ? fixture.opponentId : null;
             const opp = oppId != null ? teamAnalysis[oppId] : null;
 
-            // Own defence at this venue, falling back to the overall figure.
-            const defPower = ta
-                ? (isHome ? (ta.defensePowerHome ?? ta.defensePower) : (ta.defensePowerAway ?? ta.defensePower))
-                : 50;
-            // The opponent attacks at the opposite venue to ours.
-            const attPower = opp
-                ? (isHome ? (opp.attackPowerAway ?? opp.attackPower) : (opp.attackPowerHome ?? opp.attackPower))
-                : 50;
+            /* How many we are expected to concede: the league's scoring rate,
+               scaled by how leaky we are and by how well they score. Both are
+               ratios to the league average, so a league-average side against a
+               league-average side returns the league average.
 
-            // 50 is neutral; each 50 points of rating scales the rate by half.
-            const defFactor = Math.max(0.45, Math.min(1.9, 1 - (defPower - 50) / 100));
-            const attFactor = Math.max(0.45, Math.min(1.9, 1 + (attPower - 50) / 100));
-            // Home sides concede a little less; the split powers carry most of it
-            // already, so this is a light touch rather than a full adjustment.
+               It used to read both off 0-100 ratings with 50 as neutral, and
+               those ratings never sat on 50 — an average defence rated 21 and an
+               average attack 41, so the two factors were 1.29 and 0.91 for a
+               fixture between two ordinary sides. Measured over the committed
+               feed, the model under-predicted clean sheets by a third: 0.218
+               against an actual 0.325.
+
+               The regression inside xpTeamRate replaces the separate blend that
+               used to follow this line — priors and evidence are one step now,
+               not two applied in sequence. */
+            const defWeakness = xpTeamRate(ta, 'avgConceded');
+            const oppAttack = xpTeamRate(opp, 'avgGoals');
+            // Home sides concede a little less.
             const venueFactor = isHome ? 0.94 : 1.06;
 
-            let xga = LEAGUE_GOALS_PER_TEAM * defFactor * attFactor * venueFactor;
-
-            // Blend in what the team has actually conceded once there is a sample
-            // worth blending — ratings are priors, results are evidence.
-            if (ta && ta.matchesPlayed > 0) {
-                const w = Math.min(1, ta.matchesPlayed / 6) * 0.5;
-                xga = xga * (1 - w) + (ta.avgConceded * (attFactor / 1.0)) * w;
-            }
+            let xga = LEAGUE_GOALS_PER_TEAM * defWeakness * oppAttack * venueFactor;
             // No opponent known (a blank, or data missing) — fall back to the
             // fixture rating so the number still moves with difficulty.
             if (!opp && fixture) {
@@ -918,17 +975,31 @@
             const opp = (oppId != null && typeof teamAnalysis !== 'undefined') ? teamAnalysis[oppId] : null;
             if (!opp) return fdrAdj;
 
-            const isHome = !!fixture.isHome;
-            // The opponent defends at the opposite venue to ours.
-            const oppDef = isHome ? (opp.defensePowerAway ?? opp.defensePower)
-                                  : (opp.defensePowerHome ?? opp.defensePower);
-            if (oppDef == null) return fdrAdj;
+            /* How leaky is the defence he is about to face, against the league
+               average? That ratio is the multiplier, because the player's own
+               per-90 rate already carries how good his side is at creating.
 
-            const defFactor = Math.max(0.5, Math.min(1.6, 1 - (oppDef - 50) / 100));
-            // Sides score a little more at home; the player's own rate is a
-            // season average across both venues, so this shifts it to this one.
-            const venueFactor = isHome ? 1.06 : 0.94;
-            return Math.max(0.6, Math.min(1.55, defFactor * venueFactor));
+               What this replaced could not make a fixture hard. It scaled a
+               0-100 defence rating around a neutral point of 50, and the rating
+               topped out at 48 — so across every fixture in a round the
+               multiplier ran 1.007 to 1.550, and facing the best defence in the
+               division was worth 1.007. Over 430 out-of-sample appearances that
+               over-predicted attacking returns by 38% and scored worse on every
+               error measure than applying no adjustment at all.
+
+               The clamp is deliberately tighter than the old range. The measured
+               effect over four rounds is small — a defence twice as leaky as
+               average lifts attacking output by about a tenth — and while that
+               is surely attenuated by a noisy four-match rating, it is not an
+               argument for a wide multiplier on thin evidence. 0.70 to 1.40 was
+               the best-scoring of the ranges tested and the more conservative of
+               the two that tied.
+
+               A venue factor was tested here and made it worse, so there is not
+               one: the home advantage is real but it is already inside the
+               opponent's own home and away record. */
+            const leakiness = xpTeamRate(opp, 'avgConceded');
+            return Math.max(0.70, Math.min(1.40, leakiness));
         }
 
         // Expected share of a start, and the minutes that implies. A player with no

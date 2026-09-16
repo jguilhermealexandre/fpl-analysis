@@ -136,3 +136,107 @@ test('a published chance still orders the doubtful', () => {
     // project more points.
     assert.ok(at(75) > at(50) && at(50) > at(25) && at(25) > at(0));
 });
+
+/* ---------------------------------------------------------------------------
+   The opponent.
+
+   A captaincy pick put a Brighton midfielder above a Chelsea forward for a home
+   match against Arsenal, the meanest defence in the division, and the reason was
+   that the projection could not tell a hard fixture from an easy one. Both
+   opponent terms scaled a 0-100 power rating around a neutral point of 50, and
+   neither rating ever reached 50: measured across the committed feed, attack ran
+   0-55 with a median of 41 and defence 0-48 with a median of 21. So the
+   attacking multiplier spanned 1.007 to 1.550 across a whole round — facing
+   Arsenal was worth 1.007 — and it could only ever raise a projection.
+
+   Both now work in goals, as a ratio to the league average, so a league-average
+   side is 1.0 by construction rather than by coincidence.
+
+   These tests are about the property that failed, not the constants: a harder
+   opponent must project fewer points than an easier one, in both directions. */
+
+// Two clubs, four rounds each: one that concedes freely, one that concedes
+// almost nothing. matchesPlayed is what the regression weighs.
+const LEAKY = { avgGoals: 1.4, avgConceded: 2.75, matchesPlayed: 4 };
+const MEAN = { avgGoals: 1.4, avgConceded: 0.25, matchesPlayed: 4 };
+const AVERAGE = { avgGoals: 1.4, avgConceded: 1.4, matchesPlayed: 4 };
+const OPPONENTS = { 1: AVERAGE, 2: LEAKY, 3: MEAN, 4: AVERAGE };
+const vs = (id, isHome = true) => ({ opponentId: id, isHome, difficulty: 3 });
+
+test('a mean defence is a harder fixture than a leaky one', () => {
+    const { fixtureAttackAdj } = engine({ teamAnalysis: OPPONENTS });
+    const leaky = fixtureAttackAdj(vs(2));
+    const mean = fixtureAttackAdj(vs(3));
+    assert.ok(mean < leaky, `${mean.toFixed(3)} against ${leaky.toFixed(3)}`);
+    // The old model's entire spread across a round was 0.54 of a multiplier and
+    // sat above 1.0 throughout. What matters is that the hard end is genuinely
+    // below neutral — that a bad fixture can cost a player points.
+    assert.ok(mean < 1, 'the best defence in the league must lower a projection');
+    assert.ok(leaky > 1, 'the worst defence in the league must raise one');
+});
+
+test('an average opponent is worth no adjustment at all', () => {
+    const { fixtureAttackAdj } = engine({ teamAnalysis: OPPONENTS });
+    // The property the 50-pivot was meant to have and did not. A side conceding
+    // exactly the league rate is the definition of neutral, so the multiplier
+    // has to be 1 whatever the regression weight.
+    assert.ok(Math.abs(fixtureAttackAdj(vs(1)) - 1) < 1e-9);
+});
+
+test('four matches is not proof of a great defence', () => {
+    const { fixtureAttackAdj } = engine({ teamAnalysis: OPPONENTS });
+    const thin = fixtureAttackAdj(vs(3));
+    // Conceding 0.25 a game is 0.18 of the league rate, but on four matches the
+    // engine may only claim part of that. Anything at or below the raw ratio
+    // would be taking a four-match sample at face value.
+    assert.ok(thin > 0.25 / 1.4, `${thin.toFixed(3)} treats four matches as settled`);
+});
+
+test('the multiplier stays inside its clamp however extreme the opponent', () => {
+    const { fixtureAttackAdj } = engine({
+        teamAnalysis: { 9: { avgGoals: 1.4, avgConceded: 9, matchesPlayed: 38 },
+                        8: { avgGoals: 1.4, avgConceded: 0, matchesPlayed: 38 } }
+    });
+    assert.ok(fixtureAttackAdj(vs(9)) <= 1.40);
+    assert.ok(fixtureAttackAdj(vs(8)) >= 0.70);
+});
+
+test('a missing opponent falls back to the fixture rating', () => {
+    const { fixtureAttackAdj } = engine({ teamAnalysis: OPPONENTS });
+    // Blanks and gaps in the feed must not read as a neutral fixture.
+    const unknown = fixtureAttackAdj({ opponentId: 99, isHome: true, difficulty: 5 });
+    assert.ok(unknown < 1, 'an FDR 5 blank is still a hard fixture');
+    assert.ok(fixtureAttackAdj({ opponentId: 99, isHome: true, difficulty: 2 }) > 1);
+});
+
+test('facing a better attack means conceding more', () => {
+    const { expectedGoalsAgainst } = engine({
+        teamAnalysis: { 1: AVERAGE, 5: { avgGoals: 3.0, avgConceded: 1.4, matchesPlayed: 4 },
+                        6: { avgGoals: 0.3, avgConceded: 1.4, matchesPlayed: 4 } }
+    });
+    const strong = expectedGoalsAgainst(1, vs(5));
+    const weak = expectedGoalsAgainst(1, vs(6));
+    assert.ok(strong > weak, `${strong.toFixed(3)} against ${weak.toFixed(3)}`);
+});
+
+test('two average sides expect the league average, minus home advantage', () => {
+    const { expectedGoalsAgainst } = engine({ teamAnalysis: OPPONENTS });
+    // Same property as above, on the defensive side: neutral in, neutral out.
+    // Home sides concede a little less, which is the only venue term left in the
+    // model — one on the attacking multiplier was tested and made it worse.
+    const home = expectedGoalsAgainst(1, vs(4, true));
+    const away = expectedGoalsAgainst(1, vs(4, false));
+    assert.ok(Math.abs(home - 1.4 * 0.94) < 1e-9, home.toFixed(4));
+    assert.ok(away > home, 'away is the harder half of the same fixture');
+});
+
+test('the clean sheet follows the opponent, not the badge', () => {
+    const { cleanSheetProbFor } = engine({
+        teamAnalysis: { 1: MEAN, 5: { avgGoals: 3.0, avgConceded: 1.4, matchesPlayed: 4 },
+                        6: { avgGoals: 0.3, avgConceded: 1.4, matchesPlayed: 4 } }
+    });
+    // The same good defence, against the best and worst attacks in the league.
+    // Under the old model this pair barely separated, and clean sheets across
+    // the feed came out at 0.218 predicted against 0.325 actually kept.
+    assert.ok(cleanSheetProbFor(1, vs(6)) > cleanSheetProbFor(1, vs(5)) + 0.10);
+});

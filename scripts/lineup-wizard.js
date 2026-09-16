@@ -416,6 +416,7 @@
 
             if (!candidates.length) return `<div class="lw-side-empty">No outfield players in the XI yet.</div>`;
 
+
             const cards = candidates.map((p, i) => {
                 const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
                 const ctx = fx && typeof opponentContext === 'function' ? opponentContext(p.teamId, fx, ranks) : null;
@@ -431,10 +432,13 @@
                    this field never holds and oppTrend was always null. */
                 const oppTrend = oppTA && oppTA.xgcTrend === 'worsening' ? 'leaking more lately'
                     : oppTA && oppTA.xgcTrend === 'improving' ? 'tightening up lately' : null;
-                const myTA = typeof teamAnalysis !== 'undefined' ? teamAnalysis[p.teamId] : null;
-                const venuePower = myTA && fx
-                    ? (fx.isHome ? myTA.attackPowerHome : myTA.attackPowerAway)
-                    : null;
+                /* This line used to read "LIV attack 55/100 away" — the player's
+                   OWN team, as an index out of a hundred. Two things wrong with
+                   it for an armband call: the quantity that decides a captaincy
+                   is the defence he is about to face, not the shirt he wears,
+                   and a 0-100 index cannot be checked against anything. It is
+                   the opponent, in goals, now. */
+                const oppConceded = ctx && ctx.matches ? ctx.conceded : null;
 
                 // Two bars: how dangerous this player is, and how leaky the defence
                 // they face. A high threat into a tight defence is a different bet
@@ -461,9 +465,9 @@
                         </div>
                     </div>
                     <div class="lw-cap-meta">Form <strong>${form.toFixed(1)}</strong> · Owned <strong>${p.ownership != null ? p.ownership + '%' : '—'}</strong>${risk ? ` · <span class="opt-risk ${risk.cls}" data-tooltip="${risk.pct}% likely to start — ${risk.word}. A captain who does not play costs you double.">${risk.word} ${risk.pct}%</span>` : ''}</div>
-                    ${(oppTrend || venuePower != null) ? `<div class="lw-cap-ctx">${[
-                        oppTrend ? `${escHTML(fx.opponent || 'Opponent')} ${oppTrend}` : '',
-                        venuePower != null ? `${escHTML(p.team)} attack ${Math.round(venuePower)}/100 ${fx.isHome ? 'at home' : 'away'}` : ''
+                    ${(oppTrend || oppConceded != null) ? `<div class="lw-cap-ctx">${[
+                        oppConceded != null ? `${escHTML(fx.opponent || 'Opponent')} concede ${oppConceded.toFixed(1)} a game` : '',
+                        oppTrend ? `${escHTML(fx.opponent || 'Opponent')} ${oppTrend}` : ''
                     ].filter(Boolean).join(' · ')}</div>` : ''}
                     ${typeof optBreakdownBar === 'function' ? `<div class="lw-cap-break">${optBreakdownBar(p)}</div>` : ''}
                     <div class="lw-cap-actions">
