@@ -7,7 +7,7 @@
    at any point in a season without waiting for one. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadScript, browserStubs } from './helpers/load.mjs';
+import { loadScript, loadFunction, browserStubs } from './helpers/load.mjs';
 
 const md = loadScript('scripts/matchday.js', browserStubs({
     escHTML: s => String(s ?? ''),
