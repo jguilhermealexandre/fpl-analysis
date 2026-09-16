@@ -50,17 +50,17 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=245">
-    <link rel="stylesheet" href="styles/teams.css?v=245">
-    <link rel="stylesheet" href="styles/v2-design.css?v=245">
-    <link rel="stylesheet" href="styles/responsive.css?v=245">
-    <script src="scripts/error-monitor.js?v=245"></script>
-    <script src="scripts/common.js?v=245"></script>
+    <link rel="stylesheet" href="styles/common.css?v=246">
+    <link rel="stylesheet" href="styles/teams.css?v=246">
+    <link rel="stylesheet" href="styles/v2-design.css?v=246">
+    <link rel="stylesheet" href="styles/responsive.css?v=246">
+    <script src="scripts/error-monitor.js?v=246"></script>
+    <script src="scripts/common.js?v=246"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=245"></script>
-    <script src="scripts/notifications.js?v=245"></script>
-    <script src="scripts/sidebar-nav.js?v=245"></script>
+    <script src="scripts/push-alerts.js?v=246"></script>
+    <script src="scripts/notifications.js?v=246"></script>
+    <script src="scripts/sidebar-nav.js?v=246"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -3279,11 +3279,15 @@
                             FPL Momentum Matrix
                             <span class="momentum-title-badge">Interactive</span>
                         </div>
-                        <div class="segmented-control" id="momentumMetricControl">
-                            <button class="segmented-btn ${momentumMetric === 'net' ? 'active' : ''}" data-metric="net">Overall Form (Net xG)</button>
-                            <button class="segmented-btn ${momentumMetric === 'attack' ? 'active' : ''}" data-metric="attack">Attack Threat (xG)</button>
-                            <button class="segmented-btn ${momentumMetric === 'defense' ? 'active' : ''}" data-metric="defense">Defensive Solidity (xGC)</button>
-                        </div>
+                        <div class="v2-filter-row-tail">${v2MenuHTML({
+                            key: 'momentum-metric', icon: 'chart', label: 'Measure',
+                            value: momentumMetric, onPick: 'setMomentumMetric',
+                            options: [
+                                { value: 'net', label: 'Overall form', note: 'Net xG per game' },
+                                { value: 'attack', label: 'Attack threat', note: 'xG per game' },
+                                { value: 'defense', label: 'Defensive solidity', note: 'xGC per game, inverted' }
+                            ]
+                        })}</div>
                     </div>
                     <div class="momentum-grid">
                         <div class="momentum-chart-container">
@@ -3560,12 +3564,6 @@
             // Fill the panel immediately rather than waiting for a click.
             primeScoutReport();
 
-            // Wire up metric toggle buttons
-            document.querySelectorAll('#momentumMetricControl .segmented-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    setMomentumMetric(btn.dataset.metric);
-                });
-            });
         }
 
         // The panel used to sit empty until someone clicked a dot, which wasted the
@@ -3605,6 +3603,7 @@
 
         function setMomentumMetric(metric) {
             momentumMetric = metric;
+            if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
             // Re-render entire rankings view to rebuild chart with new metric
             renderCurrentView();
         }

@@ -52,9 +52,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=245">
-    <link rel="stylesheet" href="styles/v2-design.css?v=245">
-    <link rel="stylesheet" href="styles/responsive.css?v=245">
+    <link rel="stylesheet" href="styles/common.css?v=246">
+    <link rel="stylesheet" href="styles/v2-design.css?v=246">
+    <link rel="stylesheet" href="styles/responsive.css?v=246">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -467,19 +467,53 @@
             height: 2px; background: transparent; transition: background 150ms;
         }
         .news-filter-btn:hover { color: var(--text-primary); background: transparent; }
-        .news-filter-btn.active { color: var(--text-primary); background: transparent; box-shadow: none; }
-        .news-filter-btn.active::after { background: var(--color-primary); }
+        /* Where you are has to be obvious without hunting for a hairline: the
+           label goes to full weight and full ink, and the rule under it is
+           3px in the brand green. */
+        .news-filter-btn.active { color: var(--text-primary); background: transparent; box-shadow: none; font-weight: 800; }
+        .news-filter-btn.active::after { background: var(--color-primary); height: 3px; bottom: -2px; left: 4px; right: 4px; }
         .news-filter-btn.active .news-count { color: var(--color-primary); }
         .news-filter-btn .news-count { font-size: 11px; font-weight: 600; color: var(--text-muted); opacity: .8; }
         .news-filter-btn .btn-icon { display: inline-flex; align-items: center; }
         .news-filter-btn .btn-icon svg { width: 14px; height: 14px; stroke-width: 2; }
 
-        .news-sub-bar { border-bottom: 1px solid var(--border-subtle); margin-top: 2px; }
-        .news-sub-bar .news-filter-btn {
-            padding: 8px 13px 9px; font-size: 11.5px; font-weight: 600;
-            text-transform: uppercase; letter-spacing: .04em;
+        /* The desks are the section's own tier, so they sit tight under it —
+           they were a full row apart, which read as an unrelated control
+           rather than as what is inside the section above. Marked with a
+           filled pill rather than an underline, so the two tiers cannot be
+           confused for each other at a glance. */
+        .news-sub-bar {
+            border-bottom: none;
+            margin-top: 8px;
+            gap: 6px;
         }
-        .news-sub-bar .news-filter-btn.active::after { background: var(--text-primary); }
+        .news-sub-bar .news-filter-btn {
+            padding: 6px 12px; font-size: 11.5px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .04em;
+            border-radius: 999px;
+            color: var(--text-muted);
+        }
+        .news-sub-bar .news-filter-btn::after { display: none; }
+        .news-sub-bar .news-filter-btn:hover { background: var(--surface-2); color: var(--text-primary); }
+        .news-sub-bar .news-filter-btn.active {
+            background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+            color: var(--color-primary);
+        }
+        .news-sub-bar .news-filter-btn.active .news-count { color: var(--color-primary); }
+
+        /* The club rail is a third thing, not a third tier — it narrows
+           whatever the two above have chosen. It gets its own labelled row,
+           separated by a rule, so it stops reading as a child of the desks. */
+        .news-clubs-row {
+            display: flex; align-items: center; gap: 12px;
+            margin-top: 14px; padding-top: 13px;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .news-clubs-l {
+            flex: none;
+            font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+            color: var(--text-muted);
+        }
 
         .news-filter-group { display: flex; flex-direction: column; gap: 0; margin-bottom: 26px; }
         .news-filter-top-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
@@ -690,12 +724,16 @@
            page puts them there and it is the right idea for this site too:
            the question a reader actually arrives with is "anything about my
            lot", and that was four clicks into a dropdown. */
+        /* overflow-x: auto makes this a scroll container, which clips
+           anything a child paints outside it — which is exactly where the
+           hover label goes. The label moves ABOVE the rail and the rail keeps
+           room for it, so it has somewhere to be drawn that is still inside
+           the box. */
         .news-clubs {
             display: flex; gap: 4px; align-items: center;
-            padding: 12px 2px 14px;
-            overflow-x: auto; scrollbar-width: none;
-            border-bottom: 1px solid var(--border-subtle);
-            margin-bottom: 22px;
+            padding: 28px 2px 2px;
+            overflow-x: auto; overflow-y: visible; scrollbar-width: none;
+            margin-bottom: 0;
         }
         .news-clubs::-webkit-scrollbar { display: none; }
         .news-club {
@@ -739,8 +777,8 @@
            floating tooltip — twenty badges and no names is a guessing game. */
         .news-club { position: relative; }
         .news-club-name {
-            position: absolute; top: calc(100% + 6px); left: 50%;
-            transform: translateX(-50%) translateY(-3px);
+            position: absolute; bottom: calc(100% + 5px); left: 50%;
+            transform: translateX(-50%) translateY(3px);
             padding: 3px 8px; border-radius: 6px;
             background: var(--text-primary); color: var(--surface-1);
             font-family: var(--font-display); font-size: 10.5px; font-weight: 700;
@@ -751,6 +789,7 @@
         .news-club:hover .news-club-name, .news-club:focus-visible .news-club-name {
             opacity: 1; transform: translateX(-50%) translateY(0);
         }
+        .news-club-all .news-club-name { font-size: 10.5px; }
 
         /* A section heading that reads like a masthead, with the way into the
            rest of that desk on the same line. */
@@ -925,13 +964,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=245"></script>
-    <script src="scripts/common.js?v=245"></script>
+    <script src="scripts/error-monitor.js?v=246"></script>
+    <script src="scripts/common.js?v=246"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=245"></script>
-    <script src="scripts/notifications.js?v=245"></script>
-    <script src="scripts/sidebar-nav.js?v=245"></script>
+    <script src="scripts/push-alerts.js?v=246"></script>
+    <script src="scripts/notifications.js?v=246"></script>
+    <script src="scripts/sidebar-nav.js?v=246"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1939,20 +1978,20 @@
                             transfer: CAT_ICONS.transfer + ' Transfer activity'
                         };
                         return renderSection(titles[subFilter] || subFilter,
-                            fpl.filter(i => i.category === subFilter), { shape: 'rows', count: true });
+                            fpl.filter(i => i.category === subFilter), { shape: 'quad', count: true });
                     }
 
                     let html = '';
                     const lead = ext.length ? ext : fpl;
                     html += renderSection('', lead.slice(0, 6), { shape: 'lead', hideWhenEmpty: true });
-                    html += renderSection(CAT_ICONS.squad + ' Your squad', squad.slice(0, 6),
-                        { shape: 'trio', accent: true, count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.squad + ' Your squad', squad.slice(0, 8),
+                        { shape: 'quad', accent: true, count: true, hideWhenEmpty: true });
                     html += renderSection(CAT_ICONS.injury + ' Injuries &amp; availability', inCat('injury').slice(0, 8),
-                        { shape: 'rows', count: true, hideWhenEmpty: true });
+                        { shape: 'quad', count: true, hideWhenEmpty: true });
                     html += renderSection(CAT_ICONS.price + ' Price changes', inCat('price').slice(0, 8),
-                        { shape: 'rows', count: true, hideWhenEmpty: true });
+                        { shape: 'quad', count: true, hideWhenEmpty: true });
                     html += renderSection(CAT_ICONS.transfer + ' Transfer activity', inCat('transfer').slice(0, 8),
-                        { shape: 'rows', count: true, hideWhenEmpty: true });
+                        { shape: 'quad', count: true, hideWhenEmpty: true });
                     html += renderSection(CAT_ICONS.external + ' Around the league', ext.slice(7, 15),
                         { shape: 'quad', count: true, hideWhenEmpty: true });
 
@@ -1974,15 +2013,15 @@
                     const squad = byTeam(fplItems.filter(i => i.isSquad), teamId);
                     if (subFilter && subFilter !== 'all') {
                         return renderSection(CAT_ICONS.squad + ' Your squad',
-                            squad.filter(i => i.category === subFilter), { shape: 'grid', count: true });
+                            squad.filter(i => i.category === subFilter), { shape: 'quad', count: true });
                     }
                     const cat = c => squad.filter(i => i.category === c);
                     const html = renderSection(CAT_ICONS.injury + ' Injuries &amp; availability', cat('injury'),
-                            { shape: 'rows', accent: true, count: true, hideWhenEmpty: true })
+                            { shape: 'quad', accent: true, count: true, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.price + ' Price changes', cat('price'),
-                            { shape: 'rows', count: true, hideWhenEmpty: true })
+                            { shape: 'quad', count: true, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.transfer + ' Transfer activity', cat('transfer'),
-                            { shape: 'rows', count: true, hideWhenEmpty: true });
+                            { shape: 'quad', count: true, hideWhenEmpty: true });
                     return html || '<div class="news-empty">No news about your squad right now.</div>';
                 }
 
@@ -2001,8 +2040,16 @@
                             <button class="news-filter-btn" data-filter="external"><span class="btn-icon">${CAT_ICONS.external}</span> Around the league <span class="news-count">(${filterCounts.external})</span></button>
                         </div>
                     </div>
+                    <div class="news-filter-bar news-sub-bar" id="newsSubBar">
+                        <button class="news-filter-btn active" data-sub="all"><span class="btn-icon">${CAT_ICONS.all}</span> All</button>
+                        <button class="news-filter-btn" data-sub="injury"><span class="btn-icon">${CAT_ICONS.injury}</span> Injuries <span class="news-count">(${filterCounts.injury})</span></button>
+                        <button class="news-filter-btn" data-sub="price"><span class="btn-icon">${CAT_ICONS.price}</span> Prices <span class="news-count">(${filterCounts.price})</span></button>
+                        <button class="news-filter-btn" data-sub="transfer"><span class="btn-icon">${CAT_ICONS.transfer}</span> Transfers <span class="news-count">(${filterCounts.transfer})</span></button>
+                    </div>
+                    <div class="news-clubs-row">
+                    <span class="news-clubs-l">Club</span>
                     <div class="news-clubs" id="newsClubs">
-                        <button class="news-club news-club-all is-on" data-club="all" onclick="setNewsTeam('all')" data-tooltip="Every club">ALL</button>
+                        <button class="news-club news-club-all is-on" data-club="all" onclick="setNewsTeam('all')" aria-label="Every club"><span class="news-club-name">Every club</span>ALL</button>
                         ${favClubsSort(Object.values(localTeams).sort((a, b) => a.name.localeCompare(b.name)), t => t.id).map(t => `
                         <span class="news-club-wrap">
                             <button class="news-club${favClubsHas(t.id) ? ' is-fav' : ''}" data-club="${t.id}" onclick="setNewsTeam('${t.id}')" aria-label="${escHTML(t.name)}">
@@ -2016,11 +2063,6 @@
                                 data-tooltip="${favClubsHas(t.id) ? 'Starred — their news comes first' : 'Star ' + escHTML(t.name) + ' to bring their news to the top'}">\u2605</button>
                         </span>`).join('')}
                     </div>
-                    <div class="news-filter-bar news-sub-bar" id="newsSubBar">
-                        <button class="news-filter-btn active" data-sub="all"><span class="btn-icon">${CAT_ICONS.all}</span> All</button>
-                        <button class="news-filter-btn" data-sub="injury"><span class="btn-icon">${CAT_ICONS.injury}</span> Injuries <span class="news-count">(${filterCounts.injury})</span></button>
-                        <button class="news-filter-btn" data-sub="price"><span class="btn-icon">${CAT_ICONS.price}</span> Prices <span class="news-count">(${filterCounts.price})</span></button>
-                        <button class="news-filter-btn" data-sub="transfer"><span class="btn-icon">${CAT_ICONS.transfer}</span> Transfers <span class="news-count">(${filterCounts.transfer})</span></button>
                     </div>
                 </div>`;
 
