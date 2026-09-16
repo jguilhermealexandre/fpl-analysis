@@ -274,9 +274,24 @@ function sdTeamFixtures(teamId, gws) {
         .sort((a, b) => a.gw - b.gw);
 }
 
+/* The gameweeks a reader can still act on, soonest first.
+
+   This counted forward from sdLastRound(), which is the highest round present in
+   player history — a number that does not move until the first ball of a round
+   is kicked. Between a deadline and that first kick-off the two disagree by one,
+   and that window is exactly when a captaincy article is written.
+
+   The result: "Gameweek 5 Captaincy Matrix" recommended Bruno Fernandes away at
+   Fulham, difficulty 3, and then printed his next four starting at GW4 — home to
+   Manchester City, difficulty 4, a match whose deadline had already gone. The
+   pick was right and the evidence under it led with a fixture nobody could
+   captain him for.
+
+   sdNextGw() is the first round still open, which is the same question every one
+   of these strips is asking. */
 function sdUpcomingGws(count) {
-    const played = sdLastRound();
-    return [...new Set((sdFixtures || []).map(f => f.event).filter(g => g && g > played))]
+    const from = sdNextGw();
+    return [...new Set((sdFixtures || []).map(f => f.event).filter(g => g && g >= from))]
         .sort((a, b) => a - b).slice(0, count);
 }
 
@@ -1958,9 +1973,16 @@ function sdBuildArchive() {
         // gameweek claim a debrief of its own.
         if (done > 0) push(sdGenGameweekDebrief(), `gameweek-${done}-debrief`, done);
         if (done > 0) push(sdGenGameweekRoast(), `gameweek-${done}-hall-of-shame`, done);
-        // Forward-looking: these describe the deadline ahead, so they belong to
-        // the live gameweek and are correct to run mid-round.
-        push(sdGenPreDeadlineCaptaincy(), `gameweek-${sdNextGw()}-captaincy-matrix`, gw);
+        /* Forward-looking: these describe the deadline ahead, so they belong to
+           the live gameweek and are correct to run mid-round.
+
+           The captaincy article is tagged with the round it is ABOUT, which is
+           the one its slug and its title already name. It was tagged with `gw`
+           — sdLastRound(), the highest round in player history — so between a
+           deadline and the first kick-off "Gameweek 5 Captaincy Matrix" went
+           into the index carrying gw: 3, sorting and filtering as an article
+           about a round it never mentions. */
+        push(sdGenPreDeadlineCaptaincy(), `gameweek-${sdNextGw()}-captaincy-matrix`, sdNextGw());
         sdRecurringDue(gw).forEach(r => push(r.gen(), `gameweek-${gw}-${r.key}`, gw));
     }
     // No live data behind it, so it is written once and never rewritten.
