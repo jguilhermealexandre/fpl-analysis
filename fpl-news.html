@@ -52,9 +52,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=242">
-    <link rel="stylesheet" href="styles/v2-design.css?v=242">
-    <link rel="stylesheet" href="styles/responsive.css?v=242">
+    <link rel="stylesheet" href="styles/common.css?v=243">
+    <link rel="stylesheet" href="styles/v2-design.css?v=243">
+    <link rel="stylesheet" href="styles/responsive.css?v=243">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -428,7 +428,16 @@
            every section inside it sat on the same sheet and the page read as
            one long box. The sections carry their own ground now and the
            shell is just the column. */
-        .news-panel { background: transparent; border: none; box-shadow: none; padding: 0; }
+        /* One white sheet for the whole page, nav included — the sections sit
+           on it rather than each carrying their own ground. */
+        .news-panel {
+            background: var(--surface-1);
+            border: 1px solid var(--v2-card-border, var(--border-emphasis));
+            border-radius: var(--v2-card-radius, 16px);
+            box-shadow: var(--v2-card-shadow, none);
+            padding: 20px 24px 26px;
+        }
+        .news-brief, .news-row-list, .news-lead-side { background: var(--surface-1); }
         .news-section { margin-bottom: 34px; }
         /* ---- the masthead nav ----
            These were pill buttons in a grey tray, which is what a filter
@@ -501,7 +510,7 @@
            anything else. Four shapes now: the lead with its headline column,
            a three-up for the FPL desks, the old two-up for longer reads, and
            a plain numbered list. */
-        .news-lead-grid { display: grid; grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+        .news-grid-quad { grid-template-columns: repeat(4, 1fr); }
         /* ---- the lead ----
            It was a picture on the left and a headline on the right, which
            left a third of the card as white space under three lines of text
@@ -510,7 +519,7 @@
            which is how a front page has always done this. */
         .news-lead-main .news-card-hero {
             display: block; position: relative;
-            min-height: 360px; height: 100%;
+            min-height: 440px; height: 100%;
             border-radius: var(--radius-lg); overflow: hidden;
         }
         .news-lead-main .news-card-hero .news-card-img,
@@ -538,9 +547,10 @@
             background: rgba(255, 255, 255, .16); color: #fff; border-color: rgba(255, 255, 255, .28);
         }
         .news-lead-main .news-card-hero .news-card-time { color: rgba(255, 255, 255, .8); }
+        .news-lead-main .news-card-hero .news-card-content { max-width: 900px; }
         .news-lead-main .news-card-hero .news-card-headline {
-            font-size: 30px; line-height: 1.16; color: #fff;
-            -webkit-line-clamp: 4; line-clamp: 4;
+            font-size: 38px; line-height: 1.1; color: #fff;
+            -webkit-line-clamp: 3; line-clamp: 3;
             text-shadow: 0 2px 18px rgba(0, 0, 0, .45);
         }
         .news-lead-main .news-card-hero:hover .news-card-headline { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
@@ -550,32 +560,31 @@
         .news-lead-main .news-card-hero .news-card-footer { display: none; }
         .news-lead-main .news-card-hero .news-card-graphic-icon,
         .news-lead-main .news-card-hero .news-card-graphic-id { opacity: .55; }
-        .news-lead-main .news-card-hero .news-card-headline { font-size: 26px; -webkit-line-clamp: 4; line-clamp: 4; }
+        .news-lead-main .news-card-hero .news-card-headline { font-size: 30px; }
         .news-grid-trio { grid-template-columns: repeat(3, 1fr); }
 
         /* The headline column beside the lead. */
-        .news-lead-side {
-            display: flex; flex-direction: column;
+        .news-brief-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 16px; }
+        .news-brief {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 16px;
+            position: relative;
             background: var(--surface-1);
             border: 1px solid var(--border-default);
             border-radius: var(--radius-lg);
-            padding: 4px 14px;
+            transition: border-color 140ms ease, transform 140ms ease;
         }
-        .news-brief-list {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 22px;
-            background: var(--surface-1); border: 1px solid var(--border-default);
-            border-radius: var(--radius-lg); padding: 4px 16px;
-        }
-        .news-brief { display: flex; gap: 11px; padding: 13px 0; border-bottom: 1px solid var(--border-subtle); position: relative; }
-        .news-brief:last-child { border-bottom: none; }
+        .news-brief:hover { border-color: var(--color-primary); transform: translateY(-1px); }
+        .news-brief:first-child { box-shadow: inset 4px 0 0 var(--color-primary); }
         .news-brief-n {
-            flex: none; width: 20px;
-            font-family: var(--font-display); font-size: 15px; font-weight: 800;
-            color: var(--border-emphasis); line-height: 1.25;
+            flex: none; width: 26px;
+            font-family: var(--font-display); font-size: 23px; font-weight: 800;
+            color: color-mix(in srgb, var(--color-primary) 62%, var(--text-muted));
+            line-height: 1;
         }
         .news-brief.is-squad .news-brief-n { color: var(--color-primary); }
         .news-brief-body { min-width: 0; }
-        .news-brief-head { font-size: 13.5px; font-weight: 700; line-height: 1.35; color: var(--text-primary); }
+        .news-brief-head { font-size: 14px; font-weight: 700; line-height: 1.35; color: var(--text-primary); }
         .news-brief:hover .news-brief-head { color: var(--color-primary); }
         .news-brief-meta { font-size: 10.5px; color: var(--text-muted); margin-top: 4px; }
 
@@ -726,6 +735,22 @@
             font-family: var(--font-display); font-size: 11px; font-weight: 800;
             color: var(--text-secondary); letter-spacing: -0.01em;
         }
+        /* The crest says who it is on hover, on the rail rather than in a
+           floating tooltip — twenty badges and no names is a guessing game. */
+        .news-club { position: relative; }
+        .news-club-name {
+            position: absolute; top: calc(100% + 6px); left: 50%;
+            transform: translateX(-50%) translateY(-3px);
+            padding: 3px 8px; border-radius: 6px;
+            background: var(--text-primary); color: var(--surface-1);
+            font-family: var(--font-display); font-size: 10.5px; font-weight: 700;
+            white-space: nowrap; pointer-events: none;
+            opacity: 0; transition: opacity 120ms ease, transform 120ms ease;
+            z-index: 20;
+        }
+        .news-club:hover .news-club-name, .news-club:focus-visible .news-club-name {
+            opacity: 1; transform: translateX(-50%) translateY(0);
+        }
 
         /* A section heading that reads like a masthead, with the way into the
            rest of that desk on the same line. */
@@ -740,11 +765,12 @@
         .news-section-more:hover { text-decoration: underline; }
 
         @media (max-width: 1100px) {
-            .news-lead-grid { grid-template-columns: 1fr; }
-            .news-grid-trio { grid-template-columns: repeat(2, 1fr); }
+            .news-grid-trio, .news-grid-quad { grid-template-columns: repeat(2, 1fr); }
+            .news-lead-main .news-card-hero { min-height: 340px; }
         }
         @media (max-width: 760px) {
-            .news-grid, .news-grid-trio, .news-brief-list, .news-row-list { grid-template-columns: 1fr; }
+            .news-grid, .news-grid-trio, .news-grid-quad, .news-brief-list, .news-row-list { grid-template-columns: 1fr; }
+            .news-panel { padding: 14px 14px 18px; }
             .news-lead-main .news-card-hero .news-card-headline { font-size: 21px; }
         }
         .news-card-hero { grid-column: 1 / -1; display: flex; background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; transition: transform 200ms, box-shadow 200ms; position: relative; min-height: 220px; }
@@ -899,13 +925,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=242"></script>
-    <script src="scripts/common.js?v=242"></script>
+    <script src="scripts/error-monitor.js?v=243"></script>
+    <script src="scripts/common.js?v=243"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=242"></script>
-    <script src="scripts/notifications.js?v=242"></script>
-    <script src="scripts/sidebar-nav.js?v=242"></script>
+    <script src="scripts/push-alerts.js?v=243"></script>
+    <script src="scripts/notifications.js?v=243"></script>
+    <script src="scripts/sidebar-nav.js?v=243"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1830,14 +1856,20 @@
                     const cls = `news-section${o.accent ? ' is-accent' : ''}`;
 
                     if (shape === 'lead') {
+                        /* The lead takes the whole width. It shared the row with
+                           a column of headlines, which capped the picture at two
+                           thirds and left the page opening on something no bigger
+                           than the blocks under it. The headlines get a section of
+                           their own below, numbered, two across. */
                         const [first, ...rest] = items;
-                        const briefs = rest.slice(0, 5).map((it, i) => renderBrief(it, i + 2)).join('');
+                        const briefs = rest.slice(0, 6).map((it, i) => renderBrief(it, i + 2)).join('');
                         return `<div class="${cls} news-lead">${head}
-                            <div class="news-lead-grid">
-                                <div class="news-lead-main">${renderCard(first, true)}</div>
-                                ${briefs ? `<div class="news-lead-side">${briefs}</div>` : ''}
-                            </div>
-                        </div>`;
+                            <div class="news-lead-main">${renderCard(first, true)}</div>
+                        </div>`
+                        + (briefs ? `<div class="news-section news-trending">
+                            <div class="news-section-title">${CAT_ICONS.all || ''} Also in the news</div>
+                            <div class="news-brief-list">${briefs}</div>
+                        </div>` : '');
                     }
                     if (shape === 'rows') {
                         return `<div class="${cls}">${head}
@@ -1849,7 +1881,8 @@
                             <div class="news-brief-list">${items.map((it, i) => renderBrief(it, i + 1)).join('')}</div>
                         </div>`;
                     }
-                    const gridCls = shape === 'trio' ? 'news-grid news-grid-trio' : 'news-grid';
+                    const gridCls = shape === 'trio' ? 'news-grid news-grid-trio'
+                        : shape === 'quad' ? 'news-grid news-grid-quad' : 'news-grid';
                     return `<div class="${cls}">${head}<div class="${gridCls}">${items.map(it => renderCard(it, false)).join('')}</div></div>`;
                 }
 
@@ -1920,8 +1953,8 @@
                         { shape: 'rows', count: true, hideWhenEmpty: true });
                     html += renderSection(CAT_ICONS.transfer + ' Transfer activity', inCat('transfer').slice(0, 8),
                         { shape: 'rows', count: true, hideWhenEmpty: true });
-                    html += renderSection(CAT_ICONS.external + ' Around the league', ext.slice(6, 14),
-                        { shape: 'grid', count: true, hideWhenEmpty: true });
+                    html += renderSection(CAT_ICONS.external + ' Around the league', ext.slice(7, 15),
+                        { shape: 'quad', count: true, hideWhenEmpty: true });
 
                     return html || '<div class="news-empty">Nothing matches this filter right now.</div>';
                 }
@@ -1958,10 +1991,7 @@
                    template it is used in is still in its temporal dead zone
                    when the template runs. */
                 let newsTeamFilter = 'all';
-                const teamMenuOptions = [{ value: 'all', label: 'All teams' }].concat(
-                    Object.values(localTeams)
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map(t => ({ value: String(t.id), label: t.name })));
+
 
                 const filtersHTML = `<div class="news-filter-group" id="newsFilterGroup">
                     <div class="news-filter-top-row">
@@ -1970,20 +2000,16 @@
                             <button class="news-filter-btn" data-filter="squad"><span class="btn-icon">${CAT_ICONS.squad}</span> Your squad <span class="news-count">(${filterCounts.squad})</span></button>
                             <button class="news-filter-btn" data-filter="external"><span class="btn-icon">${CAT_ICONS.external}</span> Around the league <span class="news-count">(${filterCounts.external})</span></button>
                         </div>
-                        <div class="v2-filter-row-tail">${v2MenuHTML({
-                            key: 'news-team', icon: 'shirt', label: 'Club',
-                            value: newsTeamFilter, onPick: 'setNewsTeam',
-                            options: teamMenuOptions
-                        })}</div>
                     </div>
                     <div class="news-clubs" id="newsClubs">
                         <button class="news-club news-club-all is-on" data-club="all" onclick="setNewsTeam('all')" data-tooltip="Every club">ALL</button>
                         ${favClubsSort(Object.values(localTeams).sort((a, b) => a.name.localeCompare(b.name)), t => t.id).map(t => `
                         <span class="news-club-wrap">
-                            <button class="news-club${favClubsHas(t.id) ? ' is-fav' : ''}" data-club="${t.id}" onclick="setNewsTeam('${t.id}')" data-tooltip="${escHTML(t.name)} \u2014 click to show only their news">
-                                <img alt="${escHTML(t.name)}" loading="lazy"
+                            <button class="news-club${favClubsHas(t.id) ? ' is-fav' : ''}" data-club="${t.id}" onclick="setNewsTeam('${t.id}')" aria-label="${escHTML(t.name)}">
+                                <img alt="" loading="lazy"
                                     src="https://resources.premierleague.com/premierleague/badges/50/t${t.code}.png"
                                     onerror="this.remove()">
+                                <span class="news-club-name">${escHTML(t.name)}</span>
                             </button>
                             <button class="news-club-star${favClubsHas(t.id) ? ' is-on' : ''}" data-club-star="${t.id}"
                                 onclick="toggleFavClub(${t.id}, event)"
@@ -2087,15 +2113,6 @@
                     newsTeamFilter = id;
                     document.querySelectorAll('#newsClubs .news-club').forEach(btn =>
                         btn.classList.toggle('is-on', btn.dataset.club === String(id)));
-                    const host = document.getElementById('v2menu-news-team');
-                    if (host) {
-                        const picked = teamMenuOptions.find(o => o.value === id);
-                        const v = host.querySelector('.v2-menu-v');
-                        if (v && picked) v.textContent = picked.label;
-                        host.querySelectorAll('.v2-menu-opt').forEach(o =>
-                            o.classList.toggle('is-on', (o.getAttribute('onclick') || '').includes(`'${id}'`)));
-                    }
-                    if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
                     applyFilters();
                 };
 

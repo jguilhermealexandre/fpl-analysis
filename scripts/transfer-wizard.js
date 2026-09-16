@@ -1604,6 +1604,10 @@
         function renderTWSquadPane() {
             const el = document.getElementById('twSquadPane');
             if (!el) return;
+            /* Step 1 is the plan and nothing else, so there is no squad to
+               build there — and building one into a hidden pane is fifteen
+               rows of work per render for something nobody sees. */
+            if (twStep() === 1) { el.innerHTML = ''; return; }
             /* On the swap step the squad is a column of cards beside the
                market, not a table of rows. */
             if (twStep() === 2) return twRenderSquadCards(el);
