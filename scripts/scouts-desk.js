@@ -1824,7 +1824,18 @@ function sdRenderArticle(a) {
 }
 
 function sdCloseArticle(event) {
-    if (event && event.target !== event.currentTarget) return;
+    /* Clicking off the article closes it. The test used to be "was this click
+       on the overlay itself" — but the overlay holds a panel at inset:0 and a
+       scroll area at width:100%, so the dark margin around the article is
+       those elements, not the overlay. Every click outside the card therefore
+       landed on a child, failed the test, and did nothing: the reader could
+       only be shut with Escape or the ×.
+
+       Ask the question the user is actually asking instead — was the click
+       inside the article card? Links and selections within it still work; the
+       whole of the dark surround now closes, wherever in the layering the
+       click technically lands. */
+    if (event && event.target instanceof Element && event.target.closest('.sd-reader-body')) return;
     document.getElementById('sdReader').classList.remove('open');
     document.body.style.overflow = '';
 }

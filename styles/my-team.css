@@ -4546,6 +4546,66 @@ select[data-tooltip],
 .tm-watch-note { font-size: 10px; color: var(--text-muted); margin: 6px 0 8px; line-height: 1.5; }
 .tm-watch { display: flex; flex-direction: column; gap: 4px; }
 
+/* ---- the two columns scroll rather than the page ----
+   Your squad is fifteen rows and the market opens on eight, so the panels
+   were never level, and "View all 81" grew one of them by a screen and a
+   half — the page reflowed under you every time you widened the list you
+   were reading. Each list gets its own window instead: the columns stay the
+   same height, and opening the full market fills the panel rather than the
+   document.
+
+   The scrollbar is deliberately visible and always drawn. An overflowing
+   list with a hidden bar is a list that looks finished at row eight, which
+   is a worse failure than a few pixels of chrome — so no scrollbar-width:
+   none here, unlike the ticker and the pill rails elsewhere in this file
+   where nothing is lost if you never scroll them. */
+.tm-columns > .tm-section > .tm-watch {
+    max-height: 520px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 6px;
+    /* Both of these are load-bearing, and for the same reason: the bar has to
+       be there when you are NOT scrolling, or the list looks finished at its
+       last visible row — which is the whole thing this is meant to prevent.
+
+       scrollbar-gutter: stable is what actually does it. Without it Chromium
+       draws an overlay bar that takes no layout width and fades out when
+       idle; with it the classic always-drawn bar comes back and reserves its
+       own gutter. Measured, not assumed: 0px of reserved width without it,
+       9px with.
+
+       And no scrollbar-width, deliberately — setting it makes Chromium
+       ignore the ::-webkit-scrollbar rules below and go back to the overlay
+       bar. Firefox draws a persistent one by default and needs neither. */
+    scrollbar-gutter: stable;
+}
+.tm-columns > .tm-section > .tm-watch::-webkit-scrollbar { width: 10px; }
+.tm-columns > .tm-section > .tm-watch::-webkit-scrollbar-track {
+    background: var(--surface-3);
+    border-radius: 999px;
+}
+/* The thumb is set against the track rather than against the panel, so it
+   reads as a control at a glance instead of as a faint seam. --text-muted
+   is the lightest ink on this site that is still unambiguously ink. */
+.tm-columns > .tm-section > .tm-watch::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 999px;
+    border: 2px solid var(--surface-3);
+}
+.tm-columns > .tm-section > .tm-watch::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+/* The legend is a column heading for the rows under it, so it keeps the
+   same right-hand inset as the scrolling list or its columns stop lining
+   up with theirs the moment a scrollbar appears. */
+.tm-columns > .tm-section > .tm-watch-legend { padding-right: 15px; }
+
+@media (max-width: 1100px) {
+    /* Stacked, the panels are full width and there is no second column to
+       stay level with — so the lists run their full length again. */
+    .tm-columns > .tm-section > .tm-watch { max-height: none; overflow-y: visible; padding-right: 0; }
+    .tm-columns > .tm-section > .tm-watch-legend { padding-right: 0; }
+}
+
 /* The column heading for the price meter. It names a column that had no name
    and gives the explanation one home, instead of the same tooltip repeating on
    every row of the list. Its columns match .tm-watch-row's below. */
