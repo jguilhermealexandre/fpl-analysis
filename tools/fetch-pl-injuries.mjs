@@ -152,6 +152,24 @@ export function buildClubMap(bootstrapTeams) {
     };
 }
 
+/* When this scrape first saw each article, carried across runs.
+
+   Two thirds of the club articles publish no date we can read, and those rows
+   still have to sit somewhere sensible in a feed ordered by time. First-seen is
+   a true fact about our own observation, so it can order them — but it is not
+   the publication date and is never shown as one. The page sorts on it and
+   displays nothing where `published` is null.
+
+   It is also what makes "new" mean anything: an article whose URL was not in
+   the last run is new, which is the signal the squad notification needs. */
+export function carryFirstSeen(previousItems, nowIso) {
+    const seen = new Map();
+    for (const i of previousItems || []) {
+        if (i && i.url && i.firstSeen && !seen.has(i.url)) seen.set(i.url, i.firstSeen);
+    }
+    return url => (url && seen.get(url)) || nowIso;
+}
+
 /* Order: newest article first, and everything undated behind all of it, grouped
    so a club's undated rows stay together rather than scattering. */
 export function sortItems(items) {
@@ -320,6 +338,18 @@ for (let i = 0; i < urls.length; i += 5) {
 const dated = [...byUrl.values()].filter(m => m && m.published).length;
 console.log(`${dated} of ${byUrl.size} articles published a date`);
 
+// Whatever the last run stored, so an article keeps the moment we first saw it
+// rather than being re-dated on every scrape.
+let previousItems = [];
+if (OUT) {
+    try { previousItems = JSON.parse(fs.readFileSync(OUT, 'utf8')).items || []; }
+    catch { /* first run, or the file was removed on purpose */ }
+}
+const nowIso = new Date().toISOString();
+const firstSeenFor = carryFirstSeen(previousItems, nowIso);
+const carried = previousItems.filter(i => i.firstSeen && i.firstSeen !== nowIso).length;
+console.log(`${carried} row(s) kept a first-seen date from the previous run`);
+
 const items = sortItems(scraped.map(r => {
     const meta = r.url ? byUrl.get(r.url) : null;
     return {
@@ -329,7 +359,8 @@ const items = sortItems(scraped.map(r => {
         injury: r.injury,
         url: r.url,
         articleTitle: meta?.title || null,
-        published: meta?.published || null
+        published: meta?.published || null,
+        firstSeen: r.url ? firstSeenFor(r.url) : nowIso
     };
 }));
 

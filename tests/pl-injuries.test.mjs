@@ -20,7 +20,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { cleanUrl, publishedFrom, titleFrom, buildClubMap, sortItems, decodeEntities, looksMisaligned }
+import { cleanUrl, publishedFrom, titleFrom, buildClubMap, sortItems, decodeEntities, looksMisaligned, carryFirstSeen }
     from '../tools/fetch-pl-injuries.mjs';
 
 // The real link behind "Ben White / Knock / Details".
@@ -153,4 +153,31 @@ test('headlines come out of meta content decoded', () => {
     assert.equal(decodeEntities('Arteta&rsquo;s update'), 'Arteta\u2019s update');
     assert.equal(decodeEntities('5 &lt; 6'), '5 < 6');
     assert.equal(decodeEntities('&notanentity; survives'), '&notanentity; survives');
+});
+
+test('an article keeps the moment it was first seen', () => {
+    /* Two thirds of club articles publish no date this can read, and those
+       stories still need a place in a feed ordered by time. First-seen is a true
+       fact about our own observation, so it can order them — but only if it
+       survives the next run rather than being reset to "now" every four hours,
+       which would drag every undated story to the top forever. */
+    const previous = [
+        { url: 'https://a.com/one', firstSeen: '2026-09-10T00:00:00.000Z' },
+        { url: 'https://a.com/one', firstSeen: '2026-09-11T00:00:00.000Z' },
+        { url: 'https://a.com/two', firstSeen: '2026-09-12T00:00:00.000Z' }
+    ];
+    const now = '2026-09-16T00:00:00.000Z';
+    const firstSeen = carryFirstSeen(previous, now);
+    assert.equal(firstSeen('https://a.com/one'), '2026-09-10T00:00:00.000Z',
+        'the earliest sighting wins, not the last row read');
+    assert.equal(firstSeen('https://a.com/two'), '2026-09-12T00:00:00.000Z');
+    assert.equal(firstSeen('https://a.com/new'), now, 'an article never seen before is new now');
+});
+
+test('a first run has nothing to carry', () => {
+    const now = '2026-09-16T00:00:00.000Z';
+    assert.equal(carryFirstSeen([], now)('https://a.com/x'), now);
+    assert.equal(carryFirstSeen(null, now)('https://a.com/x'), now);
+    // A stored row with no firstSeen must not poison the map with undefined.
+    assert.equal(carryFirstSeen([{ url: 'https://a.com/x' }], now)('https://a.com/x'), now);
 });

@@ -52,9 +52,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=261">
-    <link rel="stylesheet" href="styles/v2-design.css?v=261">
-    <link rel="stylesheet" href="styles/responsive.css?v=261">
+    <link rel="stylesheet" href="styles/common.css?v=262">
+    <link rel="stylesheet" href="styles/v2-design.css?v=262">
+    <link rel="stylesheet" href="styles/responsive.css?v=262">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -1024,13 +1024,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=261"></script>
-    <script src="scripts/common.js?v=261"></script>
+    <script src="scripts/error-monitor.js?v=262"></script>
+    <script src="scripts/common.js?v=262"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=261"></script>
-    <script src="scripts/notifications.js?v=261"></script>
-    <script src="scripts/sidebar-nav.js?v=261"></script>
+    <script src="scripts/push-alerts.js?v=262"></script>
+    <script src="scripts/notifications.js?v=262"></script>
+    <script src="scripts/sidebar-nav.js?v=262"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1576,10 +1576,75 @@
         async function renderNews() {
             const container = document.getElementById('newsDisplay');
             container.innerHTML = `<div class="news-container"><div class="news-loading"><div class="spinner"></div> Loading news...</div></div>`;
+
+            /* data/injuries.json is written by .github/workflows/fetch-pl-injuries.yml,
+               which renders the Premier League's club-by-club table and follows every
+               "Details" link to the club's own article. Absent or unreadable, the page
+               is the wire feed alone rather than an error: the rest does not depend
+               on it. */
+            async function fetchInjuries() {
+                try {
+                    const res = await fetch('data/injuries.json?v=' + Math.floor(Date.now() / 300000));
+                    if (!res.ok) return [];
+                    const d = await res.json();
+                    return d && Array.isArray(d.items) ? d.items : [];
+                } catch (e) {
+                    console.warn('No injury data:', e);
+                    return [];
+                }
+            }
+
+            /* The injury table is a list of players; the news is the article behind
+               them. One club update usually covers several — "Arteta's update on
+               White, Mosquera and Timber" is one story about three — so rows are
+               folded by the article they point at and become one card each, in the
+               same shape every other card on this page uses. Deliberately no
+               `player` field: buildFooter and buildTeamTagCard read that as a full
+               FPL record and reach for price and ownership, which the injury table
+               does not have and this page must not invent.
+
+               Rows with no article behind them are not news and do not appear. They
+               are a status table, and this page is a wire feed. */
+            function injuryStories(rows, teamsById) {
+                const byUrl = new Map();
+                for (const r of rows) {
+                    if (!r.url || !r.player) continue;
+                    if (!byUrl.has(r.url)) byUrl.set(r.url, []);
+                    byUrl.get(r.url).push(r);
+                }
+                const out = [];
+                for (const [url, group] of byUrl) {
+                    const first = group[0];
+                    const club = first.club || '';
+                    const who = group.map(r => r.injury ? `${r.player} (${r.injury})` : r.player).join(', ');
+                    out.push({
+                        category: 'injury',
+                        categoryLabel: 'Injury news',
+                        headline: first.articleTitle || `${club} injury update`,
+                        detail: club ? `${club} \u00b7 ${who}` : who,
+                        link: url,
+                        thumbnail: null,
+                        source: club,
+                        badge: null,
+                        isSquad: false,
+                        /* Shown only when the club actually published one. Two thirds
+                           do not, and first-seen is our own observation rather than
+                           the article's date — good enough to order by, not to
+                           print as though the club had said it. */
+                        timestamp: first.published || null,
+                        sortAt: first.published || first.firstSeen || null,
+                        matchedTeamIds: first.clubId != null ? [first.clubId] : [],
+                        injuredPlayers: group.map(r => r.player),
+                        sortWeight: 5
+                    });
+                }
+                return out;
+            }
             try {
-                const [bootData, rawExternal] = await Promise.all([
+                const [bootData, rawExternal, injuryRows] = await Promise.all([
                     DataCache.fetchJSON(DATA_URLS.bootstrap),
-                    fetchExternalNews()
+                    fetchExternalNews(),
+                    fetchInjuries()
                 ]);
 
                 buildTeamLookup(bootData.teams);
@@ -1588,6 +1653,10 @@
 
                 allPlayers = bootData.elements.map(p => ({
                     id: p.id, name: p.web_name,
+                    /* The Premier League's injury table writes "Ben White" and
+                       this feed calls him Benjamin, so the surname is what the
+                       two agree on — see plMatchInjuredPlayer in common.js. */
+                    firstName: p.first_name, secondName: p.second_name,
                     /* The photo library is keyed by `code`, not by `id`, and the
                        crest by the team's own code — neither was carried
                        through, which is why a squad news card could only ever
@@ -1680,6 +1749,36 @@
                         }
                     }
                 });
+
+                /* The injury stories join the same feed rather than sitting behind
+                   a tab of their own. A club's statement about who is fit is news
+                   about the league, and reading it next to the rest is the point.
+                   Merged after the pass above, which rebuilds matchedTeamIds from
+                   scratch and would wipe the club these already know for certain.
+
+                   Ownership is decided by the matcher rather than the loose
+                   headline-substring rule used for the wire copy: here we have the
+                   club and the exact name off the table, so it can be strict, and
+                   a notification will eventually hang off the same decision. */
+                const injuryItems = injuryStories(injuryRows, localTeams);
+                if (injuryItems.length) {
+                    const squadPlayers = allPlayers.filter(p => squadIds.has(p.id));
+                    injuryItems.forEach(it => {
+                        const clubId = it.matchedTeamIds[0];
+                        const mine = typeof plMatchInjuredPlayer === 'function'
+                            ? it.injuredPlayers.some(n => plMatchInjuredPlayer(n, clubId, squadPlayers))
+                            : false;
+                        if (mine) { it.isSquad = true; it.sortWeight = 60; }
+                    });
+                    externalItems.push(...injuryItems);
+                }
+
+                /* One feed, newest first. Injury stories carry sortAt because two
+                   thirds of club articles publish no date we can read — sortAt
+                   falls back to when this site first saw the article, which orders
+                   them honestly without printing a time the club never gave. */
+                externalItems.sort((a, b) =>
+                    new Date(b.sortAt || b.timestamp || 0) - new Date(a.sortAt || a.timestamp || 0));
 
                 function getCTAForCategory(item) {
                     const posShort = posShortNames[item.player?.position] || '';
