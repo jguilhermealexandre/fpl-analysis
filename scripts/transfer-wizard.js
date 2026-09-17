@@ -3046,9 +3046,29 @@
             return typeof v === 'number' && isFinite(v) ? v : 0;
         }
 
-        /* The same tiers price-watch.js uses, so the two panels cannot describe
-           one player differently. Anything past the line is due tonight; PW_CLOSE
-           short of it is a watch item and deliberately not a forecast. */
+        /* The same tiers price-watch.js uses at the top and bottom, so the two
+           panels cannot describe one player differently. Anything past the line
+           is due tonight; PW_CLOSE short of it is a watch item and deliberately
+           not a forecast.
+
+           Between those lines this used to say one word — "Safe" — for every
+           player, and the meter runs from -100 to +100. So a player 60% of the
+           way to a DROP was labelled safe, and so was one 60% of the way to a
+           rise, and so was one who had not moved at all. Measured on the live
+           feed that is 605 of 659 players sharing a single label: 300 being
+           sold, 164 being bought, 141 genuinely still. The one thing an owner
+           wants from this column — which way is my player going — was the thing
+           it threw away.
+
+           price-watch.js does not disagree with what follows, because it says
+           nothing here at all: below PW_CLOSE it returns null and the player is
+           simply left out of that panel. The shared vocabulary is the four outer
+           tiers, and those are untouched.
+
+           "Drifting" rather than "rising" or "falling" on purpose. The meter is
+           progress, not a prediction — the column's own header says so — and a
+           player at +30 is not on his way anywhere in particular. Direction is a
+           fact about the number; arrival is not. */
         function thresholdState(pct) {
             const due = typeof PW_DUE === 'number' ? PW_DUE : 100;
             const close = typeof PW_CLOSE === 'number' ? PW_CLOSE : 80;
@@ -3056,7 +3076,12 @@
             if (pct >= close) return { cls: 'rise', text: 'Climbing', short: 'Climbing' };
             if (pct <= -due) return { cls: 'drop-imminent', text: 'Drops tonight', short: 'Dropping' };
             if (pct <= -close) return { cls: 'drop', text: 'Sliding', short: 'Sliding' };
-            return { cls: 'stable', text: 'Safe', short: 'Safe' };
+            /* Zero is its own answer and a common one — a fifth of the league sits
+               exactly there. Everything else takes the sign it actually has; no
+               dead zone, because any width for one would be invented. */
+            if (pct > 0) return { cls: 'drift-up', text: 'Drifting up', short: 'Up' };
+            if (pct < 0) return { cls: 'drift-down', text: 'Drifting down', short: 'Down' };
+            return { cls: 'stable', text: 'Not moving', short: 'Flat' };
         }
 
         const THRESHOLD_TIP = "FPL's own progress meter towards a price change. At 100% the change happens at the next daily update; below that it is how far along he is, not a forecast that he gets there.";

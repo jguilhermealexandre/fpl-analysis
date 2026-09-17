@@ -91,8 +91,32 @@ test('both panels use one set of tiers', () => {
     assert.equal(tw.thresholdState(-due).cls, 'drop-imminent');
     assert.equal(tw.thresholdState(close).cls, 'rise');
     assert.equal(tw.thresholdState(-close).cls, 'drop');
-    assert.equal(tw.thresholdState(close - 1).cls, 'stable');
-    assert.equal(tw.thresholdState(-(close - 1)).cls, 'stable');
+    /* Short of the watch line the page still has something to say, and what it
+       says is which way he is going. It must not promote him to a watch tier. */
+    assert.equal(tw.thresholdState(close - 1).cls, 'drift-up');
+    assert.equal(tw.thresholdState(-(close - 1)).cls, 'drift-down');
+    assert.ok(!/^(rise|drop)/.test(tw.thresholdState(close - 1).cls));
+    assert.ok(!/^(rise|drop)/.test(tw.thresholdState(-(close - 1)).cls));
+});
+
+test('a player being bought is not described like one being sold', () => {
+    /* The whole middle of the meter used to be one word, "Safe". Measured on
+       the live feed that was 605 of 659 players sharing a label: 300 of them
+       being sold, 164 being bought, 141 genuinely still. An owner opening this
+       column wants one thing from it — which way is my player going — and that
+       was the thing it threw away. Worse in the selling direction than the
+       buying one: a player 60% of the way to a DROP was called safe. */
+    const tw = load();
+    const up = tw.thresholdState(45);
+    const down = tw.thresholdState(-45);
+    const flat = tw.thresholdState(0);
+    assert.notEqual(up.text, down.text, 'bought and sold cannot read the same');
+    assert.notEqual(up.text, 'Safe');
+    assert.notEqual(down.text, 'Safe');
+    assert.notEqual(up.cls, down.cls, 'nor be coloured the same');
+    assert.notEqual(up.cls, flat.cls, 'nor the same as a player who has not moved');
+    // Zero is its own answer, and a fifth of the league sits exactly there.
+    assert.equal(flat.cls, 'stable');
 });
 
 test('every real player is classified the same way by both', () => {
@@ -103,16 +127,30 @@ test('every real player is classified the same way by both', () => {
     for (const p of REAL) {
         const dash = tw.pwClassify(p);
         const page = tw.thresholdState(tw.priceThresholdPct(p));
+        /* Agreement is that the two never contradict, not that they say the
+           same amount. price-watch returns null below its line and simply omits
+           the player; the transfers page still names his direction there, which
+           is more, not different. The invariant is therefore about the watch
+           tiers — the vocabulary both panels publish — plus a direction check
+           that now covers every player rather than only the ones on watch. */
+        const isWatch = /^(rise|drop)/.test(page.cls);
         if (!dash) {
-            assert.equal(page.cls, 'stable', `${p.name}: quiet on the dashboard, quiet here`);
-            continue;
+            assert.ok(!isWatch, `${p.name}: quiet on the dashboard, not a watch item here`);
+        } else {
+            assert.ok(isWatch, `${p.name}: the dashboard shows him moving`);
+            const pageDir = page.cls.startsWith('rise') ? 'rise' : 'fall';
+            assert.equal(pageDir, dash.dir, `${p.name}: same direction`);
+            if (dash.tier === 'due') {
+                assert.match(page.cls, /imminent/, `${p.name}: a full meter is due on both`);
+            }
         }
-        assert.notEqual(page.cls, 'stable', `${p.name}: the dashboard shows him moving`);
-        const pageDir = page.cls.startsWith('rise') ? 'rise' : 'fall';
-        assert.equal(pageDir, dash.dir, `${p.name}: same direction`);
-        if (dash.tier === 'due') {
-            assert.match(page.cls, /imminent/, `${p.name}: a full meter is due on both`);
-        }
+
+        // Whatever tier he lands in, the word must not contradict the sign.
+        const pct = tw.priceThresholdPct(p);
+        const sign = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
+        const shown = /up|rise/.test(page.cls) ? 'up'
+            : /down|drop/.test(page.cls) ? 'down' : 'flat';
+        assert.equal(shown, sign, `${p.name}: ${page.text} against a meter of ${pct}`);
     }
 });
 

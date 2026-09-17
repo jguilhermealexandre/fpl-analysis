@@ -4622,6 +4622,11 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .tm-thr-pct.rise, .tm-thr-state.rise { color: var(--verdict-hold); }
 .tm-thr-pct.drop-imminent, .tm-thr-state.drop-imminent { color: #dc2626; }
 .tm-thr-pct.drop, .tm-thr-state.drop { color: var(--verdict-sell); }
+/* Between the watch lines, a direction rather than silence. Tinted towards the
+   verdict colour but well short of it, because a player at +30 is drifting, not
+   climbing, and the column must not shout the two the same way. */
+.tm-thr-pct.drift-up, .tm-thr-state.drift-up { color: color-mix(in srgb, var(--verdict-hold) 55%, var(--text-muted)); }
+.tm-thr-pct.drift-down, .tm-thr-state.drift-down { color: color-mix(in srgb, var(--verdict-sell) 55%, var(--text-muted)); }
 .tm-thr-pct.stable, .tm-thr-state.stable { color: var(--text-muted); }
 
 .tm-thr-track { position: relative; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
@@ -4630,6 +4635,11 @@ tr.planner-swap-ineligible { opacity: 0.35; }
    travel is legible before the number is read. */
 .tm-thr-fill.rise, .tm-thr-fill.rise-imminent { left: 0; }
 .tm-thr-fill.drop, .tm-thr-fill.drop-imminent { right: 0; }
+/* Growing from the correct end. The old stable fill started at the left for
+   everybody, so a player 60% of the way to a DROP grew a bar exactly like a
+   riser's — the bar contradicted the sign printed beside it. */
+.tm-thr-fill.drift-up { left: 0; background: var(--verdict-hold); opacity: .38; }
+.tm-thr-fill.drift-down { right: 0; background: var(--verdict-sell); opacity: .38; }
 .tm-thr-fill.stable { left: 0; background: var(--text-muted); opacity: .35; }
 .tm-thr-fill.rise { background: var(--verdict-hold); opacity: .7; }
 .tm-thr-fill.rise-imminent { background: #15803d; }
