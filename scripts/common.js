@@ -2009,9 +2009,42 @@ function getSavedTeamId() {
     return (id && /^\d+$/.test(id)) ? id : null;
 }
 
+/* The one place a team id is written.
+ *
+ * It was not: two other places set localStorage directly and skipped both the
+ * check below and, now, the account. Those go through here.
+ *
+ * The browser copy stays whatever happens — the squad has always loaded from
+ * localStorage and still does, so a reader with no account, or a failed write,
+ * loses nothing. The account copy is what makes the id follow someone to
+ * another browser, and it is written without waiting: nobody is watching for it,
+ * and blocking the page on it would make entering an id feel slow for a benefit
+ * that arrives on the next device rather than this one. */
 function saveTeamId(id) {
-    if (id && /^\d+$/.test(String(id))) {
+    if (!id || !/^\d+$/.test(String(id))) return;
+    localStorage.setItem('fpl_team_id', String(id));
+    if (typeof auSaveTeamId === 'function') {
+        try { Promise.resolve(auSaveTeamId(String(id))).catch(() => {}); } catch (e) { /* not signed in */ }
+    }
+}
+
+/* The id this account carries, adopted into this browser.
+ *
+ * For someone signing in on a second device: the account knows the squad, this
+ * browser does not. Deliberately one-way and only when the browser has nothing —
+ * an id typed here is the more recent intention, and overwriting it with the
+ * stored one would undo a change the reader just made. */
+async function adoptTeamIdFromAccount() {
+    if (typeof auFetchProfile !== 'function') return null;
+    if (getSavedTeamId()) return null;
+    try {
+        const profile = await auFetchProfile();
+        const id = profile && profile.fpl_team_id;
+        if (!id || !/^\d+$/.test(String(id))) return null;
         localStorage.setItem('fpl_team_id', String(id));
+        return String(id);
+    } catch (e) {
+        return null;
     }
 }
 
@@ -2088,7 +2121,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=268')
+    fetch('footer.html?v=269')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
@@ -2286,7 +2319,9 @@ function submitTeamIdDrawer() {
     if (!input) return;
     const val = input.value.trim();
     if (!val) return;
-    localStorage.setItem('fpl_team_id', val);
+    // Through saveTeamId rather than around it, so this path gets the same
+    // validation and the same write to the account as every other.
+    saveTeamId(val);
     // Sync to nav widget
     showNavTeamBadge(val);
     // Update drawer display

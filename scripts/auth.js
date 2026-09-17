@@ -289,6 +289,71 @@ async function auSession() {
     return auRefresh();
 }
 
+// ------------------------------------------------------------------ profile
+
+/* The row this account owns in public.profiles: the plan, and the FPL squad.
+ *
+ * Read with the reader's own access token, so row-level security answers for
+ * one row and nobody else's. The anonymous key cannot reach this table at all —
+ * that was the first thing checked against the live project, and it answered
+ * "permission denied for table profiles", which is the grant working.
+ */
+async function auFetchProfile() {
+    const s = await auSession();
+    if (!s || !s.userId) return null;
+    try {
+        const res = await fetch(
+            `${AU_URL}/rest/v1/profiles?select=plan,plan_until,fpl_team_id&id=eq.${encodeURIComponent(s.userId)}`,
+            { headers: { apikey: AU_KEY, Authorization: `Bearer ${s.accessToken}`, Accept: 'application/json' } }
+        );
+        if (!res.ok) return null;
+        const rows = await res.json();
+        return (Array.isArray(rows) && rows[0]) || null;
+    } catch {
+        return null;
+    }
+}
+
+/* Attach an FPL squad to this account.
+ *
+ * Only fpl_team_id is sent, and only fpl_team_id COULD be sent: the schema
+ * grants update on that column alone, so a request that also tried to set
+ * `plan` would be refused by Postgres before any policy ran. That is the point
+ * of doing it with a column grant rather than a policy, and it means this
+ * function cannot be turned into a way to buy premium for nothing.
+ */
+async function auSaveTeamId(teamId) {
+    const id = String(teamId || '').trim();
+    if (!/^\d{1,12}$/.test(id)) return { ok: false, error: 'That is not an FPL team ID.' };
+    const s = await auSession();
+    if (!s || !s.userId) return { ok: false, error: 'Not signed in.' };
+    try {
+        const res = await fetch(`${AU_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(s.userId)}`, {
+            method: 'PATCH',
+            headers: {
+                apikey: AU_KEY,
+                Authorization: `Bearer ${s.accessToken}`,
+                'Content-Type': 'application/json',
+                Prefer: 'return=minimal'
+            },
+            body: JSON.stringify({ fpl_team_id: id })
+        });
+        return { ok: res.ok, error: res.ok ? null : 'Could not save that to your account.' };
+    } catch {
+        return { ok: false, error: 'Could not reach the server.' };
+    }
+}
+
+/* Entitlement, read the same way the database defines it: premium, and either
+   open-ended or not yet lapsed. Used to decide what to DRAW. What a reader may
+   actually open is decided at the edge, against a signature this cannot forge. */
+function auIsPremium(profile) {
+    if (!profile || profile.plan !== 'premium') return false;
+    if (!profile.plan_until) return true;
+    const until = Date.parse(profile.plan_until);
+    return Number.isFinite(until) && until > Date.now();
+}
+
 function auRedirectTo(path) {
     if (typeof location === 'undefined') return path;
     return location.origin + path;

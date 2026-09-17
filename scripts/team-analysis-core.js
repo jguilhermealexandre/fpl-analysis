@@ -394,7 +394,8 @@
                 // renderTeamOverview) — analyzeTeam() below runs after managerData and
                 // picksData are already assigned, so it reads them straight off those.
 
-                localStorage.setItem('fpl_team_id', teamId);
+                // Through the shared writer, so the account learns it too.
+                saveTeamId(teamId);
                 showNavTeamBadge(teamId);
                 showLoading(true, 'Running analysis...');
 
