@@ -161,35 +161,23 @@ as $$
         false);
 $$;
 
+-- EXECUTE on a function is granted to PUBLIC by default in Postgres, so the
+-- line above was additive and changed nothing. That mattered: is_premium() is
+-- security definer and takes a uuid, so before this revoke ANY caller holding
+-- only the publishable key could ask whether any given user id was premium.
+-- A boolean about an opaque uuid is a small leak and it is still a leak, and
+-- the function has no business answering strangers.
+revoke execute on function public.is_premium(uuid) from public;
 grant execute on function public.is_premium(uuid) to authenticated;
 
--- The same question, asked about yourself, for callers who have a token and no
--- reason to know the uuid inside it.
+-- NOTE ON WHO CALLS THIS. Nothing, at runtime. The edge middleware reads the
+-- profiles row directly and applies the same rule, because a function that has
+-- to be created by hand is a deployment step that can be forgotten — and when
+-- it was forgotten, the gate failed closed and locked out the account that had
+-- just been granted premium. See functions/lib/entitlement.js.
 --
--- This is what the edge middleware calls. It could have decoded the JWT, read
--- `sub`, and called is_premium(that) — but then the edge would be deciding
--- whose token it is holding, which is a signature check written by us instead
--- of by the people who issued the token. Letting auth.uid() answer keeps both
--- halves where they belong: Supabase says who you are, this file says what that
--- entitles you to, and the middleware believes a boolean.
---
--- Returns false for an anonymous caller, because auth.uid() is null and
--- is_premium() already fails closed on a uuid with no row.
-create or replace function public.is_premium_me()
-returns boolean
-language sql
-stable
-security definer
-set search_path = ''
-as $$
-    select public.is_premium((select auth.uid()));
-$$;
-
-grant execute on function public.is_premium_me() to authenticated;
-
--- Deliberately NOT granted to anon. A signed-out caller has no row and would
--- get false anyway, but an endpoint that answers questions for the unauthenticated
--- is an endpoint worth not having.
+-- This stays as the canonical statement of the rule, and for server-side code
+-- that will want it later: the Mollie webhook, and any report on who is paying.
 
 -- ------------------------------------------------------------------ notes
 --
@@ -213,5 +201,6 @@ grant execute on function public.is_premium_me() to authenticated;
 --     plan_until null means it never lapses. Set a timestamptz instead to hand
 --     out a trial that expires on its own.
 --
---     This takes effect on the next request: the middleware asks is_premium_me()
---     per premium page load and caches nothing.
+--     This takes effect within a minute. The middleware reads the row on the
+--     next premium request and caches only a positive answer, for 60 seconds —
+--     so an upgrade applies immediately and a downgrade lags by at most that.

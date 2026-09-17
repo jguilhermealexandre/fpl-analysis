@@ -6,12 +6,12 @@
  *
  * WHO DECIDES WHAT "PREMIUM" MEANS
  *
- * Not this file. Entitlement is `plan = 'premium' and (plan_until is null or
- * plan_until > now())`, and that sentence is written once, in
- * supabase/schema.sql, as public.is_premium(). This calls the is_premium_me()
- * wrapper over it and believes the boolean. The browser's auIsPremium() knows
- * the same rule, but only so it can dress the nav — it is never asked here,
- * because a rule evaluated in a browser is a rule the reader can edit.
+ * Entitlement is `plan = 'premium' and (plan_until is null or plan_until >
+ * now())`, and lib/entitlement.js is this runtime's copy of that sentence —
+ * see the note there on why three copies exist and what keeps them in step.
+ * The browser's auIsPremium() knows the same rule, but only so it can dress
+ * the nav: it is never asked here, because a rule evaluated in a browser is a
+ * rule the reader can edit.
  *
  * WHO DECIDES WHOSE TOKEN THIS IS
  *
@@ -23,12 +23,15 @@
  *
  * FAILING CLOSED
  *
- * If Supabase is unreachable, or answers anything but `true`, the request is
+ * If Supabase is unreachable, or the row does not say premium, the request is
  * refused. A paywall that opens when its dependency is down is not a paywall.
- * The cost of that choice is that an outage locks out paying readers, which is
- * the right way round: it is visible, temporary, and cannot be exploited.
+ * The cost is that an outage locks out paying readers, which is the right way
+ * round: it is visible, temporary, and cannot be exploited. What it must not
+ * do is treat OUR OWN missing deployment step as an outage, which is what the
+ * database-function version did — see lib/entitlement.js.
  */
 import { premiumReason } from './lib/premium.js';
+import { isPremiumProfile } from './lib/entitlement.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, ACCESS_COOKIE, REFRESH_COOKIE } from './lib/supabase.js';
 
 /* Cookies, parsed from the header rather than from anything clever. Values are
@@ -48,39 +51,88 @@ function readCookie(header, name) {
 
 /* Why this request is not getting through, not merely that it is not.
  *
- * This returned a bare boolean and it cost a real afternoon. is_premium_me()
- * has to be created by running supabase/schema.sql; until it is, PostgREST
- * answers 404, `!res.ok` collapsed that to false, and a premium account was
- * told it was on the free plan. Every symptom pointed at the entitlement and
- * the fault was a missing function.
+ *   premium    the only one that opens anything
+ *   free       asked, answered, not entitled
+ *   noprofile  signed in, but there is no profiles row — the trigger that
+ *              creates one did not run for this user
+ *   stale      401/403, so the token is expired or rejected; premium.html can
+ *              fix that by refreshing and sending them back
+ *   down       anything else, including no answer at all
  *
- * So the cases are kept apart and the reason is carried to the page that has
- * to explain itself:
+ * This reads the row rather than calling a database function, and the reason
+ * is written up in lib/entitlement.js: the function had to be created by hand,
+ * it had not been, and failing closed on it locked out the account that had
+ * just been granted premium.
  *
- *   premium   the only one that opens anything
- *   free      asked, answered, not entitled
- *   stale     401/403 — the token is expired or rejected, which premium.html
- *             can fix by refreshing and sending them back
- *   missing   404 — is_premium_me() is not in this database
- *   down      anything else, including no answer at all
+ * No user id is sent and none is needed. Row-level security scopes the select
+ * to the caller's own row, so there is no identifier here for anyone to swap
+ * for somebody else's — which is exactly the hole that made is_premium(uuid)
+ * unsafe to call from the edge in the first place.
  */
 async function entitlement(token) {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/is_premium_me`, {
-        method: 'POST',
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=plan,plan_until&limit=1`, {
         headers: {
             apikey: SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        },
-        body: '{}'
+            Accept: 'application/json'
+        }
     });
-    if (res.status === 404) return 'missing';
     if (res.status === 401 || res.status === 403) return 'stale';
     if (!res.ok) return 'down';
-    /* Strictly true. A PostgREST scalar comes back as bare JSON, and anything
-       that is not the boolean true — null, a string, an error object shaped
-       like a success — is not an entitlement. */
-    return (await res.json()) === true ? 'premium' : 'free';
+
+    let rows = null;
+    try { rows = await res.json(); } catch { return 'down'; }
+    if (!Array.isArray(rows)) return 'down';
+    if (!rows.length) return 'noprofile';
+    return isPremiumProfile(rows[0], Date.now()) ? 'premium' : 'free';
+}
+
+/* One answer per token, briefly, and only when the answer was yes.
+ *
+ * Six of the gated paths are scripts on one page, so a premium reader was
+ * paying for seven round trips to Supabase to open Squad Analysis. Caching the
+ * verdict collapses that to one.
+ *
+ * Deliberately asymmetric. A cached "premium" costs at most a minute of access
+ * after a downgrade, which nobody is harmed by. A cached "free" would be a
+ * minute of an upgrade appearing not to work — and after the afternoon this
+ * paywall has already cost, an upgrade has to take effect the moment it is
+ * made. So no is never remembered.
+ *
+ * Keyed on a hash of the token, never the token: a cache key is not a secret
+ * store, and anything that can enumerate keys should not thereby be able to
+ * replay a session. */
+const VERDICT_TTL = 60;
+
+async function verdictKey(token) {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+    const hex = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return new Request(`https://entitlement.easyfpl.invalid/${hex}`);
+}
+
+async function cachedEntitlement(token) {
+    /* caches.default is present in production and absent in some local
+       runtimes. Without it this is simply uncached, which is slower and
+       equally correct — never a reason to skip the check. */
+    const store = typeof caches !== 'undefined' && caches.default ? caches.default : null;
+    if (!store) return entitlement(token);
+
+    let key = null;
+    try {
+        key = await verdictKey(token);
+        const hit = await store.match(key);
+        if (hit) return 'premium';
+    } catch { /* a cache that misbehaves must not decide anything */ }
+
+    const verdict = await entitlement(token);
+    if (verdict === 'premium' && key) {
+        try {
+            await store.put(key, new Response('premium', {
+                headers: { 'Cache-Control': `max-age=${VERDICT_TTL}` }
+            }));
+        } catch { /* best effort; the next request just asks again */ }
+    }
+    return verdict;
 }
 
 /* A premium page that was allowed through must not sit in a shared cache,
@@ -148,7 +200,7 @@ export async function onRequest(context) {
 
     let verdict;
     try {
-        verdict = await entitlement(token);
+        verdict = await cachedEntitlement(token);
     } catch {
         verdict = 'down';                // unreachable is not permission
     }

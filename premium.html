@@ -11,9 +11,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=279">
-    <link rel="stylesheet" href="styles/v2-design.css?v=279">
-    <link rel="stylesheet" href="styles/auth.css?v=279">
+    <link rel="stylesheet" href="styles/common.css?v=280">
+    <link rel="stylesheet" href="styles/v2-design.css?v=280">
+    <link rel="stylesheet" href="styles/auth.css?v=280">
 </head>
 <body>
 <!-- Behind glass.
@@ -96,7 +96,7 @@
     </main>
 </div>
 
-<script src="scripts/auth.js?v=279"></script>
+<script src="scripts/auth.js?v=280"></script>
 <script>
     /* Same open-redirect rule as every other page here: a `from` that parses as
        another origin is dropped rather than followed. The middleware only ever
@@ -196,13 +196,13 @@
         try { sessionStorage.removeItem(RETRY_KEY); } catch (e) { /* nothing to clear */ }
 
         const sub = document.getElementById('pmWallSub');
-        if (why === 'missing') {
-            /* The database has no is_premium_me(). Nobody is premium until it
-               exists, whatever their plan column says, so saying "you are on
-               the free plan" here would be a lie that sends someone hunting in
-               the wrong place. */
-            sub.textContent = 'The server cannot check plans right now — is_premium_me() is not installed '
-                + 'in the database. Run supabase/schema.sql in the Supabase SQL editor and reload.';
+        if (why === 'noprofile') {
+            /* Signed in, and no row in profiles. The trigger on auth.users
+               creates one; if it is missing, the account predates the trigger
+               or the trigger did not fire. Naming it beats "free plan", which
+               would send somebody to change a column that is not there. */
+            sub.textContent = 'Your account has no profile row yet, so there is no plan to read. '
+                + 'Re-running supabase/schema.sql creates the trigger that makes one.';
         } else if (why === 'down') {
             sub.textContent = 'We could not reach the server to check your plan. That is our end, not yours — try again shortly.';
         } else if (auIsPremium(profile)) {

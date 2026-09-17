@@ -1815,7 +1815,10 @@ export default [
                 Response: 'readonly', Request: 'readonly', Headers: 'readonly',
                 URL: 'readonly', URLSearchParams: 'readonly', fetch: 'readonly',
                 crypto: 'readonly', console: 'readonly', atob: 'readonly', btoa: 'readonly',
-                TextEncoder: 'readonly', TextDecoder: 'readonly'
+                TextEncoder: 'readonly', TextDecoder: 'readonly',
+                // The edge cache. Present in production, absent in some local
+                // runtimes, which is why every use of it is guarded.
+                caches: 'readonly'
             }
         },
         rules: { 'no-undef': 'error' }
