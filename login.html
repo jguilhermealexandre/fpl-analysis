@@ -11,9 +11,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=270">
-    <link rel="stylesheet" href="styles/v2-design.css?v=270">
-    <link rel="stylesheet" href="styles/auth.css?v=270">
+    <link rel="stylesheet" href="styles/common.css?v=271">
+    <link rel="stylesheet" href="styles/v2-design.css?v=271">
+    <link rel="stylesheet" href="styles/auth.css?v=271">
 </head>
 <body>
 <div class="au-page">
@@ -51,7 +51,7 @@
     </main>
 </div>
 
-<script src="scripts/auth.js?v=270"></script>
+<script src="scripts/auth.js?v=271"></script>
 <script>
     /* Same open-redirect rule as everywhere else on this site: a `next` that
        parses as another origin is dropped rather than followed. */
@@ -93,13 +93,26 @@
      * link is a session someone else can use.
      */
     (function sessionFromLink() {
-        if (!location.hash || location.hash.indexOf('access_token=') < 0) {
+        const p = new URLSearchParams((location.hash || '').slice(1));
+
+        /* A confirmation link that has expired or already been used comes back
+           with an error in the fragment rather than a session. Say so — the
+           alternative is a plain sign-in page that gives no hint why the link
+           they just clicked appeared to do nothing. */
+        if (p.get('error')) {
+            history.replaceState(null, '', location.pathname);
+            auShowError(p.get('error_code') === 'otp_expired'
+                ? 'That link has expired or has already been used. Sign in below, or ask for a new password.'
+                : 'That link did not work. Sign in below.');
+            return;
+        }
+
+        if (!p.get('access_token')) {
             if (new URLSearchParams(location.search).get('confirmed')) {
                 auShowNote('Your email is confirmed. Sign in below.');
             }
             return;
         }
-        const p = new URLSearchParams(location.hash.slice(1));
         const session = auSessionFrom({
             access_token: p.get('access_token'),
             refresh_token: p.get('refresh_token'),
