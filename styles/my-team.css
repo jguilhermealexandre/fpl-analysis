@@ -5794,70 +5794,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twr-gain { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
 .twr-gain small { font-size: 9px; font-weight: 600; color: var(--text-muted); letter-spacing: .02em; }
 
-/* ===== Wildcard builder (wc-) =====
-   Three squad cards side by side on a desktop, stacked on a phone. The three
-   are meant to be read against each other, so they share a grid rather than
-   sitting in a carousel — comparing is the whole point of showing three. */
-.wc-intro { margin-top: 12px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
-.wc-intro p { margin: 0 0 6px; }
-
-.wc-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 12px; }
-.wc-card {
-    display: flex; flex-direction: column;
-    padding: 12px 13px; border-radius: var(--radius-md);
-    background: var(--surface-2); border: 1px solid var(--border-default);
-}
-/* The plan that matched the ceiling. Marked, never reordered — the premium
-   ladder reads 0, 1, 2 and shuffling it would lose the comparison. */
-.wc-card.best { border-color: var(--color-primary); }
-
-.wc-card-head { display: flex; align-items: flex-start; gap: 10px; }
-.wc-card-title { font-family: 'Space Grotesk', sans-serif; font-size: 13.5px; font-weight: 800; color: var(--text-primary); }
-.wc-best {
-    display: inline-block; margin-left: 6px; padding: 1px 5px; border-radius: 3px; vertical-align: 2px;
-    background: var(--color-primary); color: #fff; font-size: 8.5px; font-weight: 700;
-    text-transform: uppercase; letter-spacing: .03em;
-}
-.wc-card-note { margin-top: 3px; font-size: 11px; color: var(--text-muted); line-height: 1.45; }
-.wc-card-score { margin-left: auto; text-align: right; flex-shrink: 0; }
-.wc-card-obj { display: block; font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 800; color: var(--text-primary); line-height: 1.1; }
-.wc-card-delta { display: block; margin-top: 1px; font-size: 10px; font-weight: 700; white-space: nowrap; }
-.wc-card-delta.even { color: var(--color-success); }
-.wc-card-delta.down { color: var(--text-muted); }
-
-.wc-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 11px; }
-.wc-metric { padding: 6px 4px; border-radius: var(--radius-sm); background: var(--surface-1); text-align: center; }
-.wc-metric-v { display: block; font-size: 13px; font-weight: 800; color: var(--text-primary); }
-.wc-metric-v.warn { color: var(--color-warning, #f59e0b); }
-.wc-metric-l { display: block; margin-top: 1px; font-size: 8.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; }
-
-.wc-lines { margin-top: 11px; display: flex; flex-direction: column; gap: 5px; }
-.wc-line { display: flex; align-items: flex-start; gap: 6px; }
-.wc-line-l { flex-shrink: 0; width: 30px; padding: 1px 4px; border-radius: 3px; background: var(--surface-3); color: var(--text-muted); font-size: 8px; font-weight: 700; text-align: center; }
-.wc-line-men { display: flex; flex-wrap: wrap; gap: 4px; }
-.wc-man {
-    display: inline-flex; align-items: baseline; gap: 3px;    padding: 1px 5px; border-radius: 3px; background: var(--surface-1);
-    font-size: 10.5px; font-weight: 600; color: var(--text-secondary);
-}
-.wc-man small { font-size: 8.5px; font-weight: 600; color: var(--text-muted); }
-.wc-man.prem { background: rgba(99,102,241,.16); color: var(--text-primary); font-weight: 700; }
-
-.wc-gws { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
-.wc-gw {
-    display: inline-flex; flex-direction: column; align-items: center;    min-width: 34px; padding: 3px 4px; border-radius: var(--radius-sm);
-    background: var(--surface-1); font-size: 11px; font-weight: 700; color: var(--text-primary);
-}
-.wc-gw small { font-size: 8px; font-weight: 600; color: var(--text-muted); }
-
-/* Push the apply button to the bottom so three cards of differing squad-name
-   lengths still line their buttons up. */
-.wc-card .twr-apply { margin-top: auto; width: 100%; }
-
-@media (max-width: 600px) {
-    .wc-cards { grid-template-columns: 1fr; }
-    .wc-metrics { grid-template-columns: repeat(2, 1fr); }
-}
-
 /* Chip helper: which gameweek each chip is worth most in. Bench Boost and
    Triple Captain are computed exactly; Free Hit is a blank-gameweek signal.
    A .strong row means the best week is genuinely clear of an average one. */
@@ -6026,8 +5962,9 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 
 /* ===== Transfer Funnel (scripts/transfer-funnel.js) =====
    The market pane of the Transfer Wizard: a two-step funnel replacing the flat
-   tabbed list. Step 1 narrows by fixture run and player type, step 2 shows what
-   survived with the evidence behind each projection.
+   tabbed list. One screen: the fixture-run presets and the player chips sit
+   above the players they filter, with the evidence behind each projection on
+   the card itself.
 
    Fixture chips deliberately set no background of their own — the global
    .fdr-1….fdr-5 rules in common.css supply it, and declaring one here would win
@@ -6036,8 +5973,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 
 .twf-head { padding: 8px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); }
 .twf-head-top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
-.twf-head-title { font-size: 12px; color: var(--text-secondary); }
-.twf-head-title strong { color: var(--text-primary); }
 .twf-budget { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--text-primary); }
 .twf-budget em { font-style: normal; font-size: 9px; font-weight: 600; color: var(--color-warning); }
 .twf-head-bot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -6063,17 +5998,61 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    screen, so the two halves of one control were painted from two palettes. */
 .twf-view.active { background: var(--color-primary); color: #fff; }
 
-.twf-steps { display: inline-flex; border: 1px solid var(--border-default); border-radius: var(--radius-full); overflow: hidden; }
-.twf-step { padding: 4px 11px; border: none; background: transparent; font-family: var(--font-body); font-size: 10px; font-weight: 700; letter-spacing: .02em; color: var(--text-muted); cursor: pointer; }
-.twf-step.active { background: var(--color-primary); color: #fff; }
-
-.twf-counts { display: inline-flex; align-items: center; gap: 4px; }
-.twf-count { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-muted); }
-.twf-count.cut { color: var(--text-primary); }
-.twf-count.final { color: var(--color-primary); font-size: 13px; }
-.twf-count-arrow { font-size: 9px; color: var(--text-muted); }
-
 .twf-hzs { margin-left: auto; display: inline-flex; gap: 3px; }
+
+/* ----- Which transfer you are working on -----
+
+   The row under the tabs, where "Replacements for Egan" used to be a label.
+   A native <select> rather than a custom menu: the list is short, the options
+   are plain text, and the platform already knows how to open one on a phone
+   with a thumb. */
+.tw-slotsw { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.tw-slotsw-l {
+    font-size: 8.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--text-muted); flex-shrink: 0;
+}
+.tw-slotsw-sel {
+    max-width: 260px;
+    padding: 4px 8px;
+    border: 1px solid var(--border-emphasis); border-radius: var(--radius-md);
+    background: var(--surface-1); color: var(--text-primary);
+    font-family: var(--font-body); font-size: 11px; font-weight: 600;
+    cursor: pointer;
+}
+.tw-slotsw-sel:hover { border-color: var(--color-primary); }
+.tw-slotsw-n { font-size: 9.5px; color: var(--text-muted); white-space: nowrap; }
+
+/* On the comparison it is a row of its own under the step header, since that
+   header is already carrying Back and Confirm. */
+.tw-slotsw-row {
+    display: flex; align-items: center;
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--border-default);
+    background: var(--surface-2);
+}
+
+/* ----- Which clubs a preset just chose -----
+
+   The twenty-row club grid is gone; this is what replaced its evidence. Each
+   code is a button, so dropping one club out of a preset's selection does not
+   mean running the preset again. */
+.twf-picked { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.twf-picked-club {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 5px 2px 7px;
+    border: 1px solid var(--color-primary); border-radius: var(--radius-full);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    color: var(--text-primary); cursor: pointer;
+}
+.twf-picked-club i { font-style: normal; font-size: 11px; color: var(--text-muted); }
+.twf-picked-club:hover { background: color-mix(in srgb, var(--color-primary) 18%, transparent); }
+.twf-picked-club:hover i { color: var(--verdict-sell); }
+
+/* The third block of the one-screen custom search, under the two filter
+   sections that produced it. */
+.twf-results { padding: 10px 12px 0; border-top: 1px solid var(--border-subtle); }
+.twf-results .twf-section-head { margin-bottom: 8px; }
 .twf-hz { padding: 3px 8px; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: transparent; font-family: var(--font-body); font-size: 10px; font-weight: 700; color: var(--text-muted); cursor: pointer; }
 .twf-hz.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
 
@@ -6089,39 +6068,9 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-preset:hover { border-color: var(--color-primary); color: var(--text-primary); }
 .twf-preset.active { background: var(--surface-3); }
 
-/* One club per row. The fixture strip is forced onto a second line by its
-   flex-basis so it always gets the pane's full width — at an eight-gameweek
-   horizon it would otherwise squeeze the ratings off the end of the row. */
-.twf-clubs { max-height: 330px; overflow-y: auto; padding-right: 2px; }
-.twf-club { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 5px 7px; margin-bottom: 4px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--surface-1); cursor: pointer; transition: border-color 140ms ease; }
-.twf-club:hover { border-color: var(--border-emphasis); }
-.twf-club.on { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 7%, transparent); }
-.twf-club.blocked { opacity: .45; }
-.twf-club.empty { opacity: .55; }
-.twf-club-check { width: 13px; height: 13px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border-emphasis); border-radius: 3px; font-size: 9px; font-weight: 800; color: #fff; }
-.twf-club.on .twf-club-check { background: var(--color-primary); border-color: var(--color-primary); }
-.twf-club-name { width: 34px; flex-shrink: 0; font-size: 11px; font-weight: 700; color: var(--text-primary); }
-.twf-club-run { display: inline-flex; align-items: center; gap: 5px; }
-.twf-bar { width: 44px; height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
-.twf-bar i { display: block; height: 100%; background: var(--color-primary); }
-.twf-club-run b { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-primary); }
-.twf-club-stats { display: inline-flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-.twf-ms { font-size: 9px; color: var(--text-muted); }
-.twf-ms b { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--text-secondary); }
-.twf-ms.dim b { color: var(--text-muted); }
-.twf-club-n { margin-left: auto; min-width: 18px; text-align: right; font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--text-muted); }
-.twf-fxs { order: 10; flex: 1 1 100%; display: flex; gap: 3px; flex-wrap: wrap; }
-.twf-fx { padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700; line-height: 1.5; }
-.twf-fx i { font-style: normal; opacity: .65; font-size: 8px; margin-left: 1px; }
-.twf-fx.dbl { outline: 1px solid var(--color-warning); outline-offset: -1px; }
-.twf-fx.blank { background: var(--surface-3); color: var(--text-muted); }
-
 .twf-swing { padding: 1px 6px; border-radius: var(--radius-full); font-size: 9px; font-weight: 700; white-space: nowrap; }
 .twf-swing.improving { background: color-mix(in srgb, var(--verdict-hold) 16%, transparent); color: var(--verdict-hold); }
 .twf-swing.worsening { background: color-mix(in srgb, var(--verdict-sell) 16%, transparent); color: var(--verdict-sell); }
-.twf-trend { font-size: 8px; font-weight: 800; letter-spacing: .02em; }
-.twf-trend.up { color: var(--verdict-hold); }
-.twf-trend.down { color: var(--verdict-sell); }
 .twf-form5 { display: inline-flex; gap: 2px; }
 .twf-r { width: 11px; height: 11px; border-radius: 2px; font-style: normal; font-size: 7px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
 .twf-r.w { background: var(--verdict-hold); color: #fff; }
@@ -6147,8 +6096,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-foot-why { flex: 1; font-size: 10px; color: var(--text-muted); line-height: 1.4; }
 .twf-back { padding: 5px 11px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: transparent; font-family: var(--font-body); font-size: 11px; font-weight: 600; color: var(--text-secondary); cursor: pointer; }
 .twf-back:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
-.twf-go { margin-left: auto; padding: 6px 14px; border: none; border-radius: var(--radius-md); background: var(--color-primary); font-family: var(--font-body); font-size: 11px; font-weight: 700; color: #fff; cursor: pointer; }
-.twf-go[disabled] { background: var(--surface-3); color: var(--text-muted); cursor: not-allowed; }
 
 /* ----- Step 2, the shortlist ----- */
 .twf-sortrow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
@@ -6896,16 +6843,14 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    every renderer: the panels stay where they are and the step says which
    of them it is asking about. */
 .tw-container[data-tw-step="1"] #twBudgetBar { display: none; }
-.tw-container:not([data-tw-step="1"]) #twRecoPanel,
-.tw-container:not([data-tw-step="1"]):not([data-tw-step="2"]) #wcPanel { display: none; }
+.tw-container:not([data-tw-step="1"]) #twRecoPanel { display: none; }
 /* Ownership against the field is a question about a finished plan, not one
    you answer while deciding who to sell.
 
-   Both of these lost their gating in the same bad merge as the squad pane:
-   the two-step rework dropped the #wcPanel clause and deleted the .eo-panel
-   rule outright, because with only two steps there was no step 4 to gate on.
-   There is again, so they are back — otherwise the wildcard builder and the
-   ownership strip sit on every step of a four-step wizard. */
+   It lost its gating in the same bad merge as the squad pane: the two-step
+   rework deleted the rule outright, because with only two steps there was no
+   step 4 to gate on. There is again, so it is back — otherwise the ownership
+   strip sits on every step of a four-step wizard. */
 .tw-container:not([data-tw-step="4"]) .eo-panel { display: none; }
 
 /* One screen at a time.
@@ -7037,25 +6982,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     .tw-step-foot .tw-next { margin-left: 0; width: 100%; justify-content: center; }
 }
 
-/* The plan, reported rather than re-offered — see renderTWBudgetBar(). */
-.twc-plan-chip {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 6px 12px 6px 10px;
-    border-radius: 999px;
-    border: 1px solid var(--v2-card-border, var(--border-emphasis));
-    background: var(--surface-1);
-    cursor: pointer;
-    transition: border-color .18s ease, background .18s ease;
-}
-.twc-plan-chip:hover { border-color: var(--color-primary); background: var(--surface-2); }
-.twc-plan-chip-l {
-    font-size: 8.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
-    color: var(--text-muted);
-}
-.twc-plan-chip-v {
-    font-family: var(--font-display);
-    font-size: 12.5px; font-weight: 700; color: var(--color-primary);
-}
 
 /* ===== Step 5 · confirm ===== */
 .tw-conf-stats {
@@ -7350,15 +7276,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     .tw-done-net { margin-left: 0; }
 }
 
-/* The Pick step's search. Same control as step 1, on the screen where you are
-   actually looking at the players. */
-.twf-searchrow-pick {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0 0 10px;
-}
-.twf-searchrow-pick .twf-search { flex: 1; }
 
 /* The permanent opt-out sits apart from the acknowledgement above it: one is
    required to proceed, the other is a preference, and they must not read as a

@@ -46,7 +46,6 @@ export const PREMIUM_SCRIPTS = Object.freeze([
     '/scripts/transfer-wizard.js',
     '/scripts/transfer-funnel.js',
     '/scripts/transfer-rationale.js',
-    '/scripts/wildcard-builder.js',
     // Lineup Wizard
     '/scripts/lineup-wizard.js',
     '/scripts/lineup-store.js',

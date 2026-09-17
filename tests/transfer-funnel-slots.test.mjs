@@ -97,19 +97,21 @@ test('a slot of the same position inherits the search', () => {
     assert.equal(open(ctx, 0).own, 'diff', 'the first slot is untouched');
 });
 
+/* Custom search used to be two numbered steps, and which of them you were on
+   was the third thing reset here. It is one screen now, so the only thing left
+   that never transfers is the name you typed. */
 test('inheriting resets the things that never transfer', () => {
     const ctx = load();
     ctx.transferState.pending = [slot(1, 2, 'CB one')];
     const first = open(ctx, 0);
     first.clubs = [5];
     first.search = 'Gvardiol';
-    first.step = 2;
 
     ctx.transferState.pending.push(slot(2, 2, 'CB two'));
     const second = open(ctx, 1);
     assert.deepEqual([...second.clubs], [5], 'the strategy carries');
     assert.equal(second.search, '', 'a name typed for one player is never the start for another');
-    assert.equal(second.step, 1, 'and you land on Narrow so the inherited filters are visible');
+    assert.equal(second.step, undefined, 'and the two-step split it used to carry is gone');
 });
 
 test('the most recent same-position slot is the one inherited from', () => {

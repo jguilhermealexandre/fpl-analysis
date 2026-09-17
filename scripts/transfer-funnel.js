@@ -51,7 +51,6 @@
         function twfDefaultFilters() {
             return {
                 view: 'quick',      // quick | custom — see twfRenderQuick
-                step: 1,
                 horizon: 5,
                 clubs: [],          // team ids; empty means every club
                 minutes: 'any',     // any | likely | nailed
@@ -72,6 +71,12 @@
            the answer to "who is the obvious swap", and a list you have to scan
            is the thing the funnel is for. */
         const TWF_QUICK_SHOW = 6;
+
+        /* How deep the shortlist goes before the sort is applied to it. Twenty
+           four is wide enough that "Differential" and "Value" reach past the
+           obvious names, and narrow enough that everything in it is a player
+           you would genuinely consider. See twfRenderQuick. */
+        const TWF_QUICK_POOL = 24;
 
         /* Horizon, sort and which of the two views you are in describe how you
            like to work rather than who you are looking for, so they follow you
@@ -145,8 +150,8 @@
            Position settles it: the same position is the same kind of search and
            inherits, a different one starts clean. The scan runs backwards so it
            picks up the most recent slot of that position rather than the oldest.
-           Step and free-text search always reset — a search for one player is
-           never the right starting point for another. */
+           Free-text search always resets — a search for one player is never the
+           right starting point for another. */
         function twfSeedFilters(slot) {
             let prev = null;
             for (let i = transferState.pending.length - 1; i >= 0; i--) {
@@ -157,7 +162,7 @@
                 }
             }
             const base = prev
-                ? Object.assign({}, prev, { step: 1, search: '' })
+                ? Object.assign({}, prev, { search: '' })
                 : twfDefaultFilters();
             const seeded = Object.assign(base, twfViewPrefs);
             /* A Free Hit squad is given back after one gameweek, so judging it
@@ -528,43 +533,35 @@
             const base = twfBasePool(slotIdx);
             const blocked = twBlockedClubIds(slotIdx);
 
-            /* Quick picks does no filtering, so none of the funnel's counting
+            /* Quick picks does no filtering, so none of the funnel's work
                applies — and every survivor costs a projection, which is the
                expensive part of this screen. Branch before paying for it. */
             if (s.view === 'quick') {
                 el.innerHTML = '<div class="twf">' +
-                    twfRenderHead(slotIdx, sold, gws, base.length, base.length, base.length) +
+                    twfRenderHead(slotIdx, sold, gws) +
                     twfRenderQuick(slot, base, gws, pos, slotIdx, blocked) + '</div>';
                 if (typeof lucide !== 'undefined') lucide.createIcons();
+                if (s.search) twfRestoreSearchFocus();
                 return;
             }
 
             const clubSet = new Set(s.clubs);
-
-            // Player filters first, so a club row can report how many of its
-            // players would actually be offered rather than how many it has.
-            const afterChips = base.filter(p => twfPasses(p, s, ctx));
             const afterClubs = clubSet.size
                 ? base.filter(p => clubSet.has(p.teamId)) : base;
             const survivors = afterClubs.filter(p => twfPasses(p, s, ctx));
 
-            const head = twfRenderHead(slotIdx, sold, gws, base.length, afterClubs.length, survivors.length);
-
-            el.innerHTML = '<div class="twf">' + head +
-                (s.step === 2
-                    ? twfRenderPick(slot, survivors, gws, pos, slotIdx, blocked)
-                    : twfRenderNarrow(base, afterChips, survivors, gws, pos, blocked, ctx)) +
-                '</div>';
+            el.innerHTML = '<div class="twf">' + twfRenderHead(slotIdx, sold, gws) +
+                twfRenderCustom(slot, survivors, gws, pos, slotIdx, blocked, ctx, base) + '</div>';
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
             if (s.search) twfRestoreSearchFocus();
         }
 
-        function twfRenderHead(slotIdx, sold, gws, nBase, nClubs, nFinal) {
+        function twfRenderHead(slotIdx, sold, gws) {
             const s = twfState();
             const budget = twSlotBudget(slotIdx);
             const reserved = twReservedFor(slotIdx);
-            const span = gws.length ? `GW${gws[0]}–GW${gws[gws.length - 1]}` : 'no upcoming gameweeks';
+            const span = gws.length ? `GW${gws[0]}\u2013GW${gws[gws.length - 1]}` : 'no upcoming gameweeks';
 
             /* On a Free Hit the window is not a preference — the squad goes
                back after one gameweek, so a three-to-eight selector would be
@@ -572,22 +569,19 @@
                fixed to, and why, rather than a row of buttons that lie. */
             const fixedToOneWeek = typeof twStrategyHorizon === 'function' && twStrategyHorizon() === 1;
             const horizons = fixedToOneWeek
-                ? `<span class="twf-hz active locked" data-tooltip="A Free Hit squad is handed back after this gameweek, so every club and player here is judged over that one week rather than a five-gameweek run.">1 GW · Free Hit</span>`
+                ? `<span class="twf-hz active locked" data-tooltip="A Free Hit squad is handed back after this gameweek, so every club and player here is judged over that one week rather than a five-gameweek run.">1 GW \u00b7 Free Hit</span>`
                 : TWF_HORIZONS.map(h =>
                     `<button class="twf-hz${h === s.horizon ? ' active' : ''}" onclick="twfSetHorizon(${h})"
                         data-tooltip="Judge every club and player over the next ${h} gameweeks.">${h} GW</button>`).join('');
 
-            // The count only ever narrows, so showing all three stages makes it
-            // obvious which half of the funnel is doing the cutting.
-            const counts = `<span class="twf-count">${nBase}</span>
-                <span class="twf-count-arrow">→</span>
-                <span class="twf-count${nClubs < nBase ? ' cut' : ''}" data-tooltip="After the club filter">${nClubs}</span>
-                <span class="twf-count-arrow">→</span>
-                <span class="twf-count final${nFinal < nClubs ? ' cut' : ''}" data-tooltip="After the player filters">${nFinal}</span>`;
+            /* Two ways to answer the same question, and they are now the first
+               thing in the header rather than the second row of it.
 
-            /* Two ways to answer the same question, chosen up front rather than
-               inferred. The funnel's own steps and counts describe filtering,
-               so they only appear once there is filtering to describe. */
+               What used to lead was "Replacements for Egan" — which said, in
+               grey text, what the card immediately to the left says in his
+               club's colours with his face on it, and which could not be
+               changed without leaving the screen. The dropdown below says the
+               same thing and does something. */
             const views = `<div class="twf-views" role="tablist">
                 <button class="twf-view${s.view === 'quick' ? ' active' : ''}" role="tab" aria-selected="${s.view === 'quick'}"
                     onclick="twfSetView('quick')"
@@ -597,138 +591,64 @@
                     data-tooltip="Narrow by fixture run, minutes, form, price, ownership and set pieces, then pick from what survives.">${v2Icon('tools')} Custom search</button>
             </div>`;
 
-            /* Not "Replacements for X". On this step X is a card in his club's
-               colours in the column immediately to the left, with his face on
-               it — this said the same thing again in text, one line above the
-               thing it was describing. What is left is what the card does not
-               carry: what this slot can spend. */
-            /* The market carries the step's own navigation, because on this
-               step the market is the step: there is no separate panel header
-               above it to hold Back and Review. */
-            const allFilled = transferState.pending.length > 0
-                && transferState.pending.every(x => x.replacement);
+            const switcher = typeof twSlotSwitcherHTML === 'function' ? twSlotSwitcherHTML() : '';
+
             return `<div class="twf-head">
                 <div class="twf-head-top">
-                    <span class="twf-head-title">Replacements for <strong>${escHTML(sold.name)}</strong></span>
-                    <span class="twf-budget" ${reserved > 0 ? `data-tooltip="${escHTML(`£${reserved.toFixed(1)}m of the bank is held back so your other open slots can still be filled.`)}"` : ''}>£${budget.toFixed(1)}m${reserved > 0 ? `<em>£${reserved.toFixed(1)}m reserved</em>` : ''}</span>
-                    <span class="tw-step-nav">
-                        <button class="tw-back" onclick="twRailGo(1)" data-tooltip="Back to the plan — Single, Multi, Wildcard or Free Hit.">${v2Icon('up')} Plan</button>
-                        <button class="tw-next"${allFilled ? '' : ' disabled'} onclick="twShowSummary()"
-                            data-tooltip="${allFilled ? 'Review the finished plan' : 'Every player in the plan needs a replacement first.'}">Review plan ${v2Icon('next')}</button>
-                    </span>
+                    ${views}
+                    <span class="twf-budget" ${reserved > 0 ? `data-tooltip="${escHTML(`\u00a3${reserved.toFixed(1)}m of the bank is held back so your other open slots can still be filled.`)}"` : ''}>\u00a3${budget.toFixed(1)}m${reserved > 0 ? `<em>\u00a3${reserved.toFixed(1)}m reserved</em>` : ''}</span>
                 </div>
                 <div class="twf-head-bot">
-                    ${views}
-                    ${s.view === 'custom' ? `<div class="twf-steps">
-                        <button class="twf-step${s.step === 1 ? ' active' : ''}" onclick="twfSetStep(1)">1 · Narrow</button>
-                        <button class="twf-step${s.step === 2 ? ' active' : ''}" onclick="twfSetStep(2)">2 · Pick</button>
-                    </div>
-                    <div class="twf-counts" data-tooltip="Players in the pool, after the clubs you chose, after the player filters.">${counts}</div>` : ''}
+                    ${switcher}
                     <div class="twf-hzs" data-tooltip="Everything on this screen is judged over ${escHTML(span)}.">${horizons}</div>
                 </div>
             </div>`;
         }
 
-        /* ===== Step 1 — Narrow ===== */
+        /* ===== The run =====
 
-        function twfRenderNarrow(base, afterChips, survivors, gws, pos, blocked, ctx) {
+           This was twenty club rows, each carrying a run bar, five fixture
+           chips, a swing chip ("COV \u2191 Eases GW31"), three power indices and
+           five form letters. It was the most information on any screen in the
+           app and it was in the way of the thing it introduced: you had to
+           scroll a league table to reach the players.
+
+           The presets are what people actually used, and each one is a claim
+           the row grid was only evidence for. They stay, the grid goes, and
+           what replaces the evidence is the answer — which clubs the preset
+           just chose, by name. */
+        function twfRunSectionHTML(pos, gws) {
             const s = twfState();
 
-            // Club rows count the players that would actually be offered, which
-            // means counting them after the chips rather than before.
-            const byClub = {};
-            afterChips.forEach(p => { byClub[p.teamId] = (byClub[p.teamId] || 0) + 1; });
-
-            const runs = twfAllClubRuns(pos, gws);
-            const clubRows = runs.map(r => twfClubRowHTML(r, gws, pos, byClub[r.teamId] || 0, blocked.has(r.teamId))).join('');
-
             const presets = `
+                <button class="twf-preset${s.clubs.length ? '' : ' active'}" onclick="twfClubPreset('all')">All clubs</button>
                 <button class="twf-preset" onclick="twfClubPreset('easy')" data-tooltip="Select the six clubs with the best run over this horizon, for this position.">Easiest 6 runs</button>
                 <button class="twf-preset" onclick="twfClubPreset('swing')" data-tooltip="Select every club whose fixtures get easier partway through.">Improving swings</button>
                 <button class="twf-preset" onclick="twfClubPreset('attack')" data-tooltip="Select the eight strongest attacks.">Best attack</button>
-                <button class="twf-preset" onclick="twfClubPreset('defence')" data-tooltip="Select the eight strongest defences.">Best defence</button>
-                <button class="twf-preset${s.clubs.length ? '' : ' active'}" onclick="twfClubPreset('all')">All clubs</button>`;
+                <button class="twf-preset" onclick="twfClubPreset('defence')" data-tooltip="Select the eight strongest defences.">Best defence</button>`;
 
-            return `<div class="twf-body">
-                <div class="twf-section">
-                    <div class="twf-section-head">
-                        <span class="twf-section-title">The run — whose fixtures do you want to own?</span>
-                        <span class="twf-section-sub">${s.clubs.length ? `${s.clubs.length} club${s.clubs.length === 1 ? '' : 's'} selected` : 'every club'}</span>
-                    </div>
-                    <div class="twf-presets">${presets}</div>
-                    <div class="twf-clubs">${clubRows}</div>
-                </div>
-                ${twfRenderChips(base, survivors, ctx, pos)}
-            </div>
-            ${twfRenderFooter(survivors.length, pos)}`;
-        }
-
-        function twfClubRowHTML(r, gws, pos, count, isBlocked) {
-            const s = twfState();
-            const on = s.clubs.includes(r.teamId);
-
-            const strip = r.perGW.map(g => {
-                if (!g.fixtures.length) {
-                    return `<span class="twf-fx blank" data-tooltip="GW${g.gw} — no fixture (blank gameweek)">—</span>`;
-                }
-                return g.fixtures.map(f => `<span class="twf-fx fdr-${f.difficulty || 3}${g.fixtures.length > 1 ? ' dbl' : ''}"
-                    data-tooltip="GW${g.gw} — ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent || '?')}, difficulty ${f.difficulty || 3}">${escHTML((f.opponent || '?').slice(0, 3))}<i>${f.isHome ? 'H' : 'A'}</i></span>`).join('');
-            }).join('');
-
-            const swing = r.swing
-                ? `<span class="twf-swing ${r.swing.direction}" data-tooltip="${escHTML(`Average difficulty ${r.swing.currentFdr} over the next three, then ${r.swing.futureFdr} from GW${r.swing.swingGW}.`)}">${r.swing.direction === 'improving' ? '↑' : '↓'} ${r.swing.direction === 'improving' ? 'Eases' : 'Hardens'} GW${r.swing.swingGW}</span>`
+            /* Naming them is the whole of what the grid was for. "7 clubs
+               selected" is a number you cannot check; seven three-letter codes
+               is a claim you can disagree with, which is the point of showing
+               a filter's working at all. Each is clickable, so removing one
+               you do not want does not mean starting the preset again. */
+            const chosen = s.clubs.length
+                ? `<div class="twf-picked">${s.clubs.map(id =>
+                    `<button class="twf-picked-club" onclick="twfToggleClub(${id})"
+                        data-tooltip="${escHTML(`Drop ${(teams[id] && teams[id].name) || 'this club'} from the selection.`)}">${escHTML((teams[id] && teams[id].short_name) || '?')}<i aria-hidden="true">\u00d7</i></button>`).join('')}</div>`
                 : '';
 
-            // Position decides which power rating leads: a defender is bought for
-            // his club's defence, a forward for its attack.
-            const leadLabel = pos <= 2 ? 'Def' : 'Att';
-            const leadVal = pos <= 2 ? r.defence : r.attack;
-            const otherLabel = pos <= 2 ? 'Att' : 'Def';
-            const otherVal = pos <= 2 ? r.attack : r.defence;
-
-            const trend = (kind) => {
-                const t = kind === 'xg' ? r.xgTrend : r.xgcTrend;
-                const d = kind === 'xg' ? r.xgDelta : r.xgcDelta;
-                // No chip for "stable", and none for "not measurable yet" either.
-                if (!t || t === 'stable') return '';
-                const good = t === 'rising' || t === 'improving';
-                return `<span class="twf-trend ${good ? 'up' : 'down'}" data-tooltip="${escHTML(kind === 'xg'
-                    ? `Team xG per game is ${t} — ${d >= 0 ? '+' : ''}${d.toFixed(2)} against its season average.`
-                    : `Team xG conceded per game is ${t} — ${d >= 0 ? '+' : ''}${d.toFixed(2)} against its season average.`)}">${kind === 'xg' ? 'xG' : 'xGC'} ${good ? '▲' : '▼'}</span>`;
-            };
-
-            const formLetters = (r.last5 || []).slice(-5)
-                .map(x => `<i class="twf-r ${x.toLowerCase()}">${x}</i>`).join('');
-
-            const runTip = `${r.name} — ${r.games} match${r.games === 1 ? '' : 'es'} in ${gws.length} gameweeks, ${r.homes} at home` +
-                (r.blanks ? `, ${r.blanks} blank${r.blanks === 1 ? '' : 's'}` : '') +
-                (r.doubles ? `, ${r.doubles} double${r.doubles === 1 ? '' : 's'}` : '') +
-                `. Average difficulty ${r.avgFdr.toFixed(1)}.`;
-
-            return `<div class="twf-club${on ? ' on' : ''}${isBlocked ? ' blocked' : ''}${count ? '' : ' empty'}" onclick="twfToggleClub(${r.teamId})"
-                data-tooltip="${escHTML(isBlocked ? `You already hold three players from ${r.name} — sell one before buying a fourth.` : runTip)}">
-                <span class="twf-club-check">${on ? '✓' : ''}</span>
-                <span class="twf-club-name">${escHTML(r.short)}</span>
-                <span class="twf-club-run" data-tooltip="${escHTML(`Run quality ${Math.round(r.runScore)}/100 — opponent strength for a ${TWF_POS_SHORT[pos].toLowerCase()}, venue included, averaged over the ${gws.length} gameweeks. Blanks count as zero, doubles count twice.`)}">
-                    <span class="twf-bar"><i style="width:${Math.max(2, Math.min(100, r.runScore))}%"></i></span>
-                    <b>${Math.round(r.runScore)}</b>
-                </span>
-                <span class="twf-fxs">${strip}</span>
-                ${swing}
-                <span class="twf-club-stats">
-                    <span class="twf-ms" data-tooltip="${escHTML(`${leadLabel === 'Def' ? 'Defence' : 'Attack'} power ${leadVal}/100 — ${r.avgGoals.toFixed(1)} scored and ${r.avgConceded.toFixed(1)} conceded per game, clean sheet in ${Math.round(r.csRate * 100)}%.`)}">${leadLabel} <b>${leadVal}</b></span>
-                    <span class="twf-ms dim" data-tooltip="${escHTML(`${otherLabel === 'Def' ? 'Defence' : 'Attack'} power ${otherVal}/100.`)}">${otherLabel} <b>${otherVal}</b></span>
-                    <span class="twf-ms" data-tooltip="${escHTML(`Team form ${r.form}/100 — W${r.wins} D${r.draws} L${r.losses} in the last five.`)}">Form <b>${r.form}</b></span>
-                    ${formLetters ? `<span class="twf-form5">${formLetters}</span>` : ''}
-                    ${trend('xg')}${trend('xgc')}
-                </span>
-                <span class="twf-club-n" data-tooltip="Players from this club who pass your player filters.">${count}</span>
+            const span = gws.length ? `GW${gws[0]}\u2013GW${gws[gws.length - 1]}` : 'the gameweeks ahead';
+            return `<div class="twf-section">
+                <div class="twf-section-head">
+                    <span class="twf-section-title">The run \u2014 whose fixtures do you want to own?</span>
+                    <span class="twf-section-sub" data-tooltip="${escHTML(`Judged over ${span}, for a ${TWF_POS_SHORT[pos].toLowerCase()}.`)}">${s.clubs.length ? `${s.clubs.length} club${s.clubs.length === 1 ? '' : 's'} selected` : 'every club'}</span>
+                </div>
+                <div class="twf-presets">${presets}</div>
+                ${chosen}
             </div>`;
         }
 
-        /* The player half of step 1. Every chip carries the number that would
-           survive if it were the one active in its group, so narrowing is never
-           a guess that ends in an empty list. */
         function twfRenderChips(base, survivors, ctx, pos) {
             const s = twfState();
             const clubSet = new Set(s.clubs);
@@ -822,17 +742,19 @@
             </div>`;
         }
 
+        /* Narrowing and picking used to be two numbered steps with a "Show 13
+           players →" button between them, and the counts along the top said
+           13 → 13 → 13 whether or not anything had been cut. One screen now:
+           the filters are above the players they are filtering, so the effect
+           of a chip is the list moving rather than a number changing on a step
+           you have to press to leave. */
         function twfRenderFooter(n, pos) {
             return `<div class="twf-foot">
                 <button class="twf-back" onclick="twBackToSquad()">← Squad</button>
                 ${n === 0 ? `<span class="twf-foot-why">${escHTML(twfEmptyReason(pos))}</span>` : ''}
-                <button class="twf-go" ${n === 0 ? 'disabled' : ''} onclick="twfSetStep(2)">
-                    ${n === 0 ? 'Nothing matches' : `Show ${n} player${n === 1 ? '' : 's'} →`}
-                </button>
             </div>`;
         }
 
-        /* ===== Step 2 — Pick ===== */
 
         /* A player's projection over the horizon, broken into the components that
            produced it and the gameweeks it is spread across.
@@ -861,6 +783,39 @@
             return { total, perGW, comp };
         }
 
+        /* The five ways to rank a shortlist. One definition, used by both
+           views, so "Value" cannot mean points-per-million on one screen and
+           something else on the other. */
+        const TWF_SORTS = [
+            { v: 'xp', l: 'Best projection', tip: 'Projected points over the horizon above.' },
+            { v: 'value', l: 'Value', tip: 'Projected points per £m.' },
+            { v: 'form', l: 'Form', tip: 'Points per game over his last five appearances.' },
+            { v: 'diff', l: 'Differential', tip: 'Lowest ownership first.' },
+            { v: 'minutes', l: 'Safest minutes', tip: 'Highest chance of starting first.' }
+        ];
+
+        function twfSortRowHTML() {
+            const s = twfState();
+            return `<div class="twf-sortrow">
+                <span class="twf-group-l">Sort</span>
+                <div class="twf-chips">${TWF_SORTS.map(o =>
+                    `<button class="twf-chip${s.sort === o.v ? ' active' : ''}" onclick="twfSetSort('${o.v}')"
+                        data-tooltip="${escHTML(o.tip)}">${escHTML(o.l)}</button>`).join('')}</div>
+            </div>`;
+        }
+
+        // Sorts in place and returns the array, so both callers order a list
+        // the same way rather than each writing the comparators out again.
+        function twfApplySort(scored, sort) {
+            const facts = (x) => twfFacts(x.p);
+            if (sort === 'value') scored.sort((a, b) => (b.proj.total / b.p.price) - (a.proj.total / a.p.price));
+            else if (sort === 'form') scored.sort((a, b) => facts(b).l5ppg - facts(a).l5ppg);
+            else if (sort === 'diff') scored.sort((a, b) => a.p.ownership - b.p.ownership);
+            else if (sort === 'minutes') scored.sort((a, b) => facts(b).pStart - facts(a).pStart);
+            else scored.sort((a, b) => b.proj.total - a.proj.total);
+            return scored;
+        }
+
         /* ===== Quick picks =====
 
            Clicking Swap used to land on the funnel's first step, which asks you
@@ -873,7 +828,18 @@
            No filters are applied and none are offered: the ranking is the whole
            interface. What it does apply are the two things that are constraints
            rather than preferences — what you can afford, and who you are
-           actually allowed to buy. */
+           actually allowed to buy.
+
+           The sort is applied to a shortlist, not to the whole pool, and that
+           is the one thing worth being careful about here. Quick picks filters
+           nothing, so ranking every affordable player by lowest ownership would
+           answer "who is the most differential" with whoever nobody has heard
+           of — a £4.0m third-choice keeper, every time. Taking the strongest
+           TWF_QUICK_POOL by projection first and then re-ordering those is what
+           a manager means by "the differential one": the most differential of
+           the options actually worth having. Best projection is unaffected,
+           since ordering a list by the key it was selected on is the same
+           list. */
         function twfRenderQuick(slot, base, gws, pos, slotIdx, blocked) {
             const sold = slot.soldPlayer;
             const soldProj = twfProjection(sold, gws);
@@ -883,13 +849,14 @@
                another decision. Someone carrying a knock, or a fourth player
                from a club you already have three of, belongs in the funnel
                where the reason can be shown next to him. */
+            const s = twfState();
             const eligible = base.filter(p => p.status === 'a' && !blocked.has(p.teamId));
             const scored = eligible.map(p => {
                 const proj = twfProjection(p, gws);
                 return { p, proj, gain: Math.round((proj.total - soldProj.total) * 10) / 10 };
             }).sort((a, b) => b.proj.total - a.proj.total);
 
-            const shown = scored.slice(0, TWF_QUICK_SHOW);
+            const shown = twfApplySort(scored.slice(0, TWF_QUICK_POOL), s.sort).slice(0, TWF_QUICK_SHOW);
             const setAside = base.length - eligible.length;
 
             if (!shown.length) {
@@ -909,7 +876,10 @@
                upgrade — which is the answer to a question this screen is
                otherwise not able to give: whether to make the transfer at all.
                Left unsaid, six red numbers read as a broken market. */
-            const bestGain = shown[0].gain;
+            /* Off the projection ranking rather than off the displayed order:
+               "nothing here beats him" is a claim about the best option, and
+               under a Differential sort the top card is not it. */
+            const bestGain = scored[0].gain;
             const noUpgrade = bestGain <= 0
                 ? `<div class="twf-noupgrade">Nothing you can afford projects better than <strong>${escHTML(sold.name)}</strong> over these gameweeks — the closest is ${bestGain === 0 ? 'level with him' : `${Math.abs(bestGain).toFixed(1)} behind`}. This is a transfer worth not making unless you need the money elsewhere.</div>`
                 : '';
@@ -918,13 +888,16 @@
             // does not read as "these are the only players who exist".
             const notes = [];
             if (scored.length > shown.length) {
-                notes.push(`Showing the ${shown.length} best of ${scored.length} you can afford.`);
+                notes.push(s.sort === 'xp'
+                    ? `Showing the ${shown.length} best of ${scored.length} you can afford.`
+                    : `Showing ${shown.length} of the ${Math.min(TWF_QUICK_POOL, scored.length)} strongest options, reordered by ${TWF_SORTS.find(o => o.v === s.sort).l.toLowerCase()}. ${scored.length} are affordable in all.`);
             }
             if (setAside > 0) {
                 notes.push(`${setAside} ${setAside === 1 ? 'player is' : 'players are'} set aside as injured, doubtful, or a fourth from a club you already have three of.`);
             }
 
             return `<div class="twf-body quick">
+                ${twfSortRowHTML()}
                 <div class="twf-out" data-tooltip="Every card below is priced against this player over the same gameweeks.">
                     <span class="twf-out-l">Selling</span>
                     <span class="twf-out-name">${escHTML(sold.name)}</span>
@@ -942,7 +915,19 @@
             </div>`;
         }
 
-        function twfRenderPick(slot, survivors, gws, pos, slotIdx, blocked) {
+        /* ===== Custom search, on one screen =====
+
+           The filters and the players they filter used to be two numbered steps
+           with a button between them. Splitting them meant the effect of a chip
+           was a number changing on a step you then had to press to leave, which
+           is the slowest possible way to learn that "Nailed" cut your list to
+           three. Everything is in one column now, in the order you think in:
+           whose fixtures, what kind of player, then who that leaves.
+
+           No sort control here. It moved to Quick picks, which is where a
+           ranked shortlist is the whole answer — this list is ordered by
+           projection and narrowed by the chips above it. */
+        function twfRenderCustom(slot, survivors, gws, pos, slotIdx, blocked, ctx, base) {
             const s = twfState();
             const sold = slot.soldPlayer;
             const soldProj = twfProjection(sold, gws);
@@ -951,60 +936,36 @@
             const scored = survivors.map(p => {
                 const proj = twfProjection(p, gws);
                 return { p, proj, gain: Math.round((proj.total - soldProj.total) * 10) / 10 };
-            });
-
-            const facts = (x) => twfFacts(x.p);
-            if (s.sort === 'value') scored.sort((a, b) => (b.proj.total / b.p.price) - (a.proj.total / a.p.price));
-            else if (s.sort === 'form') scored.sort((a, b) => facts(b).l5ppg - facts(a).l5ppg);
-            else if (s.sort === 'diff') scored.sort((a, b) => a.p.ownership - b.p.ownership);
-            else if (s.sort === 'minutes') scored.sort((a, b) => facts(b).pStart - facts(a).pStart);
-            else scored.sort((a, b) => b.proj.total - a.proj.total);
+            }).sort((a, b) => b.proj.total - a.proj.total);
 
             const shown = scored.slice(0, TWF_MAX_SHOW);
-            const sorts = [
-                { v: 'xp', l: 'Best projection', tip: `Projected points over GW${gws[0]}–GW${gws[gws.length - 1]}.` },
-                { v: 'value', l: 'Value', tip: 'Projected points per £m.' },
-                { v: 'form', l: 'Form', tip: 'Points per game over his last five appearances.' },
-                { v: 'diff', l: 'Differential', tip: 'Lowest ownership first.' },
-                { v: 'minutes', l: 'Safest minutes', tip: 'Highest chance of starting first.' }
-            ].map(o => `<button class="twf-chip${s.sort === o.v ? ' active' : ''}" onclick="twfSetSort('${o.v}')" data-tooltip="${escHTML(o.tip)}">${escHTML(o.l)}</button>`).join('');
 
             const cards = shown.length
                 ? shown.map((x, i) => twfCardHTML(x, i, sold, soldProj, gws, pos, budget, blocked.has(x.p.teamId))).join('')
                 : `<div class="twf-empty">${escHTML(twfEmptyReason(pos))}
-                    <div><button class="twf-linkbtn" onclick="twfSetStep(1)">Loosen the filters</button> or <button class="twf-linkbtn" onclick="twfResetFilters()">start over</button>.</div></div>`;
+                    <div><button class="twf-linkbtn" onclick="twfResetFilters()">Reset the filters</button> or <button class="twf-linkbtn" onclick="twfSetView('quick')">see the quick picks</button>.</div></div>`;
 
             const trimmed = scored.length > shown.length
                 ? `<div class="twf-trimmed">Showing the top ${shown.length} of ${scored.length}. Narrow further to see the rest.</div>` : '';
 
-            return `<div class="twf-body pick">
-                <div class="twf-sortrow">
-                    <span class="twf-group-l">Sort</span>
-                    <div class="twf-chips">${sorts}</div>
+            return `<div class="twf-body custom">
+                ${twfRunSectionHTML(pos, gws)}
+                ${twfRenderChips(base, survivors, ctx, pos)}
+                <div class="twf-results">
+                    <div class="twf-section-head">
+                        <span class="twf-section-title">Who that leaves</span>
+                        <span class="twf-section-sub">${scored.length} player${scored.length === 1 ? '' : 's'} match${scored.length === 1 ? 'es' : ''}</span>
+                    </div>
+                    <div class="twf-out" data-tooltip="Every card below is priced against this player over the same gameweeks.">
+                        <span class="twf-out-l">Selling</span>
+                        <span class="twf-out-name">${escHTML(sold.name)}</span>
+                        <span class="twf-out-sub">${escHTML(sold.team)} · £${(sold.sellPrice || sold.price).toFixed(1)}m</span>
+                        <span class="twf-out-xp">${soldProj.total.toFixed(1)}<i>xP</i></span>
+                    </div>
+                    ${cards}${trimmed}
                 </div>
-                ${/* The search lived on step 1 only, which is the step for
-                      narrowing by club and shape. Step 2 is where you are
-                      looking AT the players, and "is he in here?" is the
-                      question you have on this screen — the filter already
-                      existed, it just had nowhere to be typed. */''}
-                <div class="twf-searchrow twf-searchrow-pick">
-                    <input class="twf-search" type="text" placeholder="Search by name\u2026"
-                        value="${escHTML(s.search)}" oninput="twfSearch(this.value)"
-                        aria-label="Search candidates by name">
-                    ${s.search ? `<button class="twf-linkbtn" onclick="twfSearch('')">Clear</button>` : ''}
-                </div>
-                <div class="twf-out" data-tooltip="Every card below is priced against this player over the same gameweeks.">
-                    <span class="twf-out-l">Selling</span>
-                    <span class="twf-out-name">${escHTML(sold.name)}</span>
-                    <span class="twf-out-sub">${escHTML(sold.team)} · £${(sold.sellPrice || sold.price).toFixed(1)}m</span>
-                    <span class="twf-out-xp">${soldProj.total.toFixed(1)}<i>xP</i></span>
-                </div>
-                ${cards}${trimmed}
             </div>
-            <div class="twf-foot">
-                <button class="twf-back" onclick="twfSetStep(1)">← Filters</button>
-                <button class="twf-back" onclick="twBackToSquad()">Squad</button>
-            </div>`;
+            ${twfRenderFooter(scored.length, pos)}`;
         }
 
         function twfCardHTML(x, i, sold, soldProj, gws, pos, budget, clubFull) {
@@ -1185,18 +1146,9 @@
 
         /* ===== Actions ===== */
 
-        function twfSetStep(n) {
-            twfState().step = n;
-            twfRerender();
-        }
-
-        /* Switching view lands you on the funnel's first step rather than
-           wherever you last left it, so "Custom search" always opens on the
-           filters it is offering to run. */
         function twfSetView(view) {
             const s = twfState();
             s.view = view;
-            if (view === 'custom' && s.step !== 2) s.step = 1;
             twfViewPrefs.view = view;
             twfRerender();
         }
@@ -1251,7 +1203,7 @@
 
         function twfResetFilters() {
             const s = twfState();
-            const keep = { step: s.step, horizon: s.horizon, sort: s.sort };
+            const keep = { horizon: s.horizon, sort: s.sort };
             // In place: the filters may belong to a slot rather than to
             // transferState, and reassigning there would reset the wrong one.
             Object.assign(s, twfDefaultFilters(), keep);
