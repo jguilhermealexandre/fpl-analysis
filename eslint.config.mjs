@@ -1796,6 +1796,26 @@ export default [
             globals: { ...globals.node, document: 'readonly', window: 'readonly' }
         }
     },
+    /* Cloudflare Pages Functions — the paywall's edge middleware and the pure
+       list it consults. Modules, and the only runtime globals they may reach for
+       are the request/response primitives the Workers runtime provides. Listed
+       explicitly for the same reason the Workers block below is: a Function
+       reaching for localStorage or document is a deploy-time error here rather
+       than a 500 nobody sees. */
+    {
+        files: ['functions/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'module',
+            globals: {
+                Response: 'readonly', Request: 'readonly', Headers: 'readonly',
+                URL: 'readonly', URLSearchParams: 'readonly', fetch: 'readonly',
+                crypto: 'readonly', console: 'readonly', atob: 'readonly', btoa: 'readonly',
+                TextEncoder: 'readonly', TextDecoder: 'readonly'
+            }
+        },
+        rules: { 'no-undef': 'error' }
+    },
     /* Cloudflare Workers. Neither browser nor Node: no window and no document,
        but Web Crypto, fetch and the URL parser are all present. Listed
        explicitly rather than reusing globals.browser, so that a Worker reaching
