@@ -5426,7 +5426,9 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    the same place. Its rules are gone rather than left behind unused.
 
    Full profile — side by side and always open, now that the comparison is the
-   full width of the page rather than one of two columns. */
+   full width of the page rather than one of two columns. The .twh-deep rules
+   below are the fallback layout; the grid that actually renders is .twh-pair,
+   further down. */
 /* ----- Scout's take, on both of them at once -----
 
    Lifted out of the two profile columns and set side by side, because prose
@@ -5458,6 +5460,76 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twh-scout-tag.out { background: color-mix(in srgb, var(--verdict-sell) 16%, transparent); color: var(--verdict-sell); }
 .twh-scout-tag.in { background: color-mix(in srgb, var(--color-primary) 16%, transparent); color: var(--color-primary); }
 .twh-scout-text { margin: 0; font-size: 12px; line-height: 1.65; color: var(--text-secondary); }
+
+/* ----- The paired profiles -----
+
+   A real comparison grid. Every section is its own grid item, so a row is as
+   tall as the taller of its two cells and both sides start at the same line —
+   which is the whole fix. The two columns used to be two independent stacks,
+   and a stack drifts: one extra paragraph on the left and everything below it
+   on that side sits lower than its opposite number for the rest of the page.
+
+   The pairing itself is not a CSS problem and is not solved here. Sections are
+   matched by heading in twPairedProfilesHTML(), because the nth section on the
+   left is often not the nth on the right. See the comment there.
+
+   Below 1000px there is no second column to align to, so the cells run in one
+   stream and each section's two versions land next to each other instead. */
+.twh-pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px 16px;
+    margin-bottom: 10px;
+    align-items: stretch;
+}
+@media (max-width: 1000px) { .twh-pair { grid-template-columns: minmax(0, 1fr); } }
+
+.twh-pair-head {
+    position: sticky; top: 0; z-index: 3;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    box-shadow: 0 1px 0 var(--border-default);
+    font-family: var(--font-display); font-size: 12.5px; font-weight: 700;
+    color: var(--text-primary);
+}
+.twh-pair-head.in { color: var(--color-primary); }
+
+.twh-pair-cell {
+    min-width: 0;
+    padding: 11px 13px;
+    border: 1px solid var(--border-subtle); border-left-width: 3px;
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+}
+.twh-pair-cell.out { border-left-color: var(--verdict-sell); }
+.twh-pair-cell.in { border-left-color: var(--color-primary); }
+
+/* Sections space themselves for a stack. Inside a grid cell the gap does it,
+   and a trailing margin would only pad the bottom of every card unevenly. */
+.twh-pair-cell .detail-section { margin-bottom: 0; }
+.twh-pair-cell .detail-section + .detail-section { margin-top: 14px; }
+
+/* A group heading — Player, Team, Opponents — is a row like any other, which
+   is what keeps the two sides from ever disagreeing about where a band starts.
+   It carries the club name, so the two cells genuinely differ. */
+.twh-pair-cell.is-head {
+    padding: 7px 12px;
+    background: var(--surface-3); border-color: transparent;
+    border-left-color: var(--border-emphasis);
+}
+.twh-pair-cell.is-head .pd-group-title { margin: 0; }
+
+/* One side has this heading and the other does not — most often Concerns or
+   Positives, which are only emitted when there are any. Saying so is the
+   point: an empty cell reads as a rendering fault, and "no concerns" is a
+   fact worth having next to a list of them. */
+.twh-pair-cell.is-blank {
+    display: flex; align-items: center;
+    border-style: dashed; border-left-style: dashed; border-left-color: var(--border-subtle);
+    background: transparent;
+    font-size: 11px; line-height: 1.5; color: var(--text-muted);
+}
 
 .twh-deep { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 10px; }
 @media (max-width: 1000px) { .twh-deep { grid-template-columns: minmax(0, 1fr); } }

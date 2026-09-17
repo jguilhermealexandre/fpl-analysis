@@ -1682,6 +1682,116 @@
             };
         }
 
+        /* ===== Pairing the two profiles, row for row =====
+
+           The two full profiles were two independent stacks in a two-column
+           grid, so each section began wherever the one above it happened to
+           end. Season Numbers sat level with Upcoming Fixtures, and the
+           columns drifted further apart the further down you read — which is
+           the opposite of what a comparison is for.
+
+           Aligning them by INDEX would be wrong, and worse than the drift.
+           Concerns and Positives are only emitted when there are any, and the
+           sold player's profile carries a recommendation the candidate's does
+           not, so the nth section on the left is routinely not the nth on the
+           right. Index alignment would line "Concerns" up against "Positives"
+           and look deliberate about it.
+
+           So they pair by identity. Each section is keyed on its own title,
+           normalised — the trailing count in "Concerns (3)" and everything
+           after the dash in "Season Numbers — Attacking" are per-player and
+           come off — and one grid row holds the two cells with the same key.
+           Row height is the taller of the two, which is what locks the levels.
+           A section only one of them has gets a row with a stated blank.
+
+           Read out of the DOM rather than off the string. buildPlayerFullProfileHTML
+           returns one block of HTML and splitting that with a regular
+           expression would be a parser written badly; the browser has one. */
+        function twSectionKey(text) {
+            return String(text || '')
+                .replace(/\(\d+\)\s*$/, '')      // Concerns (3)
+                .split(/[\u2014\u2013]/)[0]        // Season Numbers — Attacking
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toLowerCase();
+        }
+
+        /* One profile, flattened into keyed blocks in the order it renders.
+
+           Returns null rather than a partial answer if the shape is not what
+           it expects. That guard is the point: if the profile grows a section
+           outside a .pd-group, pairing would silently drop it, and a
+           comparison quietly missing a section is worse than one whose
+           columns do not line up. The caller falls back to the old layout. */
+        function twProfileBlocks(html) {
+            if (!html || typeof document === 'undefined' || !document.createElement) return null;
+            const box = document.createElement('div');
+            box.innerHTML = html;
+            if (!box.querySelectorAll) return null;
+
+            const blocks = [];
+            const groups = box.querySelectorAll('.pd-group');
+            if (!groups || !groups.length) return null;
+
+            let counted = 0;
+            for (const group of groups) {
+                const gTitle = group.querySelector('.pd-group-title');
+                if (gTitle) {
+                    blocks.push({ key: 'group:' + twSectionKey(gTitle.textContent), html: gTitle.outerHTML, head: true });
+                }
+                for (const sec of group.querySelectorAll('.detail-section')) {
+                    // Only the group's own sections, never one nested inside another.
+                    if (sec.parentElement !== group) continue;
+                    const t = sec.querySelector('.detail-section-title');
+                    blocks.push({ key: 'sec:' + (twSectionKey(t && t.textContent) || String(counted)), html: sec.outerHTML });
+                    counted++;
+                }
+            }
+
+            // Every section the profile produced has to have been placed.
+            const total = box.querySelectorAll('.detail-section').length;
+            if (counted !== total) return null;
+            return blocks;
+        }
+
+        function twPairedProfilesHTML(outHTML, inHTML, sold, cand) {
+            const a = twProfileBlocks(outHTML);
+            const b = twProfileBlocks(inHTML);
+            if (!a || !b) return null;
+
+            // Queued per key so a profile carrying the same key twice pairs
+            // them in the order they appeared rather than reusing one.
+            const right = new Map();
+            b.forEach(x => {
+                if (!right.has(x.key)) right.set(x.key, []);
+                right.get(x.key).push(x);
+            });
+
+            const blank = (name) => `<div class="twh-pair-cell is-blank">Nothing under this heading for ${escHTML(name)}.</div>`;
+            const cell = (block, side) => `<div class="twh-pair-cell ${side}${block.head ? ' is-head' : ''}">${block.html}</div>`;
+
+            let rows = '';
+            for (const left of a) {
+                const queue = right.get(left.key);
+                const match = queue && queue.length ? queue.shift() : null;
+                rows += cell(left, 'out') + (match ? cell(match, 'in') : blank(cand.name));
+            }
+            // Anything the candidate has that the sold player does not, kept in
+            // its own order at the end rather than dropped.
+            for (const leftover of b) {
+                const queue = right.get(leftover.key);
+                if (!queue || !queue.includes(leftover)) continue;
+                queue.splice(queue.indexOf(leftover), 1);
+                rows += blank(sold.name) + cell(leftover, 'in');
+            }
+
+            return `<div class="twh-pair">
+                <div class="twh-pair-head out">OUT \u00b7 ${escHTML(sold.name)}</div>
+                <div class="twh-pair-head in">IN \u00b7 ${escHTML(cand.name)}</div>
+                ${rows}
+            </div>`;
+        }
+
         function renderTWComparison(el) {
             const slotIdx = transferState.activeSlot;
             const slot = transferState.pending[slotIdx];
@@ -1864,7 +1974,13 @@
                          comparison having decided — that is what makes it a
                          comparison — and what the toggle actually did was hide
                          the evidence and leave five stat rows standing in for
-                         it. Open. -->
+                         it. Open, and paired heading by heading.
+
+                         The two-column fallback below is what renders if
+                         twPairedProfilesHTML cannot account for every section
+                         it found. Unaligned is a worse comparison; missing a
+                         section is a wrong one. -->
+                    ${twPairedProfilesHTML(soldProfile, candProfile, sold, cand) || `
                     <div class="twh-deep">
                         <div class="twh-deep-col out">
                             <div class="twh-deep-col-head out">OUT · ${escHTML(sold.name)}</div>
@@ -1874,7 +1990,7 @@
                             <div class="twh-deep-col-head in">IN · ${escHTML(cand.name)}</div>
                             ${candProfile}
                         </div>
-                    </div>
+                    </div>`}
 
                 </div>
             </div>`;
