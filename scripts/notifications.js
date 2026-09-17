@@ -83,7 +83,11 @@
         function ntInjuryUrls(injuries) {
             const urls = [];
             (injuries || []).forEach(r => {
-                if (r && r.url && urls.indexOf(r.url) < 0) urls.push(r.url);
+                // Same rejection the diff applies, so the two sets agree. Record a
+                // rejected article anyway and it would sit in the snapshot as
+                // "seen" — harmless — but leave it out of both and a later
+                // re-classification still behaves.
+                if (r && r.url && r.injuryArticle !== false && urls.indexOf(r.url) < 0) urls.push(r.url);
             });
             return urls;
         }
@@ -207,7 +211,14 @@
                this feature; treating that as "seen nothing" would fire every
                standing story at once, so it is treated as "seen everything" and
                the next visit starts clean. */
-            const injRows = (c.injuries || []).filter(r => r && r.url && byId[r.playerId]);
+            /* injuryArticle === false is the scrape's verdict that the club
+               article is a match report, a line-up or a press conference rather
+               than news about who is fit. Interrupting someone for a press
+               conference is exactly how a notification channel gets turned off.
+               null — an article we could not read — still counts: the table's own
+               fact about their player is the thing worth telling them. */
+            const injRows = (c.injuries || [])
+                .filter(r => r && r.url && r.injuryArticle !== false && byId[r.playerId]);
             if (injRows.length) {
                 const seen = new Set(prev.inj || ntInjuryUrls(c.injuries));
                 const byUrl = new Map();

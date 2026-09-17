@@ -122,6 +122,37 @@ export function looksMisaligned(items) {
         : null;
 }
 
+/* Is this article actually about who is fit?
+
+   The table's "Latest" link is whatever the club most recently published that
+   its editors thought relevant, and that is often not an injury story at all.
+   Across one real scrape of 45 articles it included a match report ("Leeds
+   United 4 Newcastle United 1"), two confirmed line-ups, a pre-match press
+   conference, a piece about a training camp, and one whose entire title was
+   "Newcastle United".
+
+   Judged here rather than on the page, for the same reason the player id is:
+   the push Worker has to make the same call, and a notification about a
+   training camp is worse than the card is.
+
+   Two passes. Anything that is plainly another kind of article is out, and what
+   remains has to say something about fitness to stay in. Deliberately the way
+   round that errs towards dropping: a missed injury story is a card the reader
+   does not see, while a press conference in an injury feed is the feed lying
+   about what it is.
+
+   A title we never managed to read is null, not false — unknown, not rejected.
+   Those rows still carry the table's own facts, which are what the card falls
+   back to. */
+const INJ_NOT_NEWS = /\bconfi?rmed\s+line-?up\b|\bline-?ups?\b|\bpress\s+conference\b|\btraining\s+camp\b|\bhighlights\b|\bmatch\s+report\b|\breport\b|\b\d+\s*-\s*\d+\b|\b\w+\s+\d+\s+\w+.*\s+\d+\s*\|/i;
+const INJ_IS_NEWS = /injur|fitness|\bteam\s*news\b|\bsquad\s*news\b|\bruled\s+out\b|\bsidelined\b|\bsurgery\b|\bsetback\b|\bscan\b|\bdoubt|\breturn|\bcomeback\b|\brecover|\bavailab|\babsent\b|\bmiss\b|\bmisses\b|\bout\s+of\b|\bback\b|\bupdate|\blatest\b|\bfit\b|\bunavailab/i;
+
+export function looksLikeInjuryNews(title) {
+    if (!title) return null;
+    if (INJ_NOT_NEWS.test(title)) return false;
+    return INJ_IS_NEWS.test(title);
+}
+
 /* Which FPL player is this row about?
 
    Resolved here, once, rather than in every consumer. The page needs it to mark
@@ -428,6 +459,8 @@ const items = sortItems(scraped.map(r => {
         injury: r.injury,
         url: r.url,
         articleTitle: meta?.title || null,
+        /* true, false, or null when the article could not be read at all. */
+        injuryArticle: looksLikeInjuryNews(meta?.title || null),
         published: meta?.published || null,
         firstSeen: r.url ? firstSeenFor(r.url) : nowIso,
         /* The FPL element this row is about, decided once here so the page and
@@ -442,6 +475,13 @@ const items = sortItems(scraped.map(r => {
 
 const resolved = items.filter(i => i.playerId != null).length;
 console.log(`${resolved} of ${items.length} rows resolved to an FPL player`);
+const kinds = items.reduce((a, i) => {
+    const k = i.injuryArticle === true ? 'injury news'
+        : i.injuryArticle === false ? 'something else' : 'unreadable';
+    a[k] = (a[k] || 0) + 1;
+    return a;
+}, {});
+console.log('article kinds: ' + JSON.stringify(kinds));
 
 const slipped = looksMisaligned(items);
 if (slipped) {

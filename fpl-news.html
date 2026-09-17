@@ -52,9 +52,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=264">
-    <link rel="stylesheet" href="styles/v2-design.css?v=264">
-    <link rel="stylesheet" href="styles/responsive.css?v=264">
+    <link rel="stylesheet" href="styles/common.css?v=265">
+    <link rel="stylesheet" href="styles/v2-design.css?v=265">
+    <link rel="stylesheet" href="styles/responsive.css?v=265">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -1041,13 +1041,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=264"></script>
-    <script src="scripts/common.js?v=264"></script>
+    <script src="scripts/error-monitor.js?v=265"></script>
+    <script src="scripts/common.js?v=265"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=264"></script>
-    <script src="scripts/notifications.js?v=264"></script>
-    <script src="scripts/sidebar-nav.js?v=264"></script>
+    <script src="scripts/push-alerts.js?v=265"></script>
+    <script src="scripts/notifications.js?v=265"></script>
+    <script src="scripts/sidebar-nav.js?v=265"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1611,6 +1611,39 @@
                 }
             }
 
+            /* Dated news first, then the rest.
+
+               Sorting on sortAt alone got this wrong. sortAt falls back to
+               firstSeen, which is the moment of the scrape and so newer than any
+               real publication date — every undated story climbed above genuine
+               news, and in one scrape 27 of them shared a single timestamp and
+               came out in arbitrary order. What the club dated leads; what we
+               merely saw follows. */
+            function injuryOrder(a, b) {
+                if (a.timestamp && b.timestamp) return new Date(b.timestamp) - new Date(a.timestamp);
+                if (a.timestamp) return -1;
+                if (b.timestamp) return 1;
+                return new Date(b.sortAt || 0) - new Date(a.sortAt || 0);
+            }
+
+            /* One story per club, newest first, capped.
+
+               Newcastle had five articles in a single scrape and Brighton five; a
+               section of ten that spends half of itself on two clubs is not a
+               league-wide injury feed, which is what a reader opening it expects.
+               Each club keeps its best: something it actually wrote over a row we
+               can only describe from the table, and the newer of those. */
+            function injuryFeedFrom(items, cap) {
+                const best = new Map();
+                [...items]
+                    .sort((a, b) => (Number(b.fromClubArticle) - Number(a.fromClubArticle)) || injuryOrder(a, b))
+                    .forEach(it => {
+                        const key = it.clubId != null ? `id:${it.clubId}` : `name:${it.source || ''}`;
+                        if (!best.has(key)) best.set(key, it);
+                    });
+                return [...best.values()].sort(injuryOrder).slice(0, cap);
+            }
+
             /* The injury table is a list of players; the news is the article behind
                them. One club update usually covers several — "Arteta's update on
                White, Mosquera and Timber" is one story about three — so rows are
@@ -1626,6 +1659,14 @@
                 const byUrl = new Map();
                 for (const r of rows) {
                     if (!r.url || !r.player) continue;
+                    /* The scrape reads the club article and says whether it is
+                       about who is fit. false is a match report, a confirmed
+                       line-up, a press conference — the table links to whatever
+                       the club last published, which is often none of our
+                       business. null is an article we could not read at all, and
+                       that is not a reason to throw the row away: the table's own
+                       facts about the player are still true. */
+                    if (r.injuryArticle === false) continue;
                     if (!byUrl.has(r.url)) byUrl.set(r.url, []);
                     byUrl.get(r.url).push(r);
                 }
@@ -1634,11 +1675,22 @@
                     const first = group[0];
                     const club = first.club || '';
                     const who = group.map(r => r.injury ? `${r.player} (${r.injury})` : r.player).join(', ');
+                    /* Two thirds of club sites refuse the fetch, so there is no
+                       headline to print. "Aston Villa injury update" was the old
+                       fallback and it says nothing — three of them in a row was
+                       what made the section look broken. The players and what is
+                       wrong with them is the one thing we do know, off the
+                       Premier League's own table, so that becomes the headline
+                       and the card says where it came from. */
+                    const titled = !!first.articleTitle;
                     out.push({
                         category: 'injury',
                         categoryLabel: 'Injury news',
-                        headline: first.articleTitle || `${club} injury update`,
-                        detail: club ? `${club} \u00b7 ${who}` : who,
+                        fromClubArticle: titled,
+                        headline: titled ? first.articleTitle : who,
+                        detail: titled
+                            ? (club ? `${club} \u00b7 ${who}` : who)
+                            : `${club ? club + ' \u00b7 ' : ''}listed on the Premier League's injury table`,
                         link: url,
                         thumbnail: null,
                         source: club,
@@ -1797,9 +1849,8 @@
                         it.sortWeight = 60;
                     }
                 });
-                injuryItems.sort((a, b) =>
-                    new Date(b.sortAt || b.timestamp || 0) - new Date(a.sortAt || a.timestamp || 0));
-                const injuryFeed = injuryItems.slice(0, INJURY_CAP);
+
+                const injuryFeed = injuryFeedFrom(injuryItems, INJURY_CAP);
 
                 function getCTAForCategory(item) {
                     const posShort = posShortNames[item.player?.position] || '';

@@ -20,7 +20,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { cleanUrl, publishedFrom, titleFrom, buildClubMap, sortItems, decodeEntities, looksMisaligned, carryFirstSeen }
+import { cleanUrl, publishedFrom, titleFrom, buildClubMap, sortItems, decodeEntities, looksMisaligned, carryFirstSeen, looksLikeInjuryNews }
     from '../tools/fetch-pl-injuries.mjs';
 
 // The real link behind "Ben White / Knock / Details".
@@ -180,4 +180,56 @@ test('a first run has nothing to carry', () => {
     assert.equal(carryFirstSeen(null, now)('https://a.com/x'), now);
     // A stored row with no firstSeen must not poison the map with undefined.
     assert.equal(carryFirstSeen([{ url: 'https://a.com/x' }], now)('https://a.com/x'), now);
+});
+
+/* Is the club article actually about who is fit?
+
+   The table's "Latest" link is whatever the club most recently published that
+   its editors thought relevant, which is frequently not an injury story. Every
+   title below is real, taken from one scrape of 45 articles, and that scrape is
+   what the section looked like before this existed: Newcastle filled five slots
+   with a match report, two confirmed line-ups and its own name, and Brighton
+   filled another with a training camp and a press conference.
+
+   The rule errs towards dropping. A missed injury story is a card nobody sees;
+   a press conference in an injury feed is the feed lying about what it is. */
+
+test('the articles that are plainly something else are rejected', () => {
+    for (const title of [
+        'Leeds United 4 Newcastle United 1 | NUFC',
+        'Confirmed line-up: Fernandez-Pardo makes full debut at ... | NUFC',
+        'Confimed line-up: Opening-day debuts for Horn\u00ed\u010dek, Dedi... | NUFC',
+        'Fabian Hurzeler reflects on a successful training camp',
+        'Chelsea v Brighton | H\u00fcrzeler pre-match press conference',
+        'Newcastle United'
+    ]) {
+        assert.equal(looksLikeInjuryNews(title), false, title);
+    }
+});
+
+test('the real injury stories all survive', () => {
+    for (const title of [
+        "Arteta's update on White, Mosquera and Timber",
+        'Bournemouth v Brentford Premier League team news: Nathan Collins injury update | Brentford FC',
+        'Team News: Sage hints at possible Sarr & Nketiah returns',
+        'Team News: Sess to miss West Ham clash',
+        'MIDFIELD DUO UNDERGO SURGERY',
+        "Daniel Farke provides update on duo's fitness ahead of Newcastle - Leeds United",
+        'Fitness latest: Joe Gomez to return, update on Conor Bradley - Liverpool FC',
+        'Maresca provides injury update and team news ahead of Canaries clash',
+        'Team news | Mudryk injured, Kulusevski still out',
+        'Leeds team news: Andres available, Azeez ruled out'
+    ]) {
+        assert.equal(looksLikeInjuryNews(title), true, title);
+    }
+});
+
+test('an article that could not be read is unknown, not rejected', () => {
+    /* Two thirds of club sites refuse the fetch. Those rows still carry the
+       Premier League's own facts about the player, which is what the card falls
+       back to — so null has to stay distinguishable from false, which means the
+       article was read and was something else. */
+    assert.equal(looksLikeInjuryNews(null), null);
+    assert.equal(looksLikeInjuryNews(''), null);
+    assert.equal(looksLikeInjuryNews(undefined), null);
 });

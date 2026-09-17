@@ -149,6 +149,11 @@ async function runSchedule(env) {
         const inj = await fetchJSON(INJURIES);
         for (const row of inj.items || []) {
             if (!row || !row.url || row.playerId == null) continue;
+            /* The scrape's verdict on the club article. false is a match report,
+               a confirmed line-up or a press conference — the table links to
+               whatever the club last published. Push is an interruption, and one
+               about a training camp is how this channel gets switched off. */
+            if (row.injuryArticle === false) continue;
             if (!injuriesByPlayer.has(row.playerId)) injuriesByPlayer.set(row.playerId, []);
             injuriesByPlayer.get(row.playerId).push(row);
         }
