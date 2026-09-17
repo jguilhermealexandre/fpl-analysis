@@ -183,9 +183,22 @@
             /* --- transfer: the recommended move leads its column because it is
                the only row that proposes a fix rather than reporting a symptom.
                A settled Hold counts as clear: deciding not to transfer is a
-               decision, and the panel should stop asking about it. */
+               decision, and the panel should stop asking about it.
+
+               Gated on somebody actually being rated Sell. The recommender will
+               always find SOME move worth a fraction of a point, so ungated
+               this row never went away — a permanent open item on a checklist
+               whose whole purpose is reaching zero. A squad with nobody to sell
+               is a squad that does not need a transfer, whatever the margin
+               says, and Watch, Essential, Hold and Monitor are all ratings that
+               mean "keep him". Only Sell opens this.
+
+               The row still reports the recommended MOVE rather than the sell
+               verdict — the 'sell' check below names the players. This one is
+               about what to do, and it appears once there is something to do. */
             const rec = c.transferRec;
-            if (rec && rec.best && rec.best.n > 0) {
+            const anySell = analysisResults.some(a => a && a.verdict === 'sell');
+            if (anySell && rec && rec.best && rec.best.n > 0) {
                 const b = rec.best;
                 const span = `GW${rec.gws[0]}–GW${rec.gws[rec.gws.length - 1]}`;
                 const moves = b.moves || [];

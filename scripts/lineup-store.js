@@ -107,6 +107,64 @@
             try { localStorage.removeItem(LS_STORE); } catch (e) { /* private mode */ }
         }
 
+/* An arrangement laid over a squad built from the picks endpoint.
+ *
+ * The dashboard needs this and cannot use lsApply(): that one works on the
+ * Lineup Wizard's state object, with its own xi/bench arrays and an `excluded`
+ * set. Here there is one flat list of players carrying pickPosition, isCaptain
+ * and isViceCaptain, which is the shape every readiness check reads.
+ *
+ * Mutates in place and returns whether it did anything, so a caller can tell
+ * "no saved arrangement" from "restored". Discarded whole unless eleven
+ * starters resolve, for the same reason lsApply refuses a short eleven: a
+ * half-applied lineup looks exactly like a deliberate one.
+ *
+ * Nothing is written back to storage. Reading a decision is not making one. */
+        function lsApplyToSquad(squad, arrangement) {
+            if (!Array.isArray(squad) || !squad.length || !arrangement) return false;
+            if (!Array.isArray(arrangement.xi)) return false;
+
+            const byId = new Map(squad.map(p => [p.id, p]));
+            const xi = arrangement.xi.filter(id => byId.has(id));
+            if (xi.length !== 11) return false;
+
+            const xiSet = new Set(xi);
+            const bench = (arrangement.bench || []).filter(id => byId.has(id) && !xiSet.has(id));
+            const seen = new Set(bench);
+            const rest = squad.filter(p => !xiSet.has(p.id) && !seen.has(p.id)).map(p => p.id);
+            const order = bench.concat(rest);
+
+            xi.forEach((id, i) => { byId.get(id).pickPosition = i + 1; });
+            order.forEach((id, i) => { byId.get(id).pickPosition = 12 + i; });
+
+            /* The armband only counts on someone who is starting. An arrangement
+               that names a benched captain is not one FPL would honour, and
+               leaving the flag on would have the dashboard reporting an armband
+               that pays nothing. */
+            const cap = xiSet.has(arrangement.captain) ? arrangement.captain : null;
+            const vice = xiSet.has(arrangement.vice) && arrangement.vice !== cap ? arrangement.vice : null;
+            squad.forEach(p => {
+                p.isCaptain = p.id === cap;
+                p.isViceCaptain = p.id === vice;
+                // Both spellings are in use across the pages that read a squad.
+                p.isVice = p.isViceCaptain;
+                p.onBench = !xiSet.has(p.id);
+                p.multiplier = p.isCaptain ? 2 : (p.onBench ? 0 : 1);
+            });
+            return true;
+        }
+
+        /* The two steps a caller almost always wants together: find this team's
+           saved arrangement for this gameweek, and lay it over the squad. */
+        function applySavedArrangement(squad, gw) {
+            if (!Array.isArray(squad) || !squad.length || gw == null) return false;
+            let teamId = null;
+            try { teamId = localStorage.getItem('fpl_team_id'); } catch (e) { return false; }
+            if (!teamId) return false;
+            const saved = lsLoad(teamId, gw);
+            return saved ? lsApplyToSquad(squad, saved) : false;
+        }
+
         // Whether two arrangements are the same decision, so an undo button is
         // not offered for a change that did not change anything.
         function lsSame(a, b) {

@@ -315,6 +315,19 @@
          * the only way to end up with no captain — and that is a legitimate
          * state to be in halfway through deciding.
          */
+        /* The armband, from the table.
+         *
+         * This used to write isCaptain straight onto analysisResults and save
+         * from there, while the pitch above kept its own snapshotCaptainId. Two
+         * states for one decision: change it here and the pitch went on showing
+         * the old armband until the page was reloaded, and changing it there
+         * never reached this table at all.
+         *
+         * The pitch's state is the one the whole page is arranged around — it
+         * decides who is in the eleven, and the armband has to be inside it —
+         * so this defers to setSnapshotCaptain/setSnapshotVice, which commit,
+         * persist and redraw both views together. The direct write stays as the
+         * fallback for a page where the pitch is not loaded. */
         function sqSetArmband(playerId, role) {
             if (typeof analysisResults === 'undefined' || !Array.isArray(analysisResults)) return;
             const target = analysisResults.find(a => a.player.id === playerId);
@@ -324,12 +337,31 @@
             const other = role === 'vice' ? 'isCaptain' : 'isVice';
             const hadIt = !!target.player[key];
 
+            const setter = role === 'vice' ? 'setSnapshotVice' : 'setSnapshotCaptain';
+            if (!hadIt && typeof window[setter] === 'function') {
+                window[setter](playerId);
+                return;
+            }
+
             // One armband of each kind in a squad.
             analysisResults.forEach(a => { a.player[key] = false; });
             if (!hadIt) {
                 target.player[key] = true;
                 // Nobody is both, so taking one role gives up the other.
                 target.player[other] = false;
+            }
+
+            /* Taking an armband OFF leaves nobody holding it, which is not a
+               state FPL allows at a deadline. reconcileArmbands() hands it to
+               the best available starter and the pitch redraws with it; without
+               the pitch, the save below is still the honest record of what this
+               table now shows. */
+            if (typeof reconcileArmbands === 'function' && typeof snapshotCommit === 'function') {
+                if (typeof snapshotCaptainId !== 'undefined' && role !== 'vice') snapshotCaptainId = null;
+                if (typeof snapshotViceId !== 'undefined' && role === 'vice') snapshotViceId = null;
+                reconcileArmbands();
+                snapshotCommit();
+                return;
             }
 
             sqPersistArmbands();

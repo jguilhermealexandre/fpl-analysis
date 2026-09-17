@@ -72,7 +72,15 @@ export const PREMIUM_SCRIPTS = Object.freeze([
     '/scripts/transfer-rationale.js',
     // Lineup Wizard
     '/scripts/lineup-wizard.js',
-    '/scripts/lineup-store.js',
+    /* lineup-store.js is NOT here, and that is the interesting entry.
+     *
+     * It is not a feature. It is twenty lines of localStorage plus pure
+     * functions over an arrangement, and the free dashboard now reads it — the
+     * armband warnings there have to agree with the choice made on Squad
+     * Analysis, and they cannot if the reader of that choice is behind the
+     * paywall. Gating the store would not protect the Lineup Wizard, which is
+     * gated on its own file; it would only stop the dashboard knowing who the
+     * captain is. */
     // GW Draft
     '/scripts/draft-planner.js'
 ]);

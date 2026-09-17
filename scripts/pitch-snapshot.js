@@ -49,6 +49,76 @@
             snapshotCaptainId = capA ? capA.player.id : null;
             snapshotViceId = viceA ? viceA.player.id : null;
             snapshotInitialized = true;
+            /* Then the manager's own arrangement over the top, if there is one
+               for this team and this gameweek. The seed above is what FPL says
+               you picked; this is what you decided since, and it has to win or
+               every swap and armband on this page is undone by a refresh. */
+            snapshotRestore();
+        }
+
+        /* ===== Remembering what was arranged here =====
+         *
+         * Everything on this pitch used to be a fact about the current render.
+         * Drag a player, move the armband, refresh — gone, with no way to tell
+         * a choice that had been made from one that never had.
+         *
+         * It goes through scripts/lineup-store.js, which is the same store the
+         * Lineup Wizard uses and which the dashboard now reads. One arrangement
+         * per team per gameweek, so the three of them cannot hold three
+         * different answers to "who is my captain".
+         *
+         * Best-effort throughout: with no team id, no gameweek or no store
+         * there is nowhere to put it, and the choice still stands for this
+         * render. Losing a save is a worse page, not a wrong one. */
+        function snapshotTeamId() {
+            try { return localStorage.getItem('fpl_team_id'); } catch (e) { return null; }
+        }
+
+        function snapshotPersist() {
+            if (typeof lsSave !== 'function' || typeof planningGW === 'undefined') return;
+            const teamId = snapshotTeamId();
+            if (!teamId) return;
+            lsSave(teamId, planningGW, {
+                xi: [...snapshotXI],
+                bench: [...snapshotBenchOrder],
+                captain: snapshotCaptainId,
+                vice: snapshotViceId,
+                excluded: []
+            });
+        }
+
+        /* Ids are resolved against the squad actually loaded rather than
+           trusted. A saved eleven can name somebody transferred out since, and
+           putting him back on the pitch would show a player who is not in the
+           squad. Anything that does not resolve to eleven starters is discarded
+           whole — a half-restored lineup is indistinguishable from one that was
+           arranged on purpose, which is the worst of both. */
+        function snapshotRestore() {
+            if (typeof lsLoad !== 'function' || typeof planningGW === 'undefined') return false;
+            const teamId = snapshotTeamId();
+            if (!teamId) return false;
+
+            const saved = lsLoad(teamId, planningGW);
+            if (!saved || !Array.isArray(saved.xi)) return false;
+
+            const inSquad = new Set(analysisResults.map(a => a.player.id));
+            const xi = saved.xi.filter(id => inSquad.has(id));
+            if (xi.length !== 11) return false;
+
+            const xiSet = new Set(xi);
+            const savedBench = (saved.bench || []).filter(id => inSquad.has(id) && !xiSet.has(id));
+            const seen = new Set(savedBench);
+            const rest = analysisResults
+                .map(a => a.player.id)
+                .filter(id => !xiSet.has(id) && !seen.has(id));
+
+            snapshotXI = xiSet;
+            snapshotBenchOrder = savedBench.concat(rest);
+            snapshotCaptainId = xiSet.has(saved.captain) ? saved.captain : null;
+            snapshotViceId = xiSet.has(saved.vice) ? saved.vice : null;
+            reconcileArmbands();
+            syncSnapshotToSquad();
+            return true;
         }
 
         function getSquadAnalysisMap() {
@@ -497,8 +567,7 @@
             // too, and an undo that removes more than it says is worse than none.
             snapshotOptimizeUndo = null;
             reconcileArmbands();
-            syncSnapshotToSquad();
-            renderTeamAnalysis();
+            snapshotCommit();
         }
 
         function snapshotSwapClick(playerId) {
@@ -699,16 +768,35 @@
             }
         }
 
+        /* Both of these used to set an id and re-draw the pitch, and nothing
+           else. So the armband moved on screen and did not move anywhere else:
+           selectedPlayers still carried the old isCaptain flag, the squad table
+           below went on showing the old armband, and a refresh put it back.
+           Two controls for one decision, disagreeing.
+
+           syncSnapshotToSquad() is what writes the decision into the squad the
+           rest of the page reads, and renderTeamAnalysis() re-draws that page —
+           so the table and the pitch now change together, and the choice
+           survives a reload. */
         function setSnapshotCaptain(playerId) {
             if (snapshotViceId === playerId) snapshotViceId = null;
             snapshotCaptainId = playerId;
-            refreshSnapshot();
+            snapshotCommit();
         }
 
         function setSnapshotVice(playerId) {
             if (snapshotCaptainId === playerId) snapshotCaptainId = null;
             snapshotViceId = playerId;
-            refreshSnapshot();
+            snapshotCommit();
+        }
+
+        /* One way out of every change made on this pitch: write it into the
+           squad, save it, and redraw everything that reads either. */
+        function snapshotCommit() {
+            syncSnapshotToSquad();
+            snapshotPersist();
+            if (typeof renderTeamAnalysis === 'function') renderTeamAnalysis();
+            else refreshSnapshot();
         }
 
         // Auto-Optimize: reuses the Lineup Wizard's formation-valid solver
