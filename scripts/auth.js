@@ -211,11 +211,9 @@ async function auPost(path, body, token) {
    caller is a form that has to put a sentence in front of someone. */
 
 async function auSignUp(email, password) {
-    const r = await auPost('signup', {
-        email,
-        password,
-        options: { emailRedirectTo: auRedirectTo('/signed-in.html') }
-    });
+    // Back to the sign-in page, which exists. It was pointed at
+    // /signed-in.html, a page that was planned and never built.
+    const r = await auPost('signup?' + auRedirectQuery('/login.html?confirmed=1'), { email, password });
     if (!r.ok) return { ok: false, error: auMessage(r) };
 
     /* With confirmations on — which this project has — signup returns a user and
@@ -249,15 +247,42 @@ async function auSignIn(email, password) {
 }
 
 async function auResetPassword(email) {
-    const r = await auPost('recover', {
-        email,
-        options: { redirectTo: auRedirectTo('/reset-password.html') }
-    });
+    const r = await auPost('recover?' + auRedirectQuery('/reset-password.html'), { email });
     /* Deliberately the same answer either way. Supabase does not reveal whether
        an address has an account, and neither does this — telling a stranger
        which of a list of emails is registered here is the classic way a sign-up
        form leaks its user list. */
     return { ok: true, sent: true, hadError: !r.ok };
+}
+
+/* Set a new password, using the session the recovery link carried.
+ *
+ * There is no "old password" here and there does not need to be: possession of
+ * the link IS the proof, which is why the link is one-use and short-lived and
+ * why the session it grants is stripped out of the address bar the moment it is
+ * read. */
+async function auUpdatePassword(password) {
+    const s = await auSession();
+    if (!s) {
+        return { ok: false, error: 'That link has expired. Ask for a new one and try again.' };
+    }
+    try {
+        const res = await fetch(`${AU_URL}/auth/v1/user`, {
+            method: 'PUT',
+            headers: {
+                apikey: AU_KEY,
+                Authorization: `Bearer ${s.accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password })
+        });
+        let data = null;
+        try { data = await res.json(); } catch { /* empty body */ }
+        if (!res.ok) return { ok: false, error: auMessage({ ok: false, status: res.status, data }) };
+        return { ok: true };
+    } catch {
+        return { ok: false, error: 'Could not reach the server. Try again.' };
+    }
 }
 
 async function auSignOut() {
@@ -354,9 +379,21 @@ function auIsPremium(profile) {
     return Number.isFinite(until) && until > Date.now();
 }
 
-function auRedirectTo(path) {
-    if (typeof location === 'undefined') return path;
-    return location.origin + path;
+/* Where Supabase should send someone after they click a link in an email.
+ *
+ * THIS IS A QUERY PARAMETER, NOT A BODY FIELD. `options: { emailRedirectTo }`
+ * is the JavaScript SDK's shape; the SDK turns it into `?redirect_to=` before
+ * it reaches the API. Sent in the body against the REST endpoint it is simply
+ * ignored, and GoTrue falls back to the project's Site URL — which is
+ * http://localhost:3000 until someone changes it. That is precisely the
+ * confirmation link that went nowhere: not a broken link, a link to the
+ * default.
+ *
+ * It must also appear verbatim in the project's Redirect URLs allow list, or it
+ * is refused and the same fallback happens. */
+function auRedirectQuery(path) {
+    const origin = typeof location === 'undefined' ? 'https://easyfpl.com' : location.origin;
+    return 'redirect_to=' + encodeURIComponent(origin + path);
 }
 
 /* Supabase's error bodies are not one shape. Pull out something a person can
