@@ -16,7 +16,10 @@
 #                are 333 inline onclick= handlers and ~14.6k lines of inline
 #                <script>. No eval or new Function anywhere, so 'unsafe-eval'
 #                is deliberately absent.
-#   connect-src  the FPL proxy worker; api.rss2json.com for the news feeds;
+#   connect-src  the Supabase project, which is where signing in, signing up and
+#                every password reset goes — omit it and auth fails closed with
+#                nothing in the UI to say why; the FPL proxy worker;
+#                api.rss2json.com for the news feeds;
 #                docs.google.com for the Season Vault CSV export; and
 #                pulselive for shirt numbers — that last one is fetched from
 #                team-analysis-core.js and index.html and was missing from the
@@ -47,7 +50,7 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://fpl-proxy.jguilhermealexandre.workers.dev https://api.rss2json.com https://docs.google.com https://sdp-prem-prod.premier-league-prod.pulselive.com https://cloudflareinsights.com https://cdn.jsdelivr.net https://unpkg.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://qlipcnedxchcsbpihscp.supabase.co https://fpl-proxy.jguilhermealexandre.workers.dev https://api.rss2json.com https://docs.google.com https://sdp-prem-prod.premier-league-prod.pulselive.com https://cloudflareinsights.com https://cdn.jsdelivr.net https://unpkg.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 
 # The data feed is rewritten every 15 minutes during match windows, so 300s at
 # the edge is roughly one refresh behind at worst and takes the repeated reads
