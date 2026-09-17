@@ -335,7 +335,11 @@ test('a first visit reports no injury stories at all', () => {
 test('a story already shown does not come back', () => {
     const nt = load();
     const prev = nt.ntSnapshot(squad, {}, 'upcoming', 4, injuryRows(ARTICLE));
-    assert.deepEqual(prev.inj, [ARTICLE], 'the snapshot records the article once, not once per player');
+    /* Spread first. The snapshot is built inside the vm realm, so its array
+       carries that realm's prototype and deepStrictEqual rejects it as "same
+       structure but not reference-equal" — the hazard load.mjs documents, and
+       the reason every other assertion in this file spreads before comparing. */
+    assert.deepEqual([...prev.inj], [ARTICLE], 'the snapshot records the article once, not once per player');
     const again = nt.ntCollect({
         squad, live: {}, phase: 'upcoming', gw: 4, now: T0 + 1e6, prev, injuries: injuryRows(ARTICLE)
     });
