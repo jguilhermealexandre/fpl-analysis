@@ -575,7 +575,7 @@
            Everything below it still reads mode, so nothing else had to move. */
         const TW_STEPS = [
             { n: 1, key: 'plan',    icon: 'sliders', label: 'Plan',    hint: 'How many transfers, and at what cost' },
-            { n: 2, key: 'swap',    icon: 'swap',    label: 'Swap',    hint: 'Your squad on the left, who can replace them on the right' },
+            { n: 2, key: 'swap',    icon: 'swap',    label: 'Replacements', hint: 'Your squad on the left, who can replace them on the right' },
             { n: 3, key: 'compare', icon: 'scales',  label: 'Compare', hint: 'The two of them, side by side' },
             { n: 4, key: 'confirm', icon: 'check',   label: 'Overview', hint: 'The squad this leaves you with, and what it costs' }
         ];
