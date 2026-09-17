@@ -180,13 +180,27 @@ function main() {
     fs.writeFileSync(path.join(ARTICLE_DATA, 'index.json'), JSON.stringify(index, null, 2));
     console.log(`Index lists ${index.length} article(s).`);
 
-    // Sitemap: the pages plus every archived article.
-    const pages = ['', 'fpl-scouts-desk.html', 'fpl-my-team-analysis.html', 'fpl-players-analysis.html',
-        'fpl-teams-analysis.html', 'fpl-league-rivals.html', 'fpl-news.html', 'fpl-how-it-works.html', 'fpl-faq.html',
-        'fpl-methodology.html', 'fpl-privacy.html', 'fpl-contact.html'];
+    /* Sitemap: the pages plus every archived article.
+     *
+     * EXTENSIONLESS, and that is the whole point of this shape. Cloudflare
+     * Pages 308s every .html URL to its bare form — /fpl-faq.html becomes
+     * /fpl-faq before anything else happens — so listing the .html spelling
+     * made every one of the 34 entries a redirect. Google's guidance is that a
+     * sitemap lists the canonical, 200-returning URL; a sitemap of redirects is
+     * a sitemap asking to be ignored. The canonical tags on the pages
+     * themselves now use the same spelling, so the three agree: what is linked,
+     * what is declared canonical, and what is submitted.
+     *
+     * The four gated pages are NOT here. They answer 302 to /login.html for a
+     * signed-out visitor, which includes every crawler, and /login.html is
+     * noindex — so submitting them is asking Google to index a redirect to a
+     * page that refuses to be indexed. They come back the day they serve a
+     * public preview instead. */
+    const pages = ['', 'fpl-scouts-desk', 'fpl-news', 'fpl-how-it-works', 'fpl-faq',
+        'fpl-methodology', 'fpl-privacy', 'fpl-contact'];
     const today = new Date().toISOString().slice(0, 10);
     const urls = pages.map(p => `  <url><loc>${SITE}/${p}</loc><lastmod>${today}</lastmod></url>`)
-        .concat(index.map(a => `  <url><loc>${SITE}/articles/${a.slug}.html</loc><lastmod>${a.date.slice(0, 10)}</lastmod></url>`));
+        .concat(index.map(a => `  <url><loc>${SITE}/articles/${a.slug}</loc><lastmod>${a.date.slice(0, 10)}</lastmod></url>`));
     fs.writeFileSync(path.join(ROOT, 'sitemap.xml'),
         `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`);
 

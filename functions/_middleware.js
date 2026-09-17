@@ -178,9 +178,36 @@ function refuse(reason, url, hasSession, verdict) {
     });
 }
 
+/* One host, and it is the bare one.
+ *
+ * easyfpl.com and www.easyfpl.com both answered 200 with byte-identical HTML —
+ * the entire site existed twice, with no redirect between the two and no
+ * canonical tag on most pages to break the tie. Google had to guess which was
+ * real, and whatever links the site earns were being split across both.
+ *
+ * 301 rather than 302: this is permanent, and a permanent redirect is the
+ * signal that consolidates the two into one. Done here rather than in a
+ * Cloudflare dashboard rule so it lives in the repo with everything else that
+ * decides what a URL means — and so it is visible to whoever reads this file
+ * next, which a dashboard setting is not.
+ *
+ * Query and hash are carried over; the path is untouched. */
+function canonicalHost(url) {
+    if (url.hostname !== 'www.easyfpl.com') return null;
+    const to = new URL(url.toString());
+    to.hostname = 'easyfpl.com';
+    return new Response(null, {
+        status: 301,
+        headers: { Location: to.toString(), 'Cache-Control': 'public, max-age=3600' }
+    });
+}
+
 export async function onRequest(context) {
     const { request, next } = context;
     const url = new URL(request.url);
+
+    const toApex = canonicalHost(url);
+    if (toApex) return toApex;
 
     const reason = premiumReason(url.pathname);
     if (!reason) return next();          // the ordinary case, and it costs nothing
