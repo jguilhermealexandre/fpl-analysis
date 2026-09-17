@@ -95,18 +95,32 @@ test('every alias points at a page that is itself premium', () => {
 test('everything free still loads', () => {
     /* The expensive failure. Most of this site is public data, stylesheets and
        images; if the gate defaulted to denying, it would take the site down
-       rather than protect it. */
+       rather than protect it.
+
+       /squad-analysis, My Team and All Players are NOT here — they used to be,
+       from when the free plan still included Squad Analysis. It does not any
+       more; they moved to the premium list two commits after this one was
+       first written, and this test kept asserting the old boundary until it
+       failed CI for exactly that reason. */
     for (const p of [
-        '/', '/index.html', '/dashboard', '/squad-analysis',
-        '/fpl-my-team-analysis.html', '/fpl-players-analysis.html',
+        '/', '/index.html', '/dashboard',
         '/fpl-news.html', '/fpl-scouts-desk.html', '/fpl-faq.html', '/fpl-privacy.html',
-        '/scripts/common.js', '/scripts/xp-engine.js?v=266',
+        '/premium.html', '/login.html', '/register.html', '/reset-password.html',
+        '/scripts/common.js', '/scripts/auth.js', '/scripts/xp-engine.js?v=266',
         '/scripts/transfer-engine.js', '/scripts/price-watch.js',
-        '/scripts/eo-layer.js', '/scripts/odds-panel.js',
+        '/scripts/eo-layer.js', '/scripts/odds-panel.js', '/scripts/sidebar-nav.js',
         '/data/bootstrap-static.json', '/data/injuries.json',
         '/styles/common.css', '/favicon.svg', '/manifest.json', '/service-worker.js'
     ]) {
         assert.equal(isPremiumPath(p), false, p);
+    }
+});
+
+test('and everything premium is refused, on the same list this test used to get wrong', () => {
+    // The other half of the boundary that moved. Asserted here, next to the
+    // free list above, so the two cannot drift apart from each other again.
+    for (const p of ['/squad-analysis', '/fpl-my-team-analysis.html', '/fpl-players-analysis.html']) {
+        assert.equal(isPremiumPath(p), true, p);
     }
 });
 

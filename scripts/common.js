@@ -1078,7 +1078,7 @@ function v2ApplyPlanChrome(premium) {
     row.hidden = false;
     row.classList.toggle('is-member', !!premium);
     const label = row.querySelector('.v2-acct-label');
-    if (label) label.textContent = premium ? 'Premium user' : 'Go premium';
+    if (label) label.textContent = premium ? 'Premium' : 'Go premium';
     row.setAttribute('data-tooltip', premium
         ? 'Your account is on Premium.'
         : 'See what Premium includes.');
@@ -2200,7 +2200,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=280')
+    fetch('footer.html?v=281')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
