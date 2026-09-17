@@ -9,14 +9,21 @@
  *
  * WHAT IS ACTUALLY GATEABLE, AND WHAT IS NOT
  *
- * Three pages are wholly premium and can simply be refused.
+ * WHAT CHANGED, AND WHY IT MADE EVERYTHING SIMPLER
  *
- * Three features — the Transfer Wizard, the Lineup Wizard and GW Draft — live
- * on a page a free reader needs, because Squad Analysis is on it too. The plan
- * was to gate them by refusing their scripts, since no free page loads those
- * files. That is a real gate when it works: the code never reaches the browser.
+ * The free plan used to include Squad Analysis, All Players and Charts, which
+ * put paid features on pages free readers needed. That is what forced the asset
+ * gate, and the asset gate could not be enforced: transfer-wizard.js also holds
+ * the price-pressure model the squad table renders, lineup-wizard.js holds the
+ * scorer the pitch's Auto-Optimize runs, and fourteen unguarded call sites
+ * reached across. Refusing those files would have thrown a ReferenceError in
+ * the middle of a free feature.
  *
- * It does not work yet, and the reason is in ENTANGLED_SCRIPTS below.
+ * Free is now the dashboard, the Scout's Desk and the News Hub. Every page that
+ * loads a wizard script is itself premium, so the entanglement is gone: no free
+ * page loads one, and no free page loads anything that calls into one. Both
+ * gates are real, and the scripts are refused as well as the pages — a page
+ * gate someone finds a way around should not hand over the models too.
  *
  * Four features are NOT here, and their absence is deliberate. Routes to
  * Points, Rising Form, Purple Patch and Recommendations render from inline
@@ -38,60 +45,44 @@
 /* Canonical paths, lowercase, with the extension the file actually has. The
    normaliser below is what makes matching them safe. */
 export const PREMIUM_PAGES = Object.freeze([
+    '/fpl-my-team-analysis.html',
+    '/fpl-players-analysis.html',
     '/fpl-teams-analysis.html',
     '/fpl-league-rivals.html',
     '/season-vault-d845fb.html'
 ]);
 
-/* Scripts the gate actually refuses. Empty, and that is a statement rather than
-   an oversight — see ENTANGLED_SCRIPTS. */
-export const PREMIUM_SCRIPTS = Object.freeze([]);
+/* Clean URLs that _redirects REWRITES onto a premium page, rather than
+   redirecting to one.
+ *
+ * The difference decides whether this file ever sees them. A 301 makes the
+ * browser ask again for the real path, which is matched above. A 200 rewrite is
+ * resolved by the static asset layer AFTER the middleware has run, so the
+ * request that reaches here still says /squad-analysis — a spelling that is not
+ * in any list and would have been served. A door beside the gate, and one built
+ * months before the gate existed.
+ *
+ * Prefixes, because the rewrite is /squad-analysis/* too. */
+export const PREMIUM_ALIASES = Object.freeze(['/squad-analysis']);
 
-/* The scripts that carry the three paid features, and cannot be refused yet.
- *
- * They are not feature modules. transfer-wizard.js also holds the Transfer
- * Market browser, the price-pressure model and the analysis settings dialog;
- * lineup-wizard.js also holds the scorer the free pitch's Auto-Optimize runs
- * on; lineup-store.js holds the save the free squad chart calls. Fourteen
- * places outside these six files call into them WITHOUT a typeof guard, and
- * several are on the free Squad Analysis path:
- *
- *   team-analysis-core.js  marketBadge() and priceMomentum() → getTransferPressure(),
- *                          getPressureLabel() — the squad table's price column
- *                          and the pitch's rising/falling arrow
- *   team-analysis-core.js  the settings button → openSettings()
- *   pitch-snapshot.js      Auto-Optimize → computeQuickLineupScoreDetailed()
- *   pitch-snapshot.js      the replacement hint → findTransferCandidates()
- *   squad-table-chart.js   → lsSave()
- *   panels-and-tabs.js     the Transfer Market TAB → renderTransferMarket()
- *
- * Refusing the files today would not gate a paid feature, it would throw a
- * ReferenceError in the middle of a free one. So they are listed, named and
- * left served, because a list that claims to gate something it does not is
- * worse than an empty one.
- *
- * Making them enforceable is a refactor, not a config change: the shared
- * functions have to move into a file both sides may load. Until then the wizard
- * tabs are hidden from free readers client-side, which is cosmetic — the same
- * honest limitation as SOFT_SECTIONS below. */
-export const ENTANGLED_SCRIPTS = Object.freeze([
+export const PREMIUM_SCRIPTS = Object.freeze([
+    // Transfer Wizard
     '/scripts/transfer-wizard.js',
     '/scripts/transfer-funnel.js',
     '/scripts/transfer-rationale.js',
+    // Lineup Wizard
     '/scripts/lineup-wizard.js',
     '/scripts/lineup-store.js',
+    // GW Draft
     '/scripts/draft-planner.js'
 ]);
 
-/* Hidden, not refused. Listed so the page and this file still share one
-   vocabulary, and so the gap is visible rather than forgotten. Everything in
-   ENTANGLED_SCRIPTS is soft in exactly this sense too. */
-export const SOFT_SECTIONS = Object.freeze([
-    { page: '/fpl-players-analysis.html', hash: 'routes', label: 'Routes to Points' },
-    { page: '/fpl-players-analysis.html', hash: 'rising', label: 'Rising Form' },
-    { page: '/fpl-players-analysis.html', hash: 'purple-patch', label: 'Purple Patch' },
-    { page: '/fpl-players-analysis.html', hash: 'recommendations', label: 'Recommendations' }
-]);
+/* Four sections of fpl-players-analysis.html that were hidden client-side
+   because there was no file to refuse. That page is wholly premium now, so
+   they are behind the page gate like everything else on it and this list has
+   nothing left to describe. Kept, empty, because the moment any part of that
+   page goes back to being free the problem comes back with it. */
+export const SOFT_SECTIONS = Object.freeze([]);
 
 const PAGES = new Set(PREMIUM_PAGES);
 const SCRIPTS = new Set(PREMIUM_SCRIPTS);
@@ -178,6 +169,12 @@ export function premiumReason(pathname) {
     if (p === null) return 'unreadable';
     if (PAGES.has(p)) return 'page';
     if (SCRIPTS.has(p)) return 'script';
+    /* normalisePath has already appended .html to an extensionless request, so
+       /squad-analysis arrives as /squad-analysis.html and /squad-analysis/x as
+       /squad-analysis/x.html. Both are the rewrite, and both are the page. */
+    for (const alias of PREMIUM_ALIASES) {
+        if (p === alias + '.html' || p.startsWith(alias + '/')) return 'page';
+    }
     return null;
 }
 

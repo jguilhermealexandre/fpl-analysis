@@ -1033,15 +1033,10 @@ function v2MountAccount() {
     const subEl = document.getElementById('v2AccountSub');
     if (subEl) subEl.textContent = 'ID: ' + teamId;
 
-    /* The plan is told by what is in the menu rather than by a label: Go
-       premium is there if you are not, and a small PRO mark is there if you
-       are. Saying "Free" to someone on the free plan is a row of the menu
-       spent on something they cannot act on. */
-    const premium = st.plan === 'premium';
-    const planEl = document.getElementById('v2AccountPlan');
-    if (planEl) planEl.hidden = !premium;
-    const goPremium = document.getElementById('v2Premium');
-    if (goPremium) goPremium.hidden = premium;
+    /* The plan row, from a hint, then from the account.
+       See v2ApplyPlanChrome and v2SyncPlanFromAccount below. */
+    v2ApplyPlanChrome(v2PlanHint());
+    v2SyncPlanFromAccount();
 
     v2SyncThemeRow();
 
@@ -1056,6 +1051,55 @@ function v2MountAccount() {
     if (widget) widget.hidden = true;
 }
 
+/* ===== Which plan the menu should describe =====
+ *
+ * The row used to read st.plan === 'premium' out of this browser's settings,
+ * and hide itself when that said yes. Two things wrong with that. It is a
+ * value anyone can set in devtools, which is exactly what supabase/schema.sql
+ * refuses to allow for the real one. And hiding the row means a paying reader
+ * gets no acknowledgement at all — the menu looks identical to a free one,
+ * minus a line.
+ *
+ * So the row is always there and says which it is, and what it says comes from
+ * the account. The hint below only decides what to paint before the account
+ * answers; it decides nothing else, and it cannot open anything. The gate is
+ * at the edge and reads Postgres — see functions/_middleware.js. */
+function v2PlanHint() {
+    try { return localStorage.getItem('easyfpl_plan_hint') === 'premium'; }
+    catch (e) { return false; }
+}
+
+function v2ApplyPlanChrome(premium) {
+    const planEl = document.getElementById('v2AccountPlan');
+    if (planEl) planEl.hidden = !premium;
+
+    const row = document.getElementById('v2Premium');
+    if (!row) return;
+    row.hidden = false;
+    row.classList.toggle('is-member', !!premium);
+    const label = row.querySelector('.v2-acct-label');
+    if (label) label.textContent = premium ? 'Premium user' : 'Go premium';
+    row.setAttribute('data-tooltip', premium
+        ? 'Your account is on Premium.'
+        : 'See what Premium includes.');
+}
+
+/* Asked once per page, after the menu has already painted.
+ *
+ * auth.js is not on every page — on one that lacks it this does nothing and
+ * the hint stands, which is the right outcome for a cosmetic label. Nothing
+ * here grants access to anything. */
+async function v2SyncPlanFromAccount() {
+    if (typeof auFetchProfile !== 'function' || typeof auIsPremium !== 'function') return;
+    let profile = null;
+    try { profile = await auFetchProfile(); } catch (e) { return; }
+    if (!profile) return;
+    const premium = auIsPremium(profile);
+    v2ApplyPlanChrome(premium);
+    try { localStorage.setItem('easyfpl_plan_hint', premium ? 'premium' : 'free'); }
+    catch (e) { /* private mode: the label just repaints each visit */ }
+}
+
 /* The modal. Built on demand rather than shipped in every page's markup,
    because it is a rarely-opened thing and thirteen copies of it in the HTML is
    thirteen copies to keep in step. */
@@ -1067,7 +1111,11 @@ function openSettingsModal(section) {
     try { teamId = localStorage.getItem('fpl_team_id') || ''; } catch (e) { /* private mode */ }
 
     document.getElementById('v2SettingsModal')?.remove();
-    const premium = st.plan === 'premium';
+    /* Same hint as the sidebar row, and for the same reason: this dialog
+       describes a plan, it does not grant one. v2SyncPlanFromAccount() has
+       already corrected the hint from the account by the time anyone has
+       opened a menu. */
+    const premium = v2PlanHint();
 
     document.body.insertAdjacentHTML('beforeend', `
     <div class="modal-overlay v2-modal v2-settings" id="v2SettingsModal" onclick="closeSettingsModal(event)">
@@ -1249,6 +1297,8 @@ async function v2LogOut(btn) {
         if (id) localStorage.removeItem('fpl_team_name_' + id);
         localStorage.removeItem('fpl_team_id');
         localStorage.removeItem('fpl_league_id');
+        // Whose plan it was a hint about is no longer signed in here.
+        localStorage.removeItem('easyfpl_plan_hint');
     } catch (e) { /* private mode: nothing was stored to remove */ }
 
     closeSettingsModal();
@@ -2150,7 +2200,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=278')
+    fetch('footer.html?v=279')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

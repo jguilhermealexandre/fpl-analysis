@@ -11,12 +11,32 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=278">
-    <link rel="stylesheet" href="styles/v2-design.css?v=278">
-    <link rel="stylesheet" href="styles/auth.css?v=278">
+    <link rel="stylesheet" href="styles/common.css?v=279">
+    <link rel="stylesheet" href="styles/v2-design.css?v=279">
+    <link rel="stylesheet" href="styles/auth.css?v=279">
 </head>
 <body>
-<div class="au-page">
+<!-- Behind glass.
+     The page they asked for is NOT here, blurred. Blur is a CSS filter — a
+     reader who removes it gets the content back, so blurring real data is a
+     screenshot of a paywall rather than a paywall. This is a skeleton: bars,
+     tiles and a shape where a pitch would be, carrying nothing. It says "there
+     is a page here" without the page being here. -->
+<div class="pm-behind" aria-hidden="true">
+    <div class="pm-sk-head"></div>
+    <div class="pm-sk-row">
+        <span class="pm-sk-tile"></span><span class="pm-sk-tile"></span>
+        <span class="pm-sk-tile"></span><span class="pm-sk-tile"></span>
+    </div>
+    <div class="pm-sk-split">
+        <div class="pm-sk-panel"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="pm-sk-panel tall"><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="pm-sk-row">
+        <span class="pm-sk-tile"></span><span class="pm-sk-tile"></span><span class="pm-sk-tile"></span>
+    </div>
+</div>
+<div class="au-page pm-over">
     <main class="au-card au-wide">
         <a class="au-brand" href="/"><span class="au-brand-mark">e</span> EasyFPL</a>
 
@@ -28,7 +48,7 @@
         </div>
 
         <div id="pmWall" hidden>
-            <h1 class="au-title">That page is part of Premium</h1>
+            <h1 class="au-title" id="pmTitle">That page is part of Premium</h1>
             <p class="au-sub" id="pmWallSub">Your account is on the free plan.</p>
 
             <div class="au-note is-on" id="pmSignedInAs" hidden></div>
@@ -38,9 +58,6 @@
                     <div class="pm-col-h">Free, and staying free</div>
                     <ul class="pm-list">
                         <li>Your dashboard</li>
-                        <li>Squad Analysis and the pitch</li>
-                        <li>Charts</li>
-                        <li>All Players</li>
                         <li>The Scout's Desk</li>
                         <li>The News Hub</li>
                     </ul>
@@ -48,12 +65,12 @@
                 <div class="pm-col is-premium">
                     <div class="pm-col-h">Premium adds</div>
                     <ul class="pm-list">
+                        <li>Squad Analysis and the pitch</li>
+                        <li>All Players and Charts</li>
                         <li>Team Analysis</li>
                         <li>League Rivals</li>
-                        <li>The Season Vault</li>
                         <li>The Transfer Wizard</li>
                         <li>The Lineup Wizard</li>
-                        <li>The Gameweek Draft</li>
                     </ul>
                 </div>
             </div>
@@ -79,7 +96,7 @@
     </main>
 </div>
 
-<script src="scripts/auth.js?v=278"></script>
+<script src="scripts/auth.js?v=279"></script>
 <script>
     /* Same open-redirect rule as every other page here: a `from` that parses as
        another origin is dropped rather than followed. The middleware only ever
@@ -102,8 +119,27 @@
         }
     }
 
+    /* What to call the page they were turned away from. Off a fixed map, not
+       off the URL: echoing a path into the heading would put whatever somebody
+       puts in the query string on the page. */
+    const PM_NAMES = {
+        '/fpl-my-team-analysis.html': 'Squad Analysis',
+        '/squad-analysis': 'Squad Analysis',
+        '/fpl-players-analysis.html': 'All Players',
+        '/fpl-teams-analysis.html': 'Team Analysis',
+        '/fpl-league-rivals.html': 'League Rivals',
+        '/season-vault-d845fb.html': 'The Season Vault'
+    };
+    function pmName(path) {
+        const bare = String(path || '').split('?')[0].replace(/\/$/, '');
+        return PM_NAMES[bare] || PM_NAMES[bare + '.html'] || '';
+    }
+
     (async function decide() {
         const from = pmFromParam();
+        const named = pmName(from);
+        const title = document.getElementById('pmTitle');
+        if (named && title) title.textContent = named + ' is part of Premium';
         const login = document.getElementById('pmToLogin');
         if (from && login) login.href = '/login.html?next=' + encodeURIComponent(from);
 
@@ -123,23 +159,58 @@
         let profile = null;
         try { profile = await auFetchProfile(); } catch (e) { profile = null; }
 
-        /* Once only. If the retry lands back here the token was fine and the
-           plan is genuinely free — bouncing again would be a loop, and a loop
-           between two pages is worse than a clear no. */
-        const retried = new URLSearchParams(location.search).get('retry') === '1';
-        if (auIsPremium(profile) && from && !retried) {
-            const sep = from.indexOf('?') < 0 ? '?' : '&';
-            location.replace(from + sep + 'retry=1');
+        /* Bounce back at most once, and never by marking the URL.
+         *
+         * This is where the redirect loop came from. The marker was appended to
+         * the TARGET — /fpl-teams-analysis?retry=1 — and then read back off
+         * location.search HERE, where the only parameter is `from`. The marker
+         * was sitting inside that, percent-encoded, so the guard never saw it
+         * and every bounce appended another one:
+         *
+         *   ?retry=1&retry=1&retry=1&retry=1&…  until the browser gave up
+         *
+         * A marker that travels through the thing it is marking cannot be
+         * trusted to come back readable. sessionStorage cannot be laundered by
+         * a redirect: it is this tab, this key, whatever the URL says. And when
+         * storage is unavailable the answer is not to bounce at all — showing
+         * the wall to someone entitled is a bad minute, looping is a dead
+         * browser tab. */
+        const RETRY_KEY = 'easyfpl_premium_retry';
+        let alreadyTried = true;              // the safe assumption if we cannot tell
+        try {
+            alreadyTried = sessionStorage.getItem(RETRY_KEY) === from;
+        } catch (e) { /* private mode: never bounce */ }
+
+        /* `stale` is the one verdict worth retrying. The edge saw an expired or
+           rejected token; auSession() above has just renewed it, so the same
+           navigation will now carry a live one. Every other reason — a free
+           plan, a missing function, Supabase down — will answer the same way a
+           second time, and retrying it is just the loop with extra steps. */
+        const why = new URLSearchParams(location.search).get('why') || 'free';
+        if (why === 'stale' && auIsPremium(profile) && from && !alreadyTried) {
+            try { sessionStorage.setItem(RETRY_KEY, from); } catch (e) { /* then it is a one-shot anyway */ }
+            location.replace(from);
             return;
         }
+        // Got through, or gave up: either way this attempt is finished with.
+        try { sessionStorage.removeItem(RETRY_KEY); } catch (e) { /* nothing to clear */ }
 
         const sub = document.getElementById('pmWallSub');
-        if (auIsPremium(profile)) {
-            /* Entitled, and still sent here. Either the page they wanted was
-               not recorded, or the retry came back — which means the edge and
-               the browser disagree, and saying so plainly beats pretending. */
-            sub.textContent = 'Your account is on Premium. If a page still refuses to open, '
-                + 'sign out and back in — that gets the server a fresh token.';
+        if (why === 'missing') {
+            /* The database has no is_premium_me(). Nobody is premium until it
+               exists, whatever their plan column says, so saying "you are on
+               the free plan" here would be a lie that sends someone hunting in
+               the wrong place. */
+            sub.textContent = 'The server cannot check plans right now — is_premium_me() is not installed '
+                + 'in the database. Run supabase/schema.sql in the Supabase SQL editor and reload.';
+        } else if (why === 'down') {
+            sub.textContent = 'We could not reach the server to check your plan. That is our end, not yours — try again shortly.';
+        } else if (auIsPremium(profile)) {
+            /* The browser can read the plan and the edge refused anyway. After
+               a renewed token that means the two genuinely disagree, and the
+               likeliest cause is a token minted before the plan changed. */
+            sub.textContent = 'Your account is on Premium, but the server refused this page. '
+                + 'Sign out and back in — that mints a token the server will accept.';
         } else if (profile) {
             sub.textContent = 'Your account is on the free plan.';
         } else {

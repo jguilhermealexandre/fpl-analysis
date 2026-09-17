@@ -195,3 +195,62 @@
     color: var(--text-secondary);
 }
 .pm-col.is-premium .pm-list li { color: var(--text-primary); }
+
+/* ===== Behind the glass =====
+ *
+ * A skeleton of a page, blurred, under the wall card. It carries no data and
+ * never has: blur is a CSS filter, so blurring real content is a paywall a
+ * reader can lift with one devtools edit. Shapes say "there is a page here"
+ * and leak nothing, which is the only honest way to do this. */
+.pm-behind {
+    position: fixed; inset: 0; z-index: 0;
+    padding: 56px 7vw;
+    display: flex; flex-direction: column; gap: 18px;
+    filter: blur(9px);
+    opacity: .5;
+    pointer-events: none;
+    overflow: hidden;
+}
+@media (prefers-reduced-motion: no-preference) {
+    .pm-behind { animation: pm-settle .7s ease-out both; }
+}
+@keyframes pm-settle { from { opacity: 0; } to { opacity: .5; } }
+
+.pm-behind > * { flex-shrink: 0; }
+.pm-sk-head { height: 46px; border-radius: 12px; background: var(--surface-3); }
+.pm-sk-row { display: flex; gap: 14px; }
+.pm-sk-tile { flex: 1; height: 82px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border-subtle); }
+.pm-sk-split { display: flex; gap: 14px; flex: 1; min-height: 0; }
+.pm-sk-panel {
+    flex: 1; padding: 16px; border-radius: 16px;
+    background: var(--surface-2); border: 1px solid var(--border-subtle);
+    display: flex; flex-direction: column; gap: 11px;
+}
+.pm-sk-panel.tall { flex: 0 0 38%; }
+.pm-sk-panel i { display: block; height: 15px; border-radius: 7px; background: var(--surface-3); }
+.pm-sk-panel i:nth-child(2n) { width: 78%; }
+.pm-sk-panel i:nth-child(3n) { width: 61%; }
+
+/* The card has to sit above it, and carry its own background, or the blur
+   shows through the thing explaining the blur. */
+.au-page.pm-over { position: relative; z-index: 1; }
+.pm-over .au-card { backdrop-filter: blur(3px); }
+
+/* ===== The sidebar's plan row =====
+ *
+ * Premium used to HIDE this row, so a paying reader's menu was a free one with
+ * a line missing — no acknowledgement of the thing they had paid for. It says
+ * which it is now, and the member state is quiet: a paid plan is a fact, not
+ * an offer, so it stops being a gradient button. */
+.v2-premium.is-member {
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    color: var(--color-primary);
+    cursor: default;
+}
+.v2-premium.is-member:hover {
+    background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+    color: var(--color-primary);
+    filter: none; transform: none;
+}
+.v2-premium.is-member .v2-acct-ico,
+.v2-premium.is-member:hover .v2-acct-ico { color: var(--color-primary); }

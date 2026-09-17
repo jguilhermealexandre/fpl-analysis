@@ -46,7 +46,25 @@ function readCookie(header, name) {
     return null;
 }
 
-async function isPremium(token) {
+/* Why this request is not getting through, not merely that it is not.
+ *
+ * This returned a bare boolean and it cost a real afternoon. is_premium_me()
+ * has to be created by running supabase/schema.sql; until it is, PostgREST
+ * answers 404, `!res.ok` collapsed that to false, and a premium account was
+ * told it was on the free plan. Every symptom pointed at the entitlement and
+ * the fault was a missing function.
+ *
+ * So the cases are kept apart and the reason is carried to the page that has
+ * to explain itself:
+ *
+ *   premium   the only one that opens anything
+ *   free      asked, answered, not entitled
+ *   stale     401/403 — the token is expired or rejected, which premium.html
+ *             can fix by refreshing and sending them back
+ *   missing   404 — is_premium_me() is not in this database
+ *   down      anything else, including no answer at all
+ */
+async function entitlement(token) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/is_premium_me`, {
         method: 'POST',
         headers: {
@@ -56,11 +74,13 @@ async function isPremium(token) {
         },
         body: '{}'
     });
-    if (!res.ok) return false;
+    if (res.status === 404) return 'missing';
+    if (res.status === 401 || res.status === 403) return 'stale';
+    if (!res.ok) return 'down';
     /* Strictly true. A PostgREST scalar comes back as bare JSON, and anything
        that is not the boolean true — null, a string, an error object shaped
        like a success — is not an entitlement. */
-    return (await res.json()) === true;
+    return (await res.json()) === true ? 'premium' : 'free';
 }
 
 /* A premium page that was allowed through must not sit in a shared cache,
@@ -73,7 +93,7 @@ function uncacheable(res) {
     return out;
 }
 
-function refuse(reason, url, hasSession) {
+function refuse(reason, url, hasSession, verdict) {
     if (reason === 'unreadable') {
         return new Response('Bad request', { status: 400, headers: { 'Cache-Control': 'no-store' } });
     }
@@ -98,7 +118,7 @@ function refuse(reason, url, hasSession) {
        and "upgrade" is useless to someone who is not. */
     const where = url.pathname + url.search;
     const to = hasSession
-        ? `/premium.html?from=${encodeURIComponent(where)}`
+        ? `/premium.html?from=${encodeURIComponent(where)}&why=${encodeURIComponent(verdict || 'free')}`
         : `/login.html?next=${encodeURIComponent(where)}`;
     return new Response(null, {
         status: 302,
@@ -126,12 +146,14 @@ export async function onRequest(context) {
 
     if (!token) return refuse(reason, url, hasSession);
 
-    let allowed = false;
+    let verdict;
     try {
-        allowed = await isPremium(token);
-    } catch (e) {
-        allowed = false;                 // unreachable is not permission
+        verdict = await entitlement(token);
+    } catch {
+        verdict = 'down';                // unreachable is not permission
     }
 
-    return allowed ? uncacheable(await next()) : refuse(reason, url, hasSession);
+    return verdict === 'premium'
+        ? uncacheable(await next())
+        : refuse(reason, url, hasSession, verdict);
 }

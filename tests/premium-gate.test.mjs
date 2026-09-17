@@ -22,7 +22,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
     normalisePath, premiumReason, isPremiumPath,
-    PREMIUM_PAGES, PREMIUM_SCRIPTS, ENTANGLED_SCRIPTS
+    PREMIUM_PAGES, PREMIUM_SCRIPTS, PREMIUM_ALIASES
 } from '../functions/lib/premium.js';
 
 const ROOT = new URL('..', import.meta.url);
@@ -62,28 +62,33 @@ test('a premium script is refused as the page actually asks for it', () => {
     }
 });
 
-test('the entangled scripts are served, and that is on purpose', () => {
-    /* transfer-wizard.js and lineup-wizard.js are not feature modules. They
-       also carry the price-pressure model the free squad table renders, the
-       scorer the free pitch's Auto-Optimize runs, and the Transfer Market tab.
-       Fourteen call sites outside those files reach into them with no typeof
-       guard, several on the free Squad Analysis path.
-
-       So refusing them would not gate a paid feature, it would throw a
-       ReferenceError in the middle of a free one. This test exists to stop
-       somebody moving them back into PREMIUM_SCRIPTS because the list "looks
-       incomplete" — the way to gate them is to extract the shared functions
-       first, and then this test is the one to delete. */
-    for (const s of ENTANGLED_SCRIPTS) {
-        assert.equal(premiumReason(s), null,
-            `${s} would be refused, and free Squad Analysis calls into it unguarded`);
+test('a clean URL that REWRITES onto a premium page is refused too', () => {
+    /* The difference between a rewrite and a redirect decides whether the gate
+       ever sees the real path. _redirects sends /squad-analysis to
+       fpl-my-team-analysis.html with a 200, which the static asset layer
+       resolves AFTER the middleware has run — so the request reaching the gate
+       still says /squad-analysis. Left unlisted it was a door beside the gate,
+       and one built months before the gate existed. */
+    for (const alias of PREMIUM_ALIASES) {
+        assert.equal(premiumReason(alias), 'page', alias);
+        assert.equal(premiumReason(alias + '/'), 'page', alias + '/');
+        assert.equal(premiumReason(alias + '/anything'), 'page', alias + '/*');
     }
+    // A different page that merely starts the same way is not the alias.
+    assert.equal(premiumReason('/squad-analysis-notes'), null);
 });
 
-test('the two script lists do not overlap', () => {
-    // A file in both would be refused and claimed to be served.
-    for (const s of PREMIUM_SCRIPTS) {
-        assert.ok(!ENTANGLED_SCRIPTS.includes(s), `${s} is in both lists`);
+test('every alias points at a page that is itself premium', () => {
+    /* Otherwise the alias refuses something the real path serves, which is a
+       404 for a free feature rather than a gate. */
+    const rules = read('_redirects').split('\n').map(l => l.trim())
+        .filter(l => l && !l.startsWith('#'));
+    for (const alias of PREMIUM_ALIASES) {
+        const rule = rules.find(r => r.split(/\s+/)[0] === alias);
+        assert.ok(rule, `${alias} is listed as a premium alias but _redirects has no rule for it`);
+        const target = rule.split(/\s+/)[1];
+        assert.equal(premiumReason(target), 'page',
+            `${alias} rewrites to ${target}, which is not premium`);
     }
 });
 
@@ -129,7 +134,7 @@ test('the normaliser resolves a path the way the origin would', () => {
 
 test('every gated file actually exists', () => {
     // A typo in the list is an ungated feature that looks gated.
-    for (const p of [...PREMIUM_PAGES, ...PREMIUM_SCRIPTS, ...ENTANGLED_SCRIPTS]) {
+    for (const p of [...PREMIUM_PAGES, ...PREMIUM_SCRIPTS]) {
         const onDisk = path.join(ROOT_DIR, p.replace(/^\//, ''));
         assert.ok(fs.existsSync(onDisk), `${p} is in the paywall list but not in the repo`);
     }
@@ -140,14 +145,17 @@ test('no premium script is loaded by a page free readers can open', () => {
        dashboard or Squad Analysis needs would break them for everyone, and the
        only way to know is to read the pages rather than trust the list.
 
-       fpl-my-team-analysis.html and fpl-players-analysis.html are free to OPEN —
-       Squad Analysis, All Players and Charts live on them — so a premium script
-       may be requested there and refused. Any other free page must not reference
-       one at all. */
+       Every page below is free to open, so none of them may so much as
+       reference a script the gate refuses. */
+    /* Every page a signed-out or free reader can open. My Team and All Players
+       used to be on this list with an exception carved out for them; they are
+       premium now, which is what made the scripts gateable at all — nothing
+       free loads one, so refusing one cannot break anything free. */
     const freePages = [
         'index.html', 'fpl-scouts-desk.html', 'fpl-news.html',
         'fpl-faq.html', 'fpl-how-it-works.html', 'fpl-contact.html',
-        'fpl-privacy.html', 'fpl-methodology.html'
+        'fpl-privacy.html', 'fpl-methodology.html',
+        'premium.html', 'login.html', 'register.html', 'reset-password.html'
     ];
     for (const page of freePages) {
         const html = read(page);
