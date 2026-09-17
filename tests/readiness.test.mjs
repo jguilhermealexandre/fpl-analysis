@@ -193,20 +193,49 @@ test('a second-half chip does not clear a first-half one', () => {
         'a March wildcard says nothing about the December one');
 });
 
-test('the recommended move is outstanding and a hold is not', () => {
+/* The recommended move, and the two things that silence it.
+ *
+ * This test used to assert that any recommended move raised the row. It no
+ * longer does, and the change is deliberate rather than a regression: the
+ * recommender always finds SOME move worth a fraction of a point, so ungated
+ * the row never cleared — a permanent open item on a checklist whose entire
+ * purpose is reaching zero.
+ *
+ * A Sell verdict is what opens it now. Hold, Monitor, Star, Watch and
+ * Essential are all ratings that mean keep him, and a squad with nobody to
+ * sell does not need a transfer whatever the margin says. */
+const withSell = (over = {}) => {
+    const analysisResults = cleanSquad().map(() => ({ verdict: 'keep' }));
+    analysisResults[0] = { verdict: 'sell', topConcern: 'Rated Sell' };
+    return settled({ analysisResults, ...over });
+};
+
+const REC = {
+    gws: [4, 5, 6, 7, 8],
+    best: { n: 1, net: 6.2, cost: 0, moves: [{ out: { id: 1, name: 'Old' }, in: { id: 2, name: 'New' } }] }
+};
+
+test('the recommended move is outstanding when somebody is rated Sell', () => {
     const rd = load();
-    const rec = {
-        gws: [4, 5, 6, 7, 8],
-        best: { n: 1, net: 6.2, cost: 0, moves: [{ out: { id: 1, name: 'Old' }, in: { id: 2, name: 'New' } }] }
-    };
-    const built = rd.rdBuild(settled({ transferRec: rec }));
-    const check = built.checks.find(c => c.id === 'transfer');
+    const check = rd.rdBuild(withSell({ transferRec: REC })).checks.find(c => c.id === 'transfer');
     assert.equal(check.state, 'warn', 'a move you have not made is outstanding');
     assert.equal(check.rows[0].name, 'Old → New');
     assert.match(check.rows[0].href, /out=1&in=2/);
+});
 
-    assert.equal(rd.rdBuild(settled()).checks.find(c => c.id === 'transfer').state, 'clear',
-        'deciding to hold is a decision');
+test('deciding to hold is a decision', () => {
+    const rd = load();
+    assert.equal(rd.rdBuild(withSell()).checks.find(c => c.id === 'transfer').state, 'clear',
+        'no recommended move, nothing to do');
+});
+
+test('a recommended move with nobody to sell does not raise the row', () => {
+    /* The gate. Every verdict here is one that means keep him, so however
+       good the margin looks the panel stays quiet. */
+    const rd = load();
+    const check = rd.rdBuild(settled({ transferRec: REC })).checks.find(c => c.id === 'transfer');
+    assert.equal(check.state, 'clear');
+    assert.equal(check.rows.length, 0);
 });
 
 test('rows are split into the column that renders them', () => {
