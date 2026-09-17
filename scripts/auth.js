@@ -287,7 +287,17 @@ async function auUpdatePassword(password) {
 
 async function auSignOut() {
     const s = auLoadSession();
-    if (s) await auPost('logout', {}, s.accessToken);
+    /* The local clear is deliberately not in the happy path.
+     *
+     * auPost() calls fetch(), and fetch() REJECTS on a network failure rather
+     * than returning a bad status. So "await the server, then forget the
+     * cookies" meant that going offline, or an extension blocking the request,
+     * left the session intact on a machine where somebody had just asked to be
+     * signed out of it. Revoking the token on the server is the courtesy.
+     * Forgetting it here is the promise, and the promise is kept either way. */
+    try {
+        if (s) await auPost('logout', {}, s.accessToken);
+    } catch (e) { /* offline, blocked, or the token was already dead */ }
     auClearSession();
     return { ok: true };
 }

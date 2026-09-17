@@ -11,9 +11,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=276">
-    <link rel="stylesheet" href="styles/v2-design.css?v=276">
-    <link rel="stylesheet" href="styles/auth.css?v=276">
+    <link rel="stylesheet" href="styles/common.css?v=277">
+    <link rel="stylesheet" href="styles/v2-design.css?v=277">
+    <link rel="stylesheet" href="styles/auth.css?v=277">
 </head>
 <body>
 <div class="au-page">
@@ -51,7 +51,7 @@
     </main>
 </div>
 
-<script src="scripts/auth.js?v=276"></script>
+<script src="scripts/auth.js?v=277"></script>
 <script>
     /* Same open-redirect rule as everywhere else on this site: a `next` that
        parses as another origin is dropped rather than followed. */
@@ -82,7 +82,16 @@
     function auHideError() { auErrorEl.classList.remove('is-on'); auErrorEl.textContent = ''; }
     function auShowNote(m) { auNoteEl.textContent = m; auNoteEl.classList.add('is-on'); }
 
-    function auGoOn() { location.replace(auNext || '/dashboard'); }
+    /* Marks the sign-in so the landing page knows to ask the account which
+       squad this is — see adoptTeamIdFromAccount() and the loadSidebarNav
+       block in index.html. One shot and this tab only: the adoption used to
+       run on every landing-page load with an empty browser, which could not
+       tell a new device from somebody who had just signed out, and put the
+       squad back in both cases. */
+    function auGoOn() {
+        try { sessionStorage.setItem('easyfpl_signed_in', '1'); } catch (e) { /* private mode */ }
+        location.replace(auNext || '/dashboard');
+    }
 
     /* Arriving from the confirmation email.
      *

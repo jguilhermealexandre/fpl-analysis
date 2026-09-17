@@ -1114,7 +1114,7 @@ function openSettingsModal(section) {
                         <span class="v2-set-value">${teamId ? 'FPL team ID ' + esc(teamId) : 'No team connected yet'}</span>
                         <span class="v2-set-actions">
                             <button class="v2-set-ghost" onclick="closeSettingsModal(); v2ChangeTeam();">Change ID</button>
-                            ${teamId ? '<button class="v2-set-ghost danger" onclick="v2LogOut()">Log out</button>' : ''}
+                            ${teamId ? '<button class="v2-set-ghost danger" onclick="v2LogOut(this)">Log out</button>' : ''}
                         </span>
                     </div>
                 </div>
@@ -1210,20 +1210,49 @@ function closeSettingsModal(event) {
     setTimeout(drop, 320);
 }
 
-/* Disconnect. The Team ID is the whole of your identity here — there is no
-   account and no server-side session — so signing out is forgetting it, and
-   saying that plainly is better than a "Log out" that implies more than
-   happens. The rest of your settings stay, because they are this browser's
-   preferences rather than that team's. */
-function v2LogOut() {
+/* Disconnect.
+ *
+ * This used to read "the Team ID is the whole of your identity here — there is
+ * no account and no server-side session". That was true when it was written
+ * and stopped being true the day accounts shipped, and the stale assumption is
+ * exactly what produced the bug: forgetting only the Team ID left the account
+ * session alive, and the landing page read the id straight back off it. Log
+ * out, land on the landing page, get put back where you started, for ever.
+ *
+ * So both go. The id stored ON THE ACCOUNT stays — that is what carries your
+ * squad to a second device, and signing back into the same account is supposed
+ * to bring it with you. What must not happen is it coming back when you have
+ * not signed back in.
+ *
+ * auth.js is only loaded on the landing and auth pages, so on a squad page
+ * there is nothing here to sign out with. The alternative to the hand-off
+ * below is a second copy of the cookie names in this file, and with two
+ * definitions of one thing it is always the copy that rots. The landing page
+ * has auth.js; it is asked to finish the job.
+ *
+ * The rest of your settings stay, because they are this browser's preferences
+ * rather than that team's. */
+async function v2LogOut(btn) {
+    const canSignOut = typeof auSignOut === 'function';
+    if (btn) { btn.disabled = true; btn.textContent = 'Signing out\u2026'; }
+
+    if (canSignOut) {
+        try { await auSignOut(); }
+        catch (e) { if (typeof auClearSession === 'function') auClearSession(); }
+    }
+
+    /* Cleared last, not first. A squad still loading calls saveTeamId() when
+       it resolves, and anything cleared before the await above would be giving
+       it a window to write the id back in. */
     try {
         const id = localStorage.getItem('fpl_team_id');
         if (id) localStorage.removeItem('fpl_team_name_' + id);
         localStorage.removeItem('fpl_team_id');
         localStorage.removeItem('fpl_league_id');
     } catch (e) { /* private mode: nothing was stored to remove */ }
+
     closeSettingsModal();
-    location.href = 'index.html';
+    location.href = canSignOut ? 'index.html' : 'index.html?signout=1';
 }
 
 /* Checkout is not built. Saying so is better than a button that does nothing
@@ -2121,7 +2150,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=276')
+    fetch('footer.html?v=277')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

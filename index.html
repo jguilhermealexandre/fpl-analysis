@@ -22,9 +22,9 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=276">
-    <link rel="stylesheet" href="styles/v2-design.css?v=276">
-    <link rel="stylesheet" href="styles/responsive.css?v=276">
+    <link rel="stylesheet" href="styles/common.css?v=277">
+    <link rel="stylesheet" href="styles/v2-design.css?v=277">
+    <link rel="stylesheet" href="styles/responsive.css?v=277">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -3780,21 +3780,21 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=276">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=276">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=276">
-    <link rel="preload" as="script" href="scripts/odds-panel.js?v=276">
-    <link rel="preload" as="script" href="scripts/live-gw.js?v=276">
-    <link rel="preload" as="script" href="scripts/matchday.js?v=276">
-    <link rel="preload" as="script" href="scripts/market-panel.js?v=276">
-    <link rel="preload" as="script" href="scripts/eo-layer.js?v=276">
-    <link rel="preload" as="script" href="scripts/readiness.js?v=276">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=276">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=276">
-    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=276">
-    <link rel="preload" as="script" href="scripts/auth.js?v=276">
-    <link rel="preload" as="script" href="scripts/common.js?v=276">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=276">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=277">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=277">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=277">
+    <link rel="preload" as="script" href="scripts/odds-panel.js?v=277">
+    <link rel="preload" as="script" href="scripts/live-gw.js?v=277">
+    <link rel="preload" as="script" href="scripts/matchday.js?v=277">
+    <link rel="preload" as="script" href="scripts/market-panel.js?v=277">
+    <link rel="preload" as="script" href="scripts/eo-layer.js?v=277">
+    <link rel="preload" as="script" href="scripts/readiness.js?v=277">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=277">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=277">
+    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=277">
+    <link rel="preload" as="script" href="scripts/auth.js?v=277">
+    <link rel="preload" as="script" href="scripts/common.js?v=277">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=277">
 </head>
 <body>
 <script>
@@ -4536,21 +4536,21 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=276"></script>
-    <script src="scripts/price-watch.js?v=276"></script>
-    <script src="scripts/xp-engine.js?v=276"></script>
-    <script src="scripts/odds-panel.js?v=276"></script>
-    <script src="scripts/live-gw.js?v=276"></script>
-    <script src="scripts/matchday.js?v=276"></script>
-    <script src="scripts/market-panel.js?v=276"></script>
-    <script src="scripts/eo-layer.js?v=276"></script>
-    <script src="scripts/readiness.js?v=276"></script>
-    <script src="scripts/push-alerts.js?v=276"></script>
-    <script src="scripts/notifications.js?v=276"></script>
-    <script src="scripts/transfer-engine.js?v=276"></script>
-    <script src="scripts/auth.js?v=276"></script>
-    <script src="scripts/common.js?v=276"></script>
-    <script src="scripts/sidebar-nav.js?v=276"></script>
+    <script src="scripts/error-monitor.js?v=277"></script>
+    <script src="scripts/price-watch.js?v=277"></script>
+    <script src="scripts/xp-engine.js?v=277"></script>
+    <script src="scripts/odds-panel.js?v=277"></script>
+    <script src="scripts/live-gw.js?v=277"></script>
+    <script src="scripts/matchday.js?v=277"></script>
+    <script src="scripts/market-panel.js?v=277"></script>
+    <script src="scripts/eo-layer.js?v=277"></script>
+    <script src="scripts/readiness.js?v=277"></script>
+    <script src="scripts/push-alerts.js?v=277"></script>
+    <script src="scripts/notifications.js?v=277"></script>
+    <script src="scripts/transfer-engine.js?v=277"></script>
+    <script src="scripts/auth.js?v=277"></script>
+    <script src="scripts/common.js?v=277"></script>
+    <script src="scripts/sidebar-nav.js?v=277"></script>
     <script>
         initIcons();
         loadFooter();
@@ -6559,16 +6559,47 @@
 
         // V2: load the shared sidebar partial, then check for a saved team ID.
         loadSidebarNav().then(() => {
+            /* Finishing a sign-out that the page they left could not do itself.
+               auth.js is not on the squad pages, so v2LogOut() sends whoever
+               pressed Log out here with this flag rather than keeping a second
+               copy of the cookie names in common.js. Stripped from the address
+               bar at once: it is an instruction, not a place. */
+            if (new URLSearchParams(location.search).get('signout') === '1') {
+                history.replaceState(null, '', location.pathname);
+                /* Both, and in this order. auSignOut() reads the session
+                   synchronously and has the request in flight before it yields,
+                   so clearing straight after it cannot cancel the revocation —
+                   and it means the cookie is gone before this frame ends rather
+                   than whenever the network answers. Someone who clicks Log in
+                   a second later would otherwise navigate away with the old
+                   session still sitting there. */
+                if (typeof auSignOut === 'function') { auSignOut().catch(() => {}); }
+                if (typeof auClearSession === 'function') auClearSession();
+                try { sessionStorage.removeItem('easyfpl_signed_in'); } catch (e) { /* private mode */ }
+                return;
+            }
+
             const savedTeamId = getSavedTeamId();
             if (savedTeamId) { activateTeamPage(savedTeamId); return; }
 
             /* Nothing in this browser, but the account may know the squad —
-               which is the case for someone who signed in on a second device.
-               Asked for only after the landing page has already painted, and
-               only when the browser has nothing of its own, so the ordinary
-               visit is never made to wait on a request that will return
-               nothing. No account, no auth.js, or no id stored: all three fall
-               through to the landing page exactly as before. */
+               the case for someone who has just signed in on a second device.
+
+               Only after a sign-in, and only once. It used to run on every
+               landing-page load with an empty browser, which cannot tell "first
+               time on this device" from "I just deliberately signed out" — and
+               answered both by putting the squad back. That is the loop: Log
+               out cleared the browser, this read the id off the still-live
+               account and put it straight back. Signing in is the event this
+               was always for, so signing in is what marks it, and reading the
+               mark clears it. */
+            let justSignedIn = false;
+            try {
+                justSignedIn = sessionStorage.getItem('easyfpl_signed_in') === '1';
+                if (justSignedIn) sessionStorage.removeItem('easyfpl_signed_in');
+            } catch (e) { /* private mode: no mark, so no adoption */ }
+            if (!justSignedIn) return;
+
             adoptTeamIdFromAccount().then(id => { if (id) activateTeamPage(id); });
         });
     </script>
