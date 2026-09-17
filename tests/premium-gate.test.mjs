@@ -181,23 +181,48 @@ test('no premium script is loaded by a page free readers can open', () => {
     }
 });
 
-test('no redirect quietly opens a premium page', () => {
-    /* _redirects is processed by the static asset layer; a Pages Function sees
-       the path the reader asked for. So a rewrite from an ungated source to a
-       premium destination is a door beside the gate, and it would be an easy
-       one to add without noticing. */
+test('no REWRITE quietly opens a premium page', () => {
+    /* _redirects is processed by the static asset layer, and the status code
+       decides whether that happens before or after this gate runs.
+     *
+     * A 200 is a rewrite: the origin serves the destination's bytes under the
+     * source path, and the Pages Function only ever sees the source. If the
+     * source is not itself refused, that is a door beside the gate.
+     *
+     * A 301 or 302 is a redirect: the browser is told to ask again, and the
+     * second request carries the real path straight into this gate. The source
+     * does not need to be listed and listing it would be wrong — it would
+     * refuse a path whose entire job is to hand over to one that is refused.
+     *
+     * Conflating the two is what made this test fail the moment My Team became
+     * premium: /fpl-transfer-wizard.html 301s there, which is safe, and the
+     * test called it a leak. */
     const rules = read('_redirects')
         .split('\n')
         .map(l => l.trim())
         .filter(l => l && !l.startsWith('#'))
         .map(l => l.split(/\s+/));
 
-    for (const [from, to] of rules) {
+    let rewrites = 0, handoffs = 0;
+    for (const [from, to, status] of rules) {
         if (!to) continue;
         const dest = normalisePath(to.replace(/\*$/, ''));
-        const destIsPremium = PREMIUM_PAGES.includes(dest);
-        if (!destIsPremium) continue;
-        assert.ok(isPremiumPath(from.replace(/\*$/, '')),
-            `${from} rewrites to the premium page ${to} but is not itself refused`);
+        if (!PREMIUM_PAGES.includes(dest)) continue;
+
+        if (status === '200') {
+            rewrites++;
+            assert.ok(isPremiumPath(from.replace(/\*$/, '')),
+                `${from} REWRITES to the premium page ${to}, so the gate never sees ${to} — ` +
+                'the source has to be refused itself');
+        } else {
+            handoffs++;
+            // The other half: a redirect is only safe because its destination
+            // is gated. If that ever stops being true this says so.
+            assert.ok(isPremiumPath(dest),
+                `${from} redirects to ${to}, which is not refused`);
+        }
     }
+    // A test that silently stopped examining anything would pass for ever.
+    assert.ok(rewrites > 0, 'no premium rewrite was checked — has _redirects changed shape?');
+    assert.ok(handoffs > 0, 'no premium redirect was checked — has _redirects changed shape?');
 });
