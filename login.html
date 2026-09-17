@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" class="v2-theme">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign in | EasyFPL</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <meta name="description" content="Sign in to EasyFPL.">
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="https://easyfpl.com/login.html">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/common.css?v=268">
+    <link rel="stylesheet" href="styles/v2-design.css?v=268">
+    <link rel="stylesheet" href="styles/auth.css?v=268">
+</head>
+<body>
+<div class="au-page">
+    <main class="au-card">
+        <a class="au-brand" href="/"><span class="au-brand-mark">e</span> EasyFPL</a>
+
+        <h1 class="au-title">Sign in</h1>
+        <p class="au-sub">Your squad, your drafts and your alerts, where you left them.</p>
+
+        <div class="au-note" id="auNote" role="status" aria-live="polite"></div>
+        <div class="au-error" id="auError" role="alert" aria-live="polite"></div>
+
+        <form id="auLoginForm" novalidate>
+            <div class="au-field">
+                <label class="au-label" for="auEmail">Email</label>
+                <input class="au-input" id="auEmail" name="email" type="email"
+                       autocomplete="email" required autofocus
+                       placeholder="you@example.com">
+            </div>
+
+            <div class="au-field">
+                <label class="au-label" for="auPassword">Password</label>
+                <input class="au-input" id="auPassword" name="password" type="password"
+                       autocomplete="current-password" required
+                       placeholder="Your password">
+            </div>
+
+            <button class="au-submit" id="auSubmit" type="submit">Sign in</button>
+        </form>
+
+        <div class="au-alt">
+            <a href="/reset-password.html" id="auToReset">Forgotten your password?</a>
+            <span class="au-small">No account yet? <a href="/register.html" id="auToRegister">Create one</a></span>
+        </div>
+    </main>
+</div>
+
+<script src="scripts/auth.js?v=268"></script>
+<script>
+    /* Same open-redirect rule as everywhere else on this site: a `next` that
+       parses as another origin is dropped rather than followed. */
+    function auNextParam() {
+        try {
+            const raw = new URLSearchParams(location.search).get('next');
+            if (!raw) return '';
+            const url = new URL(raw, location.origin);
+            if (url.origin !== location.origin) return '';
+            if (!url.pathname.startsWith('/')) return '';
+            return url.pathname + url.search + url.hash;
+        } catch (e) { return ''; }
+    }
+
+    const auNext = auNextParam();
+    (function carryNext() {
+        if (!auNext) return;
+        const q = '?next=' + encodeURIComponent(auNext);
+        const reg = document.getElementById('auToRegister');
+        const res = document.getElementById('auToReset');
+        if (reg) reg.href = '/register.html' + q;
+        if (res) res.href = '/reset-password.html' + q;
+    })();
+
+    const auErrorEl = document.getElementById('auError');
+    const auNoteEl = document.getElementById('auNote');
+    function auShowError(m) { auErrorEl.textContent = m; auErrorEl.classList.add('is-on'); }
+    function auHideError() { auErrorEl.classList.remove('is-on'); auErrorEl.textContent = ''; }
+    function auShowNote(m) { auNoteEl.textContent = m; auNoteEl.classList.add('is-on'); }
+
+    function auGoOn() { location.replace(auNext || '/dashboard'); }
+
+    /* Arriving from the confirmation email.
+     *
+     * Supabase sends the reader back here with the new session in the URL
+     * FRAGMENT — #access_token=… — which never leaves the browser and is never
+     * sent to a server or written to a log. Take it, store it, and clean the
+     * address bar immediately: a session in someone's history or in a pasted
+     * link is a session someone else can use.
+     */
+    (function sessionFromLink() {
+        if (!location.hash || location.hash.indexOf('access_token=') < 0) {
+            if (new URLSearchParams(location.search).get('confirmed')) {
+                auShowNote('Your email is confirmed. Sign in below.');
+            }
+            return;
+        }
+        const p = new URLSearchParams(location.hash.slice(1));
+        const session = auSessionFrom({
+            access_token: p.get('access_token'),
+            refresh_token: p.get('refresh_token'),
+            expires_in: Number(p.get('expires_in')) || 3600
+        }, Date.now());
+
+        // Strip it whatever happens next, so a failed hand-off does not leave a
+        // token sitting in the address bar.
+        history.replaceState(null, '', location.pathname + location.search);
+
+        if (!session) { auShowError('That link did not carry a usable session. Sign in below.'); return; }
+        auSaveSession(session);
+        auGoOn();
+    })();
+
+    document.getElementById('auLoginForm').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        auHideError();
+
+        const email = document.getElementById('auEmail').value.trim();
+        const password = document.getElementById('auPassword').value;
+        if (!email || !password) { auShowError('Enter your email and password.'); return; }
+
+        const btn = document.getElementById('auSubmit');
+        btn.disabled = true;
+        btn.textContent = 'Signing in…';
+
+        let result;
+        try {
+            result = await auSignIn(email, password);
+        } catch (e) {
+            result = { ok: false, error: 'Could not reach the server. Check your connection and try again.' };
+        }
+
+        if (!result.ok) {
+            btn.disabled = false;
+            btn.textContent = 'Sign in';
+            /* Whatever went wrong, the wording never distinguishes "no such
+               account" from "wrong password" — that difference is the whole of
+               an account-enumeration attack. auMessage already flattens it. */
+            auShowError(result.error);
+            return;
+        }
+        auGoOn();
+    });
+</script>
+</body>
+</html>

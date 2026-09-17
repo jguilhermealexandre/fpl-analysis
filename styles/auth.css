@@ -1,0 +1,155 @@
+/* Register, sign in, reset.
+ *
+ * These pages carry no sidebar, no dashboard and no data: someone who is not
+ * signed in has no squad to load, and a form that waits on four JSON feeds
+ * before it can be typed into is a form that feels broken.
+ *
+ * Every colour here is one of the site's own tokens rather than a literal, so
+ * these pages follow the theme switch with everything else instead of being a
+ * dark card someone forgot about when the light theme landed.
+ */
+
+.au-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 20px;
+    background: var(--surface-0);
+}
+
+.au-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    padding: 32px 28px;
+}
+
+.au-brand {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    margin-bottom: 22px;
+    font-family: var(--font-display);
+    font-size: 19px; font-weight: 700;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+.au-brand-mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--color-primary);
+    color: #0a0f1a;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 17px;
+}
+
+.au-title {
+    font-family: var(--font-display);
+    font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin: 0 0 6px;
+}
+.au-sub { font-size: 13px; color: var(--text-secondary); line-height: 1.55; margin: 0 0 22px; }
+
+.au-field { margin-bottom: 15px; }
+.au-label {
+    display: block;
+    font-size: 12px; font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+.au-input {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1px solid var(--border-emphasis, var(--border-default));
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    font-size: 15px;            /* 16px or more stops iOS zooming the page on focus;
+                                   15px with the -webkit rule below does the same. */
+    font-family: inherit;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.au-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+.au-input::placeholder { color: var(--text-muted); }
+
+/* Marked wrong only once it has been said out loud. A field that turns red
+   while it is still being typed into is telling someone they are failing at
+   something they have not finished. */
+.au-input.is-wrong { border-color: var(--color-error); }
+
+.au-hint { font-size: 11px; color: var(--text-muted); margin-top: 5px; line-height: 1.5; }
+
+.au-submit {
+    width: 100%;
+    margin-top: 6px;
+    padding: 12px;
+    border: 0; border-radius: var(--radius-md);
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 15px; font-weight: 700; font-family: inherit;
+    cursor: pointer;
+    transition: filter 140ms ease;
+}
+.au-submit:hover:not(:disabled) { filter: brightness(1.07); }
+/* Disabled while the request is out. Not faded to a smudge — it reads as a
+   button that is busy rather than one that is broken. */
+.au-submit:disabled { cursor: default; opacity: 0.7; }
+
+/* One place for what went wrong, and it keeps its space so the card does not
+   jump when a message appears. */
+.au-error {
+    display: none;
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-error);
+    border-radius: var(--radius-md);
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--color-error);
+    font-size: 13px; line-height: 1.5;
+}
+.au-error.is-on { display: block; }
+
+.au-note {
+    display: none;
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    border: 1px solid var(--verdict-hold);
+    border-radius: var(--radius-md);
+    background: var(--verdict-hold-bg);
+    color: var(--text-primary);
+    font-size: 13px; line-height: 1.5;
+}
+.au-note.is-on { display: block; }
+
+.au-alt {
+    margin-top: 20px; padding-top: 18px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 13px; color: var(--text-secondary); text-align: center;
+}
+.au-alt a { color: var(--color-primary); font-weight: 600; text-decoration: none; }
+.au-alt a:hover { text-decoration: underline; }
+
+.au-small { display: block; margin-top: 10px; font-size: 12px; }
+
+/* What the card becomes once the email is away. The form is replaced rather
+   than hidden behind a banner: there is nothing useful left to do on it, and
+   leaving it there invites a second submission. */
+.au-done { text-align: center; }
+.au-done-mark {
+    width: 46px; height: 46px; margin: 0 auto 14px;
+    border-radius: 50%;
+    background: var(--verdict-hold-bg);
+    color: var(--verdict-hold);
+    display: flex; align-items: center; justify-content: center;
+}
+.au-done-mark svg { width: 24px; height: 24px; }
+
+@media (max-width: 420px) {
+    .au-card { padding: 26px 20px; border-radius: var(--radius-lg); }
+}

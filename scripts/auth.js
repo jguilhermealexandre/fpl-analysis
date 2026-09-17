@@ -217,11 +217,26 @@ async function auSignUp(email, password) {
         options: { emailRedirectTo: auRedirectTo('/signed-in.html') }
     });
     if (!r.ok) return { ok: false, error: auMessage(r) };
-    /* With confirmations on — which this project has — signup returns a user
-       and no session. Nobody is signed in until they click the email. */
+
+    /* With confirmations on — which this project has — signup returns a user and
+       no session. Nobody is signed in until they click the link.
+
+       And it returns the same thing for an address that already has an account,
+       with one difference: `identities` comes back empty. That is Supabase
+       refusing to confirm or deny, and it is the right behaviour — a signup form
+       that says "already registered" will tell a stranger which addresses out of
+       a list belong to your users.
+
+       So this reads the signal to know what happened, and says the same sentence
+       either way. The cost is a reader who forgot they had an account waiting for
+       an email that is not coming, which is why the wording points at signing in
+       as well. */
+    const already = !!(r.data && r.data.user
+        && Array.isArray(r.data.user.identities) && r.data.user.identities.length === 0);
+
     const session = auSessionFrom(r.data, Date.now());
     if (session) auSaveSession(session);
-    return { ok: true, needsConfirmation: !session, email };
+    return { ok: true, needsConfirmation: !session, already, email };
 }
 
 async function auSignIn(email, password) {
@@ -284,8 +299,11 @@ function auRedirectTo(path) {
 function auMessage(r) {
     const d = r && r.data;
     const raw = (d && (d.msg || d.message || d.error_description || d.error)) || '';
+    /* Reached only when Supabase is configured to answer plainly rather than to
+       obfuscate. Kept deliberately vague anyway, so the form cannot be used to
+       test whether an address is registered here. */
     if (/already registered|already been registered/i.test(raw)) {
-        return 'That email already has an account. Try signing in, or reset the password.';
+        return 'If that address is new, check your email. If it already has an account, sign in instead.';
     }
     if (/invalid login credentials/i.test(raw)) {
         return 'That email and password do not match.';
