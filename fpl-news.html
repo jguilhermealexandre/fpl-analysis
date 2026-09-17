@@ -52,9 +52,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=263">
-    <link rel="stylesheet" href="styles/v2-design.css?v=263">
-    <link rel="stylesheet" href="styles/responsive.css?v=263">
+    <link rel="stylesheet" href="styles/common.css?v=264">
+    <link rel="stylesheet" href="styles/v2-design.css?v=264">
+    <link rel="stylesheet" href="styles/responsive.css?v=264">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -890,6 +890,23 @@
         .news-card-hero .news-card-graphic-kit { font-size: 42px; }
         .news-card-graphic-team { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.4px; opacity: 0.6; }
 
+        /* ----- An injury story's card -----
+           No photograph exists for these, so the crest is the picture. Centred
+           rather than set to one side the way a face is: a badge has no side. */
+        .news-card-graphic.is-crest { flex-direction: column; gap: 8px; }
+        .news-card-badge {
+            position: relative; z-index: 1;
+            width: 72px; height: 72px;
+            object-fit: contain;
+            filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .34));
+        }
+        .news-card-hero .news-card-badge { width: 92px; height: 92px; }
+        .news-card-graphic-club {
+            position: relative; z-index: 1;
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1.4px; opacity: 0.75;
+        }
+
         /* ----- A squad player's card -----
            The club's colour behind him, his face on it, and in the corner
            the crest, his position and his club — with a mark for what the
@@ -1024,13 +1041,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=263"></script>
-    <script src="scripts/common.js?v=263"></script>
+    <script src="scripts/error-monitor.js?v=264"></script>
+    <script src="scripts/common.js?v=264"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=263"></script>
-    <script src="scripts/notifications.js?v=263"></script>
-    <script src="scripts/sidebar-nav.js?v=263"></script>
+    <script src="scripts/push-alerts.js?v=264"></script>
+    <script src="scripts/notifications.js?v=264"></script>
+    <script src="scripts/sidebar-nav.js?v=264"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1634,6 +1651,13 @@
                         timestamp: first.published || null,
                         sortAt: first.published || first.firstSeen || null,
                         matchedTeamIds: first.clubId != null ? [first.clubId] : [],
+                        /* The club's own id and crest code. teamsById is the page's
+                           team lookup; the crest library is keyed by `code`, not by
+                           the id, which is the distinction that had squad news cards
+                           drawing a blank rectangle before. */
+                        clubId: first.clubId != null ? first.clubId : null,
+                        clubCode: (first.clubId != null && teamsById[first.clubId])
+                            ? teamsById[first.clubId].code : null,
                         injuredPlayers: group.map(r => r.player),
                         /* Resolved by the scrape, not here: the Worker that sends
                            the push cannot import this page's code, and two copies
@@ -1750,33 +1774,32 @@
                     }
                 });
 
-                /* The injury stories join the same feed rather than sitting behind
-                   a tab of their own. A club's statement about who is fit is news
-                   about the league, and reading it next to the rest is the point.
-                   Merged after the pass above, which rebuilds matchedTeamIds from
-                   scratch and would wipe the club these already know for certain.
+                /* Injury stories get a block of their own on the page rather than
+                   being scattered through the wire copy. They are a different kind
+                   of thing to read — twenty clubs each saying who is fit, against
+                   reporting about the league — and a reader scanning for one is not
+                   scanning for the other.
 
-                   Ownership is decided by the player id the scrape already
-                   resolved, rather than the loose headline-substring rule the wire
-                   copy uses — the same id the push Worker reads, so the badge here
-                   and the notification there can never disagree. */
+                   Sorted newest first on sortAt, which falls back to when this site
+                   first saw the article: two thirds of club articles publish no
+                   date we can read, and the card prints nothing where the club gave
+                   none. Ten is the cap; the table itself carries forty-odd.
+
+                   Ownership is the player id the scrape already resolved, not the
+                   loose headline-substring rule the wire copy uses — the same id
+                   the push Worker reads, so the badge here and the notification
+                   there can never disagree. */
+                const INJURY_CAP = 10;
                 const injuryItems = injuryStories(injuryRows, localTeams);
-                if (injuryItems.length) {
-                    injuryItems.forEach(it => {
-                        if (it.playerIds.some(id => squadIds.has(id))) {
-                            it.isSquad = true;
-                            it.sortWeight = 60;
-                        }
-                    });
-                    externalItems.push(...injuryItems);
-                }
-
-                /* One feed, newest first. Injury stories carry sortAt because two
-                   thirds of club articles publish no date we can read — sortAt
-                   falls back to when this site first saw the article, which orders
-                   them honestly without printing a time the club never gave. */
-                externalItems.sort((a, b) =>
+                injuryItems.forEach(it => {
+                    if (it.playerIds.some(id => squadIds.has(id))) {
+                        it.isSquad = true;
+                        it.sortWeight = 60;
+                    }
+                });
+                injuryItems.sort((a, b) =>
                     new Date(b.sortAt || b.timestamp || 0) - new Date(a.sortAt || a.timestamp || 0));
+                const injuryFeed = injuryItems.slice(0, INJURY_CAP);
 
                 function getCTAForCategory(item) {
                     const posShort = posShortNames[item.player?.position] || '';
@@ -1802,6 +1825,22 @@
                    database id and shown as if it were his. A made-up fact is
                    worse than a missing one, and the position is both true and
                    the thing an FPL manager reads first. */
+                /* The club's colour behind its crest, with the injury mark in the
+                   corner — the same frame buildGraphic draws for a squad player,
+                   with the badge where the face goes. 100px rather than the 50 the
+                   crest row uses: here it is the whole picture, not a label. */
+                function buildCrestGraphic(item) {
+                    const colors = TEAM_COLORS[item.clubId] || ['#6366F1', '#FFFFFF'];
+                    return `<div class="news-card-graphic is-crest" style="background:linear-gradient(135deg, ${colors[0]} 0%, ${colors[0]}dd 60%, ${colors[0]}99 100%);color:${colors[1]}">
+                        <div class="news-card-graphic-bg" style="background:radial-gradient(circle at 30% 40%,${colors[1]} 0%,transparent 70%)"></div>
+                        <img class="news-card-badge" alt="" loading="lazy"
+                            src="https://resources.premierleague.com/premierleague/badges/100/t${item.clubCode}.png"
+                            onerror="this.remove()">
+                        <span class="news-card-graphic-mark">${CAT_ICONS.injury}</span>
+                        ${item.source ? `<span class="news-card-graphic-club">${escHTML(item.source)}</span>` : ''}
+                    </div>`;
+                }
+
                 function buildGraphic(item) {
                     const p = item.player;
                     const colors = TEAM_COLORS[p?.teamId] || ['#6366F1','#FFFFFF'];
@@ -1833,6 +1872,12 @@
                               </div>`;
                     }
                     if (item.player) return buildGraphic(item);
+                    /* An injury story has no picture — the Premier League's table
+                       carries none and the club article's own image is not ours to
+                       lift. The crest is the honest illustration: it says whose
+                       news this is before the headline is read, which is the job
+                       the photo does on every other card. */
+                    if (item.category === 'injury' && item.clubCode != null) return buildCrestGraphic(item);
                     return `<div class="news-card-graphic" style="background:linear-gradient(135deg,#1a1a2e,#16213e);color:#e2e8f0;">
                         <div class="news-card-graphic-icon">${CAT_ICONS[item.category] || CAT_ICONS.external}<span class="news-card-graphic-team">${escHTML(item.source || '')}</span></div>
                     </div>`;
@@ -2082,6 +2127,8 @@
                         + renderSection('Also in the news', ext.slice(5, 11), { shape: 'briefs', from: 6, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.external + ' In depth', ext.slice(11, 16),
                             { shape: 'split', count: true, hideWhenEmpty: true })
+                        + renderSection(CAT_ICONS.injury + ' Injury news', injuryFeed,
+                            { shape: 'quad', count: true, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.all + ' More from around the league', ext.slice(16),
                             { shape: 'quad', count: true, hideWhenEmpty: true })
                         || '<div class="news-empty">No news right now.</div>';
