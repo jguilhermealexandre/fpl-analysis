@@ -577,7 +577,7 @@
             { n: 1, key: 'plan',    icon: 'sliders', label: 'Plan',    hint: 'How many transfers, and at what cost' },
             { n: 2, key: 'swap',    icon: 'swap',    label: 'Swap',    hint: 'Your squad on the left, who can replace them on the right' },
             { n: 3, key: 'compare', icon: 'scales',  label: 'Compare', hint: 'The two of them, side by side' },
-            { n: 4, key: 'confirm', icon: 'check',   label: 'Confirm', hint: 'What the plan costs and what it buys' }
+            { n: 4, key: 'confirm', icon: 'check',   label: 'Overview', hint: 'The squad this leaves you with, and what it costs' }
         ];
 
         /* One header shape for every step: what the step is, a hint, and the
@@ -1752,21 +1752,57 @@
                 statRows += row(nameMatch ? nameMatch[1] : statsS[i].label, statsS[i].season, statsC[i].season, statsS[i].higherBetter !== false, tipMatch ? tipMatch[1] : '');
             }
 
-            // Full-depth profile per player — the same AI report, price watch,
-            // team context and opponent-form sections the Squad Analysis inline
-            // card shows, reused here so "comparing two players" means the same
-            // thing everywhere on this page instead of this one screen falling
-            // back to five raw stat rows. The candidate never had analyzePlayer()
-            // run on them (they're not in your squad), so getPlayerAnalysis()
-            // runs it fresh; their recommendation box and replacement suggestions
-            // are squad-decision language ("transfer out before GW6") that makes
-            // no sense for someone you're evaluating to buy, so both are switched
-            // off for that side only.
-            const soldProfile = typeof buildPlayerFullProfileHTML === 'function' && typeof getPlayerAnalysis === 'function'
-                ? buildPlayerFullProfileHTML(sold, getPlayerAnalysis(sold), { header: false, replacements: false, context: 'squad' })
+            /* Full-depth profile per player — the same price watch, team
+               context, season numbers and opponent-form sections the Squad
+               Analysis card shows, reused here so "comparing two players"
+               means the same thing everywhere on this page.
+
+               The candidate never had analyzePlayer() run on them, since they
+               are not in your squad, so getPlayerAnalysis() runs it fresh.
+               Their recommendation box and replacement suggestions are
+               squad-decision language — "transfer out before GW6" — which
+               makes no sense about someone you are deciding whether to buy, so
+               both are off for that side only.
+
+               aiReport is off for both, and that is not a removal: the two
+               scouting reports are lifted out and set beside each other above,
+               where prose about one player can actually be read against prose
+               about the other. Leaving them inside the columns put them a
+               screen apart. */
+            const hasProfile = typeof buildPlayerFullProfileHTML === 'function' && typeof getPlayerAnalysis === 'function';
+            const soldAnalysis = hasProfile ? getPlayerAnalysis(sold) : null;
+            const candAnalysis = hasProfile ? getPlayerAnalysis(cand) : null;
+            const soldProfile = hasProfile
+                ? buildPlayerFullProfileHTML(sold, soldAnalysis, { header: false, aiReport: false, replacements: false, context: 'squad' })
                 : '';
-            const candProfile = typeof buildPlayerFullProfileHTML === 'function' && typeof getPlayerAnalysis === 'function'
-                ? buildPlayerFullProfileHTML(cand, getPlayerAnalysis(cand), { header: false, recommendation: false, replacements: false, context: 'candidate' })
+            const candProfile = hasProfile
+                ? buildPlayerFullProfileHTML(cand, candAnalysis, { header: false, aiReport: false, recommendation: false, replacements: false, context: 'candidate' })
+                : '';
+
+            /* The scouting reports, side by side.
+
+               This is the part of the comparison that reads like an argument
+               rather than a table, and it is what the manager asked to see
+               more of. gwPlayerReportLine adds what each of them did in the
+               round just played, which every other number here is too
+               aggregated to carry. */
+            const scoutCol = (p, analysis, ctxName, tag, tagCls) => {
+                if (!analysis || typeof buildPlayerNarrativeReport !== 'function') return '';
+                const gwLine = typeof gwPlayerReportLine === 'function' && typeof gwReviewTarget === 'function'
+                    ? gwPlayerReportLine(p, gwReviewTarget()) : '';
+                return `<div class="twh-scout-col ${tagCls}">
+                    <div class="twh-scout-head"><span class="twh-scout-tag ${tagCls}">${tag}</span>${escHTML(p.name)}</div>
+                    ${gwLine}
+                    <p class="twh-scout-text">${escHTML(buildPlayerNarrativeReport(p, analysis, ctxName))}</p>
+                </div>`;
+            };
+            const scoutOut = scoutCol(sold, soldAnalysis, 'squad', 'Out', 'out');
+            const scoutIn = scoutCol(cand, candAnalysis, 'candidate', 'In', 'in');
+            const scouting = (scoutOut || scoutIn)
+                ? `<div class="twh-scout">
+                    <div class="twh-scout-title">${v2Icon('sparkle')} Scout's take on each of them</div>
+                    <div class="twh-scout-cols">${scoutOut}${scoutIn}</div>
+                </div>`
                 : '';
 
             const blocked = !!blockedReason;
@@ -1818,18 +1854,18 @@
                     <div class="twh-chart"><canvas id="twFdrCanvas"></canvas></div>
                     <div class="twh-chart-note">Fixture difficulty over the next ${fdrGWs.length} gameweeks — lower is easier. A gap means no fixture.</div>
 
+                    ${scouting}
+
                     <!-- Everything below is the whole of both player cards —
-                         two scouting reports, two price histories, two stat
-                         blocks, two fixture lists. It is the right depth for
-                         someone who wants it and a wall for everyone else, and
-                         it sat between the decision and nothing at all. Closed
-                         by default, and it says what it is before you open it. -->
-                    <button class="twh-deep-toggle" onclick="twToggleDeepProfile(this)" aria-expanded="false">
-                        <span class="twh-deep-toggle-l">${v2Icon('report')} Full profile for both players</span>
-                        <span class="twh-deep-toggle-sub">Scouting report, price history, season numbers, fixtures</span>
-                        <span class="twh-deep-toggle-c" aria-hidden="true">${v2Icon('down')}</span>
-                    </button>
-                    <div class="twh-deep" hidden>
+                         two price histories, two stat blocks, two fixture
+                         lists. It spent a while behind a toggle, closed by
+                         default, on the theory that it was a wall for anyone
+                         who had already decided. But nobody arrives at a
+                         comparison having decided — that is what makes it a
+                         comparison — and what the toggle actually did was hide
+                         the evidence and leave five stat rows standing in for
+                         it. Open. -->
+                    <div class="twh-deep">
                         <div class="twh-deep-col out">
                             <div class="twh-deep-col-head out">OUT · ${escHTML(sold.name)}</div>
                             ${soldProfile}
@@ -1846,45 +1882,12 @@
             twDrawComparisonCharts(sold, cand, fdrGWs);
         }
 
-        /* The full profile is closed on arrival and stays where you left it
-           for as long as the panel lives — reopening it on every comparison
-           would undo the point of closing it, and forgetting it between two
-           players you are deliberately reading in depth would be its own
-           annoyance. So the preference is remembered for the session. */
-        let twDeepProfileOpen = false;
-
-        function twToggleDeepProfile(btn) {
-            const box = document.querySelector('.twh-deep');
-            if (!box) return;
-            twDeepProfileOpen = box.hidden;
-            box.hidden = !twDeepProfileOpen;
-            btn.setAttribute('aria-expanded', String(twDeepProfileOpen));
-            btn.classList.toggle('is-open', twDeepProfileOpen);
-            const label = btn.querySelector('.twh-deep-toggle-l');
-            if (label) {
-                label.innerHTML = `${v2Icon('report')} ${twDeepProfileOpen ? 'Hide the full profile' : 'Full profile for both players'}`;
-            }
-        }
-
         function twDrawComparisonCharts(sold, cand, fdrGWs) {
             /* Chart.js comes from a CDN, and a CDN is a thing that can be
                blocked — by an extension, a corporate proxy, or a bad minute.
                Returning early left the reserved chart box and its caption on
                screen as a tall empty rectangle explaining a picture that was
                never drawn. Take both away instead. */
-            /* Re-applied here because this runs right after the comparison
-               panel is written, and the panel is rebuilt from scratch every
-               time you look at a different player. */
-            const deep = document.querySelector('.twh-deep');
-            const deepBtn = document.querySelector('.twh-deep-toggle');
-            if (deep && deepBtn && twDeepProfileOpen) {
-                deep.hidden = false;
-                deepBtn.setAttribute('aria-expanded', 'true');
-                deepBtn.classList.add('is-open');
-                const label = deepBtn.querySelector('.twh-deep-toggle-l');
-                if (label) label.innerHTML = `${v2Icon('report')} Hide the full profile`;
-            }
-
             if (typeof Chart === 'undefined') {
                 document.querySelectorAll('.twh-chart, .twh-chart-note').forEach(n => { n.hidden = true; });
                 return;
@@ -2009,6 +2012,169 @@
                 overStacked: Object.keys(byTeam).filter(t => byTeam[t] > 3).map(t => teams[t]?.short_name || '?'),
                 legal: counts[1] === 2 && counts[2] === 5 && counts[3] === 5 && counts[4] === 3
             };
+        }
+
+        /* ===== Step 4's pitch =====
+
+           The squad these transfers would leave you with, arranged by hand.
+
+           It could not reuse the one on Squad Analysis. That pitch reads
+           analysisResults — your CURRENT squad, scored by analyzePlayer() at
+           load — and the players you are buying have no entry in it. Reusing
+           it would not have thrown; computeProjectedTotalFor() skips ids it
+           cannot find, so every incoming player would have been worth exactly
+           zero and the total would have looked like a disaster. So this keeps
+           its own arrangement over twBuildPendingSquad().
+
+           What it does share is the rule: isValidFormation() decides what is
+           legal here and on every other pitch in the app. One definition of a
+           legal eleven, or two screens disagree about whether 3-4-3 is a team.
+
+           The armband is deliberately not here. Captaincy is a one-gameweek
+           call on a squad you have not bought yet, the Lineup Wizard owns it,
+           and a second place to set it is a second answer to the same
+           question. */
+        let twOvXI = null;          // Set of player ids, or null before the first build
+        let twOvBench = [];         // ordered ids — substitute priority
+        let twOvPick = null;        // id held mid-swap, or null
+        let twOvKey = '';           // the plan this arrangement was built for
+
+        // Which plan the arrangement belongs to. Staging another transfer has to
+        // rebuild it, or a player you just sold stays on the pitch.
+        function twOvPlanKey() {
+            return transferState.pending
+                .map(s => `${s.soldPlayer.id}>${s.replacement ? s.replacement.id : '0'}`).join('|');
+        }
+
+        function twOvSyncIfNeeded() {
+            const key = twOvPlanKey();
+            if (twOvXI && key === twOvKey) return;
+            const bal = twSquadBalance();
+            twOvXI = new Set(bal.xi.map(p => p.id));
+            twOvBench = bal.bench.map(p => p.id);
+            twOvPick = null;
+            twOvKey = key;
+        }
+
+        function twOvSquad() {
+            return twBuildPendingSquad();
+        }
+
+        function twOvLegal(aId, bId) {
+            if (aId == null || bId == null || aId === bId) return false;
+            const aIn = twOvXI.has(aId), bIn = twOvXI.has(bId);
+            // Both benched: reordering who comes on first is always allowed.
+            if (!aIn && !bIn) return true;
+            // Both starting: nothing on the pitch would change.
+            if (aIn && bIn) return false;
+            const simulated = twOvSquad().map(p => ({
+                position: p.position,
+                onBench: p.id === aId ? aIn : p.id === bId ? bIn : !twOvXI.has(p.id)
+            }));
+            return typeof isValidFormation === 'function' ? isValidFormation(simulated) : false;
+        }
+
+        function twOvClick(playerId) {
+            twOvSyncIfNeeded();
+            if (twOvPick === null) { twOvPick = playerId; renderTWMarketPane(); return; }
+            if (twOvPick === playerId) { twOvPick = null; renderTWMarketPane(); return; }
+
+            const a = twOvPick, b = playerId;
+            if (!twOvLegal(a, b)) {
+                updateStatus('That swap would leave an illegal formation — a team needs one keeper, three defenders, two midfielders and a forward', 'error');
+                twOvPick = null;
+                renderTWMarketPane();
+                return;
+            }
+
+            const aIn = twOvXI.has(a), bIn = twOvXI.has(b);
+            if (aIn === bIn) {
+                const i = twOvBench.indexOf(a), j = twOvBench.indexOf(b);
+                if (i > -1 && j > -1) { const t = twOvBench[i]; twOvBench[i] = twOvBench[j]; twOvBench[j] = t; }
+            } else if (aIn) {
+                twOvXI.delete(a); twOvXI.add(b);
+                twOvBench[twOvBench.indexOf(b)] = a;
+            } else {
+                twOvXI.delete(b); twOvXI.add(a);
+                twOvBench[twOvBench.indexOf(a)] = b;
+            }
+            twOvPick = null;
+            renderTWMarketPane();
+        }
+
+        // Back to the eleven the solver picked, for anyone who has moved three
+        // players around and wants the model's answer again.
+        function twOvReset() {
+            twOvXI = null;
+            twOvSyncIfNeeded();
+            renderTWMarketPane();
+        }
+
+        /* Every projection on this pitch is one gameweek, and says so. The
+           three-gameweek numbers everywhere else in the wizard are about
+           whether a transfer is worth making; this is about which eleven of
+           the fifteen you would field, which is a question about Saturday. */
+        function twOvRenderPitch() {
+            twOvSyncIfNeeded();
+            const squad = twOvSquad();
+            const byId = new Map(squad.map(p => [p.id, p]));
+            const xi = squad.filter(p => twOvXI.has(p.id));
+            const bench = twOvBench.map(id => byId.get(id)).filter(Boolean);
+            const gw = (twPlanGWs(1)[0]) || currentGW;
+
+            const xiXP = xi.reduce((t, p) => t + predictedGWPoints(p), 0);
+            const benchXP = bench.reduce((t, p) => t + predictedGWPoints(p), 0);
+            const counts = { 2: 0, 3: 0, 4: 0 };
+            xi.forEach(p => { if (counts[p.position] != null) counts[p.position]++; });
+            const shape = `${counts[2]}-${counts[3]}-${counts[4]}`;
+
+            const card = (p, benchIdx) => {
+                const posClass = `pos-${(typeof V2_POS_CLASS !== 'undefined' && V2_POS_CLASS[p.position]) || 'mid'}`;
+                const ident = { name: p.name, code: p.code, teamId: p.teamId, team: p.team };
+                const fx = (teamFixtures[p.teamId] || p.fixtures || [])[0];
+                const picked = twOvPick === p.id;
+                // A held player marks every legal partner, so the second click
+                // is never a guess that ends in an error message.
+                const target = twOvPick !== null && !picked && twOvLegal(twOvPick, p.id);
+                return `<div class="dp-card twov-card ${posClass}${p.isIncoming ? ' twov-in' : ''}${picked ? ' is-picked' : ''}${target ? ' is-target' : ''}"
+                    role="button" tabindex="0" aria-pressed="${picked}"
+                    onclick="twOvClick(${p.id})"
+                    onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();twOvClick(${p.id});}"
+                    data-tooltip="${escHTML(picked ? `${p.name} is held — click whoever should change places with him`
+                        : twOvPick !== null ? (target ? `Swap with ${byId.get(twOvPick).name}` : `${p.name} cannot change places with ${byId.get(twOvPick).name}`)
+                        : `${p.name} — click to move him`)}">
+                    ${benchIdx != null ? `<span class="twov-sub">${benchIdx + 1}</span>` : ''}
+                    ${p.isIncoming ? '<div class="dp-badges"><span class="dp-badge in">IN</span></div>' : ''}
+                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident, 'v2-pid-pitch') : ''}
+                    <div class="dp-name">${escHTML(p.name)}</div>
+                    <div class="dp-score" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}."><b>${predictedGWPoints(p).toFixed(1)}</b><span class="u">xP</span></div>
+                    <div class="dp-fixtures">${fx
+                        ? `<span class="dp-fix fdr-${fx.difficulty || 3}" data-tooltip="${fx.isHome ? 'Home to' : 'Away at'} ${escHTML(fx.opponent || '?')} — FDR ${fx.difficulty || 3}">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">(${fx.isHome ? 'H' : 'A'})</span></span>`
+                        : '<span class="dp-fix dp-fix-blank" data-tooltip="No fixture this gameweek.">Blank</span>'}</div>
+                </div>`;
+            };
+            const rowFor = n => `<div class="dp-row">${xi.filter(p => p.position === n).map(p => card(p, null)).join('')}</div>`;
+
+            return `<div class="twov">
+                <div class="twov-head">
+                    <div class="twov-nums">
+                        <span class="twov-num" data-tooltip="Projected points for this eleven in GW${gw}. Move anyone and it moves with them.">
+                            <b>${xiXP.toFixed(1)}</b><em>xP, this eleven</em></span>
+                        <span class="twov-num dim" data-tooltip="What the four outside the eleven project. A bench that scores is cover; one that does not is dead money.">
+                            <b>${benchXP.toFixed(1)}</b><em>on the bench</em></span>
+                        <span class="twov-num dim" data-tooltip="The shape this eleven plays."><b>${shape}</b><em>shape</em></span>
+                    </div>
+                    <button class="rc-btn" onclick="twOvReset()" data-tooltip="Go back to the strongest legal eleven from this squad.">Best eleven</button>
+                </div>
+                <div class="twov-hint">Click a player, then click whoever should change places with him. The armband is set in the Lineup Wizard once the transfers are in.</div>
+                <div class="dp-pitch-card"><div class="dp-pitch">
+                    ${rowFor(4)}${rowFor(3)}${rowFor(2)}${rowFor(1)}
+                </div></div>
+                <div class="dp-bench">
+                    <div class="dp-bench-label">Bench \u2014 in the order they would come on</div>
+                    <div class="dp-bench-row">${bench.map((p, i) => card(p, i)).join('')}</div>
+                </div>
+            </div>`;
         }
 
         function renderTWPreviewModal() {
@@ -2324,13 +2490,6 @@
             renderTWAll();
         }
 
-        function twShowSummary() {
-            if (!transferState.pending.every(s => s.replacement)) return;
-            if (transferState.pending.length === 0) return;
-            transferState.mode = 'summary';
-            twGoStep(4);
-        }
-
         /* ===== Step 5 · confirm =====
 
            This was a run of inline styles around two numbers that do not mean
@@ -2389,12 +2548,16 @@
 
             const n = transferState.pending.length;
 
+            /* Edit and Start over are both gone from this header. Edit went
+               back one step, which is what the rail above already does and
+               labels with the name of the step it goes back to; Start over
+               threw the whole plan away behind a word that sounds like
+               navigation. Clear, in the bar above, is the one that discards —
+               and it says so. */
             el.innerHTML = `<div class="twc-panel tw-step-panel">
                 ${twStepHead({
-                    icon: 'check', title: `Confirm your ${n === 1 ? 'transfer' : 'transfers'}`,
-                    hint: `Judged over ${escHTML(span)}`,
-                    back: { label: 'Edit', on: 'twBackFromSummary()' },
-                    extra: `<button class="tw-back" onclick="renderTransferWizard()" data-tooltip="Clear the plan and go back to step 1.">${v2Icon('refresh')} Start over</button>`,
+                    icon: 'check', title: 'Overview',
+                    hint: `The squad ${n === 1 ? 'this transfer' : 'these transfers'} leaves you with, judged over ${escHTML(span)}`,
                     next: { label: `Confirm ${n === 1 ? 'transfer' : 'transfers'}`, on: 'twOpenConfirmGuard()',
                             tip: 'Apply these swaps to your squad across EasyFPL.' }
                 })}
@@ -2420,6 +2583,8 @@
                                 ? `Not worth it on projection. The plan is ${Math.abs(net).toFixed(1)} points behind over ${escHTML(span)}${hit > 0 ? ` once the ${hit}-point hit is counted` : ''}.`
                                 : `Too close to call over ${escHTML(span)} \u2014 within half a point either way. Something other than projection has to decide it.`}</span>
                     </div>
+
+                    ${twOvRenderPitch()}
 
                     <div class="tw-conf-swaps">${swaps}</div>
 
@@ -2746,12 +2911,6 @@
                 twPlan.push(m);
             });
             transferRendered = false;
-        }
-
-        function twBackFromSummary() {
-            transferState.mode = 'squad';
-            transferState.activeSlot = -1;
-            renderTWAll();
         }
 
         // ===== SETTINGS =====

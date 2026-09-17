@@ -5425,18 +5425,39 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    header now, with the back button beside it, so every step is steered from
    the same place. Its rules are gone rather than left behind unused.
 
-   Full profile — side by side, now that the comparison is the full width of
-   the page rather than one of two columns. */
-.twh-deep-label {
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-muted);
-    margin: 4px 0 8px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border-subtle);
+   Full profile — side by side and always open, now that the comparison is the
+   full width of the page rather than one of two columns. */
+/* ----- Scout's take, on both of them at once -----
+
+   Lifted out of the two profile columns and set side by side, because prose
+   about one player is only worth reading here against prose about the other.
+   Same two-column collapse as the profiles below it, at the same width. */
+.twh-scout { margin: 14px 0 4px; }
+.twh-scout-title {
+    display: flex; align-items: center; gap: 7px; margin-bottom: 8px;
+    font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--text-primary);
 }
+.twh-scout-title svg { width: 15px; height: 15px; color: var(--color-primary); }
+.twh-scout-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 1000px) { .twh-scout-cols { grid-template-columns: minmax(0, 1fr); } }
+.twh-scout-col {
+    padding: 11px 13px;
+    border: 1px solid var(--border-default); border-left-width: 3px;
+    border-radius: var(--radius-lg); background: var(--surface-2);
+}
+.twh-scout-col.out { border-left-color: var(--verdict-sell); }
+.twh-scout-col.in { border-left-color: var(--color-primary); }
+.twh-scout-head {
+    display: flex; align-items: center; gap: 7px; margin-bottom: 6px;
+    font-family: var(--font-display); font-size: 12.5px; font-weight: 700; color: var(--text-primary);
+}
+.twh-scout-tag {
+    padding: 1px 6px; border-radius: var(--radius-full);
+    font-size: 8px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+}
+.twh-scout-tag.out { background: color-mix(in srgb, var(--verdict-sell) 16%, transparent); color: var(--verdict-sell); }
+.twh-scout-tag.in { background: color-mix(in srgb, var(--color-primary) 16%, transparent); color: var(--color-primary); }
+.twh-scout-text { margin: 0; font-size: 12px; line-height: 1.65; color: var(--text-secondary); }
 
 .twh-deep { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 10px; }
 @media (max-width: 1000px) { .twh-deep { grid-template-columns: minmax(0, 1fr); } }
@@ -6983,6 +7004,53 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 }
 
 
+/* ===== Step 4's pitch =====
+
+   Reuses the .dp-* pitch every other screen draws — same card, same face over
+   crest, same projection line — and adds only what is true here: that the
+   cards are buttons, that one of them may be held mid-swap, and that the
+   incoming players are marked.
+
+   .twov-card sits on .dp-card rather than replacing it, so a change to how a
+   player is drawn anywhere reaches this pitch too. */
+.twov { margin: 4px 0 14px; }
+.twov-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.twov-nums { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.twov-num { display: inline-flex; flex-direction: column; line-height: 1.15; }
+.twov-num b { font-family: var(--font-display); font-size: 19px; font-weight: 800; color: var(--text-primary); }
+.twov-num em { font-style: normal; font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+.twov-num.dim b { font-size: 15px; color: var(--text-secondary); }
+.twov-head .rc-btn { margin-left: auto; }
+.twov-hint { margin-bottom: 9px; font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+
+.twov-card { cursor: pointer; transition: outline-color .14s ease, opacity .14s ease; outline: 2px solid transparent; outline-offset: 2px; }
+.twov-card:hover { outline-color: var(--border-emphasis); }
+/* Held. The second click is the one that does something, so the first has to
+   be unmistakable from across the pitch. */
+.twov-card.is-picked { outline-color: var(--color-primary); }
+/* Somewhere the held player can legally go. Marking these is what keeps the
+   second click from being a guess that ends in an error message. */
+.twov-card.is-target { outline-color: var(--color-success); outline-style: dashed; }
+/* Everything that is neither, while a player is held. */
+.twov .dp-pitch:has(.is-picked) .twov-card:not(.is-picked):not(.is-target),
+.twov .dp-bench:has(.is-picked) .twov-card:not(.is-picked):not(.is-target) { opacity: .5; }
+.twov-card.twov-in { box-shadow: inset 0 0 0 1px var(--color-primary); }
+
+/* Substitute priority, on the card rather than in a legend beside it. */
+.twov-sub {
+    position: absolute; top: 4px; left: 4px; z-index: 2;
+    width: 14px; height: 14px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-3); color: var(--text-secondary);
+    font-family: var(--font-mono); font-size: 8px; font-weight: 800;
+}
+.twov .dp-card { position: relative; }
+
+@media (max-width: 620px) {
+    .twov-head .rc-btn { margin-left: 0; }
+    .twov-nums { gap: 12px; }
+}
+
 /* ===== Step 5 · confirm ===== */
 .tw-conf-stats {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
@@ -7189,37 +7257,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* Present but not shown: the rank chip exists on every squad card so that
    picking a player can reveal it in place rather than rebuilding the card. */
 .pdm-hero-chip.is-blank { visibility: hidden; }
-
-/* ===== The full profile, folded away ===== */
-.twh-deep-toggle {
-    display: flex; align-items: center; gap: 10px;
-    width: 100%; margin: 4px 0 12px;
-    padding: 12px 14px;
-    border: 1px solid var(--v2-card-border, var(--border-emphasis));
-    border-radius: var(--v2-card-radius, 16px);
-    background: var(--surface-1);
-    text-align: left; cursor: pointer;
-    transition: border-color .15s ease, background .15s ease;
-}
-.twh-deep-toggle:hover { border-color: var(--color-primary); background: var(--surface-2); }
-.twh-deep-toggle-l {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-family: var(--font-display); font-size: 13px; font-weight: 700;
-    color: var(--text-primary);
-}
-.twh-deep-toggle-l svg { width: 15px; height: 15px; }
-.twh-deep-toggle-sub { font-size: 11px; color: var(--text-muted); }
-.twh-deep-toggle-c { margin-left: auto; color: var(--text-muted); display: inline-flex; transition: transform .2s ease; }
-.twh-deep-toggle-c svg { width: 16px; height: 16px; color: inherit; }
-.twh-deep-toggle.is-open .twh-deep-toggle-c { transform: rotate(180deg); }
-.twh-deep-toggle.is-open .twh-deep-toggle-sub { display: none; }
-.twh-deep[hidden] { display: none; }
-
-@media (max-width: 620px) {
-    .twh-deep-toggle { flex-wrap: wrap; }
-    .twh-deep-toggle-sub { flex-basis: 100%; }
-    .twh-deep-toggle-c { margin-left: auto; }
-}
 
 /* The two controls that leave this screen. They were sized like the chips in
    the toolbar above them; on the longest panel in the wizard they are the
