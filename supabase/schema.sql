@@ -163,6 +163,34 @@ $$;
 
 grant execute on function public.is_premium(uuid) to authenticated;
 
+-- The same question, asked about yourself, for callers who have a token and no
+-- reason to know the uuid inside it.
+--
+-- This is what the edge middleware calls. It could have decoded the JWT, read
+-- `sub`, and called is_premium(that) — but then the edge would be deciding
+-- whose token it is holding, which is a signature check written by us instead
+-- of by the people who issued the token. Letting auth.uid() answer keeps both
+-- halves where they belong: Supabase says who you are, this file says what that
+-- entitles you to, and the middleware believes a boolean.
+--
+-- Returns false for an anonymous caller, because auth.uid() is null and
+-- is_premium() already fails closed on a uuid with no row.
+create or replace function public.is_premium_me()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+    select public.is_premium((select auth.uid()));
+$$;
+
+grant execute on function public.is_premium_me() to authenticated;
+
+-- Deliberately NOT granted to anon. A signed-out caller has no row and would
+-- get false anyway, but an endpoint that answers questions for the unauthenticated
+-- is an endpoint worth not having.
+
 -- ------------------------------------------------------------------ notes
 --
 -- STILL TO DO, IN ORDER:
@@ -176,6 +204,14 @@ grant execute on function public.is_premium(uuid) to authenticated;
 --  3. The Mollie webhook gets the service-role key and is the only thing in the
 --     system permitted to write `plan`. It must verify the signature before it
 --     believes anything, or the entitlement column is writable by the internet.
---  4. Nobody is premium yet. Until billing exists, `plan` stays 'free' for
---     everyone and premium is granted by hand in the SQL editor — which is the
---     intended way to give accounts to friends.
+--  4. Until billing exists, premium is granted by hand in the SQL editor —
+--     which is the intended way to give accounts to friends, and to yourself:
+--
+--         update public.profiles set plan = 'premium', plan_until = null
+--         where id = (select id from auth.users where email = 'you@example.com');
+--
+--     plan_until null means it never lapses. Set a timestamptz instead to hand
+--     out a trial that expires on its own.
+--
+--     This takes effect on the next request: the middleware asks is_premium_me()
+--     per premium page load and caches nothing.

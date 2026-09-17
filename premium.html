@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" class="v2-theme">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyFPL Premium</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <meta name="description" content="What the EasyFPL Premium plan includes.">
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="https://easyfpl.com/premium.html">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/common.css?v=278">
+    <link rel="stylesheet" href="styles/v2-design.css?v=278">
+    <link rel="stylesheet" href="styles/auth.css?v=278">
+</head>
+<body>
+<div class="au-page">
+    <main class="au-card au-wide">
+        <a class="au-brand" href="/"><span class="au-brand-mark">e</span> EasyFPL</a>
+
+        <!-- While the token is being renewed. Someone entitled to the page they
+             asked for should see "checking", not "you cannot have this". -->
+        <div id="pmChecking">
+            <h1 class="au-title">Checking your plan…</h1>
+            <p class="au-sub">One moment.</p>
+        </div>
+
+        <div id="pmWall" hidden>
+            <h1 class="au-title">That page is part of Premium</h1>
+            <p class="au-sub" id="pmWallSub">Your account is on the free plan.</p>
+
+            <div class="au-note is-on" id="pmSignedInAs" hidden></div>
+
+            <div class="pm-cols">
+                <div class="pm-col">
+                    <div class="pm-col-h">Free, and staying free</div>
+                    <ul class="pm-list">
+                        <li>Your dashboard</li>
+                        <li>Squad Analysis and the pitch</li>
+                        <li>Charts</li>
+                        <li>All Players</li>
+                        <li>The Scout's Desk</li>
+                        <li>The News Hub</li>
+                    </ul>
+                </div>
+                <div class="pm-col is-premium">
+                    <div class="pm-col-h">Premium adds</div>
+                    <ul class="pm-list">
+                        <li>Team Analysis</li>
+                        <li>League Rivals</li>
+                        <li>The Season Vault</li>
+                        <li>The Transfer Wizard</li>
+                        <li>The Lineup Wizard</li>
+                        <li>The Gameweek Draft</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Billing is not built. Saying so is better than a button that
+                 takes a card number nothing is waiting for. -->
+            <p class="au-small" id="pmBilling">Premium is not on sale yet — there is nothing to buy
+                and no card to enter. Accounts are being switched on by hand while it is built.</p>
+
+            <div class="au-alt">
+                <a href="/" id="pmHome">Back to your dashboard</a>
+            </div>
+        </div>
+
+        <div id="pmSignedOut" hidden>
+            <h1 class="au-title">Sign in to see that</h1>
+            <p class="au-sub">That page is part of Premium, and we could not find a session for this browser.</p>
+            <div class="au-alt">
+                <a href="/login.html" id="pmToLogin">Sign in</a>
+                <span class="au-small">No account? <a href="/register.html">Create one</a></span>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="scripts/auth.js?v=278"></script>
+<script>
+    /* Same open-redirect rule as every other page here: a `from` that parses as
+       another origin is dropped rather than followed. The middleware only ever
+       writes our own pathname into it, but this page is reachable by hand. */
+    function pmFromParam() {
+        try {
+            const raw = new URLSearchParams(location.search).get('from');
+            if (!raw) return '';
+            const url = new URL(raw, location.origin);
+            if (url.origin !== location.origin) return '';
+            if (!url.pathname.startsWith('/')) return '';
+            return url.pathname + url.search;
+        } catch (e) { return ''; }
+    }
+
+    function pmShow(id) {
+        for (const k of ['pmChecking', 'pmWall', 'pmSignedOut']) {
+            const el = document.getElementById(k);
+            if (el) el.hidden = k !== id;
+        }
+    }
+
+    (async function decide() {
+        const from = pmFromParam();
+        const login = document.getElementById('pmToLogin');
+        if (from && login) login.href = '/login.html?next=' + encodeURIComponent(from);
+
+        /* auSession() renews a lapsed access token from the refresh cookie.
+         *
+         * That is most of why this page exists rather than the middleware
+         * simply saying no. An access token lives about an hour; a navigation
+         * that lands a minute after it expired carries a dead one, and the
+         * edge — which cannot run the refresh — has to refuse. Renewing here
+         * and sending them back is what turns that into a blink instead of a
+         * paying reader being told they have not paid. */
+        let session = null;
+        try { session = await auSession(); } catch (e) { session = null; }
+
+        if (!session) { pmShow('pmSignedOut'); return; }
+
+        let profile = null;
+        try { profile = await auFetchProfile(); } catch (e) { profile = null; }
+
+        /* Once only. If the retry lands back here the token was fine and the
+           plan is genuinely free — bouncing again would be a loop, and a loop
+           between two pages is worse than a clear no. */
+        const retried = new URLSearchParams(location.search).get('retry') === '1';
+        if (auIsPremium(profile) && from && !retried) {
+            const sep = from.indexOf('?') < 0 ? '?' : '&';
+            location.replace(from + sep + 'retry=1');
+            return;
+        }
+
+        const sub = document.getElementById('pmWallSub');
+        if (auIsPremium(profile)) {
+            /* Entitled, and still sent here. Either the page they wanted was
+               not recorded, or the retry came back — which means the edge and
+               the browser disagree, and saying so plainly beats pretending. */
+            sub.textContent = 'Your account is on Premium. If a page still refuses to open, '
+                + 'sign out and back in — that gets the server a fresh token.';
+        } else if (profile) {
+            sub.textContent = 'Your account is on the free plan.';
+        } else {
+            sub.textContent = 'We could not read your plan just now. If this keeps happening, sign out and back in.';
+        }
+
+        const who = document.getElementById('pmSignedInAs');
+        if (who && session.email) {
+            who.textContent = 'Signed in as ' + session.email;
+            who.hidden = false;
+        }
+        pmShow('pmWall');
+    })();
+</script>
+</body>
+</html>

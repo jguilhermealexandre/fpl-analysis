@@ -12,9 +12,11 @@
  * Three pages are wholly premium and can simply be refused.
  *
  * Three features — the Transfer Wizard, the Lineup Wizard and GW Draft — live
- * on a page a free reader needs, because Squad Analysis is on it too. They are
- * gateable anyway because each is carried by scripts that no free page loads.
- * Refusing those scripts is a real gate: the code never reaches the browser.
+ * on a page a free reader needs, because Squad Analysis is on it too. The plan
+ * was to gate them by refusing their scripts, since no free page loads those
+ * files. That is a real gate when it works: the code never reaches the browser.
+ *
+ * It does not work yet, and the reason is in ENTANGLED_SCRIPTS below.
  *
  * Four features are NOT here, and their absence is deliberate. Routes to
  * Points, Rising Form, Purple Patch and Recommendations render from inline
@@ -41,20 +43,49 @@ export const PREMIUM_PAGES = Object.freeze([
     '/season-vault-d845fb.html'
 ]);
 
-export const PREMIUM_SCRIPTS = Object.freeze([
-    // Transfer Wizard
+/* Scripts the gate actually refuses. Empty, and that is a statement rather than
+   an oversight — see ENTANGLED_SCRIPTS. */
+export const PREMIUM_SCRIPTS = Object.freeze([]);
+
+/* The scripts that carry the three paid features, and cannot be refused yet.
+ *
+ * They are not feature modules. transfer-wizard.js also holds the Transfer
+ * Market browser, the price-pressure model and the analysis settings dialog;
+ * lineup-wizard.js also holds the scorer the free pitch's Auto-Optimize runs
+ * on; lineup-store.js holds the save the free squad chart calls. Fourteen
+ * places outside these six files call into them WITHOUT a typeof guard, and
+ * several are on the free Squad Analysis path:
+ *
+ *   team-analysis-core.js  marketBadge() and priceMomentum() → getTransferPressure(),
+ *                          getPressureLabel() — the squad table's price column
+ *                          and the pitch's rising/falling arrow
+ *   team-analysis-core.js  the settings button → openSettings()
+ *   pitch-snapshot.js      Auto-Optimize → computeQuickLineupScoreDetailed()
+ *   pitch-snapshot.js      the replacement hint → findTransferCandidates()
+ *   squad-table-chart.js   → lsSave()
+ *   panels-and-tabs.js     the Transfer Market TAB → renderTransferMarket()
+ *
+ * Refusing the files today would not gate a paid feature, it would throw a
+ * ReferenceError in the middle of a free one. So they are listed, named and
+ * left served, because a list that claims to gate something it does not is
+ * worse than an empty one.
+ *
+ * Making them enforceable is a refactor, not a config change: the shared
+ * functions have to move into a file both sides may load. Until then the wizard
+ * tabs are hidden from free readers client-side, which is cosmetic — the same
+ * honest limitation as SOFT_SECTIONS below. */
+export const ENTANGLED_SCRIPTS = Object.freeze([
     '/scripts/transfer-wizard.js',
     '/scripts/transfer-funnel.js',
     '/scripts/transfer-rationale.js',
-    // Lineup Wizard
     '/scripts/lineup-wizard.js',
     '/scripts/lineup-store.js',
-    // GW Draft
     '/scripts/draft-planner.js'
 ]);
 
 /* Hidden, not refused. Listed so the page and this file still share one
-   vocabulary, and so the gap is visible rather than forgotten. */
+   vocabulary, and so the gap is visible rather than forgotten. Everything in
+   ENTANGLED_SCRIPTS is soft in exactly this sense too. */
 export const SOFT_SECTIONS = Object.freeze([
     { page: '/fpl-players-analysis.html', hash: 'routes', label: 'Routes to Points' },
     { page: '/fpl-players-analysis.html', hash: 'rising', label: 'Rising Form' },

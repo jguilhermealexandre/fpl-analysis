@@ -22,7 +22,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
     normalisePath, premiumReason, isPremiumPath,
-    PREMIUM_PAGES, PREMIUM_SCRIPTS
+    PREMIUM_PAGES, PREMIUM_SCRIPTS, ENTANGLED_SCRIPTS
 } from '../functions/lib/premium.js';
 
 const ROOT = new URL('..', import.meta.url);
@@ -54,11 +54,36 @@ test('a premium page is refused however the path is spelled', () => {
 
 test('a premium script is refused as the page actually asks for it', () => {
     // Every script on this site is cache-busted, so the query string is the
-    // normal case rather than an attack.
-    assert.equal(premiumReason('/scripts/transfer-wizard.js?v=266'), 'script');
+    // normal case rather than an attack. PREMIUM_SCRIPTS is empty today; this
+    // is here so it keeps working the day something is added to it.
     for (const s of PREMIUM_SCRIPTS) {
         assert.equal(premiumReason(s), 'script', s);
         assert.equal(premiumReason(s + '?v=1'), 'script', s);
+    }
+});
+
+test('the entangled scripts are served, and that is on purpose', () => {
+    /* transfer-wizard.js and lineup-wizard.js are not feature modules. They
+       also carry the price-pressure model the free squad table renders, the
+       scorer the free pitch's Auto-Optimize runs, and the Transfer Market tab.
+       Fourteen call sites outside those files reach into them with no typeof
+       guard, several on the free Squad Analysis path.
+
+       So refusing them would not gate a paid feature, it would throw a
+       ReferenceError in the middle of a free one. This test exists to stop
+       somebody moving them back into PREMIUM_SCRIPTS because the list "looks
+       incomplete" — the way to gate them is to extract the shared functions
+       first, and then this test is the one to delete. */
+    for (const s of ENTANGLED_SCRIPTS) {
+        assert.equal(premiumReason(s), null,
+            `${s} would be refused, and free Squad Analysis calls into it unguarded`);
+    }
+});
+
+test('the two script lists do not overlap', () => {
+    // A file in both would be refused and claimed to be served.
+    for (const s of PREMIUM_SCRIPTS) {
+        assert.ok(!ENTANGLED_SCRIPTS.includes(s), `${s} is in both lists`);
     }
 });
 
@@ -104,7 +129,7 @@ test('the normaliser resolves a path the way the origin would', () => {
 
 test('every gated file actually exists', () => {
     // A typo in the list is an ungated feature that looks gated.
-    for (const p of [...PREMIUM_PAGES, ...PREMIUM_SCRIPTS]) {
+    for (const p of [...PREMIUM_PAGES, ...PREMIUM_SCRIPTS, ...ENTANGLED_SCRIPTS]) {
         const onDisk = path.join(ROOT_DIR, p.replace(/^\//, ''));
         assert.ok(fs.existsSync(onDisk), `${p} is in the paywall list but not in the repo`);
     }
