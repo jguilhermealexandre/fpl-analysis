@@ -29,18 +29,13 @@
      escHTML, xpPlanGWs, projectPlayerPointsDetailed, expectedMinutesModel,
      minMinutesForCandidate, priceChangeBadge, getTWShortlistIds,
      twSlotBudget, twReservedFor, twBlockedClubIds, twShortlistBreakdownText,
-     twPreviewPlayer, twBackToSquad, renderTWMarketPane
+     twPreviewPlayer, renderTWMarketPane
    ============================================ */
 
         // How many survivors the Pick step renders. The funnel is meant to hand
         // over a shortlist, not a second list to scroll — but the cap is high
         // enough that a manager who filters nothing still gets a usable market.
         const TWF_MAX_SHOW = 40;
-
-        // Horizons offered by the step-1 selector. Five is the default because it
-        // is what the recommender in transfer-engine.js already decides on
-        // (TW_HORIZON), and a transfer is a five-week commitment in practice.
-        const TWF_HORIZONS = [3, 5, 8];
 
         const TWF_POS_NAMES = ['', 'Goalkeepers', 'Defenders', 'Midfielders', 'Forwards'];
         const TWF_POS_SHORT = ['', 'GK', 'DEF', 'MID', 'FWD'];
@@ -51,7 +46,6 @@
         function twfDefaultFilters() {
             return {
                 view: 'quick',      // quick | custom — see twfRenderQuick
-                horizon: 5,
                 clubs: [],          // team ids; empty means every club
                 minutes: 'any',     // any | likely | nailed
                 form: 'any',        // any | hot | cold
@@ -82,7 +76,7 @@
            like to work rather than who you are looking for, so they follow you
            between slots while every actual filter starts clean. Someone who
            prefers the funnel should not have to re-open it for every transfer. */
-        let twfViewPrefs = { horizon: 5, sort: 'xp', view: 'quick' };
+        let twfViewPrefs = { sort: 'xp', view: 'quick' };
 
         /* Filters belong to the slot, not to the screen.
 
@@ -164,23 +158,35 @@
             const base = prev
                 ? Object.assign({}, prev, { search: '' })
                 : twfDefaultFilters();
-            const seeded = Object.assign(base, twfViewPrefs);
-            /* A Free Hit squad is given back after one gameweek, so judging it
-               over five is judging fixtures you will never own. The strategy
-               overrides the remembered horizon rather than the other way
-               round — this is a fact about the chip, not a preference. */
-            if (typeof twStrategyHorizon === 'function') {
-                const forced = twStrategyHorizon();
-                if (forced === 1) seeded.horizon = 1;
-            }
-            return seeded;
+            /* The horizon used to be seeded here and overridden for a Free
+               Hit. It is not a filter any more — twfGWs() decides it, and asks
+               twStrategyHorizon() directly — so there is nothing to carry. */
+            return Object.assign(base, twfViewPrefs);
         }
 
-        // The gameweeks the whole screen is reasoning over. One horizon drives
-        // every number in the pane, so the fixture strip, the projection and the
-        // delta can never be describing different stretches of the season.
+        /* The gameweeks the whole screen is reasoning over. One horizon drives
+           every number in the pane, so the fixture strip, the projection and the
+           delta can never be describing different stretches of the season.
+
+           Five, always, with one exception below. The 3 / 5 / 8 selector is
+           gone: five is what the recommender in transfer-engine.js already
+           decides on (TW_HORIZON) and what a transfer is in practice, so the
+           other two were offering to disagree with the rest of the site about
+           the horizon a move is judged over. Three flattered a fixture run that
+           turns; eight judged a player on games he might not still be at the
+           club for.
+
+           The exception is a Free Hit, where the squad is handed back after one
+           gameweek — five gameweeks of fixtures are irrelevant to a team you do
+           not keep, so twStrategyHorizon() forces one. That is a fact about the
+           chip, not a preference, which is why it survives and the buttons did
+           not. */
+        const TWF_HORIZON = 5;
+
         function twfGWs() {
-            return typeof xpPlanGWs === 'function' ? xpPlanGWs(twfState().horizon) : [];
+            if (typeof xpPlanGWs !== 'function') return [];
+            const forced = typeof twStrategyHorizon === 'function' ? twStrategyHorizon() : null;
+            return xpPlanGWs(forced === 1 ? 1 : TWF_HORIZON);
         }
 
         /* ===== Per-player evidence =====
@@ -274,16 +280,31 @@
            quietly change meaning when the bank does. */
         let _twfCohortCache = {};
 
+/* What "quality" means depends on what the player is bought for.
+ *
+ * A defender and a keeper are owned for clean sheets, so the number that
+ * describes them is expected goals CONCEDED while they are on the pitch — the
+ * shot quality their side faces. A midfielder or forward is owned for returns,
+ * so it is expected goal involvements. Judging a centre-back on xGI ranked him
+ * against strikers on a stat his job does not produce, which is how a filter
+ * called "underlying quality" ended up recommending the wrong defenders.
+ *
+ * NOTE THE DIRECTION, which is the part that matters. For xGI, higher is
+ * better. For xGC, LOWER is better — 0.8 expected goals conceded per 90 is a
+ * good defence and 2.0 is a bad one. twfQualityPct() inverts for the positions
+ * that use it, so "top 10%" always means the best tenth whichever metric is in
+ * play. Without that inversion the filter would have returned the ten per cent
+ * of defenders who concede most, labelled as the best. */
         function twfQualityMetric(p) {
-            if (p.position === 1) {
-                const s = p.saves || 0, gc = p.goalsConceded || 0;
-                return (s + gc) > 0 ? s / (s + gc) : 0;
-            }
+            if (p.position <= 2) return p.minutes > 0 ? (p.xGC / p.minutes) * 90 : 0;
             return p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0;
         }
 
+        // True when a low value is the good one.
+        function twfQualityLowerIsBetter(pos) { return pos <= 2; }
+
         function twfQualityLabel(pos) {
-            return pos === 1 ? 'save %' : 'xGI/90';
+            return twfQualityLowerIsBetter(pos) ? 'xGC/90' : 'xGI/90';
         }
 
         function twfQualityPct(p) {
@@ -300,7 +321,10 @@
             const v = twfQualityMetric(p);
             let lo = 0, hi = vals.length;
             while (lo < hi) { const mid = (lo + hi) >> 1; if (vals[mid] <= v) lo = mid + 1; else hi = mid; }
-            return lo / vals.length;
+            const pct = lo / vals.length;
+            // Flip for the metrics where least is best, so every caller can go
+            // on reading a high percentile as "good".
+            return twfQualityLowerIsBetter(p.position) ? 1 - pct : pct;
         }
 
         // Anything that can move a cached number. Called before each render.
@@ -409,10 +433,8 @@
             if (s.avail === 'fit' && p.status !== 'a') return false;
 
             if (s.minutes === 'nailed' && f.pStart < 0.8) return false;
-            if (s.minutes === 'likely' && f.pStart < 0.6) return false;
 
             if (s.form === 'hot' && !(f.formRatio > 1.15 && f.played >= 2)) return false;
-            if (s.form === 'cold' && !(f.formRatio < 0.85 && f.played >= 2)) return false;
 
             if (s.quality === 'top10' && twfQualityPct(p) < 0.9) return false;
             if (s.quality === 'top25' && twfQualityPct(p) < 0.75) return false;
@@ -559,29 +581,17 @@
 
         function twfRenderHead(slotIdx, sold, gws) {
             const s = twfState();
-            const budget = twSlotBudget(slotIdx);
-            const reserved = twReservedFor(slotIdx);
-            const span = gws.length ? `GW${gws[0]}\u2013GW${gws[gws.length - 1]}` : 'no upcoming gameweeks';
 
-            /* On a Free Hit the window is not a preference — the squad goes
-               back after one gameweek, so a three-to-eight selector would be
-               offering to judge fixtures you will never own. Show what it is
-               fixed to, and why, rather than a row of buttons that lie. */
-            const fixedToOneWeek = typeof twStrategyHorizon === 'function' && twStrategyHorizon() === 1;
-            const horizons = fixedToOneWeek
-                ? `<span class="twf-hz active locked" data-tooltip="A Free Hit squad is handed back after this gameweek, so every club and player here is judged over that one week rather than a five-gameweek run.">1 GW \u00b7 Free Hit</span>`
-                : TWF_HORIZONS.map(h =>
-                    `<button class="twf-hz${h === s.horizon ? ' active' : ''}" onclick="twfSetHorizon(${h})"
-                        data-tooltip="Judge every club and player over the next ${h} gameweeks.">${h} GW</button>`).join('');
+            /* Two ways to answer the same question, and nothing else in this
+               row any more.
 
-            /* Two ways to answer the same question, and they are now the first
-               thing in the header rather than the second row of it.
+               The budget went from beside them. It is a number you cannot act
+               on here — the pool is already filtered to what you can afford,
+               so a player you cannot buy never appears and the figure was
+               answering a question the screen had already answered. The slot
+               dropdown below still carries it per transfer.
 
-               What used to lead was "Replacements for Egan" — which said, in
-               grey text, what the card immediately to the left says in his
-               club's colours with his face on it, and which could not be
-               changed without leaving the screen. The dropdown below says the
-               same thing and does something. */
+               The 3 / 5 / 8 gameweek buttons went too. See twfGWs(). */
             const views = `<div class="twf-views" role="tablist">
                 <button class="twf-view${s.view === 'quick' ? ' active' : ''}" role="tab" aria-selected="${s.view === 'quick'}"
                     onclick="twfSetView('quick')"
@@ -592,16 +602,18 @@
             </div>`;
 
             const switcher = typeof twSlotSwitcherHTML === 'function' ? twSlotSwitcherHTML() : '';
+            const span = gws.length ? `GW${gws[0]}\u2013GW${gws[gws.length - 1]}` : 'no upcoming gameweeks';
 
             return `<div class="twf-head">
                 <div class="twf-head-top">
                     ${views}
-                    <span class="twf-budget" ${reserved > 0 ? `data-tooltip="${escHTML(`\u00a3${reserved.toFixed(1)}m of the bank is held back so your other open slots can still be filled.`)}"` : ''}>\u00a3${budget.toFixed(1)}m${reserved > 0 ? `<em>\u00a3${reserved.toFixed(1)}m reserved</em>` : ''}</span>
                 </div>
-                <div class="twf-head-bot">
+                ${switcher ? `<div class="twf-head-bot">
                     ${switcher}
-                    <div class="twf-hzs" data-tooltip="Everything on this screen is judged over ${escHTML(span)}.">${horizons}</div>
-                </div>
+                    <span class="twf-span" data-tooltip="Every projection and every fixture run on this screen is judged over these gameweeks.">${escHTML(span)}</span>
+                </div>` : `<div class="twf-head-bot">
+                    <span class="twf-span" data-tooltip="Every projection and every fixture run on this screen is judged over these gameweeks.">${escHTML(span)}</span>
+                </div>`}
             </div>`;
         }
 
@@ -622,7 +634,6 @@
 
             const presets = `
                 <button class="twf-preset${s.clubs.length ? '' : ' active'}" onclick="twfClubPreset('all')">All clubs</button>
-                <button class="twf-preset" onclick="twfClubPreset('easy')" data-tooltip="Select the six clubs with the best run over this horizon, for this position.">Easiest 6 runs</button>
                 <button class="twf-preset" onclick="twfClubPreset('swing')" data-tooltip="Select every club whose fixtures get easier partway through.">Improving swings</button>
                 <button class="twf-preset" onclick="twfClubPreset('attack')" data-tooltip="Select the eight strongest attacks.">Best attack</button>
                 <button class="twf-preset" onclick="twfClubPreset('defence')" data-tooltip="Select the eight strongest defences.">Best defence</button>`;
@@ -664,9 +675,22 @@
                     <div class="twf-chips">${options.map(o => {
                         const n = countIf({ [key]: o.v });
                         const active = s[key] === o.v;
-                        return `<button class="twf-chip${active ? ' active' : ''}${n === 0 && !active ? ' dead' : ''}"
-                            onclick="twfSetFilter('${key}','${o.v}')"
-                            ${o.tip ? `data-tooltip="${escHTML(o.tip)}"` : ''}>${escHTML(o.l)}<em>${n}</em></button>`;
+                        /* A chip that would return nobody is disabled, not
+                           merely greyed. It was clickable, and clicking it gave
+                           an empty list with a generic explanation — which is
+                           how "First-choice pens" read as broken on a defender
+                           slot. It is not broken: no defender or goalkeeper in
+                           the game is a first-choice penalty taker, so the
+                           honest answer is that the option cannot be taken
+                           rather than that it was taken and found nothing.
+                           Still rendered, still counted, so the shape of the
+                           filter does not jump about as you narrow. */
+                        const empty = n === 0 && !active;
+                        return `<button class="twf-chip${active ? ' active' : ''}${empty ? ' dead' : ''}"
+                            ${empty ? 'disabled' : `onclick="twfSetFilter('${key}','${o.v}')"`}
+                            data-tooltip="${escHTML(empty
+                                ? `No ${TWF_POS_NAMES[pos].toLowerCase()} in this list matches that.`
+                                : (o.tip || ''))}">${escHTML(o.l)}<em>${n}</em></button>`;
                     }).join('')}</div>
                 </div>`;
 
@@ -698,14 +722,12 @@
 
                 ${group('Minutes', 'How likely he is to start, from his own starts rate and minutes per appearance. The most common reason a transfer fails.', 'minutes', [
                     { v: 'any', l: 'Any' },
-                    { v: 'likely', l: 'Likely (60%+)', tip: 'At least a 60% chance of starting.' },
                     { v: 'nailed', l: 'Nailed (80%+)', tip: 'At least an 80% chance of starting.' }
                 ])}
 
                 ${group('Form direction', 'Last five appearances against his season average — the direction, not the level.', 'form', [
                     { v: 'any', l: 'Any' },
-                    { v: 'hot', l: 'Heating up', tip: 'Scoring at least 15% above his season average over his last five.' },
-                    { v: 'cold', l: 'Cooling', tip: 'Scoring at least 15% below his season average — a buy-low candidate if the underlying numbers hold.' }
+                    { v: 'hot', l: 'Heating up', tip: 'Scoring at least 15% above his season average over his last five.' }
                 ])}
 
                 ${group('Underlying quality', `Percentile within his own position on ${qLabel}. A rate means nothing without knowing what is good for the position.`, 'quality', [
@@ -755,10 +777,16 @@
            the filters are above the players they are filtering, so the effect
            of a chip is the list moving rather than a number changing on a step
            you have to press to leave. */
+/* The footer is the reason a list is empty, and nothing else now.
+ *
+ * It carried a "← Squad" button, which went back to a column that is already
+ * on screen beside this one — the squad never left. A control that returns you
+ * to something you can see is a control that only takes up room, and the slot
+ * dropdown in the header is how you move between transfers. */
         function twfRenderFooter(n, pos) {
+            if (n !== 0) return '';
             return `<div class="twf-foot">
-                <button class="twf-back" onclick="twBackToSquad()">← Squad</button>
-                ${n === 0 ? `<span class="twf-foot-why">${escHTML(twfEmptyReason(pos))}</span>` : ''}
+                <span class="twf-foot-why">${escHTML(twfEmptyReason(pos))}</span>
             </div>`;
         }
 
@@ -872,7 +900,7 @@
                             <div><button class="twf-linkbtn" onclick="twfSetView('custom')">Open the custom search</button> to see everyone, with the reason each one is out.</div>
                         </div>
                     </div>
-                    <div class="twf-foot"><button class="twf-back" onclick="twBackToSquad()">Squad</button></div>`;
+                    `;
             }
 
             const cards = shown.map((x, i) =>
@@ -916,10 +944,7 @@
                 ${notes.length ? `<div class="twf-trimmed">${notes.map(n => escHTML(n)).join(' ')}
                     <button class="twf-linkbtn" onclick="twfSetView('custom')">Search properly</button></div>` : ''}
             </div>
-            <div class="twf-foot">
-                <button class="twf-back" onclick="twfSetView('custom')">${v2Icon('tools')} Custom search</button>
-                <button class="twf-back" onclick="twBackToSquad()">Squad</button>
-            </div>`;
+            `;
         }
 
         /* ===== Custom search, on one screen =====
@@ -1173,12 +1198,6 @@
             twfRerender();
         }
 
-        function twfSetHorizon(h) {
-            twfState().horizon = h;
-            twfViewPrefs.horizon = h;
-            twfRerender();
-        }
-
         function twfToggleClub(teamId) {
             const s = twfState();
             const i = s.clubs.indexOf(teamId);
@@ -1194,7 +1213,6 @@
             const runs = twfAllClubRuns(pos, twfGWs());
 
             if (kind === 'all') s.clubs = [];
-            else if (kind === 'easy') s.clubs = runs.slice(0, 6).map(r => r.teamId);
             else if (kind === 'swing') s.clubs = runs.filter(r => r.swing && r.swing.direction === 'improving').map(r => r.teamId);
             else if (kind === 'attack') s.clubs = [...runs].sort((a, b) => b.attack - a.attack).slice(0, 8).map(r => r.teamId);
             else if (kind === 'defence') s.clubs = [...runs].sort((a, b) => b.defence - a.defence).slice(0, 8).map(r => r.teamId);
@@ -1223,7 +1241,7 @@
 
         function twfResetFilters() {
             const s = twfState();
-            const keep = { horizon: s.horizon, sort: s.sort };
+            const keep = { sort: s.sort };
             // In place: the filters may belong to a slot rather than to
             // transferState, and reassigning there would reset the wrong one.
             Object.assign(s, twfDefaultFilters(), keep);
