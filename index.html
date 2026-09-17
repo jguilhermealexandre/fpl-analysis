@@ -22,9 +22,9 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=262">
-    <link rel="stylesheet" href="styles/v2-design.css?v=262">
-    <link rel="stylesheet" href="styles/responsive.css?v=262">
+    <link rel="stylesheet" href="styles/common.css?v=263">
+    <link rel="stylesheet" href="styles/v2-design.css?v=263">
+    <link rel="stylesheet" href="styles/responsive.css?v=263">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -3780,20 +3780,20 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=262">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=262">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=262">
-    <link rel="preload" as="script" href="scripts/odds-panel.js?v=262">
-    <link rel="preload" as="script" href="scripts/live-gw.js?v=262">
-    <link rel="preload" as="script" href="scripts/matchday.js?v=262">
-    <link rel="preload" as="script" href="scripts/market-panel.js?v=262">
-    <link rel="preload" as="script" href="scripts/eo-layer.js?v=262">
-    <link rel="preload" as="script" href="scripts/readiness.js?v=262">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=262">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=262">
-    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=262">
-    <link rel="preload" as="script" href="scripts/common.js?v=262">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=262">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=263">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=263">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=263">
+    <link rel="preload" as="script" href="scripts/odds-panel.js?v=263">
+    <link rel="preload" as="script" href="scripts/live-gw.js?v=263">
+    <link rel="preload" as="script" href="scripts/matchday.js?v=263">
+    <link rel="preload" as="script" href="scripts/market-panel.js?v=263">
+    <link rel="preload" as="script" href="scripts/eo-layer.js?v=263">
+    <link rel="preload" as="script" href="scripts/readiness.js?v=263">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=263">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=263">
+    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=263">
+    <link rel="preload" as="script" href="scripts/common.js?v=263">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=263">
 </head>
 <body>
 <script>
@@ -4534,20 +4534,20 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=262"></script>
-    <script src="scripts/price-watch.js?v=262"></script>
-    <script src="scripts/xp-engine.js?v=262"></script>
-    <script src="scripts/odds-panel.js?v=262"></script>
-    <script src="scripts/live-gw.js?v=262"></script>
-    <script src="scripts/matchday.js?v=262"></script>
-    <script src="scripts/market-panel.js?v=262"></script>
-    <script src="scripts/eo-layer.js?v=262"></script>
-    <script src="scripts/readiness.js?v=262"></script>
-    <script src="scripts/push-alerts.js?v=262"></script>
-    <script src="scripts/notifications.js?v=262"></script>
-    <script src="scripts/transfer-engine.js?v=262"></script>
-    <script src="scripts/common.js?v=262"></script>
-    <script src="scripts/sidebar-nav.js?v=262"></script>
+    <script src="scripts/error-monitor.js?v=263"></script>
+    <script src="scripts/price-watch.js?v=263"></script>
+    <script src="scripts/xp-engine.js?v=263"></script>
+    <script src="scripts/odds-panel.js?v=263"></script>
+    <script src="scripts/live-gw.js?v=263"></script>
+    <script src="scripts/matchday.js?v=263"></script>
+    <script src="scripts/market-panel.js?v=263"></script>
+    <script src="scripts/eo-layer.js?v=263"></script>
+    <script src="scripts/readiness.js?v=263"></script>
+    <script src="scripts/push-alerts.js?v=263"></script>
+    <script src="scripts/notifications.js?v=263"></script>
+    <script src="scripts/transfer-engine.js?v=263"></script>
+    <script src="scripts/common.js?v=263"></script>
+    <script src="scripts/sidebar-nav.js?v=263"></script>
     <script>
         initIcons();
         loadFooter();
@@ -6479,7 +6479,17 @@
                     } catch (e) { /* the feed is worth having without the phase */ }
                     const liveRows = (typeof eventLiveData !== 'undefined' && eventLiveData
                         && eventLiveData.event === currentGW) ? (eventLiveData.elements || {}) : {};
-                    ntRenderInto({ squad, live: liveRows, phase, gw: currentGW });
+                    /* The injury table, for the rows about these fifteen. Fetched
+                       without awaiting anything else and without blocking the
+                       bell: no file, no injury events, and the rest of the feed
+                       is unaffected. */
+                    fetch('data/injuries.json?v=' + Math.floor(Date.now() / 300000))
+                        .then(r => (r.ok ? r.json() : null))
+                        .catch(() => null)
+                        .then(d => {
+                            const injuries = d && Array.isArray(d.items) ? d.items : [];
+                            ntRenderInto({ squad, live: liveRows, phase, gw: currentGW, injuries });
+                        });
                 }
                 renderPriceTicker(allPlayers, squad);
 

@@ -27,6 +27,12 @@
 import { sendPush } from './webpush.js';
 
 const FPL = 'https://fantasy.premierleague.com/api';
+/* The injury table this site scrapes twice a day, read back over HTTP because a
+   Worker has no access to the Pages build that wrote it. Each row already
+   carries the FPL element id it is about — resolved in
+   tools/fetch-pl-injuries.mjs, so this Worker never matches a name and can
+   never disagree with what the page shows. */
+const INJURIES = 'https://easyfpl.com/data/injuries.json';
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 const json = (body, status = 200) =>
@@ -134,6 +140,22 @@ async function runSchedule(env) {
         if (p.status !== 'a') flagged.set(p.id, { name: p.web_name, status: p.status, news: p.news });
     });
 
+    /* Injury stories by player, fetched once for everybody. A missing or broken
+       file must not take the deadline nudge down with it, so it degrades to an
+       empty map rather than throwing out of the pass. */
+    const nameOf = new Map(boot.elements.map(p => [p.id, p.web_name]));
+    const injuriesByPlayer = new Map();
+    try {
+        const inj = await fetchJSON(INJURIES);
+        for (const row of inj.items || []) {
+            if (!row || !row.url || row.playerId == null) continue;
+            if (!injuriesByPlayer.has(row.playerId)) injuriesByPlayer.set(row.playerId, []);
+            injuriesByPlayer.get(row.playerId).push(row);
+        }
+    } catch (e) {
+        console.warn('injury table unavailable:', e.message);
+    }
+
     let cursor, scanned = 0, sent = 0;
     do {
         const page = await env.PUSH_SUBS.list({ prefix: 'sub:', cursor });
@@ -146,22 +168,60 @@ async function runSchedule(env) {
             /* News on a player you are starting. Needs the squad, so it is only
                fetched for subscribers who asked for this and have told us who
                they are. */
-            if (prefs['squad-news'] && record.teamId && current) {
+            const wantsSquadNews = prefs['squad-news'];
+            const wantsInjuryNews = prefs['injury-news'] && injuriesByPlayer.size;
+            if ((wantsSquadNews || wantsInjuryNews) && record.teamId && current) {
                 try {
                     const picks = await fetchJSON(`${FPL}/entry/${record.teamId}/event/${current.id}/picks/`);
-                    const starters = (picks.picks || []).filter(p => p.multiplier > 0);
-                    const hits = starters.map(p => flagged.get(p.element)).filter(Boolean);
-                    if (hits.length) {
-                        const first = hits[0];
-                        const body = hits.length === 1
-                            ? `${first.name}: ${first.news || 'now carrying a fitness flag'}`
-                            : `${first.name} and ${hits.length - 1} other${hits.length > 2 ? 's' : ''} in your XI are flagged`;
-                        // Tagged by gameweek and by who, so a new injury sends
-                        // and the same one does not send again every hour.
-                        const tag = `news-${current.id}-${hits.map(h => h.name).sort().join('-')}`;
-                        if (await sendOnce(env, entry.name, record, tag, {
-                            title: 'News on your squad', body, url: '/index.html'
-                        })) sent++;
+                    const all = picks.picks || [];
+
+                    /* A club's injury update about any of the fifteen — bench
+                       included, because a bench player being ruled out is exactly
+                       what changes who you start.
+
+                       Tagged by article, so one update covering three of your
+                       players sends once rather than three times, and the same
+                       article never sends twice however many hourly passes see it
+                       still sitting in the table. */
+                    if (wantsInjuryNews) {
+                        const stories = new Map();
+                        for (const pick of all) {
+                            for (const row of injuriesByPlayer.get(pick.element) || []) {
+                                if (!stories.has(row.url)) stories.set(row.url, { row, names: [] });
+                                stories.get(row.url).names.push(nameOf.get(pick.element) || 'A player');
+                            }
+                        }
+                        for (const [url, { row, names }] of stories) {
+                            const who = names.length === 1
+                                ? names[0]
+                                : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+                            if (await sendOnce(env, entry.name, record, `inj-${url}`, {
+                                title: `Injury news: ${who}`,
+                                body: row.articleTitle || `${row.club || 'Their club'} has posted an injury update`,
+                                url
+                            })) sent++;
+                        }
+                    }
+
+                    /* The game's own flag on a player you are starting. A
+                       different signal from the one above and worth both: the
+                       club speaks at a press conference, and the flag may follow
+                       a day later, or never if he is passed fit. */
+                    if (wantsSquadNews) {
+                        const starters = all.filter(p => p.multiplier > 0);
+                        const hits = starters.map(p => flagged.get(p.element)).filter(Boolean);
+                        if (hits.length) {
+                            const first = hits[0];
+                            const body = hits.length === 1
+                                ? `${first.name}: ${first.news || 'now carrying a fitness flag'}`
+                                : `${first.name} and ${hits.length - 1} other${hits.length > 2 ? 's' : ''} in your XI are flagged`;
+                            // Tagged by gameweek and by who, so a new injury sends
+                            // and the same one does not send again every hour.
+                            const tag = `news-${current.id}-${hits.map(h => h.name).sort().join('-')}`;
+                            if (await sendOnce(env, entry.name, record, tag, {
+                                title: 'News on your squad', body, url: '/index.html'
+                            })) sent++;
+                        }
                     }
                 } catch { /* one bad squad must not stop the pass */ }
             }

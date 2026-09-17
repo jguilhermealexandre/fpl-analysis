@@ -122,6 +122,71 @@ export function looksMisaligned(items) {
         : null;
 }
 
+/* Which FPL player is this row about?
+
+   Resolved here, once, rather than in every consumer. The page needs it to mark
+   your own players, and the push Worker needs the same answer — and the Worker
+   cannot import scripts/common.js, which is a classic browser script. Two copies
+   of a name-matching rule is two rules the moment one of them is edited, so the
+   scrape decides it and writes the id into the file. Unmatched stays null.
+
+The injury table names players the way a newspaper does — "Ben White" — and
+   FPL names them its own way: first_name "Benjamin", second_name "White",
+   web_name "White". So the first names genuinely disagree for the same man, and
+   matching on them would miss him.
+
+   Surname alone is not enough either. The table lists a Julian Araujo; this feed
+   has a Ronald Araujo, who is a different person at a different club. Four clubs
+   also carry two players with the same surname — two Fletchers, two Murphys, two
+   Mileys, two Angulos. Attaching an injury to the wrong player is worse than
+   attaching it to nobody, so:
+
+     1. the club must match, which is the constraint that separates the Araujos;
+     2. the surname must appear as a whole word in the table's name;
+     3. one survivor is a match, several are not — unless the first names
+        settle it, allowing Ben for Benjamin and Alex for Alexander, because
+        shortened forms are exactly what a match report uses.
+
+   Anything unresolved returns null. No badge, no notification, no guess. */
+export function plNormaliseName(s) {
+    return String(s == null ? '' : s)
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/[^a-z]+/g, ' ').trim();
+}
+
+// Ben/Benjamin, Alex/Alexander — one a prefix of the other, and long enough
+// that "A" does not stand in for "Amadou".
+export function plFirstNamesAgree(a, b) {
+    const x = plNormaliseName(a).split(' ')[0] || '';
+    const y = plNormaliseName(b).split(' ')[0] || '';
+    if (!x || !y) return false;
+    if (x === y) return true;
+    const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+    return short.length >= 3 && long.startsWith(short);
+}
+
+/* players: objects carrying { teamId, secondName, firstName }. Returns the one
+   player this row is about, or null. */
+export function plMatchInjuredPlayer(rowName, clubId, players) {
+    if (!rowName || clubId == null || !Array.isArray(players)) return null;
+    const tokens = plNormaliseName(rowName).split(' ').filter(Boolean);
+    if (!tokens.length) return null;
+    const tokenSet = new Set(tokens);
+
+    const sameClub = players.filter(p => p && p.teamId === clubId);
+    const bySurname = sameClub.filter(p => {
+        const parts = plNormaliseName(p.secondName || p.name).split(' ').filter(Boolean);
+        const surname = parts[parts.length - 1];
+        return surname && tokenSet.has(surname);
+    });
+
+    if (bySurname.length === 1) return bySurname[0];
+    if (bySurname.length === 0) return null;
+    const byFirst = bySurname.filter(p => plFirstNamesAgree(rowName, p.firstName || ''));
+    return byFirst.length === 1 ? byFirst[0] : null;
+}
+
+
 /* Club name -> FPL team id, so the page can draw a crest. Matching is exact
    after normalising case and the handful of spellings that differ between the
    two feeds; anything that does not match keeps a null id and renders without a
@@ -312,11 +377,15 @@ if (!scraped.length) {
 }
 
 let clubIdFor = () => null;
+let squadPool = [];
 try {
     const boot = JSON.parse(fs.readFileSync('data/bootstrap-static.json', 'utf8'));
     clubIdFor = buildClubMap(boot.teams || []);
+    squadPool = (boot.elements || []).map(p => ({
+        id: p.id, teamId: p.team, firstName: p.first_name, secondName: p.second_name, name: p.web_name
+    }));
 } catch {
-    console.warn('no bootstrap-static.json to map clubs to crests — ids will be null');
+    console.warn('no bootstrap-static.json — club and player ids will be null');
 }
 
 // One fetch per article, not per player: an update covering three players is
@@ -360,9 +429,19 @@ const items = sortItems(scraped.map(r => {
         url: r.url,
         articleTitle: meta?.title || null,
         published: meta?.published || null,
-        firstSeen: r.url ? firstSeenFor(r.url) : nowIso
+        firstSeen: r.url ? firstSeenFor(r.url) : nowIso,
+        /* The FPL element this row is about, decided once here so the page and
+           the push Worker agree without either of them re-matching names. */
+        playerId: (() => {
+            const club = r.club ? clubIdFor(r.club) : null;
+            const hit = club != null ? plMatchInjuredPlayer(r.player, club, squadPool) : null;
+            return hit ? hit.id : null;
+        })()
     };
 }));
+
+const resolved = items.filter(i => i.playerId != null).length;
+console.log(`${resolved} of ${items.length} rows resolved to an FPL player`);
 
 const slipped = looksMisaligned(items);
 if (slipped) {

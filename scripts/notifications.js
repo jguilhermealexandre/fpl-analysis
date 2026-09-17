@@ -70,7 +70,25 @@
 
         // Only the fields a diff can turn into a sentence. Keeping the snapshot
         // narrow is what lets it live in localStorage next to everything else.
-        function ntSnapshot(squad, live, phase, gw) {
+        /* Every injury article this browser has already been shown, so "new"
+           means new to the reader rather than new to the table. Stored as a plain
+           list of URLs: the table holds forty-odd articles at a time, which is
+           smaller than the live stats already kept beside it.
+
+           This is also what makes a first visit quiet. ntCollect returns early
+           with no previous snapshot, so nothing is emitted — but the snapshot is
+           written on the way out regardless, so the second visit compares against
+           everything that was standing on the first and reports only what
+           genuinely arrived since. */
+        function ntInjuryUrls(injuries) {
+            const urls = [];
+            (injuries || []).forEach(r => {
+                if (r && r.url && urls.indexOf(r.url) < 0) urls.push(r.url);
+            });
+            return urls;
+        }
+
+        function ntSnapshot(squad, live, phase, gw, injuries) {
             const status = {}, stats = {};
             (squad || []).forEach(p => {
                 status[p.id] = p.status || 'a';
@@ -82,7 +100,7 @@
                     };
                 }
             });
-            return { status, stats, phase: phase || null, gw: gw || null };
+            return { status, stats, phase: phase || null, gw: gw || null, inj: ntInjuryUrls(injuries) };
         }
 
         const NT_STATUS_WORD = {
@@ -118,8 +136,8 @@
 
         /* Every event the current state implies that the previous one did not.
 
-           ctx: { squad, live, phase, gw, now, prev }  — prev is a snapshot from
-           ntSnapshot(), or null on a first visit. */
+           ctx: { squad, live, phase, gw, injuries, now, prev }  — prev is a
+           snapshot from ntSnapshot(), or null on a first visit. */
         function ntCollect(ctx) {
             const c = ctx || {};
             const squad = c.squad || [];
@@ -173,6 +191,56 @@
                     href: 'index.html'
                 });
             });
+
+            /* --- an injury story about one of your fifteen.
+
+               Different from the availability diff above, which reads the status
+               letter FPL sets. This is what the club actually said, and the two do
+               not move together: a manager tells a press conference on Thursday
+               and the flag may not appear in the game until Friday, or at all if
+               he is passed fit.
+
+               New means an article this browser has not been shown before, not an
+               article the table has not carried before — a story can sit in the
+               table for a fortnight and it is still news the first time you see
+               it. `prev.inj` is missing for anyone whose last snapshot predates
+               this feature; treating that as "seen nothing" would fire every
+               standing story at once, so it is treated as "seen everything" and
+               the next visit starts clean. */
+            const injRows = (c.injuries || []).filter(r => r && r.url && byId[r.playerId]);
+            if (injRows.length) {
+                const seen = new Set(prev.inj || ntInjuryUrls(c.injuries));
+                const byUrl = new Map();
+                injRows.forEach(r => {
+                    if (seen.has(r.url)) return;
+                    if (!byUrl.has(r.url)) byUrl.set(r.url, []);
+                    byUrl.get(r.url).push(r);
+                });
+                byUrl.forEach((rows, url) => {
+                    const names = rows.map(r => byId[r.playerId].name);
+                    const first = rows[0];
+                    const who = names.length === 1
+                        ? names[0]
+                        : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+                    const what = rows.map(r => r.injury).filter(Boolean)[0];
+                    out.push({
+                        // One entry per article, not per player: a club update
+                        // covering three of yours is one thing that happened.
+                        id: `inj-${url}`,
+                        kind: 'injury-news',
+                        tone: 'bad',
+                        title: who,
+                        body: first.articleTitle
+                            ? `${first.club || 'The club'}: ${first.articleTitle}`
+                            : `${first.club || 'Their club'} has an injury update${what ? ` — ${who} (${what})` : ''}`,
+                        // The club's date where there is one. firstSeen is when
+                        // this site saw the article, which is a fact about us
+                        // rather than about the club, so it only ever orders.
+                        at: Date.parse(first.published || '') || now,
+                        href: url
+                    });
+                });
+            }
 
             /* --- the gameweek turning over. Time-based rather than a diff of
                anything a player did, and the only events that fire when nothing
@@ -243,7 +311,7 @@
             const next = {
                 events: merged,
                 lastSeen: state.lastSeen,
-                snapshot: ntSnapshot(ctx.squad, ctx.live, ctx.phase, ctx.gw)
+                snapshot: ntSnapshot(ctx.squad, ctx.live, ctx.phase, ctx.gw, ctx.injuries)
             };
             ntSave(next);
             return { ...next, unread: ntUnread(merged, state.lastSeen), fresh: events.length };

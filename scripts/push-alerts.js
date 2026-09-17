@@ -59,6 +59,12 @@
                 default: true
             },
             {
+                id: 'injury-news',
+                label: 'Club injury news',
+                detail: 'A club publishes an injury update about any of your fifteen — what the club said, not the flag the game sets afterwards.',
+                default: true
+            },
+            {
                 id: 'price',
                 label: 'Price moves on your squad',
                 detail: 'A player you own is close to rising or falling tonight.',

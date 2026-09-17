@@ -295,3 +295,108 @@ test('a finished player is not described as still having time', () => {
     const unused = nt.ntCollect({ squad, live: { 1: { pts: 0, min: 0 } }, phase: 'live', gw: 4, now: T0, prev });
     assert.match(unused[0].body, /yet to feature/);
 });
+
+/* ---------------------------------------------------------------------------
+   Club injury news about your fifteen.
+
+   A different signal from the availability diff above, and worth both: a
+   manager speaks at a press conference on Thursday, and the game's flag may
+   follow on Friday, or never if the player is passed fit.
+
+   "New" here means new to this reader, not new to the table. A story can sit in
+   the Premier League's table for a fortnight and still be the first time you
+   have seen it — so the snapshot carries the article URLs already shown, and
+   the diff is against that rather than against the table's own contents. */
+
+const ARTICLE = 'https://www.arsenal.com/news/artetas-update';
+const LATER = 'https://www.arsenal.com/news/a-later-update';
+
+// Two of mine on one story, plus a player I do not own. playerId is resolved by
+// the scrape (tools/fetch-pl-injuries.mjs), never by the browser.
+const injuryRows = (url) => ([
+    { url, playerId: 1, player: 'Ben White', club: 'Arsenal', injury: 'Knock',
+      articleTitle: "Arteta's update on White, Mosquera and Timber", published: '2026-09-04T14:00:00.000Z' },
+    { url, playerId: 3, player: 'Cristhian Mosquera', club: 'Arsenal', injury: 'Muscle',
+      articleTitle: "Arteta's update on White, Mosquera and Timber", published: '2026-09-04T14:00:00.000Z' },
+    { url, playerId: 404, player: 'Someone Else', club: 'Arsenal', injury: 'Back',
+      articleTitle: "Arteta's update on White, Mosquera and Timber", published: '2026-09-04T14:00:00.000Z' }
+]);
+const injuryEvents = (events) => [...events].filter(e => e.kind === 'injury-news');
+
+test('a first visit reports no injury stories at all', () => {
+    // Forty standing stories on arrival is noise dressed as news.
+    const nt = load();
+    const events = nt.ntCollect({
+        squad, live: {}, phase: 'upcoming', gw: 4, now: T0, prev: null, injuries: injuryRows(ARTICLE)
+    });
+    assert.deepEqual(injuryEvents(events), []);
+});
+
+test('a story already shown does not come back', () => {
+    const nt = load();
+    const prev = nt.ntSnapshot(squad, {}, 'upcoming', 4, injuryRows(ARTICLE));
+    assert.deepEqual(prev.inj, [ARTICLE], 'the snapshot records the article once, not once per player');
+    const again = nt.ntCollect({
+        squad, live: {}, phase: 'upcoming', gw: 4, now: T0 + 1e6, prev, injuries: injuryRows(ARTICLE)
+    });
+    assert.deepEqual(injuryEvents(again), []);
+});
+
+test('a new story names every player of yours it is about, once', () => {
+    const nt = load();
+    const prev = nt.ntSnapshot(squad, {}, 'upcoming', 4, injuryRows(ARTICLE));
+    const events = injuryEvents(nt.ntCollect({
+        squad, live: {}, phase: 'upcoming', gw: 4, now: T0,
+        prev, injuries: [...injuryRows(ARTICLE), ...injuryRows(LATER)]
+    }));
+    assert.equal(events.length, 1, 'one entry per article, not one per player');
+    assert.equal(events[0].href, LATER, 'it opens the club\u2019s own report');
+    assert.equal(events[0].id, `inj-${LATER}`);
+    assert.match(events[0].title, /Saka/);
+    assert.match(events[0].title, /Raya/);
+    assert.ok(!/Someone Else/.test(events[0].title + events[0].body),
+        'a player you do not own is never named');
+});
+
+test('a row the scrape could not resolve is silent', () => {
+    /* playerId is null when the name was ambiguous — two players with one
+       surname at the same club, say. Silence is the only safe answer: a guess
+       here tells someone their defender is hurt when he is not. */
+    const nt = load();
+    const prev = nt.ntSnapshot(squad, {}, 'upcoming', 4, []);
+    const events = nt.ntCollect({
+        squad, live: {}, phase: 'upcoming', gw: 4, now: T0, prev,
+        injuries: [{ url: LATER, playerId: null, player: 'Ambiguous Name', club: 'Arsenal',
+                     injury: 'Knee', articleTitle: 'Someone is hurt', published: null }]
+    });
+    assert.deepEqual(injuryEvents(events), []);
+});
+
+test('a snapshot saved before this existed does not dump the whole table', () => {
+    /* Anyone upgrading has a stored snapshot with no `inj` list. Reading that as
+       "seen nothing" would fire every standing story at once on their next
+       visit — the exact backlog a first visit is careful to avoid. */
+    const nt = load();
+    const old = nt.ntSnapshot(squad, {}, 'upcoming', 4);
+    delete old.inj;
+    const events = nt.ntCollect({
+        squad, live: {}, phase: 'upcoming', gw: 4, now: T0, prev: old, injuries: injuryRows(ARTICLE)
+    });
+    assert.deepEqual(injuryEvents(events), []);
+});
+
+test('the club\u2019s date is used, and only for ordering when it is missing', () => {
+    const nt = load();
+    const prev = nt.ntSnapshot(squad, {}, 'upcoming', 4, []);
+    const dated = injuryEvents(nt.ntCollect({
+        squad, live: {}, phase: 'upcoming', gw: 4, now: T0, prev, injuries: injuryRows(ARTICLE)
+    }));
+    assert.equal(dated[0].at, Date.parse('2026-09-04T14:00:00.000Z'));
+
+    const undated = injuryEvents(nt.ntCollect({
+        squad, live: {}, phase: 'upcoming', gw: 4, now: T0, prev,
+        injuries: [{ url: LATER, playerId: 1, player: 'Ben White', club: 'Arsenal',
+                     injury: 'Knock', articleTitle: 'Update', published: null }]
+    }));
+    assert.equal(undated[0].at, T0, 'no published date falls back to now rather than to NaN');
+});

@@ -52,9 +52,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=262">
-    <link rel="stylesheet" href="styles/v2-design.css?v=262">
-    <link rel="stylesheet" href="styles/responsive.css?v=262">
+    <link rel="stylesheet" href="styles/common.css?v=263">
+    <link rel="stylesheet" href="styles/v2-design.css?v=263">
+    <link rel="stylesheet" href="styles/responsive.css?v=263">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -1024,13 +1024,13 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=262"></script>
-    <script src="scripts/common.js?v=262"></script>
+    <script src="scripts/error-monitor.js?v=263"></script>
+    <script src="scripts/common.js?v=263"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=262"></script>
-    <script src="scripts/notifications.js?v=262"></script>
-    <script src="scripts/sidebar-nav.js?v=262"></script>
+    <script src="scripts/push-alerts.js?v=263"></script>
+    <script src="scripts/notifications.js?v=263"></script>
+    <script src="scripts/sidebar-nav.js?v=263"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1635,6 +1635,10 @@
                         sortAt: first.published || first.firstSeen || null,
                         matchedTeamIds: first.clubId != null ? [first.clubId] : [],
                         injuredPlayers: group.map(r => r.player),
+                        /* Resolved by the scrape, not here: the Worker that sends
+                           the push cannot import this page's code, and two copies
+                           of a name-matching rule are two rules. */
+                        playerIds: group.map(r => r.playerId).filter(id => id != null),
                         sortWeight: 5
                     });
                 }
@@ -1653,10 +1657,6 @@
 
                 allPlayers = bootData.elements.map(p => ({
                     id: p.id, name: p.web_name,
-                    /* The Premier League's injury table writes "Ben White" and
-                       this feed calls him Benjamin, so the surname is what the
-                       two agree on — see plMatchInjuredPlayer in common.js. */
-                    firstName: p.first_name, secondName: p.second_name,
                     /* The photo library is keyed by `code`, not by `id`, and the
                        crest by the team's own code — neither was carried
                        through, which is why a squad news card could only ever
@@ -1756,19 +1756,17 @@
                    Merged after the pass above, which rebuilds matchedTeamIds from
                    scratch and would wipe the club these already know for certain.
 
-                   Ownership is decided by the matcher rather than the loose
-                   headline-substring rule used for the wire copy: here we have the
-                   club and the exact name off the table, so it can be strict, and
-                   a notification will eventually hang off the same decision. */
+                   Ownership is decided by the player id the scrape already
+                   resolved, rather than the loose headline-substring rule the wire
+                   copy uses — the same id the push Worker reads, so the badge here
+                   and the notification there can never disagree. */
                 const injuryItems = injuryStories(injuryRows, localTeams);
                 if (injuryItems.length) {
-                    const squadPlayers = allPlayers.filter(p => squadIds.has(p.id));
                     injuryItems.forEach(it => {
-                        const clubId = it.matchedTeamIds[0];
-                        const mine = typeof plMatchInjuredPlayer === 'function'
-                            ? it.injuredPlayers.some(n => plMatchInjuredPlayer(n, clubId, squadPlayers))
-                            : false;
-                        if (mine) { it.isSquad = true; it.sortWeight = 60; }
+                        if (it.playerIds.some(id => squadIds.has(id))) {
+                            it.isSquad = true;
+                            it.sortWeight = 60;
+                        }
                     });
                     externalItems.push(...injuryItems);
                 }

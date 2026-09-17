@@ -22,12 +22,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { loadFunction } from './helpers/load.mjs';
-
-const plNormaliseName = loadFunction('scripts/common.js', 'plNormaliseName');
-const plFirstNamesAgree = loadFunction('scripts/common.js', 'plFirstNamesAgree', { plNormaliseName });
-const plMatchInjuredPlayer = loadFunction('scripts/common.js', 'plMatchInjuredPlayer',
-    { plNormaliseName, plFirstNamesAgree });
+import { plNormaliseName, plFirstNamesAgree, plMatchInjuredPlayer }
+    from '../tools/fetch-pl-injuries.mjs';
 
 const boot = JSON.parse(fs.readFileSync(new URL('../data/bootstrap-static.json', import.meta.url), 'utf8'));
 const PLAYERS = boot.elements.map(p => ({
