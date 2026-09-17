@@ -674,9 +674,16 @@
             const defconN = countIf({ defcon: !s.defcon });
             const qLabel = twfQualityLabel(pos);
 
+            /* The running total, next to the control that changes it. `survivors`
+               has been passed into this function since it was written and was
+               never read — the count lived only at the top of the results
+               column, which on a narrow screen is below the filters. The
+               cheapest way to know a chip went too far is for the number to be
+               under your cursor when you click it. */
             return `<div class="twf-section">
                 <div class="twf-section-head">
                     <span class="twf-section-title">The player — what kind, inside those clubs?</span>
+                    <span class="twf-live" data-tooltip="Players still matching every filter on this screen.">${survivors.length} left</span>
                     <button class="twf-reset" onclick="twfResetFilters()">Reset filters</button>
                 </div>
 
@@ -918,17 +925,28 @@
         /* ===== Custom search, on one screen =====
 
            The filters and the players they filter used to be two numbered steps
-           with a button between them. Splitting them meant the effect of a chip
-           was a number changing on a step you then had to press to leave, which
-           is the slowest possible way to learn that "Nailed" cut your list to
-           three. Everything is in one column now, in the order you think in:
-           whose fixtures, what kind of player, then who that leaves.
+           with a "Show 13 players →" button between them. Splitting them meant
+           the effect of a chip was a number changing on a step you then had to
+           press to leave, which is the slowest possible way to learn that
+           "Nailed" cut your list to three.
+
+           Collapsing them into one column was worse, and briefly shipped that
+           way: .twf-body is a 640px scroller, so the run presets and eight chip
+           groups filled it and the players went below the fold of a scrollbar
+           inside the page's own — with the button that used to skip past the
+           filters now gone. The filters were in the way and nothing got you
+           past them.
+
+           So they are beside each other. Filters on the left, who they leave on
+           the right, both on screen from the first pixel, which is what one
+           screen was supposed to mean. Below 1100px there is no room for two
+           columns, so they stack and the filter column is capped instead — the
+           players are never more than a short scroll away.
 
            No sort control here. It moved to Quick picks, which is where a
            ranked shortlist is the whole answer — this list is ordered by
-           projection and narrowed by the chips above it. */
+           projection and narrowed by the chips beside it. */
         function twfRenderCustom(slot, survivors, gws, pos, slotIdx, blocked, ctx, base) {
-            const s = twfState();
             const sold = slot.soldPlayer;
             const soldProj = twfProjection(sold, gws);
             const budget = twSlotBudget(slotIdx);
@@ -949,8 +967,10 @@
                 ? `<div class="twf-trimmed">Showing the top ${shown.length} of ${scored.length}. Narrow further to see the rest.</div>` : '';
 
             return `<div class="twf-body custom">
-                ${twfRunSectionHTML(pos, gws)}
-                ${twfRenderChips(base, survivors, ctx, pos)}
+                <div class="twf-filters">
+                    ${twfRunSectionHTML(pos, gws)}
+                    ${twfRenderChips(base, survivors, ctx, pos)}
+                </div>
                 <div class="twf-results">
                     <div class="twf-section-head">
                         <span class="twf-section-title">Who that leaves</span>
