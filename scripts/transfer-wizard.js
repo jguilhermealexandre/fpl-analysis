@@ -1822,6 +1822,93 @@
         let _twRadarChart = null;
         let _twFdrChart = null;
 
+        /* ===== Both readings, at the axis they belong to =====
+         *
+         * A radar says which of two shapes is bigger and never says by how
+         * much: you read "Form is further out for him" off two lines crossing
+         * a web, and then have nowhere to find the numbers. The axis label was
+         * the only text on the chart, and it was the least useful thing that
+         * could have been there.
+         *
+         * So each vertex carries both readings — the out player's and the in
+         * player's, each in the colour its stroke already uses — with the axis
+         * named underneath in the small grey caps every other label on the site
+         * uses. Chart.js cannot do this through pointLabels: it paints a label
+         * in one colour, and telling the two apart is the entire job here.
+         *
+         * Drawn on afterDraw so the text sits over the fills rather than under
+         * them, and positioned by pushing out along the axis from the centre —
+         * the same geometry the scale uses, so it cannot drift out of step with
+         * the web it is labelling.
+         */
+        const TW_RADAR_OUT_PAD = 21;   // px beyond the outer ring
+        /* A canvas does not resolve CSS custom properties, so ctx.font cannot
+           be given var(--font-display) — it silently falls back to the default
+           serif and the numbers come out looking like a different site. The
+           family is read off the document once instead, which keeps it honest
+           if the token ever changes. */
+        function twRadarFont(weight, size) {
+            let family = '';
+            try { family = getComputedStyle(document.documentElement).getPropertyValue('--font-display').trim(); }
+            catch (e) { /* no computed style */ }
+            return `${weight} ${size}px ${family || 'system-ui, sans-serif'}`;
+        }
+
+        function twRadarVertexLabels(cfg) {
+            return {
+                id: 'twRadarVertexLabels',
+                afterDraw(chart) {
+                    const scale = chart.scales && chart.scales.r;
+                    if (!scale || !cfg || !cfg.labels) return;
+                    const ctx = chart.ctx;
+                    const n = cfg.labels.length;
+                    const radius = scale.drawingArea + TW_RADAR_OUT_PAD;
+                    const pct = v => String(Math.round(Math.max(0, Math.min(1, v || 0)) * 100));
+
+                    ctx.save();
+                    ctx.textBaseline = 'middle';
+                    for (let i = 0; i < n; i++) {
+                        const key = cfg.labels[i];
+                        /* getPointPosition works in the scale's own angle space,
+                           so the first axis points up and the rest follow the
+                           web exactly. */
+                        const at = scale.getPointPosition(i, radius);
+                        /* Which side of the chart the vertex is on decides how
+                           the pair is anchored, so nothing runs off the canvas:
+                           left-hand vertices hang their text to the left, right-
+                           hand ones to the right, and the top and bottom centre.
+                           A vertex within a tenth of the middle counts as
+                           centred — at five axes that is the one at the top. */
+                        const dx = at.x - scale.xCenter;
+                        const side = Math.abs(dx) < scale.drawingArea * 0.12 ? 0 : (dx > 0 ? 1 : -1);
+
+                        const av = pct(cfg.a[key]), bv = pct(cfg.b[key]);
+                        ctx.font = twRadarFont(700, 13);
+                        const wa = ctx.measureText(av).width;
+                        const wb = ctx.measureText(bv).width;
+                        const gap = 7;
+                        const total = wa + gap + wb;
+                        const startX = side === 0 ? at.x - total / 2
+                            : side > 0 ? at.x
+                            : at.x - total;
+
+                        ctx.textAlign = 'left';
+                        ctx.fillStyle = cfg.aInk;
+                        ctx.fillText(av, startX, at.y - 7);
+                        ctx.fillStyle = cfg.bInk;
+                        ctx.fillText(bv, startX + wa + gap, at.y - 7);
+
+                        ctx.font = twRadarFont(800, 8.5);
+                        ctx.fillStyle = cfg.labelInk;
+                        ctx.textAlign = side === 0 ? 'center' : side > 0 ? 'left' : 'right';
+                        const lx = side === 0 ? at.x : side > 0 ? startX : startX + total;
+                        ctx.fillText(String(key).toUpperCase(), lx, at.y + 8);
+                    }
+                    ctx.restore();
+                }
+            };
+        }
+
         // Normalised 0-1 so five different units can share one radar. Each axis is
         // divided by a strong-but-attainable value rather than by the pair's own max,
         // which would make the weaker of two poor players look elite.
@@ -2132,8 +2219,15 @@
                             : ''}</div>
                     </div>
 
-                    <div class="twh-chart"><canvas id="twRadarCanvas"></canvas></div>
-                    <div class="twh-chart-note">Each axis is scaled against a strong benchmark, not against each other — two weak players do not both look elite.</div>
+                    <div class="twh-radar">
+                        <div class="twh-radar-keys">
+                            <span class="twh-radar-key out"><i></i>${escHTML(sold.name)}</span>
+                            <span class="twh-radar-key-vs">vs</span>
+                            <span class="twh-radar-key in"><i></i>${escHTML(cand.name)}</span>
+                        </div>
+                        <div class="twh-chart is-radar"><canvas id="twRadarCanvas"></canvas></div>
+                    </div>
+                    <div class="twh-chart-note">Each axis is scaled 0\u2013100 against a strong benchmark, not against each other — two weak players do not both look elite.</div>
 
                     ${/* No club colours on this bar. It was the obvious idea and
                           it fails on the most ordinary pairing there is: half
@@ -2197,7 +2291,10 @@
                screen as a tall empty rectangle explaining a picture that was
                never drawn. Take both away instead. */
             if (typeof Chart === 'undefined') {
-                document.querySelectorAll('.twh-chart, .twh-chart-note').forEach(n => { n.hidden = true; });
+                /* .twh-radar as well as the canvases: it is the panel around
+                   the radar, and hiding only what is inside it left a bordered
+                   box with two name pills and nothing between them. */
+                document.querySelectorAll('.twh-radar, .twh-chart, .twh-chart-note').forEach(n => { n.hidden = true; });
                 return;
             }
             if (_twRadarChart) { _twRadarChart.destroy(); _twRadarChart = null; }
@@ -2208,20 +2305,75 @@
             if (radar) {
                 const aS = twRadarAxes(sold), aC = twRadarAxes(cand);
                 const labels = Object.keys(aS);
+                /* Two thin strokes over a faint web, with both readings printed
+                   at the axis they belong to.
+                 *
+                 * The default radar draws a circular grid at full contrast, a
+                 * heavy stroke and a 22% fill, and then repeats the two names in
+                 * a legend under it — five decorated rings competing with the
+                 * two shapes that are the whole point. The shape carries the
+                 * comparison and everything else gets out of its way: the web
+                 * is a polygon at 8% so it reads as graph paper, the fills drop
+                 * to a tint, and the legend is gone because the names are in
+                 * the keys above, each beside its own colour.
+                 *
+                 * The numbers are drawn by twRadarVertexLabels below rather than
+                 * by pointLabels. Chart.js paints a point label in one colour,
+                 * and the thing worth printing here is two readings that have to
+                 * be told apart — which is exactly the colour the strokes
+                 * already carry. */
+                const ink = (v) => (getComputedStyle(document.documentElement).getPropertyValue(v) || '').trim();
+                /* The fill is the stroke at 13%, built from whatever the token
+                   currently is — the dark theme's primary is a different green
+                   from the light one, and a hard-coded rgba would have been the
+                   light green tinting a dark panel. */
+                const tint = (hex, alpha) => {
+                    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+                    if (!m) return `rgba(0, 220, 130, ${alpha})`;
+                    const n = parseInt(m[1], 16);
+                    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+                };
+                const OUT_INK = '#94A3B8';
+                const IN_INK = ink('--color-primary') || '#00DC82';
+                /* Not --border-default: at 8% black it is invisible on the
+                   panel this sits on, and a radar with no web is five numbers
+                   floating around two outlines. A neutral slate at a quarter
+                   reads as graph paper on either theme. */
+                const GRID_INK = 'rgba(148, 163, 184, .30)';
+                const LABEL_INK = ink('--text-muted') || '#6B7280';
+
                 _twRadarChart = new Chart(radar.getContext('2d'), {
                     type: 'radar',
                     data: {
                         labels,
                         datasets: [
-                            { label: sold.name, data: labels.map(k => aS[k]), borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,.22)', pointBackgroundColor: '#94a3b8' },
-                            { label: cand.name, data: labels.map(k => aC[k]), borderColor: 'var(--color-primary)', backgroundColor: 'rgba(0,220,130,.22)', pointBackgroundColor: 'var(--color-primary)' }
+                            { label: sold.name, data: labels.map(k => aS[k]), borderColor: OUT_INK,
+                              backgroundColor: 'rgba(148,163,184,.13)', pointBackgroundColor: OUT_INK,
+                              borderWidth: 1.75, pointRadius: 2.5, pointHoverRadius: 4, pointBorderWidth: 0, tension: 0 },
+                            { label: cand.name, data: labels.map(k => aC[k]), borderColor: IN_INK,
+                              backgroundColor: tint(IN_INK, 0.13), pointBackgroundColor: IN_INK,
+                              borderWidth: 1.75, pointRadius: 2.5, pointHoverRadius: 4, pointBorderWidth: 0, tension: 0 }
                         ]
                     },
                     options: {
                         responsive: true, maintainAspectRatio: false,
-                        scales: { r: { min: 0, max: 1, ticks: { display: false }, pointLabels: { font: { size: 10 } } } },
-                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
-                    }
+                        /* Room for the readings, which sit outside the web. */
+                        layout: { padding: { top: 34, bottom: 34, left: 52, right: 52 } },
+                        scales: {
+                            r: {
+                                min: 0, max: 1,
+                                /* Five rings, not the ten Chart.js picks for a
+                                   0-1 axis. Ten on a 300px chart is a moiré the
+                                   two shapes have to be read through. */
+                                ticks: { display: false, backdropColor: 'transparent', stepSize: 0.2 },
+                                grid: { circular: false, color: GRID_INK, lineWidth: 1 },
+                                angleLines: { color: GRID_INK, lineWidth: 1 },
+                                pointLabels: { display: false }
+                            }
+                        },
+                        plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                    },
+                    plugins: [twRadarVertexLabels({ labels, a: aS, b: aC, aInk: OUT_INK, bInk: IN_INK, labelInk: LABEL_INK })]
                 });
             }
 
