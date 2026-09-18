@@ -2753,7 +2753,8 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     padding: 9px 14px; text-decoration: none;
     border-left: 2px solid transparent; border-top: 1px solid var(--border-subtle);
 }
-.nt-row:hover { background: var(--surface-2); }
+/* No hover highlight: it is a line of text now, not a target. Lit on hover it
+   went on inviting the click it no longer answers. */
 .nt-row.good { border-left-color: var(--color-success); }
 .nt-row.bad { border-left-color: var(--color-error); }
 .nt-row.info { border-left-color: var(--border-default); }
@@ -3694,9 +3695,21 @@ select[data-tooltip]:not([data-tooltip=""]), select[title]:not([title=""]),
 .v2-attn-col-header[data-tooltip], .v2-attn-col-header[title], .v2-attn-col-header,
 .mk-row[data-tooltip], .mk-row[title], .mk-row,
 .mk-col-head[data-tooltip], .mk-col-head[title], .mk-col-head,
-.v2-pitch-xitotal[data-tooltip], .v2-pitch-xitotal[title], .v2-pitch-xitotal {
+.v2-pitch-xitotal[data-tooltip], .v2-pitch-xitotal[title], .v2-pitch-xitotal,
+.v2-pitch-token[data-tooltip], .v2-pitch-token[title], .v2-pitch-token,
+.mgr-chip[data-tooltip], .mgr-chip[title], .mgr-chip,
+.mgr-chips-count[data-tooltip], .mgr-chips-count[title], .mgr-chips-count {
     cursor: default;
 }
+/* The last three joined the list for the same reason as the first four.
+   .v2-pitch-token is the whole pitch card, and its title names the player and
+   what he did — worth having, but the card is the entire hover target, so the
+   question mark covered every player on the pitch and said nothing about where
+   to stop. `cursor` is inherited, so the card covers the face, the name and the
+   score inside it. .mgr-chip and .mgr-chips-count are the four chips a manager
+   has left and the count beside them: all of them carry a title, so the pointer
+   changed across the whole row, and the row is a statement of fact rather than
+   somewhere you stop for an explanation. */
 
 /* =====================================================================
    THE SEARCH BOX

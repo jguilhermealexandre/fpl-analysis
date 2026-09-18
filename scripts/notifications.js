@@ -406,11 +406,18 @@
                        news on your players, what they scored, and the gameweek turning over will show up.</p>
                 </div>`;
             }
-            const row = (e) => `<a class="nt-row ${esc(e.tone || 'info')}" href="${esc(e.href || 'index.html')}">
+            /* Not a link. Most of these had no destination worth the click —
+               the default was index.html, so a "gameweek turned over" notice on
+               the dashboard reloaded the page you were already reading, and the
+               few that did point somewhere looked identical to the ones that
+               did not. A panel where every row is clickable and most of the
+               clicks do nothing teaches you not to click any of them. It is a
+               list of what happened; it is read, not used. */
+            const row = (e) => `<div class="nt-row ${esc(e.tone || 'info')}">
                 <span class="nt-row-title">${esc(e.title)}</span>
                 <span class="nt-row-body">${esc(e.body)}</span>
                 <span class="nt-row-when">${esc(ntAgo(e.at, now))}</span>
-            </a>`;
+            </div>`;
 
             const fresh = events.filter(e => e.at > (lastSeen || 0));
             const older = events.filter(e => e.at <= (lastSeen || 0));
@@ -489,9 +496,17 @@
                last saw it permit. */
             if (typeof pnRefreshToggle === 'function') pnRefreshToggle();
             ntMarkSeen();
+            /* Seen is seen. The dot and the has-new state were already cleared
+               here; the count beside the word was not, so the sidebar went on
+               claiming three new things while the three were open on screen. */
             const dot = document.querySelector('.nt-dot');
             if (dot) dot.remove();
-            if (bell) bell.classList.remove('has-new');
+            const count = document.querySelector('.nt-count');
+            if (count) count.remove();
+            if (bell) {
+                bell.classList.remove('has-new');
+                bell.setAttribute('aria-label', 'Nothing new');
+            }
         }
 
         // Clicking away closes it. Registered once, on the document, because the

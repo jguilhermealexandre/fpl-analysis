@@ -123,18 +123,40 @@ export function titleFrom(html) {
  * broken image is not. Data URIs and SVG sprites are turned away for the same
  * reason: this is a photograph slot.
  */
+/* Four shapes, in the order of how much they mean. og:image is the club
+ * saying "this is the picture for this story"; twitter:image is the same claim
+ * from the handful of CMSes that set only that; link rel=image_src is the old
+ * spelling some still emit; and the JSON-LD article block is where a headless
+ * CMS puts it when it emits no social meta at all.
+ *
+ * On one real scrape 22 of 43 articles answered on og:image alone, and three
+ * Crystal Palace pages were read successfully and gave up no picture at any of
+ * them — which is what the last two entries are for. They can only find an
+ * image where the ones above it found none, so they cannot change an answer
+ * that already works.
+ */
 const IMAGE_META = [
     /<meta[^>]+property=["']og:image(?::url)?["'][^>]+content=["']([^"']+)["']/i,
     /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::url)?["']/i,
     /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i,
-    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i
+    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i,
+    /<meta[^>]+itemprop=["']image["'][^>]+content=["']([^"']+)["']/i,
+    /<link[^>]+rel=["']image_src["'][^>]+href=["']([^"']+)["']/i,
+    /<link[^>]+href=["']([^"']+)["'][^>]+rel=["']image_src["']/i,
+    /"image"\s*:\s*"([^"]+)"/i,
+    /"image"\s*:\s*\{[^{}]*?"url"\s*:\s*"([^"]+)"/i,
+    /"image"\s*:\s*\[\s*"([^"]+)"/i,
+    /"image"\s*:\s*\[\s*\{[^{}]*?"url"\s*:\s*"([^"]+)"/i
 ];
 
 export function imageFrom(html) {
+    const text = String(html == null ? '' : html);
     for (const re of IMAGE_META) {
-        const m = String(html == null ? '' : html).match(re);
+        const m = text.match(re);
         if (!m) continue;
-        const url = decodeEntities(m[1]).trim();
+        /* JSON escapes its slashes, and a URL that came out of a script block
+           carries \/ where the markup ones carry /. */
+        const url = decodeEntities(m[1].replace(/\\\//g, '/')).trim();
         if (!/^https?:\/\//i.test(url)) continue;
         if (/\.svg(\?|#|$)/i.test(url)) continue;
         return url.replace(/^http:\/\//i, 'https://').slice(0, 500);

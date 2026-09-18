@@ -282,3 +282,44 @@ test('the picture is upgraded to https and its entities decoded', () => {
         imageFrom('<meta property="og:image" content="http://cdn.club.com/a.jpg?w=1&amp;h=2">'),
         'https://cdn.club.com/a.jpg?w=1&h=2');
 });
+
+
+test('a headless CMS that emits no social meta still gives up its picture', () => {
+    /* Three Crystal Palace articles were read successfully — the headline came
+       out of them — and answered none of the social meta tags. These are the
+       other places a modern club CMS puts the same URL. */
+    assert.equal(
+        imageFrom('<link rel="image_src" href="https://cdn.club.com/ls.jpg">'),
+        'https://cdn.club.com/ls.jpg');
+    assert.equal(
+        imageFrom('<meta itemprop="image" content="https://cdn.club.com/ip.jpg">'),
+        'https://cdn.club.com/ip.jpg');
+    // JSON-LD, in the four shapes the schema.org article type allows.
+    assert.equal(
+        imageFrom('<script type="application/ld+json">{"@type":"NewsArticle","image":"https://cdn.club.com/a.jpg"}</script>'),
+        'https://cdn.club.com/a.jpg');
+    assert.equal(
+        imageFrom('<script>{"image":{"url":"https://cdn.club.com/b.jpg"}}</script>'),
+        'https://cdn.club.com/b.jpg');
+    assert.equal(
+        imageFrom('<script>{"image":["https://cdn.club.com/c.jpg"]}</script>'),
+        'https://cdn.club.com/c.jpg');
+    assert.equal(
+        imageFrom('<script>{"image":[{"url":"https://cdn.club.com/d.jpg"}]}</script>'),
+        'https://cdn.club.com/d.jpg');
+});
+
+test('a JSON-LD url survives its escaped slashes', () => {
+    // JSON escapes forward slashes, so the raw match is https:\/\/host\/path.
+    assert.equal(
+        imageFrom('<script>{"image":"https:\\/\\/cdn.club.com\\/e.jpg"}</script>'),
+        'https://cdn.club.com/e.jpg');
+});
+
+test('the social meta still wins over the fallbacks below it', () => {
+    assert.equal(
+        imageFrom('<meta property="og:image" content="https://cdn.club.com/og.jpg">'
+                + '<link rel="image_src" href="https://cdn.club.com/ls.jpg">'
+                + '<script>{"image":"https://cdn.club.com/ld.jpg"}</script>'),
+        'https://cdn.club.com/og.jpg');
+});
