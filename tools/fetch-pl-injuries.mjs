@@ -484,16 +484,35 @@ export function mergeArticleMeta(had, got) {
 async function readArticleInBrowser(browser, url) {
     let page = null;
     try {
-        page = await browser.newPage({ userAgent: UA });
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: ARTICLE_NAV_TIMEOUT });
+        /* No userAgent override here, deliberately.
+         *
+           UA above claims Chrome 125 on macOS. That is a reasonable thing to
+           send from a bare fetch, and the wrong thing to send from this
+           browser: the client hints, the platform and everything else about
+           the request say Linux Chromium, so overriding only the string makes
+           a real browser look like something pretending to be one — which is
+           the single loudest signal a bot check reads. Left alone, Chromium
+           sends a set of headers that agree with each other.
+
+           This is not an attempt to get past anyone's door. It is a real
+           browser asking for a public article the Premier League's own site
+           links to, twice a day, once per article. A club that still says no is
+           saying no, and the card falls back to its crest. */
+        page = await browser.newPage();
+        const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: ARTICLE_NAV_TIMEOUT });
+        if (res && !res.ok()) return { failed: `HTTP ${res.status()}` };
         /* A moment for the head to be filled in by whatever put it there. The
            meta tags are written early — this is not waiting for the article to
            finish rendering, only for the tags to exist. */
         await page.waitForTimeout(1200);
         const html = await page.content();
         return { published: publishedFrom(html), title: titleFrom(html), image: imageFrom(html), ok: true };
-    } catch {
-        return null;
+    } catch (e) {
+        /* Reported rather than swallowed. "18 went through the browser and 3
+           came back" says nothing about why the other fifteen did not, and
+           whether a club is refusing us or simply slow is the difference
+           between a thing to fix and a thing to accept. */
+        return { failed: String((e && e.message) || e).split('\n')[0].slice(0, 90) };
     } finally {
         if (page) { try { await page.close(); } catch { /* already gone */ } }
     }
@@ -507,17 +526,26 @@ async function readArticlesInBrowser(browser, byUrl) {
     console.log(`${needed.length} article(s) go through the browser — fetch got no headline or no picture`);
 
     let gained = 0;
+    const refusals = new Map();
     for (let i = 0; i < needed.length; i += ARTICLE_CONCURRENCY) {
         const batch = needed.slice(i, i + ARTICLE_CONCURRENCY);
         const metas = await Promise.all(batch.map(u => readArticleInBrowser(browser, u)));
         batch.forEach((u, n) => {
             const got = metas[n];
             if (!got) return;
+            if (got.failed) {
+                const host = (() => { try { return new URL(u).hostname; } catch { return u; } })();
+                refusals.set(`${host} — ${got.failed}`, (refusals.get(`${host} — ${got.failed}`) || 0) + 1);
+                return;
+            }
             const had = byUrl.get(u) || {};
             const merged = mergeArticleMeta(had, got);
             if (!had.image && merged.image) gained++;
             byUrl.set(u, merged);
         });
+    }
+    for (const [why, n] of [...refusals].sort((a, b) => b[1] - a[1])) {
+        console.log(`  browser could not read ${n} article(s): ${why}`);
     }
     return gained;
 }
