@@ -641,8 +641,12 @@ function sdGenPreDeadlineCaptaincy() {
     // Candidates: attacking players who start, with a fixture this round.
     const pool = sdPlayers()
         .filter(p => p.position >= 3 && p.status === 'a' && teamFdr[p.teamId] && p.minutes >= 45 * rounds)
-        .map(p => ({ ...p, fx: teamFdr[p.teamId] }))
-        .sort((a, b) => (b.points / rounds) - (a.points / rounds));
+        .map(p => {
+            const proj = sdProjectedPoints(p, gw);
+            return { ...p, fx: teamFdr[p.teamId], xp: proj.xp, modelled: proj.modelled };
+        })
+        .sort((a, b) => (b.xp - a.xp) || (b.points - a.points));
+    const modelled = pool.length > 0 && pool[0].modelled;
     if (pool.length < 4) return null;
 
     const template = pool.filter(p => p.own >= 15).slice(0, 8);
@@ -668,10 +672,17 @@ function sdGenPreDeadlineCaptaincy() {
     ]);
 
     md += `## The captaincy matrix\n\n`;
-    md += `Ranked on points per gameweek so far, with the fixture attached. The difficulty rating is FPL's own.\n\n`;
-    md += sdTable(['Player', 'Team', 'Price', 'Opponent', 'Pts/GW', 'Form', 'Owned', 'FDR'],
+    md += modelled
+        ? `Ranked on projected points for this gameweek — the opponent's defence, the venue and his expected minutes are all already inside that number, which is why the order does not follow the season averages. The difficulty rating is FPL's own.\n\n`
+        : `Ranked on points per gameweek so far, with the fixture attached. The difficulty rating is FPL's own.\n\n`;
+    /* Form is not a column any more. With four rounds played FPL's thirty-day
+       form average IS the season average — it was the same number as Pts/GW
+       for 113 of the 114 players who qualified, printed twice and read as two
+       signals agreeing. */
+    md += sdTable(['Player', 'Team', 'Price', 'Opponent', modelled ? 'Proj. pts' : 'Pts/GW', 'Owned', 'FDR'],
         template.map(p => [`**${p.name}**`, p.team, `£${p.price.toFixed(1)}m`,
-            `${p.fx.opponent} ${p.fx.home ? '(H)' : '(A)'}`, sdRound(p.points / rounds, 1), sdRound(p.form, 1), `${p.own}%`, sdFdrCell(p.fx.fdr)]));
+            `${p.fx.opponent} ${p.fx.home ? '(H)' : '(A)'}`,
+            sdRound(modelled ? p.xp : p.points / rounds, 1), `${p.own}%`, sdFdrCell(p.fx.fdr)]));
 
     if (lead) {
         const strip = sdTeamFixtures(lead.teamId, sdUpcomingGws(4))
@@ -687,9 +698,10 @@ function sdGenPreDeadlineCaptaincy() {
         md += `## The differential armband\n\n`;
         md += `Captaining off-template is a leveraged bet: it wins more rank than it should when it lands and costs more than it should when it does not. `;
         md += `These are the players with a kind fixture and an ownership low enough to make the bet worth taking.\n\n`;
-        md += sdTable(['Player', 'Team', 'Price', 'Opponent', 'Pts/GW', 'Owned', 'FDR'],
+        md += sdTable(['Player', 'Team', 'Price', 'Opponent', modelled ? 'Proj. pts' : 'Pts/GW', 'Owned', 'FDR'],
             differential.map(p => [`**${p.name}**`, p.team, `£${p.price.toFixed(1)}m`,
-                `${p.fx.opponent} ${p.fx.home ? '(H)' : '(A)'}`, sdRound(p.points / rounds, 1), `${p.own}%`, sdFdrCell(p.fx.fdr)]));
+                `${p.fx.opponent} ${p.fx.home ? '(H)' : '(A)'}`,
+                sdRound(modelled ? p.xp : p.points / rounds, 1), `${p.own}%`, sdFdrCell(p.fx.fdr)]));
         md += `\n`;
         md += sdCallout('warning',
             `Effective ownership — the figure that actually decides whether a captaincy gains you rank — depends on how many managers captain a player, not just how many own him. `
@@ -715,7 +727,9 @@ function sdGenPreDeadlineCaptaincy() {
             md += `### ${p.name} — ${p.team}, £${p.price.toFixed(1)}m\n\n`;
             md += `${p.own}% of the field own him. He ${p.fx.home ? 'hosts' : 'travels to'} ${p.fx.opponent}, `;
             md += `whose ${p.fx.home ? 'away' : 'home'} defence is ${sdStrengthWord(def, allDef)}. `;
-            md += `He is averaging ${sdRound(p.points / rounds, 1)} points a gameweek so far`;
+            md += modelled
+                ? `He projects ${sdRound(p.xp, 1)} points for this fixture, against a season average of ${sdRound(p.points / rounds, 1)} a gameweek`
+                : `He is averaging ${sdRound(p.points / rounds, 1)} points a gameweek so far`;
             md += p.xGI > 0 ? ` on ${sdRound(p.xGI)} expected involvements` : ``;
             md += `.\n\n`;
         });
@@ -789,7 +803,9 @@ function sdGenPreDeadlineCaptaincy() {
     ]);
 
     md += `> With ${rounds} gameweek${rounds === 1 ? '' : 's'} played, the points-per-gameweek column is a small sample. `;
-    md += `The fixture column is not — the schedule is fixed and known, which is why it carries more weight this early in a season than form does.\n`;
+    md += modelled
+        ? `The projection above leans on the schedule instead, which is fixed and known from day one, and on the underlying numbers rather than the points they have so far produced.\n`
+        : `The fixture column is not — the schedule is fixed and known, which is why it carries more weight this early in a season than form does.\n`;
 
     return {
         subject: lead ? sdSubject(lead, `${lead.own}% owned \u00b7 ${lead.fx.home ? 'H' : 'A'} v ${lead.fx.opponent}`) : null,
@@ -2101,6 +2117,106 @@ if (typeof document !== 'undefined') {
 // having an archive rather than a live view.
 function sdSetData(boot, fixtures, history) {
     sdBoot = boot; sdFixtures = fixtures; sdHistory = history;
+    sdBuildProjection();
+}
+
+/* ===== The site's own projection, available to the generators =====
+ *
+ * The captaincy matrix used to rank on points divided by rounds played — a
+ * backward-looking average with the fixture printed beside it and playing no
+ * part in the order. It recommended Groß at home to Arsenal, difficulty 4,
+ * over Haaland at home to Sunderland, difficulty 2, because the two had the
+ * same number of points so far. Worse, they had exactly the same number: three
+ * players tied on 33, so which of them "led" the matrix was settled by a
+ * stable sort falling back on player id.
+ *
+ * The article's own closing section warned against this in as many words —
+ * "captaining form into a wall... form is a weaker signal than the fixture" —
+ * while its table did precisely that.
+ *
+ * So the generators get xp-engine.js, which is what the Lineup Wizard's
+ * captaincy matrix, the Transfer Wizard and the dashboard all already rank on.
+ * It needs four lookups built from bootstrap and fixtures, which is exactly
+ * what this file is handed. One projection for the whole site; an article
+ * cannot now recommend a captain the app would not.
+ *
+ * Best-effort: if the engine is not loadable the generators fall back to the
+ * old average, because an article that does not build is worse than one ranked
+ * on a weaker signal — and sdProjectedPoints() reports which it used. */
+let sdXP = null;
+
+function sdBuildProjection() {
+    sdXP = null;
+    if (!sdBoot || !sdBoot.teams || !sdBoot.elements) return;
+    try {
+        const engine = sdLoadXpEngine();
+        if (!engine) return;
+
+        const teamsById = {};
+        sdBoot.teams.forEach(t => { teamsById[t.id] = t; });
+
+        // The same construction order index.html uses — see its loadTicker().
+        engine.teamFixtures6 = engine.xpBuildTeamFixtures(sdFixtures, teamsById, 8);
+        engine.teamAnalysis = engine.xpBuildTeamScores(sdBoot.teams, sdFixtures);
+        engine.seasonStats = engine.xpBuildSeasonStats(sdBoot.teams, sdFixtures);
+        engine.allPlayers = engine.xpBuildPlayers(sdBoot.elements, teamsById, engine.teamFixtures6);
+        engine.positionAverages = engine.xpBuildPositionAverages(engine.allPlayers, sdNextGw());
+
+        const byId = {};
+        engine.allPlayers.forEach(pl => { byId[pl.id] = pl; });
+        sdXP = { engine, byId };
+    } catch (e) {
+        sdXP = null;   // the fallback below is still a real answer
+    }
+}
+
+/* xp-engine.js is a classic script — no exports, every function a global —
+   because a dozen pages load it with a script tag. Evaluating it inside a
+   function scope gives it somewhere to live that is not the real global
+   object, and hands back the pieces this file needs. */
+function sdLoadXpEngine() {
+    if (typeof require === 'undefined') return null;      // browser: not needed
+    let src;
+    try {
+        const fs = require('fs'), path = require('path');
+        src = fs.readFileSync(path.join(__dirname, 'xp-engine.js'), 'utf8');
+    } catch (e) { return null; }
+
+    /* Seeded BEFORE the engine is evaluated, not after.
+
+       `with (ctx)` only captures names that are already properties of ctx —
+       anything else resolves against the real global and throws at call time.
+       The engine reads two page-level values it does not define. Without them
+       projectPlayerPointsForGW dies on "Can't find variable: isPreseason"
+       inside the try above, whose catch turns it into a silent fall back to
+       the season average: the exact failure this change exists to remove. */
+    const ctx = {
+        isPreseason: false,
+        currentGW: sdNextGw()
+    };
+    const names = ['xpBuildTeamFixtures', 'xpBuildTeamScores', 'xpBuildSeasonStats',
+        'xpBuildPlayers', 'xpBuildPositionAverages', 'projectPlayerPointsForGW',
+        'predictedGWPoints', 'expectedMinutesModel'];
+    // eslint-disable-next-line no-new-func
+    const load = new Function('__ctx', `with (__ctx) {\n${src}\n${
+        names.map(n => `__ctx.${n} = typeof ${n} === 'function' ? ${n} : null;`).join('\n')
+    }\n}`);
+    load(ctx);
+    return ctx.projectPlayerPointsForGW ? ctx : null;
+}
+
+/* What a player projects for one gameweek: through the engine when it loaded,
+   through the season average when it did not. The second field names which, so
+   copy can describe the column it is actually printing. */
+function sdProjectedPoints(player, gw) {
+    if (sdXP && sdXP.byId[player.id]) {
+        try {
+            const xp = sdXP.engine.projectPlayerPointsForGW(sdXP.byId[player.id], gw);
+            if (Number.isFinite(xp)) return { xp, modelled: true };
+        } catch (e) { /* fall through */ }
+    }
+    const rounds = Math.max(1, sdRoundsPlayed());
+    return { xp: Math.round((player.points / rounds) * 10) / 10, modelled: false };
 }
 
 function sdSlugify(s) {
@@ -2166,6 +2282,6 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         sdSetData, sdBuildArchive, sdMarkdown, sdReadTime, sdWordCount, sdLastRound,
         sdRoundsPlayed, sdSlugify, sdRecurringDue, sdNextGw,
-        sdRoastPick, sdGenGameweekRoast
+        sdRoastPick, sdGenGameweekRoast, sdProjectedPoints
     };
 }
