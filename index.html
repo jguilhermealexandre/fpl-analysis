@@ -23,9 +23,9 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=302">
-    <link rel="stylesheet" href="styles/v2-design.css?v=302">
-    <link rel="stylesheet" href="styles/responsive.css?v=302">
+    <link rel="stylesheet" href="styles/common.css?v=303">
+    <link rel="stylesheet" href="styles/v2-design.css?v=303">
+    <link rel="stylesheet" href="styles/responsive.css?v=303">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -645,11 +645,16 @@
         }
         .v2-deadline-hero.dl-soon::before { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
         .v2-deadline-hero.dl-urgent::before { background: linear-gradient(90deg, #EF4444, #F87171); }
-        .v2-deadline-hero.dl-urgent { animation: dlPulse 2s ease-in-out infinite; }
-        @keyframes dlPulse {
-            0%, 100% { box-shadow: var(--shadow-sm); }
-            50% { box-shadow: 0 0 0 3px rgba(239,68,68,0.12); }
-        }
+        /* No pulse. It was a red ring breathing on a two-second loop, drawn as
+           a box-shadow — which works on the bordered rounded card this hero was
+           designed as, and not at all on the one that exists: inside the info
+           panel the hero is flat, full width and transparent, so the ring had
+           no corner to hug and rendered as two red lines blinking across the
+           panel, above the heading and under the fixture chip.
+
+           Worth removing rather than fixing. The state it announced is already
+           announced by LOCKED in 40px red type, and an animation on a state
+           that will not change for days is an alarm nobody can act on. */
         .v2-dlh-top {
             display: flex;
             align-items: center;
@@ -1197,10 +1202,6 @@
         /* The inset is --v2-title-x/y in v2-design.css — one pair of numbers
            for every title on the site. Only the gap under it is local. */
         .v2-info-panel > .v2-section-title { margin-bottom: var(--v2-title-gap); }
-
-        /* Inside the info panel the heading above already carries the gap, so
-           the card's own top padding was a second one. */
-        .v2-info-panel .v2-deadline-hero { padding-top: 0; }
 
         .v2-info-panel .rd-bar {
             grid-column: auto;
@@ -1896,13 +1897,19 @@
             display: flex;
             flex-direction: column;
         }
-        /* Deadline card becomes the panel's header (flat, keeps its top accent bar) */
+        /* Deadline card becomes the panel's header (flat, keeps its top accent bar)
+
+           No top padding: the heading above already carries the gap, so the
+           card's own was a second one. It used to be set as padding-top: 0 in a
+           rule further up, which did nothing — same specificity, earlier in the
+           file, and the shorthand below rewrites every side. One place to read
+           it now. */
         .v2-info-panel .v2-deadline-hero {
             border: none;
             border-radius: 0;
             box-shadow: none;
             background: transparent;
-            padding: 18px 18px 15px;
+            padding: 0 18px 15px;
         }
         .v2-info-panel .v2-dlh-countdown { font-size: 30px; }
         .v2-info-panel .v2-dlh-bottom { margin-top: 2px; }
@@ -3864,24 +3871,24 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=302">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=302">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=302">
-    <link rel="preload" as="script" href="scripts/odds-panel.js?v=302">
-    <link rel="preload" as="script" href="scripts/live-gw.js?v=302">
-    <link rel="preload" as="script" href="scripts/matchday.js?v=302">
-    <link rel="preload" as="script" href="scripts/market-panel.js?v=302">
-    <link rel="preload" as="script" href="scripts/eo-layer.js?v=302">
-    <link rel="preload" as="script" href="scripts/readiness.js?v=302">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=302">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=302">
-    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=302">
-    <link rel="preload" as="script" href="scripts/auth.js?v=302">
-    <link rel="preload" as="script" href="scripts/lineup-store.js?v=302">
-    <link rel="preload" as="script" href="scripts/injury-feed.js?v=302">
-    <link rel="preload" as="script" href="scripts/scouts-art.js?v=302">
-    <link rel="preload" as="script" href="scripts/common.js?v=302">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=302">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=303">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=303">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=303">
+    <link rel="preload" as="script" href="scripts/odds-panel.js?v=303">
+    <link rel="preload" as="script" href="scripts/live-gw.js?v=303">
+    <link rel="preload" as="script" href="scripts/matchday.js?v=303">
+    <link rel="preload" as="script" href="scripts/market-panel.js?v=303">
+    <link rel="preload" as="script" href="scripts/eo-layer.js?v=303">
+    <link rel="preload" as="script" href="scripts/readiness.js?v=303">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=303">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=303">
+    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=303">
+    <link rel="preload" as="script" href="scripts/auth.js?v=303">
+    <link rel="preload" as="script" href="scripts/lineup-store.js?v=303">
+    <link rel="preload" as="script" href="scripts/injury-feed.js?v=303">
+    <link rel="preload" as="script" href="scripts/scouts-art.js?v=303">
+    <link rel="preload" as="script" href="scripts/common.js?v=303">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=303">
     <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -4668,24 +4675,24 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=302"></script>
-    <script src="scripts/price-watch.js?v=302"></script>
-    <script src="scripts/xp-engine.js?v=302"></script>
-    <script src="scripts/odds-panel.js?v=302"></script>
-    <script src="scripts/live-gw.js?v=302"></script>
-    <script src="scripts/matchday.js?v=302"></script>
-    <script src="scripts/market-panel.js?v=302"></script>
-    <script src="scripts/eo-layer.js?v=302"></script>
-    <script src="scripts/lineup-store.js?v=302"></script>
-    <script src="scripts/readiness.js?v=302"></script>
-    <script src="scripts/push-alerts.js?v=302"></script>
-    <script src="scripts/notifications.js?v=302"></script>
-    <script src="scripts/transfer-engine.js?v=302"></script>
-    <script src="scripts/auth.js?v=302"></script>
-    <script src="scripts/injury-feed.js?v=302"></script>
-    <script src="scripts/scouts-art.js?v=302"></script>
-    <script src="scripts/common.js?v=302"></script>
-    <script src="scripts/sidebar-nav.js?v=302"></script>
+    <script src="scripts/error-monitor.js?v=303"></script>
+    <script src="scripts/price-watch.js?v=303"></script>
+    <script src="scripts/xp-engine.js?v=303"></script>
+    <script src="scripts/odds-panel.js?v=303"></script>
+    <script src="scripts/live-gw.js?v=303"></script>
+    <script src="scripts/matchday.js?v=303"></script>
+    <script src="scripts/market-panel.js?v=303"></script>
+    <script src="scripts/eo-layer.js?v=303"></script>
+    <script src="scripts/lineup-store.js?v=303"></script>
+    <script src="scripts/readiness.js?v=303"></script>
+    <script src="scripts/push-alerts.js?v=303"></script>
+    <script src="scripts/notifications.js?v=303"></script>
+    <script src="scripts/transfer-engine.js?v=303"></script>
+    <script src="scripts/auth.js?v=303"></script>
+    <script src="scripts/injury-feed.js?v=303"></script>
+    <script src="scripts/scouts-art.js?v=303"></script>
+    <script src="scripts/common.js?v=303"></script>
+    <script src="scripts/sidebar-nav.js?v=303"></script>
     <script>
         initIcons();
         loadFooter();
