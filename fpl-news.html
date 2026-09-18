@@ -53,9 +53,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=291">
-    <link rel="stylesheet" href="styles/v2-design.css?v=291">
-    <link rel="stylesheet" href="styles/responsive.css?v=291">
+    <link rel="stylesheet" href="styles/common.css?v=292">
+    <link rel="stylesheet" href="styles/v2-design.css?v=292">
+    <link rel="stylesheet" href="styles/responsive.css?v=292">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -568,6 +568,95 @@
         .news-lead-beside .news-card .news-card-detail { display: none; }
         .news-lead-beside .news-card .news-card-headline { font-size: 14.5px; line-height: 1.35; }
         .news-lead-beside .news-card .news-card-content { padding: 11px 13px 13px; }
+        /* ---- the mosaic ----
+           One story at the height of four, a 2x2 beside it, a row of four
+           under it. Big, medium, small in one pass. */
+        .news-mosaic-top {
+            display: grid;
+            grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+            gap: 16px;
+            align-items: stretch;
+        }
+        .news-mosaic-beside { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .news-mosaic-under { margin-top: 16px; }
+
+        /* ---- the digest ----
+           A hero with two stacked beside it, then a column of headlines
+           against a grid of cards. This is where the page stops leading and
+           starts listing. */
+        .news-digest-top {
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+            gap: 16px;
+            align-items: stretch;
+        }
+        .news-digest-stack { display: grid; grid-template-rows: 1fr 1fr; gap: 16px; }
+        .news-digest-bot {
+            display: grid;
+            grid-template-columns: minmax(0, 290px) minmax(0, 1fr);
+            gap: 16px;
+            margin-top: 16px;
+            align-items: start;
+        }
+        .news-digest-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+        /* The list column. A card with a rule between each line rather than a
+           card per story — the whole point is that these cost almost nothing
+           to carry, so they must not each take a picture's worth of room. */
+        .news-digest-list {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: 6px 16px 10px;
+        }
+        .news-digest-list-h {
+            font-family: var(--font-display);
+            font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+            color: var(--text-primary);
+            padding: 12px 0 10px;
+        }
+        .news-digest-row {
+            display: block;
+            padding: 10px 0;
+            border-top: 1px solid var(--border-subtle);
+            text-decoration: none;
+        }
+        .news-digest-when {
+            display: block;
+            font-size: 11px; color: var(--text-muted);
+            margin-bottom: 3px;
+        }
+        .news-digest-hl {
+            display: block;
+            font-size: 14px; font-weight: 700; line-height: 1.35;
+            color: var(--text-primary);
+        }
+        .news-digest-row:hover .news-digest-hl { color: var(--color-primary); }
+
+        /* Both leads are the picture over the words, not beside them: at this
+           width a horizontal hero leaves the text in a column half its height,
+           and the shape of the block is what says this story is the big one. */
+        .news-mosaic-lead .news-card-hero,
+        .news-digest-lead .news-card-hero { flex-direction: column; height: 100%; min-height: 0; }
+        .news-mosaic-lead .news-card-hero .news-card-img,
+        .news-mosaic-lead .news-card-hero .news-card-graphic,
+        .news-digest-lead .news-card-hero .news-card-img,
+        .news-digest-lead .news-card-hero .news-card-graphic {
+            width: 100%; min-height: 0; flex: 1 1 auto;
+        }
+        .news-mosaic-lead .news-card-hero .news-card-content,
+        .news-digest-lead .news-card-hero .news-card-content { flex: 0 0 auto; padding: 18px 20px 20px; }
+        .news-mosaic-lead .news-card-hero .news-card-headline,
+        .news-digest-lead .news-card-hero .news-card-headline { font-size: 24px; }
+
+        @media (max-width: 1100px) {
+            .news-mosaic-top, .news-digest-top, .news-digest-bot { grid-template-columns: minmax(0, 1fr); }
+            .news-digest-stack { grid-template-rows: auto auto; }
+        }
+        @media (max-width: 760px) {
+            .news-mosaic-beside, .news-digest-grid { grid-template-columns: minmax(0, 1fr); }
+        }
+
         /* ---- the split ----
            One story wide across the top with its picture beside the words,
            then four ordinary cards under it. It borrows the plain hero
@@ -1019,7 +1108,7 @@
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
-    <div class="v2-main-content">
+    <div class="v2-main-content v2-no-tabs">
 
     <!-- Page Header -->
     <div class="news-page-header">
@@ -1042,15 +1131,15 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=291"></script>
-    <script src="scripts/auth.js?v=291"></script>
-    <script src="scripts/injury-feed.js?v=291"></script>
-    <script src="scripts/common.js?v=291"></script>
+    <script src="scripts/error-monitor.js?v=292"></script>
+    <script src="scripts/auth.js?v=292"></script>
+    <script src="scripts/injury-feed.js?v=292"></script>
+    <script src="scripts/common.js?v=292"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=291"></script>
-    <script src="scripts/notifications.js?v=291"></script>
-    <script src="scripts/sidebar-nav.js?v=291"></script>
+    <script src="scripts/push-alerts.js?v=292"></script>
+    <script src="scripts/notifications.js?v=292"></script>
+    <script src="scripts/sidebar-nav.js?v=292"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1932,6 +2021,17 @@
                    picture that carried no information. As rows they carry the
                    same facts in a third of the height and read as a list of
                    news, which is what they are. */
+                /* A headline and how long ago, and nothing else. The digest's
+                   list column is deliberately the plainest thing on the page:
+                   its whole job is to carry a lot of stories cheaply, which a
+                   card cannot do. */
+                function renderDigestRow(item) {
+                    return `<a class="news-digest-row" href="${cardTarget(item)}" target="_blank" rel="noopener">
+                        <span class="news-digest-when">${item.timestamp ? escHTML(timeAgo(item.timestamp)) : ''}</span>
+                        <span class="news-digest-hl">${escHTML(item.headline || '')}</span>
+                    </a>`;
+                }
+
                 function renderDeskRow(item) {
                     const p = item.player;
                     const face = (p && p.code != null && typeof playerPhotoHTML === 'function')
@@ -2021,6 +2121,56 @@
                             ${rest.length ? `<div class="news-grid news-grid-quad">${rest.slice(0, 4).map(it => renderCard(it, false)).join('')}</div>` : ''}
                         </div>`;
                     }
+                    if (shape === 'mosaic') {
+                        /* The reference's front-page block: one story given
+                           the height of four, a 2x2 of ordinary cards beside
+                           it, and a row of four underneath.
+
+                           It is the `lead` shape with a second tier, and the
+                           point of the second tier is that the block stops
+                           being a hero-plus-some and becomes a spread — the
+                           eye reads big, medium, small in one pass instead of
+                           big and then a grid that could be any length. */
+                        const [first, ...rest] = items;
+                        const beside = rest.slice(0, 4).map(it => renderCard(it, false)).join('');
+                        const under = rest.slice(4, 8).map(it => renderCard(it, false)).join('');
+                        return `<div class="${cls} news-mosaic">${head}
+                            <div class="news-mosaic-top">
+                                <div class="news-mosaic-lead">${renderCard(first, true)}</div>
+                                ${beside ? `<div class="news-mosaic-beside">${beside}</div>` : ''}
+                            </div>
+                            ${under ? `<div class="news-grid news-grid-quad news-mosaic-under">${under}</div>` : ''}
+                        </div>`;
+                    }
+                    if (shape === 'digest') {
+                        /* The reference's lower block, where a paper stops
+                           leading and starts listing: a hero with two stacked
+                           beside it, then a column of headlines-only against a
+                           grid of cards.
+
+                           The list column is the part that makes it work. A
+                           page of nothing but cards gives every story the same
+                           weight however far down it is; a plain dated list
+                           says "these are the rest" without pretending each one
+                           deserves a picture. */
+                        const [first, ...rest] = items;
+                        const stack = rest.slice(0, 2).map(it => renderCard(it, false)).join('');
+                        const listed = rest.slice(2, 12);
+                        const carded = rest.slice(12, 20).map(it => renderCard(it, false)).join('');
+                        return `<div class="${cls} news-digest">${head}
+                            <div class="news-digest-top">
+                                <div class="news-digest-lead">${renderCard(first, true)}</div>
+                                ${stack ? `<div class="news-digest-stack">${stack}</div>` : ''}
+                            </div>
+                            ${(listed.length || carded) ? `<div class="news-digest-bot">
+                                ${listed.length ? `<div class="news-digest-list">
+                                    <div class="news-digest-list-h">Latest</div>
+                                    ${listed.map(it => renderDigestRow(it)).join('')}
+                                </div>` : ''}
+                                ${carded ? `<div class="news-grid news-digest-grid">${carded}</div>` : ''}
+                            </div>` : ''}
+                        </div>`;
+                    }
                     if (shape === 'briefs') {
                         return `<div class="${cls}">${head}
                             <div class="news-brief-list">${items.map((it, i) => renderBrief(it, i + (o.from || 1))).join('')}</div>
@@ -2087,11 +2237,11 @@
                         + renderSection(CAT_ICONS.external + ' In depth', ext.slice(11, 16),
                             { shape: 'split', count: true, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.injury + ' Injury news', injuryFeed,
-                            { shape: 'quad', count: true, hideWhenEmpty: true })
+                            { shape: 'mosaic', count: true, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.squad + ' More from your players', rest.filter(i => i.isSquad),
                             { shape: 'quad', accent: true, count: true, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.all + ' More from around the league', rest.filter(i => !i.isSquad),
-                            { shape: 'quad', count: true, hideWhenEmpty: true })
+                            { shape: 'digest', count: true, hideWhenEmpty: true })
                         || '<div class="news-empty">No news right now.</div>';
                 }
 

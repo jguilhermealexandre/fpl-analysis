@@ -11,6 +11,10 @@
     --v2-page-title-spacing: -6px;
     --v2-page-gutter: 32px;
     --v2-page-title-top: 40px;
+    /* The tab bar's own height. Pages that have no tabs reserve it anyway —
+       see .v2-no-tabs — so every page title on the site starts at the same
+       line whether or not there is a row of tabs above it. */
+    --v2-tabbar-h: 57px;
 }
 
 /* V2 uses one typeface throughout. This also catches older page-specific and
@@ -673,6 +677,22 @@ html:not([data-theme="dark"]) .v2-theme-light,
 /* ===== MAIN CONTENT OFFSET ===== */
 html.v2-theme body {
     background: var(--surface-0);
+}
+
+/* A page with no tab bar still starts where a tabbed one does.
+
+   The Scout's Desk and the News hub have no tabs, so their titles sat 57px
+   higher than every other page's — right by their own measure and wrong
+   beside the rest of the site, which is what you actually see when you move
+   between them. They hold the space instead. */
+.v2-main-content.v2-no-tabs { padding-top: var(--v2-tabbar-h); }
+/* Below 1024px the app shell puts a fixed 56px bar over the page and
+   responsive.css clears it with its own padding-top on this very element —
+   which replaced the reservation above rather than adding to it, so the two
+   page kinds drifted apart again the moment the window narrowed. Composed
+   here at a specificity that wins, rather than fought over. */
+@media (max-width: 1024px) {
+    .v2-shell-app .v2-main-content.v2-no-tabs { padding-top: calc(56px + var(--v2-tabbar-h)); }
 }
 
 .v2-main-content {
