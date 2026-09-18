@@ -105,6 +105,43 @@ export function titleFrom(html) {
     return decodeEntities(og[1]).replace(/\s+/g, ' ').trim().slice(0, 200) || null;
 }
 
+/* The article's own picture.
+ *
+ * An injury card had the club crest on the club's colour and nothing else,
+ * because the Premier League's table carries no image and nothing here went
+ * looking for one. But the article behind the link is already being fetched —
+ * that is where the headline and the date come from — and essentially every
+ * club story carries an og:image for the sake of Facebook and Twitter. It costs
+ * one more regex over HTML already in hand.
+ *
+ * Both meta orders, because the two are equally common in the wild and a
+ * pattern that insists on property-then-content silently misses half of them.
+ * twitter:image second: a handful of club CMSes set only that one.
+ *
+ * Only absolute http(s) survives. A root-relative /img/hero.jpg is resolvable
+ * in principle and not worth the guessing — the crest is a good answer and a
+ * broken image is not. Data URIs and SVG sprites are turned away for the same
+ * reason: this is a photograph slot.
+ */
+const IMAGE_META = [
+    /<meta[^>]+property=["']og:image(?::url)?["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::url)?["']/i,
+    /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i
+];
+
+export function imageFrom(html) {
+    for (const re of IMAGE_META) {
+        const m = String(html == null ? '' : html).match(re);
+        if (!m) continue;
+        const url = decodeEntities(m[1]).trim();
+        if (!/^https?:\/\//i.test(url)) continue;
+        if (/\.svg(\?|#|$)/i.test(url)) continue;
+        return url.replace(/^http:\/\//i, 'https://').slice(0, 500);
+    }
+    return null;
+}
+
 /* Does this look like the table was read a column out of step? That is what the
    first run produced, and every shape check it had to pass — ten rows, a name on
    each, a quarter carrying links, no campaign tags — passed on data in which not
@@ -385,11 +422,11 @@ async function render() {
 async function articleMeta(url) {
     try {
         const res = await fetch(url, { headers: { 'User-Agent': UA }, redirect: 'follow' });
-        if (!res.ok) return { published: null, title: null, ok: false };
+        if (!res.ok) return { published: null, title: null, image: null, ok: false };
         const html = await res.text();
-        return { published: publishedFrom(html), title: titleFrom(html), ok: true };
+        return { published: publishedFrom(html), title: titleFrom(html), image: imageFrom(html), ok: true };
     } catch {
-        return { published: null, title: null, ok: false };
+        return { published: null, title: null, image: null, ok: false };
     }
 }
 
@@ -462,6 +499,10 @@ const items = sortItems(scraped.map(r => {
         /* true, false, or null when the article could not be read at all. */
         injuryArticle: looksLikeInjuryNews(meta?.title || null),
         published: meta?.published || null,
+        /* The article's own picture, so the card can show the story rather than
+           the badge. Null is a normal answer — the crest is the fallback and a
+           good one — so nothing here fails when a club publishes without one. */
+        image: meta?.image || null,
         firstSeen: r.url ? firstSeenFor(r.url) : nowIso,
         /* The FPL element this row is about, decided once here so the page and
            the push Worker agree without either of them re-matching names. */

@@ -99,7 +99,11 @@
                             ? (club ? `${club} \u00b7 ${who}` : who)
                             : `${club ? club + ' \u00b7 ' : ''}listed on the Premier League's injury table`,
                         link: url,
-                        thumbnail: null,
+                        /* The club article's own og:image, collected by the
+                           scrape that already fetches the article for its
+                           headline and its date. Null when the club published
+                           without one, which the card answers with the crest. */
+                        thumbnail: first.image || null,
                         source: club,
                         badge: null,
                         isSquad: false,

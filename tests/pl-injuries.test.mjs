@@ -20,7 +20,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { cleanUrl, publishedFrom, titleFrom, buildClubMap, sortItems, decodeEntities, looksMisaligned, carryFirstSeen, looksLikeInjuryNews }
+import { cleanUrl, publishedFrom, titleFrom, imageFrom, buildClubMap, sortItems, decodeEntities, looksMisaligned, carryFirstSeen, looksLikeInjuryNews }
     from '../tools/fetch-pl-injuries.mjs';
 
 // The real link behind "Ben White / Knock / Details".
@@ -232,4 +232,53 @@ test('an article that could not be read is unknown, not rejected', () => {
     assert.equal(looksLikeInjuryNews(null), null);
     assert.equal(looksLikeInjuryNews(''), null);
     assert.equal(looksLikeInjuryNews(undefined), null);
+});
+
+
+/* ===== the article's picture =====
+
+   An injury card used to be a crest on a colour, because nothing went looking
+   for the story's own photograph. The article is already fetched for its
+   headline and its date, so the picture costs one more read of HTML in hand —
+   but only if the pattern matches the tags clubs actually write. */
+
+test('the picture is read whichever way round the meta tag is written', () => {
+    assert.equal(
+        imageFrom('<meta property="og:image" content="https://cdn.club.com/hero.jpg">'),
+        'https://cdn.club.com/hero.jpg');
+    // Half of the club CMSes emit content first. A pattern that insists on
+    // property-then-content misses them without ever saying so.
+    assert.equal(
+        imageFrom('<meta content="https://cdn.club.com/hero.jpg" property="og:image">'),
+        'https://cdn.club.com/hero.jpg');
+    assert.equal(
+        imageFrom('<meta property="og:image:url" content="https://cdn.club.com/a.png">'),
+        'https://cdn.club.com/a.png');
+});
+
+test('twitter:image is the fallback, and og wins when both are present', () => {
+    assert.equal(
+        imageFrom('<meta name="twitter:image" content="https://cdn.club.com/t.jpg">'),
+        'https://cdn.club.com/t.jpg');
+    assert.equal(
+        imageFrom('<meta property="og:image" content="https://cdn.club.com/og.jpg">'
+                + '<meta name="twitter:image" content="https://cdn.club.com/tw.jpg">'),
+        'https://cdn.club.com/og.jpg');
+});
+
+test('a picture that cannot be shown is no picture', () => {
+    // Root-relative is resolvable in principle and not worth guessing at: the
+    // crest is a good answer and a broken image is not.
+    assert.equal(imageFrom('<meta property="og:image" content="/img/hero.jpg">'), null);
+    assert.equal(imageFrom('<meta property="og:image" content="data:image/png;base64,AAAA">'), null);
+    // A sprite or a logo in SVG is not the photograph this slot is for.
+    assert.equal(imageFrom('<meta property="og:image" content="https://cdn.club.com/logo.svg">'), null);
+    assert.equal(imageFrom('<p>no meta at all</p>'), null);
+    assert.equal(imageFrom(null), null);
+});
+
+test('the picture is upgraded to https and its entities decoded', () => {
+    assert.equal(
+        imageFrom('<meta property="og:image" content="http://cdn.club.com/a.jpg?w=1&amp;h=2">'),
+        'https://cdn.club.com/a.jpg?w=1&h=2');
 });
