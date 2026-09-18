@@ -27,6 +27,7 @@ const ARTICLE_HTML = path.join(ROOT, 'articles');
 const SITE = 'https://easyfpl.com';
 
 const sd = require('./scouts-desk.js');
+const art = require('./scouts-art.js');
 
 // Reading order within a single build. Evergreen explainer sits last.
 const SECTION_ORDER = ['Gameweek Debrief', 'Hall of Shame', 'Strategy', 'Fixture Watch', 'Data Deep-Dive',
@@ -99,6 +100,10 @@ function articlePage(a) {
 <main class="sd-standalone">
     <nav class="sd-crumb"><a href="../fpl-scouts-desk.html">← The Scout's Desk</a></nav>
     <article class="sd-reader-body">
+        <!-- The same generated artwork the Desk's cards carry, at the
+             featured size. Written into the markup rather than drawn by
+             script, because this page runs none. -->
+        <div class="sd-standalone-art">${art.sdArtwork(a, 'lead')}</div>
         <div class="sd-tags">
             <span class="sd-tag primary">${esc(a.icon)} ${esc(a.category)}</span>
             <span class="sd-read">${a.readTime} min read</span>
@@ -158,9 +163,14 @@ function main() {
         .filter(f => f.endsWith('.json') && f !== 'index.json')
         .map(f => {
             const a = JSON.parse(fs.readFileSync(path.join(ARTICLE_DATA, f), 'utf8'));
+            /* `subject` rides in the index, not just in the article file: the
+               feed renders its cards from this listing alone and would
+               otherwise draw every one of them faceless. It is three short
+               fields, which is a price worth paying to keep the index small
+               while still letting a card carry a face. */
             return { slug: a.slug, title: a.title, dek: a.dek, category: a.category,
                 icon: a.icon, readTime: a.readTime, words: a.words, date: a.date, source: a.source,
-                gw: a.gw, featured: !!a.featured };
+                gw: a.gw, featured: !!a.featured, subject: a.subject || null };
         })
         // Everything written in one build shares a timestamp, so date alone leaves
         // the order to readdir. Break ties on gameweek, then on a fixed section

@@ -53,9 +53,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=285">
-    <link rel="stylesheet" href="styles/v2-design.css?v=285">
-    <link rel="stylesheet" href="styles/responsive.css?v=285">
+    <link rel="stylesheet" href="styles/common.css?v=286">
+    <link rel="stylesheet" href="styles/v2-design.css?v=286">
+    <link rel="stylesheet" href="styles/responsive.css?v=286">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -1042,15 +1042,15 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=285"></script>
-    <script src="scripts/auth.js?v=285"></script>
-    <script src="scripts/injury-feed.js?v=285"></script>
-    <script src="scripts/common.js?v=285"></script>
+    <script src="scripts/error-monitor.js?v=286"></script>
+    <script src="scripts/auth.js?v=286"></script>
+    <script src="scripts/injury-feed.js?v=286"></script>
+    <script src="scripts/common.js?v=286"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=285"></script>
-    <script src="scripts/notifications.js?v=285"></script>
-    <script src="scripts/sidebar-nav.js?v=285"></script>
+    <script src="scripts/push-alerts.js?v=286"></script>
+    <script src="scripts/notifications.js?v=286"></script>
+    <script src="scripts/sidebar-nav.js?v=286"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -2073,13 +2073,24 @@
                    that went with the crest row. */
                 function renderAroundTheLeague() {
                     const ext = favFirst([...externalItems]);
+                    /* The tail used to be one grid with your own players'
+                       stories highlighted inside it, which asks the reader to
+                       find them. Two sections instead: a story about a player
+                       you own is a different errand from league news, and the
+                       accent belongs to a heading rather than to four cards
+                       scattered through forty. The stories above this still
+                       run in news order — a big one about your player should
+                       still lead the page, not be filed under your squad. */
+                    const rest = ext.slice(16);
                     return renderSection('', ext.slice(0, 5), { shape: 'lead', hideWhenEmpty: true })
                         + renderSection('Also in the news', ext.slice(5, 11), { shape: 'briefs', from: 6, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.external + ' In depth', ext.slice(11, 16),
                             { shape: 'split', count: true, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.injury + ' Injury news', injuryFeed,
                             { shape: 'quad', count: true, hideWhenEmpty: true })
-                        + renderSection(CAT_ICONS.all + ' More from around the league', ext.slice(16),
+                        + renderSection(CAT_ICONS.squad + ' More from your players', rest.filter(i => i.isSquad),
+                            { shape: 'quad', accent: true, count: true, hideWhenEmpty: true })
+                        + renderSection(CAT_ICONS.all + ' More from around the league', rest.filter(i => !i.isSquad),
                             { shape: 'quad', count: true, hideWhenEmpty: true })
                         || '<div class="news-empty">No news right now.</div>';
                 }

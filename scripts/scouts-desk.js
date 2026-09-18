@@ -57,8 +57,27 @@ function sdPlayers() {
         starts: e.starts,
         threat: sdNum(e.threat),
         creativity: sdNum(e.creativity),
-        ictIndex: sdNum(e.ict_index)
+        ictIndex: sdNum(e.ict_index),
+        /* The photo id, which is not the element id — the club headshots are
+           filed under `code`. Carried here so a generator can name the
+           article's subject without reaching back into bootstrap for it. */
+        code: e.code
     }));
+}
+
+/* The article's subject, for the artwork.
+
+   A piece is usually about one player, and the generator already knows which
+   one — it is the name in the dek. Saying so explicitly is cheaper and more
+   honest than having the renderer guess at a headline, and it is what lets
+   the card carry his face.
+
+   `stat` is the one number the artwork prints under the name, on the featured
+   size only. Kept short: it is set in 11px caps and there is no room for a
+   sentence. */
+function sdSubject(player, stat) {
+    if (!player || !player.name) return null;
+    return { name: player.name, code: player.code == null ? null : player.code, stat: stat || '' };
 }
 
 // How many gameweeks are actually in the books. Every claim on this page is
@@ -582,6 +601,7 @@ function sdGenGameweekDebrief() {
     }
 
     return {
+        subject: sdSubject(hero, `${hero.gwPoints} pts \u00b7 ${hero.gwGoals}G ${hero.gwAssists}A`),
         id: 'gw-debrief',
         title: `Gameweek ${gw} Debrief: winners, blanks, and what the underlying numbers say`,
         category: 'Gameweek Debrief',
@@ -772,6 +792,7 @@ function sdGenPreDeadlineCaptaincy() {
     md += `The fixture column is not — the schedule is fixed and known, which is why it carries more weight this early in a season than form does.\n`;
 
     return {
+        subject: lead ? sdSubject(lead, `${lead.own}% owned \u00b7 ${lead.fx.home ? 'H' : 'A'} v ${lead.fx.opponent}`) : null,
         id: 'pre-deadline-captaincy',
         title: `Gameweek ${gw} Captaincy Matrix: the armband, the differentials, and the bench calls`,
         category: 'Strategy',
@@ -886,6 +907,7 @@ function sdGenUnderTheHood() {
     ]);
 
     return {
+        subject: sdSubject(lead, `${sdRound(lead.xGI)} xGI \u00b7 ${lead.ret} returns`),
         id: 'under-the-hood',
         title: 'Under the Hood: the low-owned players creating chances without the returns',
         category: 'Data Deep-Dive',
@@ -1170,6 +1192,7 @@ function sdGenMarketDigest() {
         + `not the real number, and it will be wrong at the margins. Nobody outside the game's developers knows the actual formula; anyone claiming otherwise has reverse-engineered an approximation too.`);
 
     return {
+        subject: sdSubject(rising[0], `${(rising[0].tIn || 0).toLocaleString()} bought in`),
         id: 'market-digest',
         title: 'Market Watch: who is rising, who is being sold, and what it costs to be late',
         category: 'Market',
@@ -1372,27 +1395,6 @@ function sdGenTacticalPlaybook() {
    instead, out of the same icon set every section title uses, so a new
    article gets a mark without anyone having to remember to pick one and an
    unrecognised category gets the generic one rather than a blank tile. */
-const SD_ART_MARKS = {
-    'Gameweek Debrief': 'chart',
-    'Hall of Shame': 'down',
-    'Captaincy Matrix': 'crown',
-    'Strategy': 'brain',
-    'Data Deep-Dive': 'crosshair',
-    'Market': 'trend',
-    'Market Watch': 'trend',
-    'Fixture Watch': 'calendar',
-    'Tactical': 'clipboard',
-    'Bargain Gems': 'crystal',
-    'Differential Watchlist': 'target',
-    'Premium Dilemma': 'coins',
-    'Behind the Build': 'tools'
-};
-
-function sdArtMark(category) {
-    if (typeof v2Icon !== 'function') return '';
-    return v2Icon(SD_ART_MARKS[category] || 'news');
-}
-
 /* Articles carry an `icon` field and the generators stopped filling it in
    when the emoji went. The nineteen already in data/articles/ still hold
    theirs — they are a published archive and are kept as they were — so the
@@ -1588,6 +1590,9 @@ function sdGenGameweekRoast() {
 
     const headline = blanks.length ? blanks[0] : (capt || played[0]);
     return {
+        subject: headline
+            ? sdSubject(headline, `${headline.gwPoints} pts \u00b7 \u00a3${(headline.price || 0).toFixed(1)}m`)
+            : null,
         id: `gw-${gw}-hall-of-shame`,
         title: `Gameweek ${gw} Hall of Shame: the blanks, the cameos, and the captain who cost you`,
         category: 'Hall of Shame',
@@ -1803,7 +1808,7 @@ function renderArticlesPage() {
 
     const card = a => `
         <a class="sd-card" href="${sdPermalink(a)}" onclick="return sdCardClick(event, '${a.id}')">
-            <div class="sd-card-art" aria-hidden="true"><span class="sd-card-glyph">${sdArtMark(a.category)}</span></div>
+            ${sdArtwork(a, 'card')}
             <div class="sd-card-body">
                 <div class="sd-card-top">
                     <span class="sd-tag">${escHTML(a.category)}</span>
@@ -1817,7 +1822,7 @@ function renderArticlesPage() {
 
     const lead = a => `
         <a class="sd-featured" href="${sdPermalink(a)}" onclick="return sdCardClick(event, '${a.id}')">
-            <div class="sd-featured-art" aria-hidden="true"><span class="sd-featured-glyph">${sdArtMark(a.category)}</span></div>
+            ${sdArtwork(a, 'lead')}
             <div class="sd-featured-body">
                 <div class="sd-tags">
                     <span class="sd-tag primary">${escHTML(a.category)}</span>
@@ -1882,6 +1887,10 @@ async function sdOpenArticle(id) {
 
 function sdRenderArticle(a) {
     document.getElementById('sdReaderBody').innerHTML = `
+        <!-- The same hero the permalink page carries. Opening a piece in the
+             reader and opening it at its own URL should not be two different
+             articles. -->
+        <div class="sd-standalone-art">${sdArtwork(a, 'lead')}</div>
         <div class="sd-tags">
             <span class="sd-tag primary">${escHTML(a.category)}</span>
             <span class="sd-read">${a.readTime} min read</span>

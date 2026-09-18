@@ -22,7 +22,11 @@
 /* ---------- featured ---------- */
 .sd-featured {
     display: grid;
-    grid-template-columns: 300px 1fr;
+    /* 300px was the width an icon needed. The artwork is a broadcast-style
+       graphic with a name set across it, and at 300px the name did not fit —
+       it read "GR...". Just under half the card, which is what the
+       references give their lead image. */
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1fr);
     gap: 0;
     border: 1px solid var(--border-default);
     border-radius: var(--radius-xl);
@@ -35,24 +39,8 @@
 
 .sd-featured:hover, .sd-featured:focus-visible { border-color: var(--color-primary); box-shadow: var(--shadow-md); transform: translateY(-2px); outline: none; }
 
-/* No stock photography on a data site — a generated cover keeps it honest. */
-.sd-featured-art {
-    display: flex; align-items: center; justify-content: center;
-    background:
-        radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--color-primary) 38%, transparent), transparent 60%),
-        linear-gradient(150deg, #0f2f22 0%, #14472a 55%, #0d2018 100%);
-    min-height: 210px;
-}
-
-/* An SVG now rather than a 62px emoji, so it needs a size and a colour of
-   its own instead of inheriting a font size. */
-.sd-featured-glyph { display: inline-flex; }
-.sd-featured-glyph svg {
-    width: 64px; height: 64px;
-    color: rgba(255, 255, 255, .82);
-    stroke-width: 1.2;
-    filter: drop-shadow(0 6px 18px rgba(0,0,0,.35));
-}
+/* No stock photography on a data site — a generated cover keeps it honest.
+   The panel and its icon are gone; .sd-art paints the whole column now. */
 .sd-featured-body { padding: 22px 24px; display: flex; flex-direction: column; justify-content: center; }
 .sd-featured-title { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.25; color: var(--text-primary); margin: 8px 0 8px; }
 .sd-featured-dek { font-size: 14px; line-height: 1.65; color: var(--text-secondary); max-width: 62ch; }
@@ -142,7 +130,6 @@
 
 @media (max-width: 820px) {
     .sd-featured { grid-template-columns: 1fr; }
-    .sd-featured-art { min-height: 130px; }
     .sd-reader-body { padding: 24px 20px 30px; }
     .sd-reader-title { font-size: 25px; }
 }
@@ -314,13 +301,6 @@
 /* Every card carries the category's mark now, so the grid is not twenty
    identical blocks of text. */
 .sd-card { display: flex; flex-direction: column; overflow: hidden; }
-.sd-card-art {
-    height: 74px;
-    display: grid; place-items: center;
-    background: linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 22%, var(--surface-2)), var(--surface-2));
-    color: color-mix(in srgb, var(--color-primary) 72%, var(--text-muted));
-}
-.sd-card-glyph svg, .sd-card-glyph { width: 26px; height: 26px; opacity: .85; }
 .sd-card-body { padding: 13px 15px 15px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 
 /* ---- the article, as blocks ----
@@ -380,4 +360,127 @@
 @media (max-width: 700px) {
     .sd-block { padding: 14px 15px 16px; }
     .sd-block .sd-table-wrap { margin-left: -15px; margin-right: -15px; width: calc(100% + 30px); }
+}
+
+/* ============================================
+   The generated artwork
+
+   A kicker in condensed caps, the subject's name under it, and the player's
+   own photograph on the right — a broadcast graphic rather than an icon in a
+   box. The colour comes from the article's template (red is the Hall of
+   Shame, gold is the armband) so a format is recognisable before the title
+   is read.
+
+   Every value below is driven by --art-ink / --art-accent / --art-wash,
+   which scripts/scouts-art.js sets inline per template. Nothing here is
+   per-template except the aspect ratio of the two sizes.
+   ============================================ */
+.sd-art {
+    position: relative;
+    overflow: hidden;
+    background: var(--art-ink, #111827);
+    display: block;
+    isolation: isolate;
+}
+/* The diagonal bands. One element, two gradients: a wash that lifts the
+   right-hand third where the photo sits, and a pair of soft stripes across
+   the field so it is not a flat rectangle. */
+.sd-art-bars {
+    position: absolute; inset: 0;
+    background:
+        linear-gradient(105deg, transparent 52%, var(--art-wash, #1F2937) 52%, var(--art-wash, #1F2937) 74%, transparent 74%),
+        linear-gradient(105deg, transparent 78%, color-mix(in srgb, var(--art-wash, #1F2937) 60%, transparent) 78%);
+    opacity: .85;
+}
+/* The subject again, blown up and knocked back — the reference's trick for
+   filling the middle of the frame without competing with the type. */
+.sd-art-ghost {
+    position: absolute;
+    top: -18%; right: 26%;
+    height: 136%;
+    opacity: .16;
+    filter: grayscale(1) contrast(1.15);
+    pointer-events: none;
+}
+.sd-art-ghost-img { height: 100%; width: auto; display: block; object-fit: contain; }
+
+.sd-art-text {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    display: flex; flex-direction: column; justify-content: center;
+    gap: 2px;
+    z-index: 2;
+}
+/* Condensed, tight and upper-case, with a rule under it. The scale is set on
+   the two data-variant blocks below so this stays one definition. */
+.sd-art-kicker,
+.sd-art-name {
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    line-height: 0.95;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    /* Wraps to a second line rather than truncating. "Man of the Match" is a
+       phrase, and a phrase cut to "MAN OF THE MAT..." is worse than a phrase
+       on two lines — which is how the broadcast graphic sets it anyway. */
+    overflow-wrap: break-word;
+}
+.sd-art-kicker { color: #fff; border-bottom: 2px solid rgba(255,255,255,.5); }
+.sd-art-name { color: var(--art-accent, #9CA3AF); border-bottom: 2px solid color-mix(in srgb, var(--art-accent, #9CA3AF) 55%, transparent); }
+.sd-art-stat {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: rgba(255,255,255,.72);
+    margin-top: 10px;
+}
+/* The crisp photo. Anchored to the bottom-right so the head sits in the
+   frame's top half whatever the crop, which is where a portrait wants to be. */
+.sd-art-face {
+    position: absolute;
+    right: 0; bottom: 0;
+    height: 104%;
+    width: auto;
+    z-index: 1;
+    object-fit: contain; object-position: bottom right;
+    filter: drop-shadow(-8px 0 22px rgba(0,0,0,.4));
+}
+
+/* ---- the two sizes ---- */
+.sd-art[data-variant="card"] { height: 132px; }
+.sd-art[data-variant="card"] .sd-art-text { left: 13px; right: 40%; }
+.sd-art[data-variant="card"] .sd-art-kicker { font-size: 14px; padding-bottom: 4px; }
+.sd-art[data-variant="card"] .sd-art-name { font-size: 19px; padding-bottom: 4px; margin-top: 6px; }
+
+.sd-art[data-variant="lead"] { min-height: 210px; height: 100%; }
+.sd-art[data-variant="lead"] .sd-art-text { left: 24px; right: 38%; }
+.sd-art[data-variant="lead"] .sd-art-kicker { font-size: 25px; padding-bottom: 7px; }
+.sd-art[data-variant="lead"] .sd-art-name { font-size: 33px; padding-bottom: 7px; margin-top: 10px; }
+
+/* No photo — the archive, and every evergreen piece. The type takes the whole
+   frame rather than leaving a hole where a face would have been. */
+.sd-art.is-faceless .sd-art-text { right: 16px; }
+.sd-art.is-faceless .sd-art-bars { opacity: .6; }
+
+@media (max-width: 700px) {
+    .sd-art[data-variant="lead"] { min-height: 150px; }
+    .sd-art[data-variant="lead"] .sd-art-text { left: 18px; right: 44%; }
+    .sd-art[data-variant="lead"] .sd-art-kicker { font-size: 21px; }
+    .sd-art[data-variant="lead"] .sd-art-name { font-size: 27px; }
+}
+
+/* The hero on a standalone article page. The reader's card has padding all
+   round; the artwork runs to its edges, under the rounded corner. */
+.sd-standalone-art {
+    margin: -34px -40px 22px;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    overflow: hidden;
+}
+.sd-standalone-art .sd-art[data-variant="lead"] { height: 260px; min-height: 260px; }
+@media (max-width: 820px) {
+    .sd-standalone-art { margin: -24px -20px 18px; }
+    .sd-standalone-art .sd-art[data-variant="lead"] { height: 170px; min-height: 170px; }
 }

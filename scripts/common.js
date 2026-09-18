@@ -743,10 +743,20 @@ function v2PosEdgeClass(position) {
  */
 const V2_SETTINGS_KEY = 'easyfpl_settings';
 
+/* `teamName` used to be an editable field. It is not any more — the name is
+   whatever FPL calls your team — but a browser that set one is still carrying
+   it, and a stored value nothing writes and everything reads is how a removed
+   feature keeps working for the people who used it. It is dropped on read,
+   and cleared for good the first time we see it. */
 function v2Settings() {
     try {
         const raw = localStorage.getItem(V2_SETTINGS_KEY);
-        return raw ? JSON.parse(raw) : {};
+        const st = raw ? JSON.parse(raw) : {};
+        if (st && Object.prototype.hasOwnProperty.call(st, 'teamName')) {
+            delete st.teamName;
+            try { localStorage.setItem(V2_SETTINGS_KEY, JSON.stringify(st)); } catch (e) { /* private mode */ }
+        }
+        return st;
     } catch (e) { return {}; }
 }
 
@@ -795,35 +805,6 @@ function v2RefreshSettingsAvatar() {
     if (!st.badge && row) row.querySelector('.v2-set-ghost[onclick*="badge: null"]')?.remove();
 }
 
-/* Renaming your team.
-
-   It saves as you type, which is right — there is nothing to submit to and
-   a Save button for a value already stored would be a lie about where it
-   lives. But a field that saves silently is indistinguishable from a field
-   that does nothing, so it says so, once you stop typing rather than on
-   every keystroke.
-
-   Anywhere the name is shown updates with it: the sidebar through
-   v2MountAccount(), and the dashboard heading, which is on this page when
-   this modal is open and reads the same name. */
-let v2NameSaveTimer = null;
-function v2SaveTeamName(value) {
-    v2SaveSettings({ teamName: value });
-
-    const heading = document.getElementById('heroTeamName');
-    if (heading) heading.textContent = v2AccountName();
-
-    const flag = document.getElementById('v2SetNameSaved');
-    if (!flag) return;
-    clearTimeout(v2NameSaveTimer);
-    flag.classList.remove('is-on');
-    v2NameSaveTimer = setTimeout(() => {
-        flag.textContent = 'Saved';
-        flag.classList.add('is-on');
-        setTimeout(() => flag.classList.remove('is-on'), 1800);
-    }, 500);
-}
-
 /* The badge, or the team's initials under it.
 
    Stored as a data URL in localStorage, which is the only place a static site
@@ -837,13 +818,11 @@ function v2AccountInitials(name) {
         .map(w => w[0]).join('').toUpperCase() || 'FPL';
 }
 
-/* The team's name: what you have set, else what FPL calls it, else nothing
-   pretending to be something. Both the sidebar block and the settings modal
-   ask this rather than each working it out, which is how the modal came to
-   show "F" for a team the sidebar was calling Demo Team FC. */
+/* The team's name: what FPL calls it, else nothing pretending to be
+   something. Both the sidebar block and the settings modal ask this rather
+   than each working it out, which is how the modal came to show "F" for a
+   team the sidebar was calling Demo Team FC. */
 function v2AccountName() {
-    const st = v2Settings();
-    if (st.teamName) return st.teamName;
     /* Set by whichever page has loaded the manager. The squad page keeps it in
        a global; the dashboard keeps it in a const inside its own loader, which
        is invisible from here — so that page hands it over rather than this one
@@ -1135,11 +1114,11 @@ function openSettingsModal(section) {
                             ? `<img src="${st.badge}" alt="">`
                             : `<b>${esc(v2AccountInitials(v2AccountName()))}</b>`}</span>
                         <div class="v2-set-stack">
-                            <div class="v2-set-field">
-                                <input type="text" id="v2SetName" class="v2-set-input" placeholder="Team name"
-                                    value="${esc(st.teamName || v2AccountName())}" oninput="v2SaveTeamName(this.value)">
-                                <span class="v2-set-saved" id="v2SetNameSaved" aria-live="polite"></span>
-                            </div>
+                            <!-- Shown, not edited. The name belongs to your FPL
+                                 entry, so a box you can type a different one
+                                 into is a box that makes this page disagree
+                                 with the game. The badge is still yours. -->
+                            <div class="v2-set-name" id="v2SetName">${esc(v2AccountName())}</div>
                             <div class="v2-set-inline">
                                 <label class="v2-set-file">
                                     <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="v2UploadBadge(this)">
@@ -2200,7 +2179,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=285')
+    fetch('footer.html?v=286')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
