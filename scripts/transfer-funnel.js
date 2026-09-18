@@ -78,7 +78,24 @@
            like to work rather than who you are looking for, so they follow you
            between slots while every actual filter starts clean. Someone who
            prefers the funnel should not have to re-open it for every transfer. */
-        let twfViewPrefs = { sort: 'xp', view: 'quick' };
+        let twfViewPrefs = { sort: 'xp', view: 'quick', filtersOpen: false };
+
+        /* Filters is a toggle, not a menu.
+         *
+         * As a floating panel it covered the cards it was narrowing, so you set
+         * a filter, read a count, dismissed the panel to see what it had done,
+         * and opened it again for the next one. The whole value of counting on
+         * the pills — comparing what four answers would leave without taking
+         * any of them — was being paid for in open/shut.
+         *
+         * Open, it is a strip under the bar and the list is beside it. Shut, it
+         * is one button. Screen-level rather than per-slot, like the sort and
+         * the view: whether you want the filters on screen is how you work, not
+         * part of the search you are running for this particular transfer. */
+        function twfToggleFilterStrip() {
+            twfViewPrefs.filtersOpen = !twfViewPrefs.filtersOpen;
+            twfRerender();
+        }
 
         /* Filters belong to the slot, not to the screen.
 
@@ -546,9 +563,6 @@
             const reopen = typeof v2MenuOpen !== 'undefined' ? v2MenuOpen : null;
             if (typeof renderTWMarketPane === 'function') renderTWMarketPane();
             if (reopen && typeof v2MenuReopen === 'function') v2MenuReopen(reopen);
-            // The panel is a fresh node after the re-render, so the strip/panel
-            // decision has to be taken again against it.
-            if (reopen === 'twf-filters') twfFitFilters();
             if (typeof lucide !== 'undefined') lucide.createIcons();
             // No initTooltips() here: it binds delegated listeners once at page
             // load and covers anything rendered afterwards by design.
@@ -681,15 +695,10 @@
             const i = String(packed).indexOf(':');
             if (i < 0) return;
             const key = packed.slice(0, i), value = packed.slice(i + 1);
-            /* The club menu is a value picker and closes on a choice, the way
-               every other v2 menu does. The filter panel does not: it holds
-               nine groups and you are usually setting several of them, so it
-               stays open across the re-render each pick causes. */
-            if (key === 'clubs') {
-                if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
-                twfClubPreset(value);
-                return;
-            }
+            /* Clubs is a group in the strip now rather than a menu of its own,
+               so there is nothing to close: every pick re-renders in place and
+               the strip is still there, which is the point of it being a strip. */
+            if (key === 'clubs') { twfClubPreset(value); return; }
             twfSetFilter(key, value);
         }
 
@@ -785,16 +794,21 @@
                 ], 'Tackles, clearances, blocks, interceptions and recoveries. Worth 2 points once a per-match threshold is cleared \u2014 10 for defenders, 12 for midfielders.')
             ].join('');
 
-            /* Clubs used to be a menu of its own beside Filters. Three controls
-               plus a search box is more than the row can hold next to the view
-               tray, so the bar wrapped onto a line of its own and the whole
-               panel sat a row lower than it needed to. It is a filter like the
-               other nine, so it is a group in the panel like the other nine —
-               and the Filters badge already counted it.
+            const open = twfViewPrefs.filtersOpen;
 
-               Named, not counted, once some are chosen: "7 clubs selected" is a
-               number you cannot check; seven three-letter codes is a claim you
-               can disagree with, and each one drops on click. */
+            /* Named, not counted. "7 clubs selected" is a number you cannot
+               check; seven three-letter codes is a claim you can disagree with,
+               and each one drops on click. */
+            const chosen = s.clubs.length
+                ? `<div class="twf-picked">${s.clubs.map(id =>
+                    `<button class="twf-picked-club" onclick="twfToggleClub(${id})"
+                        data-tooltip="${escHTML(`Drop ${(teams[id] && teams[id].name) || 'this club'} from the selection.`)}">${escHTML((teams[id] && teams[id].short_name) || '?')}<i aria-hidden="true">\u00d7</i></button>`).join('')}</div>`
+                : '';
+
+            /* Clubs is a filter like the other nine, so it is a group in the
+               strip like the other nine. It was a menu of its own beside
+               Filters, which is a second thing to open to answer one question
+               and the reason the row could not hold a search box as well. */
             const clubPresets = [
                 ['all', 'All clubs', ''],
                 ['swing', 'Improving swings', 'Fixtures get easier partway through'],
@@ -807,40 +821,18 @@
                     <div class="apf-controls">${clubPresets.map(([v, l, note]) =>
                         `<button class="filter-pill compact-pill${v === 'all' && !s.clubs.length ? ' active' : ''}"
                             onclick="twfPick('clubs:${v}')"${note ? ` data-tooltip="${escHTML(note)}"` : ''}>${escHTML(l)}</button>`).join('')}</div>
-                    ${s.clubs.length ? `<div class="twf-picked">${s.clubs.map(id =>
-                        `<button class="twf-picked-club" onclick="twfToggleClub(${id})"
-                            data-tooltip="${escHTML(`Drop ${(teams[id] && teams[id].name) || 'this club'} from the selection.`)}">${escHTML((teams[id] && teams[id].short_name) || '?')}<i aria-hidden="true">\u00d7</i></button>`).join('')}</div>` : ''}
+                    ${chosen}
                 </div>`;
 
-            const filters = `<div class="v2-menu apf-menu" id="v2menu-twf-filters">
-                <button class="apf-menu-btn${active ? ' is-on' : ''}" onclick="twfToggleFilters(event)"
-                    aria-expanded="false" aria-haspopup="true"
+            /* One line: the toggle and the box you type in. Everything else is
+               in the strip the toggle opens. */
+            const bar = `<div class="twf-bar">
+                <button class="apf-menu-btn twf-filters-btn${active ? ' is-on' : ''}${open ? ' is-open' : ''}"
+                    onclick="twfToggleFilterStrip()" aria-expanded="${open}" aria-controls="twfFilterStrip"
                     data-tooltip="Clubs, minutes, form, quality, price, ownership, set pieces, availability and your shortlist.">
                     ${typeof v2Icon === 'function' ? v2Icon('sliders') : ''}Filters${active ? `<span class="apf-menu-n">${active}</span>` : ''}
+                    <span class="twf-filters-caret" aria-hidden="true"></span>
                 </button>
-                <div class="apf-panel" hidden>
-                    <!-- The way out, pinned to the top of the panel.
-
-                         It was a link under nine groups, which put it below the
-                         fold of a scrolling panel — and the one moment you need
-                         it is the moment every group reads 0, because narrowing
-                         to nothing is exactly when a reader starts hunting for
-                         how to undo it. A dead end whose exit requires scrolling
-                         past the thing that caused it is not an exit. -->
-                    <div class="twf-panel-head">
-                        <span class="twf-panel-h">${survivors.length
-                            ? `${survivors.length} player${survivors.length === 1 ? '' : 's'} match`
-                            : 'Nothing matches'}</span>
-                        ${active ? `<button class="twf-panel-reset" onclick="twfResetFilters()">Clear all</button>` : ''}
-                    </div>
-                    ${survivors.length ? '' : `<div class="twf-panel-dead">Every count below reads 0 because removing any single filter still leaves nothing \u2014 more than one is doing the cutting.</div>`}
-                    ${clubGroup}
-                    ${groups}
-                </div>
-            </div>`;
-
-            return `<div class="twf-bar">
-                ${filters}
                 ${/* The green "N left" pill is gone: the line over the cards
                       already says how many of how many, and two counts in two
                       shapes on one screen is one too many. The Filters button
@@ -852,46 +844,28 @@
                     <input class="twf-search" type="text" placeholder="Search by name\u2026" value="${escHTML(s.search)}" oninput="twfSearch(this.value)">
                 </div>
             </div>`;
-        }
 
-        /* ===== One line if it fits, a panel if it does not =====
-         *
-         * The filters are a strip under the bar when the whole strip fits on a
-         * single line, because that is a control you can read without opening
-         * anything. They are a floating panel when it does not, because two or
-         * three wrapped lines of pills hanging over the cards is worse than a
-         * panel that admits it is one.
-         *
-         * Which of those it is cannot be decided when the markup is written —
-         * it depends on the pane's width, the reader's font size and how many
-         * groups this position has (a goalkeeper has no defensive-contribution
-         * group). So it is measured: lay it out as a single nowrap row, ask
-         * whether that row is wider than the head it would sit under, and take
-         * the class back off if it is.
-         *
-         * With ten groups it does not fit at any ordinary width, so in practice
-         * this settles on the panel — which is the outcome the rule asks for,
-         * arrived at by measuring rather than by assuming. It starts fitting on
-         * its own if the group list is ever trimmed. */
-        function twfFitFilters() {
-            const host = document.getElementById('v2menu-twf-filters');
-            if (!host) return;
-            const panel = host.querySelector('.apf-panel');
-            const head = host.closest('.twf-head');
-            if (!panel || !head || panel.hidden) { host.classList.remove('is-strip'); return; }
+            if (!open) return bar;
 
-            host.classList.add('is-strip');
-            /* scrollWidth is the width the row wants; the head is the width it
-               may have. Read both before anything else is touched, so this
-               costs one layout rather than one per group. */
-            const wanted = panel.scrollWidth;
-            const room = head.clientWidth;
-            if (wanted > room) host.classList.remove('is-strip');
-        }
+            /* The way out sits at the top of the strip.
 
-        function twfToggleFilters(event) {
-            if (typeof v2MenuToggle === 'function') v2MenuToggle('twf-filters', event);
-            twfFitFilters();
+               It was a link under nine groups, which put it below the fold of a
+               scrolling panel — and the one moment you need it is the moment
+               every group reads 0, because narrowing to nothing is exactly when
+               a reader starts hunting for how to undo it. A dead end whose exit
+               requires scrolling past the thing that caused it is not an exit. */
+            const strip = `<div class="twf-filters-strip" id="twfFilterStrip">
+                <div class="twf-panel-head">
+                    <span class="twf-panel-h">${survivors.length
+                        ? `${survivors.length} player${survivors.length === 1 ? '' : 's'} match`
+                        : 'Nothing matches'}</span>
+                    ${active ? `<button class="twf-panel-reset" onclick="twfResetFilters()">Clear all</button>` : ''}
+                </div>
+                ${survivors.length ? '' : `<div class="twf-panel-dead">Every count below reads 0 because removing any single filter still leaves nothing \u2014 more than one is doing the cutting.</div>`}
+                <div class="twf-filters-strip-groups">${clubGroup}${groups}</div>
+            </div>`;
+
+            return bar + strip;
         }
 
         /* Narrowing and picking used to be two numbered steps with a "Show 13

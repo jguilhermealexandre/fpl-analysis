@@ -6208,7 +6208,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* No tinted field behind the controls. A grey band under a white panel was a
    second surface doing nothing but marking where the filters were, which the
    filters do by being filters. */
-.twf-head { padding: 10px 12px 11px; background: transparent; border-bottom: 1px solid var(--border-default); }
+.twf-head { padding: 10px 12px 9px; background: transparent; border-bottom: 1px solid var(--border-default); }
 .twf-head-top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; flex-wrap: wrap; }
 .twf-budget { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--text-primary); }
 .twf-budget em { font-style: normal; font-size: 9px; font-weight: 600; color: var(--color-warning); }
@@ -6306,7 +6306,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-picked-club:hover i { color: var(--verdict-sell); }
 
 .twf-results { min-width: 0; }
-.twf-results .twf-section-head { margin-bottom: 8px; }
+.twf-results .twf-section-head { margin-bottom: 5px; }
 
 /* Three columns where they fit, and the card is built to be narrow — at two
    columns the name and the price sat at opposite ends of a wide hero with a
@@ -6325,7 +6325,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 @media (max-width: 620px) { .twf-cards { grid-template-columns: minmax(0, 1fr); } }
 
 
-.twf-body { padding: 8px; max-height: 640px; overflow-y: auto; }
+/* No top padding. The bar above already ends on one, and the count line is
+   the first thing in here — 50px of nothing between the controls and the
+   cards they control is a gap that reads as a missing element. */
+.twf-body { padding: 0 8px 8px; max-height: 640px; overflow-y: auto; }
 
 /* The filters are a row in the header now, not a column beside the players,
    so this is one full-width block again. */
@@ -6360,46 +6363,61 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-r.l { background: var(--verdict-sell); color: #fff; }
 
 /* ---- the filter bar ----
-   A row of pills beside the view toggle. Everything in it is either the site's
-   own .v2-menu (three or more answers) or a .twf-tog (exactly two), so the bar
-   has two shapes in it and the shape tells you how many answers there are. */
-/* On the view tray's own row, at its right-hand end — not below it.
-   `flex: 1 1 100%` forced a line break, so the tray had a row, the controls
-   had a row, and the step's heading sat two rows above where it needed to.
-   One row: what you are looking at on the left, how you are narrowing it on
-   the right. */
+   Two things, on one line: the toggle that opens the filters and the box you
+   type a name into. It used to carry the search, a Filters menu, a Clubs menu
+   and a wrapping row of club chips, which is four things and two lines. Clubs
+   is a group in the strip now and the chips went with it.
+
+   nowrap on purpose: these two are the row, and there is nothing here worth
+   letting fall to a second line. */
 .twf-bar {
-    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
-    flex: 0 1 auto;
-    margin-left: auto;
-    justify-content: flex-end;
+    display: flex; align-items: center; flex-wrap: nowrap; gap: 6px;
+    flex: 1 1 100%;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
 }
-/* Filters sits second from the right now, so a panel anchored to its left
-   edge would hang off the pane. */
-.twf-bar .apf-panel { left: auto; right: 0; }
+.twf-filters-btn { flex: 0 0 auto; }
+/* Which way it will move, stated before you press it. */
+.twf-filters-caret {
+    width: 0; height: 0; margin-left: 1px;
+    border-left: 4px solid transparent; border-right: 4px solid transparent;
+    border-top: 5px solid currentColor; opacity: .5;
+    transition: transform 140ms ease;
+}
+.twf-filters-btn.is-open .twf-filters-caret { transform: rotate(180deg); }
 
 /* ---- the strip ----
-   When every group fits on one line the filters are not a panel at all: they
-   are a row under the bar, readable without opening anything. twfFitFilters()
-   lays it out like this, measures whether the row is wider than the head it
-   sits under, and takes the class off again when it is — so a set of groups
-   that would wrap stays the panel it already was. */
-.apf-menu.is-strip .apf-panel {
-    left: auto; right: 0;
-    flex-direction: row; flex-wrap: nowrap; align-items: flex-start;
-    gap: 16px;
-    width: max-content; min-width: 0; max-width: none;
-    max-height: none; overflow: visible;
+   The filters, open, as a band under the bar rather than a panel floating over
+   the cards they are narrowing. As a panel you set a filter, read a count,
+   dismissed the panel to see what it had done and opened it again for the next
+   one — which spends the whole value of counting on the pills. Here the list
+   is beside them the entire time. */
+.twf-filters-strip {
+    flex: 1 1 100%;
+    margin-top: 8px; padding: 12px 14px 13px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    background: var(--surface-2);
 }
-.apf-menu.is-strip .twf-panel-head {
-    position: static;
-    flex-direction: column; align-items: flex-start; gap: 4px;
-    padding: 0; margin: 0; border: none; background: none;
+.twf-filters-strip-groups {
+    display: flex; flex-wrap: wrap; align-items: flex-start;
+    gap: 10px 18px;
 }
-.apf-menu.is-strip .apf-controls { flex-wrap: nowrap; }
-.apf-menu.is-strip .twf-picked { flex-wrap: nowrap; }
-/* The clubs already chosen, under the presets that chose them. */
-.apf-panel .twf-picked { margin-top: 2px; }
+.twf-filters-strip .apf-group { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.twf-filters-strip .apf-controls { display: flex; flex-wrap: wrap; gap: 5px; }
+.twf-filters-strip .filter-pill { padding: 5px 11px; font-size: 11.5px; background: var(--surface-1); }
+.twf-filters-strip .filter-pill .twf-n {
+    font-style: normal;
+    font-family: var(--font-mono); font-size: 9.5px; font-weight: 700;
+    color: var(--text-muted);
+}
+.twf-filters-strip .filter-pill.active .twf-n { color: var(--color-primary); }
+/* In the strip the head is a line, not a sticky bar over a scrolling panel. */
+.twf-filters-strip .twf-panel-head {
+    position: static; margin: 0 0 9px; padding: 0 0 8px;
+    background: none;
+}
+.twf-filters-strip .twf-picked { margin-top: 2px; }
 .twf-bar .v2-menu-btn { height: 28px; font-size: 11.5px; padding: 0 9px; }
 .twf-bar .v2-menu-btn .v2-menu-v { font-size: 11.5px; }
 
