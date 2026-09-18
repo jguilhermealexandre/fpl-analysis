@@ -152,6 +152,16 @@
 
         const LW_FDR_WORD = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
 
+        /* A squad player's face, small, for the places in the intel panel that
+           name somebody in running text. The pitch beside it is nothing but
+           faces, so a surname on its own in the panel made you look twice to
+           work out which card it was talking about. Squad rows carry web_name
+           where the shared avatar expects name. */
+        function lwFace(p) {
+            if (!p || typeof v2AvatarHTML !== 'function') return '';
+            return `<span class="lw-face">${v2AvatarHTML({ name: p.web_name, code: p.code })}</span>`;
+        }
+
         // The pitch node carries the decision, not a shirt number: who they play,
         // how hard it is, what they project, and anything that might stop them.
         function lwCard(p, benchIdx) {
@@ -268,7 +278,7 @@
             const hero = lineupState.xi.length
                 ? `<div class="lw-sum-hero">
                         <div class="lw-sum-hero-v">${lwTotalXP().toFixed(1)}</div>
-                        <div class="lw-sum-hero-l">projected points · ${escHTML(lineupState.formation)}${heroCap ? ` · ${escHTML(heroCap.web_name)} captained` : ''}</div>
+                        <div class="lw-sum-hero-l">projected points · ${escHTML(lineupState.formation)}${heroCap ? ` · ${lwFace(heroCap)}${escHTML(heroCap.web_name)} captained` : ''}</div>
                     </div>`
                 : '';
             return `<div class="lw-intel">
@@ -393,13 +403,13 @@
                     <div class="lw-sum-duo">
                         <div class="lw-sum-duo-i">
                             <div class="lw-sum-duo-l">${v2Icon('down')} Weakest in the XI</div>
-                            <div class="lw-sum-name">${escHTML(weakest.web_name)}</div>
+                            <div class="lw-sum-name">${lwFace(weakest)}<span class="lw-sum-name-t">${escHTML(weakest.web_name)}</span></div>
                             <div class="lw-sum-xp">${weakest.lwScore.toFixed(1)}</div>
                         </div>
                         <div class="lw-sum-duo-i">
                             <div class="lw-sum-duo-l">${v2Icon('bench')} Strongest on the bench</div>
                             ${strongestBench
-                                ? `<div class="lw-sum-name">${escHTML(strongestBench.web_name)}</div>
+                                ? `<div class="lw-sum-name">${lwFace(strongestBench)}<span class="lw-sum-name-t">${escHTML(strongestBench.web_name)}</span></div>
                             <div class="lw-sum-xp">${strongestBench.lwScore.toFixed(1)}</div>`
                                 : `<div class="lw-sum-name lw-sum-duo-none">None</div>
                             <div class="lw-sum-xp lw-sum-duo-none">—</div>`}
@@ -417,8 +427,8 @@
 
                 ${(flagged.length || risky.length) ? `<div class="lw-sum-block">
                     <div class="lw-sum-h">Worth checking</div>
-                    ${flagged.map(p => `<div class="lw-sum-flag"><strong>${escHTML(p.web_name)}</strong> — ${escHTML((p.news || '').split('.')[0] || (p.status === 'd' ? 'fitness doubt' : 'unavailable'))}${p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : ''}</div>`).join('')}
-                    ${risky.filter(p => !flagged.some(f => f.id === p.id)).map(p => `<div class="lw-sum-flag"><strong>${escHTML(p.web_name)}</strong> — rotation risk, ${Math.round(expectedMinutesModel(p).pStart * 100)}% likely to start</div>`).join('')}
+                    ${flagged.map(p => `<div class="lw-sum-flag">${lwFace(p)}<strong>${escHTML(p.web_name)}</strong> — ${escHTML((p.news || '').split('.')[0] || (p.status === 'd' ? 'fitness doubt' : 'unavailable'))}${p.chanceNextRound != null ? ` (${p.chanceNextRound}%)` : ''}</div>`).join('')}
+                    ${risky.filter(p => !flagged.some(f => f.id === p.id)).map(p => `<div class="lw-sum-flag">${lwFace(p)}<strong>${escHTML(p.web_name)}</strong> — rotation risk, ${Math.round(expectedMinutesModel(p).pStart * 100)}% likely to start</div>`).join('')}
                 </div>` : ''}
 
                 ${renderLWChanges()}
@@ -475,8 +485,14 @@
                 const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
                 const isCap = lineupState.captain === p.id, isVC = lineupState.viceCaptain === p.id;
 
+                /* The armband is a call about a person, and this grid asked you
+                   to make it off five surnames. The portrait is the one the
+                   pitch card already draws, so the player you are looking at
+                   here is recognisably the player you just clicked there. */
+                const capIdent = { name: p.web_name, code: p.code, teamId: p.teamId, team: p.team };
                 return `<div class="lw-cap-card ${isCap ? 'is-cap' : ''}">
                     <div class="lw-cap-rank">${i + 1}</div>
+                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(capIdent, 'v2-pid-portrait') : ''}
                     <div class="lw-cap-name">${escHTML(p.web_name)}</div>
                     <div class="lw-cap-team">${escHTML(p.team)} · ${POSITION_CONFIG[p.pos]?.short || ''}</div>
                     ${fx ? `<span class="dp-fix fdr-${fx.difficulty || 3}" data-tooltip="${fx.isHome ? 'Home to' : 'Away at'} ${escHTML(fx.opponent || '?')} — FDR ${fx.difficulty || 3}">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">(${fx.isHome ? 'H' : 'A'})</span></span>` : ''}
@@ -970,6 +986,7 @@
                 const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
                 html += `<div class="lw-change-row">
                     <span class="lw-change-badge ${c.type}">${c.type === 'promoted' ? '↑ IN' : c.type === 'benched' ? '↓ OUT' : v2Icon('crown')}</span>
+                    ${lwFace(c.player)}
                     <span style="font-weight:600;">${escHTML(c.player.web_name)}</span>
                     <span style="font-size:11px;color:var(--text-muted);">${posNames[c.player.pos]} · ${escHTML(c.player.team)}</span>
                     <span style="flex:1;"></span>

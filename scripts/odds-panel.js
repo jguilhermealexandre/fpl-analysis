@@ -233,7 +233,7 @@
             return lineupState.squad
                 .filter(p => p.teamId === match.homeId || p.teamId === match.awayId)
                 .map(p => ({
-                    id: p.id, name: p.web_name || p.name, teamId: p.teamId,
+                    id: p.id, name: p.web_name || p.name, teamId: p.teamId, code: p.code,
                     starting: xi.has(p.id),
                     captain: lineupState.captain === p.id,
                     vice: lineupState.viceCaptain === p.id
@@ -279,7 +279,9 @@
             const top = m.scorelines && m.scorelines[0];
             const mineHtml = mine.length
                 ? `<div class="bo-mine"><span class="bo-mine-l">Yours</span>${mine.map(p =>
-                    `<span class="bo-chip ${p.starting ? 'xi' : 'bench'}" data-tooltip="${escHTML(p.name)} — ${p.starting ? 'in your XI' : 'on your bench'}${p.captain ? ', captain' : p.vice ? ', vice-captain' : ''}">${escHTML(p.name)}${p.captain ? ' (C)' : p.vice ? ' (V)' : ''}</span>`).join('')}</div>`
+                    `<span class="bo-chip ${p.starting ? 'xi' : 'bench'}" data-tooltip="${escHTML(p.name)} — ${p.starting ? 'in your XI' : 'on your bench'}${p.captain ? ', captain' : p.vice ? ', vice-captain' : ''}">${
+                        typeof v2AvatarHTML === 'function' ? `<span class="bo-chip-face">${v2AvatarHTML(p)}</span>` : ''
+                    }${escHTML(p.name)}${p.captain ? ' (C)' : p.vice ? ' (V)' : ''}</span>`).join('')}</div>`
                 : `<div class="bo-mine none">No players of yours in this match.</div>`;
 
             return `<div class="bo-match${mine.length ? '' : ' bo-dim'}">

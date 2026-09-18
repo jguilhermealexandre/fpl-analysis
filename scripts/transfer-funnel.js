@@ -568,7 +568,7 @@
                expensive part of this screen. Branch before paying for it. */
             if (s.view === 'quick') {
                 el.innerHTML = '<div class="twf">' +
-                    twfRenderHead(slotIdx, sold, gws, twfSortRowHTML(gws)) +
+                    twfRenderHead(slotIdx, sold, gws, twfSortRowHTML()) +
                     twfRenderQuick(slot, base, gws, pos, slotIdx, blocked) + '</div>';
                 if (typeof lucide !== 'undefined') lucide.createIcons();
                 if (s.search) twfRestoreSearchFocus();
@@ -613,10 +613,21 @@
             const switcher = typeof twSlotSwitcherHTML === 'function' ? twSlotSwitcherHTML() : '';
             const span = gws.length ? `GW${gws[0]}\u2013GW${gws[gws.length - 1]}` : 'no upcoming gameweeks';
 
-            /* The filters sit beside the toggle that reveals them, on the
-               same row, so turning Custom search on extends this row rather
-               than opening a column underneath it. */
-            return `<div class="twf-head">
+            /* The step keeps its own heading once a player is picked.
+
+               This pane used to replace the whole panel header with its tabs,
+               so "Replacements — Pick someone on the left" appeared before you
+               chose anyone and vanished the moment you did — the one point at
+               which the step's name is worth having on screen. twStepHead() is
+               the same header every other step draws, so the title, the hint
+               and the way back all stay put; the tabs and the filters are a
+               row underneath it. */
+            const head = typeof twStepHead === 'function' ? twStepHead({
+                icon: 'cart', title: 'Replacements',
+                hint: `Replacing ${escHTML(sold.name)}`
+            }) : '';
+
+            return head + `<div class="twf-head">
                 <div class="twf-head-top">
                     ${views}
                     ${filterBar || ''}
@@ -834,7 +845,12 @@
                 </div>
                 ${filters}
                 ${clubs}
-                <span class="twf-live" data-tooltip="Players still matching every filter on this screen.">${survivors.length} left</span>
+                ${/* The green "N left" pill is gone: the line over the cards
+                      already says how many of how many, and two counts in two
+                      shapes on one screen is one too many. The Filters button
+                      still carries its badge, which answers a different
+                      question — how many filters are on, not how many
+                      players survived them. */''}
                 ${chosen}
             </div>`;
         }
@@ -900,16 +916,14 @@
         /* Quick picks' one control, in the same pill as every filter next door
            — it sits on the row Custom search fills with its bar, so the two
            views cannot look like two different screens. */
-        function twfSortRowHTML(gws) {
+        function twfSortRowHTML() {
             const s = twfState();
-            const span = gws && gws.length ? `GW${gws[0]}\u2013GW${gws[gws.length - 1]}` : '';
             return `<div class="twf-bar">
                 ${v2MenuHTML({
                     key: 'twf-sort', icon: 'sliders', label: 'Sort',
                     value: s.sort, onPick: 'twfSetSort',
                     options: TWF_SORTS.map(o => ({ value: o.v, label: o.l, note: o.tip }))
                 })}
-                ${span ? `<span class="twf-live" data-tooltip="Every projection and every fixture run below is judged over these gameweeks.">${escHTML(span)}</span>` : ''}
             </div>`;
         }
 
@@ -993,19 +1007,27 @@
                 ? `<div class="twf-noupgrade">Nothing you can afford projects better than <strong>${escHTML(sold.name)}</strong> over these gameweeks — the closest is ${bestGain === 0 ? 'level with him' : `${Math.abs(bestGain).toFixed(1)} behind`}. This is a transfer worth not making unless you need the money elsewhere.</div>`
                 : '';
 
-            // Never a silent cap: say what was left out and why, so the list
-            // does not read as "these are the only players who exist".
-            const notes = [];
-            if (scored.length > shown.length) {
-                notes.push(s.sort === 'xp'
-                    ? `Showing the ${shown.length} best of ${scored.length} you can afford.`
-                    : `Showing ${shown.length} of the ${Math.min(TWF_QUICK_POOL, scored.length)} strongest options, reordered by ${TWF_SORTS.find(o => o.v === s.sort).l.toLowerCase()}. ${scored.length} are affordable in all.`);
-            }
-            if (setAside > 0) {
-                notes.push(`${setAside} ${setAside === 1 ? 'player is' : 'players are'} set aside as injured, doubtful, or a fourth from a club you already have three of.`);
-            }
+            /* Never a silent cap: how many of how many you are looking at, and
+               over which gameweeks, in the one line Custom search puts in the
+               same place. It used to sit under the cards, so the sentence that
+               explained the list only arrived after you had finished reading
+               it, and the two views said the same thing in two different
+               places. What was left out is a tooltip on it rather than a
+               second line: it qualifies the count, it is not news of its own. */
+            const countLine = shown.length < scored.length
+                ? (s.sort === 'xp'
+                    ? `Showing the best ${shown.length} of ${scored.length}`
+                    : `Showing ${shown.length} of the ${Math.min(TWF_QUICK_POOL, scored.length)} strongest, by ${TWF_SORTS.find(o => o.v === s.sort).l.toLowerCase()}`)
+                : `${scored.length} player${scored.length === 1 ? '' : 's'} you can afford`;
+            const countTip = `Everyone here is affordable against ${sold.name}.`
+                + (setAside > 0
+                    ? ` ${setAside} more ${setAside === 1 ? 'is' : 'are'} set aside as injured, doubtful, or a fourth from a club you already have three of.`
+                    : '');
 
             return `<div class="twf-body quick">
+                <div class="twf-section-head">
+                    <span class="twf-section-sub" data-tooltip="${escHTML(countTip)}">${escHTML(countLine)}<span class="twf-span" data-tooltip="Every projection and every fixture run below is judged over these gameweeks."> \u00b7 ${escHTML(gws.length ? `GW${gws[0]}\u2013GW${gws[gws.length - 1]}` : 'no upcoming gameweeks')}</span></span>
+                </div>
                 <div class="twf-out" data-tooltip="Every card below is priced against this player over the same gameweeks.">
                     <span class="twf-out-l">Selling</span>
                     <span class="twf-out-name">${escHTML(sold.name)}</span>
@@ -1014,8 +1036,6 @@
                 </div>
                 ${noUpgrade}
                 <div class="twf-cards">${cards}</div>
-                ${notes.length ? `<div class="twf-trimmed">${notes.map(n => escHTML(n)).join(' ')}
-                    <button class="twf-linkbtn" onclick="twfSetView('custom')">Search properly</button></div>` : ''}
             </div>
             `;
         }
@@ -1064,14 +1084,25 @@
                 : `<div class="twf-empty">${escHTML(twfEmptyReason(pos))}
                     <div><button class="twf-linkbtn" onclick="twfResetFilters()">Reset the filters</button> or <button class="twf-linkbtn" onclick="twfSetView('quick')">see the quick picks</button>.</div></div>`;
 
-            const trimmed = scored.length > shown.length
-                ? `<div class="twf-trimmed">Showing the best ${shown.length} of ${scored.length}. Narrow the filters above to see the rest.</div>` : '';
+            // Said once, at the top of the list, rather than twice.
+            const trimmed = '';
 
             return `<div class="twf-body custom">
                 <div class="twf-results">
+                    ${/* No "Who's left" heading. The cards under it are self-
+                          evidently the players that are left, and the line was
+                          a title for a list that needs none.
+
+                          What the row does carry is the one thing worth saying:
+                          how many of how many you are looking at, and over which
+                          gameweeks. That used to be split — "84 players match"
+                          up here and "Showing the best 8 of 84" at the very
+                          bottom, which is two halves of one sentence a screen
+                          apart. One line, top right, and nothing underneath. */''}
                     <div class="twf-section-head">
-                        <span class="twf-section-title">Who's left</span>
-                        <span class="twf-section-sub">${scored.length} player${scored.length === 1 ? '' : 's'} match${scored.length === 1 ? 'es' : ''}<span class="twf-span" data-tooltip="Every projection and every fixture run below is judged over these gameweeks."> \u00b7 ${escHTML(gws.length ? `GW${gws[0]}\u2013GW${gws[gws.length - 1]}` : 'no upcoming gameweeks')}</span></span>
+                        <span class="twf-section-sub">${shown.length < scored.length
+                            ? `Showing the best ${shown.length} of ${scored.length}`
+                            : `${scored.length} player${scored.length === 1 ? '' : 's'} match${scored.length === 1 ? 'es' : ''}`}<span class="twf-span" data-tooltip="Every projection and every fixture run below is judged over these gameweeks."> \u00b7 ${escHTML(gws.length ? `GW${gws[0]}\u2013GW${gws[gws.length - 1]}` : 'no upcoming gameweeks')}</span></span>
                     </div>
                     <div class="twf-out" data-tooltip="Every card below is priced against this player over the same gameweeks.">
                         <span class="twf-out-l">Selling</span>

@@ -780,6 +780,7 @@ export default [
                 lwBuildSingleXgRegression: 'writable',
                 lwCaptainChangeSection: 'writable',
                 lwCard: 'writable',
+                lwFace: 'writable',
                 lwPointsSources: 'writable',
                 lwRemember: 'writable',
                 lwSourcesBar: 'writable',

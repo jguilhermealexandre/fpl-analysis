@@ -1039,10 +1039,16 @@ function v2MountAccount() {
  * gets no acknowledgement at all — the menu looks identical to a free one,
  * minus a line.
  *
- * So the row is always there and says which it is, and what it says comes from
- * the account. The hint below only decides what to paint before the account
- * answers; it decides nothing else, and it cannot open anything. The gate is
- * at the edge and reads Postgres — see functions/_middleware.js. */
+ * So what the chrome says comes from the account, not from a local flag. A
+ * paying reader is acknowledged by the PRO badge beside their team name, which
+ * is the acknowledgement this menu owes them; the upsell row below it is for
+ * people who have not bought yet and is hidden once they have — a standing
+ * "Premium" row under a PRO badge says the same thing twice, and the second
+ * time in the shape of a button that sells you what you already own.
+ *
+ * The hint below only decides what to paint before the account answers; it
+ * decides nothing else, and it cannot open anything. The gate is at the edge
+ * and reads Postgres — see functions/_middleware.js. */
 function v2PlanHint() {
     try { return localStorage.getItem('easyfpl_plan_hint') === 'premium'; }
     catch (e) { return false; }
@@ -1054,7 +1060,7 @@ function v2ApplyPlanChrome(premium) {
 
     const row = document.getElementById('v2Premium');
     if (!row) return;
-    row.hidden = false;
+    row.hidden = !!premium;
     row.classList.toggle('is-member', !!premium);
     const label = row.querySelector('.v2-acct-label');
     if (label) label.textContent = premium ? 'Premium' : 'Go premium';
@@ -2182,7 +2188,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=296')
+    fetch('footer.html?v=297')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

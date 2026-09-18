@@ -67,18 +67,25 @@ test('both chips waive the hit and the two ordinary plans do not', () => {
     // during a wildcard is the single most misleading thing this screen could
     // do, and it is now the strategy that decides it.
     const tw = load();
-    tw.transferState.pending = [1, 2, 3].map(i => ({ soldPlayer: { id: i }, replacement: null }));
     tw.managerHistory = { current: [], chips: [] };
+    // Picking a plan clears whatever was staged under the old one, so each
+    // strategy is priced against a freshly staged three.
+    const stage = () => {
+        tw.transferState.pending = [1, 2, 3].map(i => ({ soldPlayer: { id: i }, replacement: null }));
+    };
 
     tw.twSetStrategy('single');
+    stage();
     const paid = tw.getTWHitCost();
     assert.ok(paid > 0, `three transfers on one free transfer costs points, got ${paid}`);
 
     tw.twSetStrategy('multi');
+    stage();
     assert.equal(tw.getTWHitCost(), paid, 'multi is a way of selecting, not a chip — it still costs');
 
     for (const chip of ['wildcard', 'freehit']) {
         tw.twSetStrategy(chip);
+        stage();
         assert.equal(tw.getTWHitCost(), 0, `${chip} waives the hit`);
     }
 });
@@ -94,23 +101,39 @@ test('a Free Hit is judged over the one gameweek you keep the squad', () => {
     assert.equal(tw.twStrategyHorizon(), 1, 'a free hit squad is one you rent');
 });
 
-test('switching strategy re-seeds the slots rather than leaving a stale search', () => {
-    /* Filters are per-slot. A price band and a club list chosen while spending
-       one free transfer are the wrong starting point for a wildcard with the
-       whole budget open, so a strategy switch drops them and the next read
-       seeds fresh ones.
+test('switching strategy clears the selection rather than carrying it over', () => {
+    /* Who you sell is a decision made under one plan. Three players staged for
+       a wildcard are not three players you meant to take a −8 hit for, and the
+       per-slot filters (a price band, a club list) chosen while spending one
+       free transfer are the wrong starting point for a wildcard with the whole
+       budget open. So a real switch empties the slots and drops back to the
+       squad, and the next read seeds fresh ones.
 
        This used to be about the horizon the filters carried. They no longer
-       carry one — twfGWs() asks twStrategyHorizon() live — so the search is
-       what is being pinned here, and tests/transfer-funnel-slots.test.mjs
-       pins the window. */
+       carry one — twfGWs() asks twStrategyHorizon() live — and
+       tests/transfer-funnel-slots.test.mjs pins the window. */
     const tw = load();
-    tw.transferState.pending = [{
-        soldPlayer: { id: 1, position: 2 }, replacement: null,
-        funnel: { price: 'cheaper', clubs: [1, 14] }
-    }];
+    const stage = () => {
+        tw.transferState.pending = [{
+            soldPlayer: { id: 1, position: 2 }, replacement: null,
+            funnel: { price: 'cheaper', clubs: [1, 14] }
+        }];
+        tw.transferState.activeSlot = 0;
+        tw.transferState.mode = 'funnel';
+    };
+
+    stage();
     tw.twSetStrategy('freehit');
-    assert.equal(tw.transferState.pending[0].funnel, null, 'the stale search is dropped');
+    assert.equal(tw.transferState.pending.length, 0, 'the selection made under the old plan is dropped');
+    assert.equal(tw.transferState.activeSlot, -1, 'and no slot is left pointing at nothing');
+    assert.equal(tw.transferState.mode, 'squad', 'and you land back on the squad to pick again');
+
+    // Re-picking the plan you are already on is not a switch — it must not
+    // wipe work in progress.
+    stage();
+    tw.twSetStrategy('freehit');
+    assert.equal(tw.transferState.pending.length, 1, 're-selecting the same plan keeps the selection');
+    assert.equal(tw.transferState.pending[0].funnel, null, 'though the search still re-seeds');
 });
 
 test('the old entry points still work', () => {

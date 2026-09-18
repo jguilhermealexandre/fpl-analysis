@@ -658,6 +658,11 @@
 
         function twSetStrategy(strategy, opts) {
             if (!TW_STRATEGIES.some(x => x.id === strategy)) return;
+            /* Read before the write. Everything below this line needs to know
+               whether the plan actually changed, and transferState.strategy is
+               about to stop being able to answer that. */
+            const wasStrategy = transferState.strategy;
+            const switched = wasStrategy !== strategy;
             transferState.strategy = strategy;
             // Both chips waive hits and lift the transfer limit; only the
             // horizon tells them apart.
@@ -677,6 +682,25 @@
                Hit squad picked on one gameweek's fixtures. Re-seeding is a
                cheap reset of a search you were going to redo anyway. */
             transferState.pending.forEach(s => { s.funnel = null; });
+
+            /* Changing the plan empties it.
+
+               The number of transfers you get and what they cost is the whole
+               question step 1 asks, and the players picked under one answer are
+               not the players you would pick under another — going from a
+               wildcard to a single transfer left five staged swaps against one
+               free move, and going the other way kept a single pick that was
+               chosen because it was the only one you could afford.
+
+               Only on an actual switch: re-selecting the plan you are already
+               on is not a change and must not throw work away. */
+            if (switched && transferState.pending.length) {
+                transferState.pending = [];
+                transferState.activeSlot = -1;
+                transferState.previewPlayer = null;
+                transferState.candidateCache = {};
+                transferState.mode = 'squad';
+            }
             if (!opts || opts.render !== false) renderTWAll();
         }
 
@@ -1372,11 +1396,11 @@
                         data-pid="${p.id}"
                         onclick="twSquadCardClick(${p.id})"
                         aria-pressed="${picked}"
-                        data-tooltip="${inP
-                            ? escHTML(`${p.name} out, ${inP.name} in — click to work on this transfer`)
-                            : picked
-                                ? escHTML(`Choosing a replacement for ${p.name}`)
-                                : escHTML(`Move ${p.name} on`)}">
+                        ${/* No tooltip on the card. It said "Choosing a
+                              replacement for X" or "Move X on" — a caption for
+                              something the card already shows, following the
+                              cursor across fifteen players. The X keeps its
+                              label, because what it does is not written on it. */''}>
                         ${drop}
                         <!-- The rank chip is always in the markup, hidden until the
                              player is in the plan, so selecting one can reveal it
@@ -1899,14 +1923,39 @@
             const statsS = getPositionStats(sold, seasonS, getPlayerRecentStats(sold.id, 6));
             const statsC = getPositionStats(cand, seasonC, getPlayerRecentStats(cand.id, 6));
 
+        /* One measure, drawn as a tug of war rather than printed as two numbers
+           either side of a label.
+
+           It was seven rows of grey: figure, label, figure, with the better one
+           in green. That tells you who wins each line and nothing about by how
+           much — 7.5 against 7.2 and 0.32 against 0.65 looked the same, when
+           one is a rounding error and the other is double. The bar is split by
+           the two values' share of their total, so the size of the difference
+           is the size of the difference, and each half is filled in its own
+           club's colour, which is how a player is identified everywhere else on
+           this site.
+
+           Percentages and prices arrive as strings ("96%", "£6.1m") because the
+           same row prints them; parsed back to numbers for the split and shown
+           as given. */
             const row = (label, a, b, higherBetter, tip) => {
-                const na = parseFloat(String(a).replace('%', '')) || 0;
-                const nb = parseFloat(String(b).replace('%', '')) || 0;
+                const na = parseFloat(String(a).replace(/[^0-9.-]/g, '')) || 0;
+                const nb = parseFloat(String(b).replace(/[^0-9.-]/g, '')) || 0;
                 const eq = Math.abs(na - nb) < 0.005;
                 const aWins = eq ? false : (higherBetter ? na > nb : na < nb);
-                return `<div class="twh-row">
+                /* Share of the pair, floored so a zero still shows a sliver and
+                   the row never reads as a single solid bar belonging to nobody.
+                   Both zero splits it evenly — there is nothing to separate. */
+                const sum = Math.abs(na) + Math.abs(nb);
+                const pa = sum > 0 ? Math.max(6, Math.min(94, (Math.abs(na) / sum) * 100)) : 50;
+                return `<div class="twh-row${eq ? ' is-level' : aWins ? ' a-wins' : ' b-wins'}"
+                    ${tip ? `data-tooltip="${escHTML(tip)}"` : ''}>
                     <div class="twh-a ${aWins ? 'win' : ''}">${a}</div>
-                    <div class="twh-l" ${tip ? `data-tooltip="${escHTML(tip)}"` : ''}>${label}</div>
+                    <div class="twh-bar">
+                        <span class="twh-bar-a" style="width:${pa.toFixed(1)}%"></span>
+                        <span class="twh-bar-b" style="width:${(100 - pa).toFixed(1)}%"></span>
+                        <span class="twh-l">${label}</span>
+                    </div>
                     <div class="twh-b ${!eq && !aWins ? 'win' : ''}">${b}</div>
                 </div>`;
             };
@@ -2027,6 +2076,16 @@
                     <div class="twh-chart"><canvas id="twRadarCanvas"></canvas></div>
                     <div class="twh-chart-note">Each axis is scaled against a strong benchmark, not against each other — two weak players do not both look elite.</div>
 
+                    ${/* No club colours on this bar. It was the obvious idea and
+                          it fails on the most ordinary pairing there is: half
+                          the league wears red, so Brentford against Bournemouth
+                          drew two red halves and the split vanished. The clubs
+                          are already named and coloured on the two cards
+                          directly above. Down here the only question is which
+                          side a measure falls, so the colours say out and in —
+                          slate for the player leaving, the brand for the one
+                          arriving — and they are the same two colours on every
+                          row and every comparison. */''}
                     <div class="twh-grid">
                         ${row(`Projected (${planGWs.length} GWs)`, soldXP.toFixed(1), candXP.toFixed(1), true, 'Projected points over the same upcoming gameweeks for both.')}
                         ${row('Form', formS.toFixed(1), formC.toFixed(1), true, isPreseason ? 'Points per game last season.' : 'Average points over the last 30 days.')}
@@ -2745,9 +2804,14 @@
             const net = gain - hit;
             const netCls = net > 0.3 ? 'up' : net < -0.3 ? 'down' : 'flat';
 
-            const stat = (label, value, cls, tip) =>
-                `<div class="tw-conf-stat" data-tooltip="${escHTML(tip)}">
-                    <span class="tw-conf-stat-l">${escHTML(label)}</span>
+            /* The three figures the whole step turns on, as the bubbles the
+               dashboard states a number with rather than three grey boxes in a
+               row. Each carries the mark that says what kind of figure it is,
+               so "what it costs" reads as a cost without having to be red. */
+            const STAT_ICON = { gain: 'trend', cost: 'cash', bank: 'wallet' };
+            const stat = (label, value, cls, tip, kind) =>
+                `<div class="tw-conf-stat ${cls || ''}" data-tooltip="${escHTML(tip)}">
+                    <span class="tw-conf-stat-l">${kind && typeof v2Icon === 'function' ? v2Icon(STAT_ICON[kind]) : ''}${escHTML(label)}</span>
                     <span class="tw-conf-stat-v ${cls || ''}">${value}</span>
                 </div>`;
 
@@ -2766,33 +2830,47 @@
                     next: { label: `Confirm ${n === 1 ? 'transfer' : 'transfers'}`, on: 'twOpenConfirmGuard()',
                             tip: 'Apply these swaps to your squad across EasyFPL.' }
                 })}
-                <div class="twc-panel-body">
-                    <div class="tw-conf-stats">
-                        ${stat('What it gains', `${gain > 0 ? '+' : ''}${gain.toFixed(1)} pts`,
-                            gain > 0.3 ? 'up' : gain < -0.3 ? 'down' : '',
-                            `Projected points these ${n === 1 ? 'players' : 'swaps'} add across ${span}, before any hit.`)}
-                        ${stat('What it costs', hit > 0 ? `\u2212${hit} pts` : transferState.wildcard ? 'Waived' : '0 pts',
-                            hit > 0 ? 'down' : '',
-                            transferState.wildcard
-                                ? 'Your chip waives every hit this week.'
-                                : hit > 0 ? `${n} transfers against ${twFreeTransfers()} free, at 4 points each beyond that.` : 'Inside your free transfers.')}
-                        ${stat('Left in the bank', `\u00a3${itb.toFixed(1)}m`, itb < 0 ? 'down' : '',
-                            itb < 0 ? 'This plan spends more than you have.' : 'What remains once every transfer is made.')}
+                <!-- Two columns. What you are changing on the left, what you
+                     end up with on the right.
+
+                     The swaps used to be a strip at the bottom, under the pitch
+                     — the last thing on a step whose whole subject they are,
+                     and the second time they had been shown, because the plan
+                     bar above the panel was listing them too. They lead now,
+                     with the verdict and the three figures under them, and the
+                     squad they produce takes the rest of the width. -->
+                <div class="twc-panel-body tw-conf-body">
+                    <div class="tw-conf-left">
+                        <div class="tw-conf-sub">${n === 1 ? 'The transfer' : `The ${n} transfers`}</div>
+                        <div class="tw-conf-swaps">${swaps}</div>
+
+                        <div class="tw-conf-net ${netCls}">
+                            <span class="tw-conf-net-v">${net > 0 ? '+' : ''}${net.toFixed(1)}</span>
+                            <span class="tw-conf-net-t">${net > 0.3
+                                ? `Worth making. The plan is ${net.toFixed(1)} points ahead over ${escHTML(span)}${hit > 0 ? ` even after the ${hit}-point hit` : ''}.`
+                                : net < -0.3
+                                    ? `Not worth it on projection. The plan is ${Math.abs(net).toFixed(1)} points behind over ${escHTML(span)}${hit > 0 ? ` once the ${hit}-point hit is counted` : ''}.`
+                                    : `Too close to call over ${escHTML(span)} \u2014 within half a point either way. Something other than projection has to decide it.`}</span>
+                        </div>
+
+                        <div class="tw-conf-stats">
+                            ${stat('What it gains', `${gain > 0 ? '+' : ''}${gain.toFixed(1)} pts`,
+                                gain > 0.3 ? 'up' : gain < -0.3 ? 'down' : '',
+                                `Projected points these ${n === 1 ? 'players' : 'swaps'} add across ${span}, before any hit.`, 'gain')}
+                            ${stat('What it costs', hit > 0 ? `\u2212${hit} pts` : transferState.wildcard ? 'Waived' : '0 pts',
+                                hit > 0 ? 'down' : '',
+                                transferState.wildcard
+                                    ? 'Your chip waives every hit this week.'
+                                    : hit > 0 ? `${n} transfers against ${twFreeTransfers()} free, at 4 points each beyond that.` : 'Inside your free transfers.', 'cost')}
+                            ${stat('Left in the bank', `\u00a3${itb.toFixed(1)}m`, itb < 0 ? 'down' : '',
+                                itb < 0 ? 'This plan spends more than you have.' : 'What remains once every transfer is made.', 'bank')}
+                        </div>
                     </div>
 
-                    <div class="tw-conf-net ${netCls}">
-                        <span class="tw-conf-net-v">${net > 0 ? '+' : ''}${net.toFixed(1)}</span>
-                        <span class="tw-conf-net-t">${net > 0.3
-                            ? `Worth making. The plan is ${net.toFixed(1)} points ahead over ${escHTML(span)}${hit > 0 ? ` even after the ${hit}-point hit` : ''}.`
-                            : net < -0.3
-                                ? `Not worth it on projection. The plan is ${Math.abs(net).toFixed(1)} points behind over ${escHTML(span)}${hit > 0 ? ` once the ${hit}-point hit is counted` : ''}.`
-                                : `Too close to call over ${escHTML(span)} \u2014 within half a point either way. Something other than projection has to decide it.`}</span>
+                    <div class="tw-conf-right">
+                        <div class="tw-conf-sub">Your new squad</div>
+                        ${twOvRenderPitch()}
                     </div>
-
-                    ${twOvRenderPitch()}
-
-                    <div class="tw-conf-swaps">${swaps}</div>
-
                 </div>
             </div>`;
         }

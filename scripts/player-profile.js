@@ -1191,7 +1191,7 @@
             }
 
             return `<div class="detail-section" data-accent="price">
-                <div class="detail-section-title">\ud83d\udcb7 Price Watch</div>
+                <div class="detail-section-title">${v2Icon('coins')} Price Watch</div>
                 ${body}
                 ${renderPriceHistoryBlock(player)}
             </div>`;
@@ -1567,13 +1567,13 @@
             if (showHeader) {
                 html += `<div class="pd-header">
                     <span class="position-badge ${posConfig.class}">${posConfig.short}</span>
-                    <span class="pd-header-name">${player.isCaptain ? '\ud83d\udc51 ' : ''}${escHTML(player.name)}</span>
+                    <span class="pd-header-name">${player.isCaptain ? v2Icon('crown') : ''}${escHTML(player.name)}</span>
                     <span class="pd-header-meta">${escHTML(player.team)} \u00b7 \u00a3${player.price.toFixed(1)}m \u00b7 ${player.ownership.toFixed(1)}% owned</span>
                 </div>`;
             }
 
             // ===== PLAYER =====
-            html += `<div class="pd-group"><div class="pd-group-title">\ud83d\udc64 Player</div>`;
+            html += `<div class="pd-group"><div class="pd-group-title">${v2Icon('person')} Player</div>`;
 
             if (showReport) {
                 // Every other number on this card is season-to-date or a projection,
@@ -1667,7 +1667,7 @@
             }
 
             html += `<div class="detail-section" data-accent="stats">
-                <div class="detail-section-title">\ud83d\udcca Key Statistics <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
+                <div class="detail-section-title">${v2Icon('chart')} Key Statistics <span style="font-weight:400;color:var(--text-muted);font-size:11px;">\u2014 ${statsScopeLabel}</span></div>
                 <div class="detail-stats-grid">
                     ${renderDetailStat('Form', player.form.toFixed(1), player.form / 10, player.form >= 5 ? 'var(--verdict-hold)' : player.form < 3 ? 'var(--verdict-sell)' : 'var(--verdict-monitor)', `${posConfig.short} median: ${posConfig.formMedian}`)}
                     ${renderDetailStat('Pts/Game', player.ppg.toFixed(1), player.ppg / 10, player.ppg >= 5 ? 'var(--verdict-hold)' : player.ppg < 3 ? 'var(--verdict-sell)' : 'var(--text-primary)', `Total: ${player.points} pts`)}
@@ -1787,7 +1787,7 @@
 
             if (fixtures.length > 0) {
                 html += `<div class="detail-section" data-accent="fixtures" data-wide>
-                    <div class="detail-section-title">\ud83d\udcc5 Upcoming Fixtures</div>
+                    <div class="detail-section-title">${v2Icon('calendar')} Upcoming Fixtures</div>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         ${fixtures.map(f => `
                             <div class="fixture-chip fdr-${f.difficulty}" style="flex:1;min-width:52px;padding:8px 4px;">
@@ -1804,7 +1804,7 @@
                 if (replacements.length > 0) {
                     const best = replacements[0];
                     html += `<div class="detail-section" data-accent="swap">
-                        <div class="detail-section-title">\ud83d\udd04 Best Replacement Comparison</div>
+                        <div class="detail-section-title">${v2Icon('swap')} Best Replacement Comparison</div>
                         <table class="comparison-table">
                             <tr><th></th><th>Current</th><th>Replacement</th></tr>
                             <tr><td>Player</td><td class="current">${escHTML(player.name)}</td><td class="replacement">${escHTML(best.name)}</td></tr>
@@ -1862,9 +1862,9 @@
                     : v < bad ? 'var(--verdict-sell)' : 'var(--verdict-monitor)';
                 const last10 = Math.min(detailTA.matchesPlayed || 0, 10);
                 const last5 = Math.min(detailTA.matchesPlayed || 0, 5);
-                html += `<div class="pd-group"><div class="pd-group-title">\ud83c\udfe2 Team \u2014 ${escHTML(player.team)}</div>
+                html += `<div class="pd-group"><div class="pd-group-title">${v2Icon('shield')} Team \u2014 ${escHTML(player.team)}</div>
                 <div class="detail-section" data-accent="team" data-wide>
-                    <div class="detail-section-title">\ud83d\udcc9 Club form and season</div>
+                    <div class="detail-section-title">${v2Icon('trend')} Club form and season</div>
                     <div class="detail-stats-grid">
                         ${renderDetailStat('Goals scored', detailTA.avgGoals.toFixed(1), detailTA.attackPower / 100,
                             ratingBand(detailTA.attackPower, 60, 40),

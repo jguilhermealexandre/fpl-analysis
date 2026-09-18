@@ -1482,6 +1482,7 @@
                         icon: v2Icon('flame'),
                         kind: 'transfer',
                         urgent: t.forced,
+                        faces: [t.out, t.in],
                         title: `${t.forced ? 'Replace' : 'Upgrade'} ${t.out.name}`,
                         // The bracketed figures are the same two the gain is the
                         // difference of, over the same run — printing a one-gameweek
@@ -1509,6 +1510,7 @@
                         icon: v2Icon('crown'),
                         kind: 'captain',
                         urgent: true,
+                        faces: [bestAlt.player],
                         title: `Change captain to ${bestAlt.player.name}`,
                         detail: `${bestAlt.player.name} [${bestAltXP.toFixed(1)} xP] is a better captain option than ${capAnalysis.player.name} [${capXP.toFixed(1)} xP] — worth about +${((bestAltXP - capXP)).toFixed(1)} pts once doubled`,
                         doLabel: 'Make captain',
@@ -1525,6 +1527,7 @@
                     icon: v2Icon('swap'),
                     kind: 'bench',
                     urgent: false,
+                    faces: [s.starter.player, s.bench.player],
                     title: `Start ${s.bench.player.name} over ${s.starter.player.name}`,
                     detail: `Projected +${s.delta.toFixed(1)} pts (${s.benchScore.toFixed(1)} xP vs ${s.starterScore.toFixed(1)} xP)`,
                     doLabel: 'Make the swap',
@@ -1542,6 +1545,7 @@
                     icon: v2Icon('warn'),
                     kind: 'risk',
                     urgent: false,
+                    faces: unactionedDoubts.slice(0, 3).map(a => a.player),
                     title: `${unactionedDoubts.length} fitness doubt${unactionedDoubts.length > 1 ? 's' : ''}`,
                     detail: `${names} — check team news before the deadline`,
                     actionLabel: '',
@@ -1570,6 +1574,7 @@
                         icon: v2Icon('down'),
                         kind: 'price',
                         urgent: false,
+                        faces: [a.player],
                         title: `${a.player.name} drops to £${(a.player.price - 0.1).toFixed(1)}m tonight`,
                         detail: `You own him, so this is £0.1m off your team value at the next daily price update. Worth acting on only if you were already moving him on — never sell a player you want purely to save a tenth.`,
                         actionLabel: 'View options',
@@ -1646,9 +1651,26 @@
                     <div class="insight-move-detail">Lineup and captain look right for this gameweek.</div></div>
                 </div>`;
             }
+            /* Every card here is about somebody — a player to replace, an
+               armband to move, a name to check before the deadline — and the
+               name was buried mid-sentence in the detail line. The faces go in
+               the mark column the kind icon already occupied, with that icon
+               kept as a disc on the corner so the sort of move is still
+               readable at a glance. Two faces for a move with a direction
+               (out then in, benched then starting), one otherwise. */
+            const mark = m => {
+                const faces = (m.faces || []).filter(Boolean).slice(0, 3);
+                if (!faces.length || typeof v2AvatarHTML !== 'function') {
+                    return `<span class="insight-move-icon">${m.icon}</span>`;
+                }
+                return `<span class="insight-move-mark">
+                    ${faces.map(f => `<span class="insight-move-face">${v2AvatarHTML(f)}</span>`).join('')}
+                    <span class="insight-move-icon">${m.icon}</span>
+                </span>`;
+            };
             return moves.map(m => `
                 <div class="insight-move ${m.urgent ? 'urgent' : ''}">
-                    <span class="insight-move-icon">${m.icon}</span>
+                    ${mark(m)}
                     <div class="insight-move-body">
                         <div class="insight-move-title">${escHTML(m.title)}</div>
                         <div class="insight-move-detail">${escHTML(m.detail)}</div>

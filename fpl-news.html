@@ -53,9 +53,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=296">
-    <link rel="stylesheet" href="styles/v2-design.css?v=296">
-    <link rel="stylesheet" href="styles/responsive.css?v=296">
+    <link rel="stylesheet" href="styles/common.css?v=297">
+    <link rel="stylesheet" href="styles/v2-design.css?v=297">
+    <link rel="stylesheet" href="styles/responsive.css?v=297">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -444,7 +444,6 @@
             padding: 6px 22px 16px;
             margin-bottom: 26px;
         }
-        .news-section { margin-bottom: 34px; }
         /* ---- the masthead ----
            These read as pages, not as filters. A filter is a pill you set on
            a tool and unset afterwards; a section of a publication is a place
@@ -531,7 +530,28 @@
         .news-team-select { padding: 7px 30px 7px 12px; font-size: 12px; font-weight: 500; color: var(--text-primary); background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-sm); cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 12px; min-width: 140px; }
         .news-team-select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(99,102,241,0.15); }
         .news-count { opacity: 0.6; font-weight: 400; }
-        .news-section { margin-bottom: 32px; }
+        /* ---- each section is a sheet ----
+           The page was a single column of headings with cards loose underneath
+           them, so where one section ended and the next began was carried by
+           white space alone — and between a four-card row and the row below it
+           that is the same white space as the gap between two cards. Each
+           section gets its own ground now, and the cards sit on it.
+
+           The ground has to be darker than a card in both themes or the cards
+           stop reading as cards, which is the whole reason this page is not one
+           white sheet. Light: a card is white, so the sheet is the grey step
+           below it. Dark: surface-1 is already the card, so the sheet drops to
+           the one below that — surface-2 is LIGHTER than a card in dark and
+           would invert the relationship. */
+        .news-section {
+            margin-bottom: 26px;
+            padding: 18px 18px 20px;
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle, var(--border-default));
+            border-radius: var(--v2-card-radius, 16px);
+        }
+        [data-theme="dark"] .news-section { background: var(--surface-0); }
+        .news-section:last-child { margin-bottom: 0; }
         /* The section name, set the way the references set it: heavy, italic,
            at reading size rather than as a 13px grey label, behind a green
            bar. It is the loudest type on the page after the lead's headline,
@@ -757,10 +777,11 @@
         /* A highlighted band. Your own squad is what the reader came for, so it
            does not sit in the same white as the wire copy around it. */
         .news-section.is-accent {
-            background: color-mix(in srgb, var(--color-primary) 7%, transparent);
-            border: 1px solid color-mix(in srgb, var(--color-primary) 22%, transparent);
-            border-radius: var(--v2-card-radius, 16px);
-            padding: 18px 18px 20px;
+            background: color-mix(in srgb, var(--color-primary) 9%, var(--surface-2));
+            border-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+        }
+        [data-theme="dark"] .news-section.is-accent {
+            background: color-mix(in srgb, var(--color-primary) 12%, var(--surface-0));
         }
         .news-section.is-accent .news-section-title { color: var(--color-primary); }
         .news-section.is-accent .news-section-title::after { background: color-mix(in srgb, var(--color-primary) 28%, transparent); }
@@ -1131,15 +1152,15 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=296"></script>
-    <script src="scripts/auth.js?v=296"></script>
-    <script src="scripts/injury-feed.js?v=296"></script>
-    <script src="scripts/common.js?v=296"></script>
+    <script src="scripts/error-monitor.js?v=297"></script>
+    <script src="scripts/auth.js?v=297"></script>
+    <script src="scripts/injury-feed.js?v=297"></script>
+    <script src="scripts/common.js?v=297"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=296"></script>
-    <script src="scripts/notifications.js?v=296"></script>
-    <script src="scripts/sidebar-nav.js?v=296"></script>
+    <script src="scripts/push-alerts.js?v=297"></script>
+    <script src="scripts/notifications.js?v=297"></script>
+    <script src="scripts/sidebar-nav.js?v=297"></script>
     <script>
         loadSidebarNav();
         initIcons();
