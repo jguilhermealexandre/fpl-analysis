@@ -5247,7 +5247,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twc-panel { border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-1); }
 .twc-panel-head {
     display: flex; align-items: center; gap: 8px;
-    padding: 10px 12px;
+    padding: 13px 14px;
     border-bottom: 1px solid var(--border-default);
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     background: var(--surface-1);
@@ -5266,7 +5266,21 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tw-step-nav { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .tw-step-nav .tw-next, .tw-step-nav .tw-back { padding: 7px 14px; font-size: 12px; }
 .tw-step-head .twc-panel-hint { margin-left: 0; }
-.twc-panel-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+/* The same heading every other panel on the site uses. "Your squad" and
+   "Replacements" were 13px next to a dashboard whose "Squad Snapshot" is 17px,
+   so the Transfer Wizard's own sections read as sub-headings of something
+   else. Matched to .v2-section-title rather than given a size of their own. */
+.twc-panel-title {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-display);
+    font-size: 17px; font-weight: 650; letter-spacing: -0.2px;
+    color: var(--text-primary);
+}
+.twc-panel-title svg, .twc-panel-title i {
+    width: 17px; height: 17px;
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
 .twc-panel-body { padding: 8px; max-height: 720px; overflow-y: auto; }
 .twc-idle { padding: 26px 18px; font-size: 12px; color: var(--text-muted); line-height: 1.6; text-align: center; }
 
@@ -6108,7 +6122,12 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     font-family: var(--font-display); font-size: 12.5px; font-weight: 700; letter-spacing: .01em;
     color: var(--text-secondary); transition: background .15s ease, color .15s ease, box-shadow .15s ease;
 }
-.twf-view svg { width: 14px; height: 14px; }
+/* currentColor, not the brand green. v2Icon() emits a .v2-sec-icon, which is
+   coloured green wherever it lands — and the selected tab's fill is that same
+   green, so the icon on the tab you are actually on was green on green and
+   read as missing. It takes the tab's own colour now: white on the selected
+   half, ink on the other. */
+.twf-view svg, .twf-view .v2-sec-icon { width: 15px; height: 15px; color: currentColor; }
 .twf-view:hover:not(.active) { background: var(--surface-1); color: var(--text-primary); }
 /* Both selected states are the brand. Quick picks used --color-wizard, a
    violet defined for the old wizard chrome and used nowhere else on this
@@ -7479,6 +7498,38 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tw-sqc:not(.is-picked) { filter: grayscale(.72); opacity: .9; }
 .tw-sqc:not(.is-picked):hover { filter: none; opacity: 1; }
 .tw-sqc.is-picked:not(.is-active) { filter: grayscale(.25); }
+
+/* Once anything is in the plan, the rest of the squad goes right down.
+
+   The dim above is for telling the active card from the others; this is for
+   telling the plan from the squad. With three players picked out of fifteen at
+   grayscale(.72) the three did not read as a set — they were three slightly
+   less grey cards in a grey column. Hovering brings any of them back, so the
+   squad is still browsable, and the picked ones keep their club colours at
+   full strength. */
+.tw-outc-list.has-picks .tw-sqc:not(.is-picked) { filter: grayscale(1) contrast(.82); opacity: .4; }
+.tw-outc-list.has-picks .tw-sqc:not(.is-picked):hover { filter: grayscale(.2); opacity: 1; }
+.tw-outc-list.has-picks .tw-sqc.is-picked { filter: none; }
+
+/* The X, on a picked card, where a plan can hold more than one. It is the only
+   way to drop a player now that clicking the card navigates to him instead. */
+.tw-sqc-x {
+    position: absolute; top: 6px; right: 6px; z-index: 3;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: rgba(12, 14, 13, .55);
+    color: #fff;
+    font-size: 15px; line-height: 1;
+    cursor: pointer;
+    opacity: .85;
+    transition: background 140ms ease, opacity 140ms ease, transform 140ms ease;
+}
+.tw-sqc-x:hover, .tw-sqc-x:focus-visible {
+    background: var(--verdict-sell, #EF4444);
+    opacity: 1; transform: scale(1.08);
+    outline: none;
+}
 /* Fifteen of these share one column, so the whole squad should be readable
    without scrolling it twice. Shorter card, smaller face, tighter foot — the
    name and the price are what you scan, and both survive at this size. */

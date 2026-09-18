@@ -594,7 +594,7 @@
         function twStepHead(opts) {
             const o = opts || {};
             const nav = [
-                o.back ? `<button class="tw-back" onclick="${o.back.on}"${o.back.tip ? ` data-tooltip="${escHTML(o.back.tip)}"` : ''}>${v2Icon('up')} ${escHTML(o.back.label)}</button>` : '',
+                o.back ? `<button class="tw-back" onclick="${o.back.on}"${o.back.tip ? ` data-tooltip="${escHTML(o.back.tip)}"` : ''}>${v2Icon('back')} ${escHTML(o.back.label)}</button>` : '',
                 o.extra || '',
                 o.next ? `<button class="tw-next"${o.next.disabled ? ' disabled' : ''} onclick="${o.next.on}"${o.next.tip ? ` data-tooltip="${escHTML(o.next.tip)}"` : ''}>${escHTML(o.next.label)} ${v2Icon('next')}</button>` : ''
             ].filter(Boolean).join('');
@@ -1266,6 +1266,35 @@
                 node.classList.toggle('is-filled', !!inP);
                 node.setAttribute('aria-pressed', String(picked));
 
+                /* The remove button belongs to this updater too.
+
+                   The cards are rebuilt only when the squad itself changes, and
+                   picking a player does not change the squad — so everything a
+                   click affects has to be applied here. Adding the X to the
+                   template alone left it never appearing, because no click ever
+                   reached the template. */
+                const wantsX = picked && transferState.sellMode;
+                let x = node.querySelector('.tw-sqc-x');
+                if (wantsX && !x) {
+                    x = document.createElement('span');
+                    x.className = 'tw-sqc-x';
+                    x.setAttribute('role', 'button');
+                    x.setAttribute('tabindex', '0');
+                    x.textContent = '\u00d7';
+                    node.insertBefore(x, node.firstChild);
+                }
+                if (x && !wantsX) { x.remove(); x = null; }
+                if (x) {
+                    const label = `Take ${p.name} out of the plan`;
+                    x.setAttribute('data-tooltip', label);
+                    x.setAttribute('aria-label', label);
+                    x.onclick = (ev) => { ev.stopPropagation(); twRemoveSlot(slotOf(id)); };
+                    x.onkeydown = (ev) => {
+                        if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                        ev.preventDefault(); ev.stopPropagation(); twRemoveSlot(slotOf(id));
+                    };
+                }
+
                 const chip = node.querySelector('.pdm-hero-chip');
                 if (chip) {
                     chip.classList.toggle('is-blank', !picked);
@@ -1285,6 +1314,11 @@
                     }
                 }
             });
+            /* And the column's own state: with anything in the plan, the rest
+               of the squad drops right back so the picked ones read as a set. */
+            el.querySelectorAll('.tw-outc-list').forEach(list =>
+                list.classList.toggle('has-picks', transferState.pending.length > 0));
+
             const hint = el.querySelector('.twc-panel-hint');
             if (hint) {
                 const n = transferState.pending.length;
@@ -1323,15 +1357,27 @@
                     const flag = p.status === 'i' || p.status === 'u' || p.status === 's'
                         ? '<span class="tw-sqc-flag out">OUT</span>'
                         : p.status === 'd' ? `<span class="tw-sqc-flag doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}">?</span>` : '';
+                    /* The X only exists where a plan can hold more than one
+                       player. On a single transfer there is nothing to choose
+                       between, so clicking another player is how you change your
+                       mind and a remove button would be a second way to do the
+                       same thing. */
+                    const drop = picked && transferState.sellMode
+                        ? `<span class="tw-sqc-x" role="button" tabindex="0"
+                            onclick="event.stopPropagation(); twRemoveSlot(${i});"
+                            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();twRemoveSlot(${i});}"
+                            data-tooltip="${escHTML(`Take ${p.name} out of the plan`)}" aria-label="${escHTML(`Take ${p.name} out of the plan`)}">\u00d7</span>`
+                        : '';
                     return `<button class="tw-outc tw-sqc${picked ? ' is-picked' : ''}${active ? ' is-active' : ''}${inP ? ' is-filled' : ''}"
                         data-pid="${p.id}"
                         onclick="twSquadCardClick(${p.id})"
                         aria-pressed="${picked}"
                         data-tooltip="${inP
-                            ? escHTML(`${p.name} out, ${inP.name} in — click to pick someone else for this slot`)
+                            ? escHTML(`${p.name} out, ${inP.name} in — click to work on this transfer`)
                             : picked
-                                ? escHTML(`Showing replacements for ${p.name} — click again to take him out of the plan`)
+                                ? escHTML(`Choosing a replacement for ${p.name}`)
                                 : escHTML(`Move ${p.name} on`)}">
+                        ${drop}
                         <!-- The rank chip is always in the markup, hidden until the
                              player is in the plan, so selecting one can reveal it
                              rather than having to rebuild the card to add it. -->
@@ -1353,7 +1399,7 @@
                 }).join('');
                 groups += `<div class="tw-sqc-group">
                     <div class="twc-group-head"><span>${pos.label}</span></div>
-                    <div class="tw-outc-list">${cards}</div>
+                    <div class="tw-outc-list${transferState.pending.length ? ' has-picks' : ''}">${cards}</div>
                 </div>`;
             });
 
@@ -1383,8 +1429,13 @@
         function twSquadCardClick(playerId) {
             const i = transferState.pending.findIndex(x => x.soldPlayer.id === playerId);
             if (i >= 0) {
-                if (i === transferState.activeSlot) { twPickOutPlayer(playerId); return; }
-                twSelectSlot(i);
+                /* Clicking a player you have already picked moves the market to
+                   him — always. It used to drop him from the plan when he was
+                   the one already showing, so the same gesture meant "go here"
+                   on one card and "undo" on another, and the difference was
+                   invisible until it happened. Dropping is the X, which only
+                   exists where more than one player can be picked. */
+                if (i !== transferState.activeSlot) twSelectSlot(i);
                 return;
             }
             if (!transferState.sellMode) {
@@ -1947,7 +1998,7 @@
                      that go anywhere. -->
                 ${twStepHead({
                     icon: 'scales', title: 'Compare',
-                    back: { label: 'Replacements', on: 'twBackToMarket()', tip: 'Back to the replacement list' },
+                    back: { label: 'Go back to Replacements', on: 'twBackToMarket()', tip: 'Back to the replacement list' },
                     next: { label: `Confirm ${cand.name}`, on: 'twConfirmPick()',
                             disabled: blocked, tip: blockedReason || `Put ${cand.name} in for ${sold.name}.` }
                 })}
@@ -2428,7 +2479,22 @@
            Single is excluded on purpose. One transfer is one slot, and a
            dropdown offering a choice of one is a control that does nothing. So
            is a plan with only one slot staged under any other chip. */
+        /* The "Replacing <name> → <name>" dropdown is gone.
+
+           It was a second list of the transfers you had staged, in a control,
+           beside a squad column that was already showing all of them — and it
+           described switching between them as picking from a menu when the
+           obvious gesture is to click the player. The squad column does the
+           whole job now: the ones you picked stand out, clicking one moves the
+           market to it, and each carries its own X to drop it.
+
+           Kept as a function returning nothing so the two callers that ask for
+           it keep working; they render nothing where it used to be. */
         function twSlotSwitcherHTML() {
+            return '';
+        }
+
+        function twSlotSwitcherHTMLUnused() {
             if (transferState.strategy === 'single') return '';
             const slots = transferState.pending;
             if (slots.length < 2) return '';

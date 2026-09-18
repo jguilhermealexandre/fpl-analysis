@@ -3713,3 +3713,144 @@ select[data-tooltip]:not([data-tooltip=""]), select[title]:not([title=""]),
     color: var(--text-muted);
     pointer-events: none;
 }
+
+/* ============================================
+   The generated artwork
+
+   A kicker in condensed caps, the subject's name under it, and the player's
+   own photograph on the right — a broadcast graphic rather than an icon in a
+   box. The colour comes from the article's template (red is the Hall of
+   Shame, gold is the armband) so a format is recognisable before the title
+   is read.
+
+   Every value below is driven by --art-ink / --art-accent / --art-wash,
+   which scripts/scouts-art.js sets inline per template. Nothing here is
+   per-template except the aspect ratio of the two sizes.
+   ============================================ */
+.sd-art {
+    position: relative;
+    overflow: hidden;
+    background: var(--art-ink, #111827);
+    display: block;
+    isolation: isolate;
+}
+/* The diagonal bands. One element, two gradients: a wash that lifts the
+   right-hand third where the photo sits, and a pair of soft stripes across
+   the field so it is not a flat rectangle. */
+.sd-art-bars {
+    position: absolute; inset: 0;
+    background:
+        linear-gradient(105deg, transparent 52%, var(--art-wash, #1F2937) 52%, var(--art-wash, #1F2937) 74%, transparent 74%),
+        linear-gradient(105deg, transparent 78%, color-mix(in srgb, var(--art-wash, #1F2937) 60%, transparent) 78%);
+    opacity: .85;
+}
+/* The subject again, blown up and knocked back — the reference's trick for
+   filling the middle of the frame without competing with the type. */
+.sd-art-ghost {
+    position: absolute;
+    top: -18%; right: 26%;
+    height: 136%;
+    opacity: .16;
+    filter: grayscale(1) contrast(1.15);
+    pointer-events: none;
+}
+.sd-art-ghost-img { height: 100%; width: auto; display: block; object-fit: contain; }
+
+.sd-art-text {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    display: flex; flex-direction: column; justify-content: center;
+    gap: 2px;
+    z-index: 2;
+}
+/* Condensed, tight and upper-case, with a rule under it. The scale is set on
+   the two data-variant blocks below so this stays one definition. */
+.sd-art-kicker,
+.sd-art-name {
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    line-height: 0.95;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    /* Wraps to a second line rather than truncating. "Man of the Match" is a
+       phrase, and a phrase cut to "MAN OF THE MAT..." is worse than a phrase
+       on two lines — which is how the broadcast graphic sets it anyway. */
+    overflow-wrap: break-word;
+}
+.sd-art-kicker { color: #fff; border-bottom: 2px solid rgba(255,255,255,.5); }
+.sd-art-name { color: var(--art-accent, #9CA3AF); border-bottom: 2px solid color-mix(in srgb, var(--art-accent, #9CA3AF) 55%, transparent); }
+.sd-art-stat {
+    font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    color: rgba(255,255,255,.72);
+    margin-top: 10px;
+}
+/* The portrait slot. Anchored bottom-right so the head sits in the frame's
+   top half whatever the crop, which is where a portrait wants to be.
+
+   It holds the initials and the photograph, in that order. The league
+   publishes no shot for a player for some days after he signs, and this is
+   what the rest of the site does about that — see v2AvatarHTML(): the
+   monogram is always in the markup and the photo covers it, so a photo that
+   never arrives leaves a portrait rather than a hole. */
+.sd-art-portrait {
+    position: absolute;
+    right: 0; bottom: 0;
+    width: 38%; height: 104%;
+    z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+}
+.sd-art-initials {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: color-mix(in srgb, var(--art-accent, #9CA3AF) 38%, transparent);
+    user-select: none;
+}
+.sd-art-face {
+    position: absolute;
+    right: 0; bottom: 0;
+    height: 100%;
+    width: auto; max-width: 100%;
+    object-fit: contain; object-position: bottom right;
+    filter: drop-shadow(-8px 0 22px rgba(0,0,0,.4));
+}
+
+/* ---- the two sizes ---- */
+.sd-art[data-variant="card"] { height: 132px; }
+.sd-art[data-variant="card"] .sd-art-text { left: 13px; right: 40%; }
+.sd-art[data-variant="card"] .sd-art-kicker { font-size: 14px; padding-bottom: 4px; }
+.sd-art[data-variant="card"] .sd-art-name { font-size: 19px; padding-bottom: 4px; margin-top: 6px; }
+.sd-art[data-variant="card"] .sd-art-initials { font-size: 44px; }
+
+.sd-art[data-variant="lead"] { min-height: 210px; height: 100%; }
+.sd-art[data-variant="lead"] .sd-art-text { left: 24px; right: 38%; }
+.sd-art[data-variant="lead"] .sd-art-kicker { font-size: 25px; padding-bottom: 7px; }
+.sd-art[data-variant="lead"] .sd-art-name { font-size: 33px; padding-bottom: 7px; margin-top: 10px; }
+.sd-art[data-variant="lead"] .sd-art-initials { font-size: 80px; }
+
+/* No photo — the archive, and every evergreen piece. The type takes the whole
+   frame rather than leaving a hole where a face would have been. */
+.sd-art.is-faceless .sd-art-text { right: 16px; }
+.sd-art.is-faceless .sd-art-bars { opacity: .6; }
+
+@media (max-width: 700px) {
+    .sd-art[data-variant="lead"] { min-height: 150px; }
+    .sd-art[data-variant="lead"] .sd-art-text { left: 18px; right: 44%; }
+    .sd-art[data-variant="lead"] .sd-art-kicker { font-size: 21px; }
+    .sd-art[data-variant="lead"] .sd-art-name { font-size: 27px; }
+    .sd-art[data-variant="lead"] .sd-art-initials { font-size: 52px; }
+}
+
+/* The dashboard's Scout's Desk card: art down the left, at the card's height,
+   with no type of its own. */
+.sd-art[data-variant="thumb"] { height: 100%; min-height: 96px; }
+.sd-art[data-variant="thumb"] .sd-art-portrait { width: 62%; }
+.sd-art[data-variant="thumb"] .sd-art-ghost { right: 8%; opacity: .2; }
+.sd-art[data-variant="thumb"] .sd-art-initials { font-size: 34px; }

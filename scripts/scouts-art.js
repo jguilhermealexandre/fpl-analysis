@@ -191,17 +191,25 @@ function sdArtwork(article, variant) {
        of Saturdays. */
     const kicker = a.gw != null ? `${t.kicker} · GW${a.gw}` : t.kicker;
 
+    /* `thumb` is the artwork with the words taken out: the template's field,
+       its diagonals and the player, and nothing else. It is for places that
+       already print the headline next to the image — the dashboard's Scout's
+       Desk cards — where repeating it inside the picture would say the same
+       thing twice in two type sizes. */
+    const isThumb = variant === 'thumb';
+    const v = isThumb ? 'thumb' : variant === 'lead' ? 'lead' : 'card';
+
     return `<div class="sd-art sd-art--${key}${faceless ? ' is-faceless' : ''}"`
         + ` style="--art-ink:${t.ink};--art-accent:${t.accent};--art-wash:${t.wash}"`
-        + ` data-variant="${variant === 'lead' ? 'lead' : 'card'}" aria-hidden="true">`
+        + ` data-variant="${v}" aria-hidden="true">`
         + `<span class="sd-art-bars"></span>`
         + (faceless || subject.code == null ? '' : `<span class="sd-art-ghost">${sdArtPhoto(subject.code, 'sd-art-ghost-img')}</span>`)
-        + `<span class="sd-art-text">`
-        + `<span class="sd-art-kicker">${sdArtEsc(kicker)}</span>`
-        + (name ? `<span class="sd-art-name">${sdArtEsc(name)}</span>` : '')
-        + (subject && subject.stat && variant === 'lead'
-            ? `<span class="sd-art-stat">${sdArtEsc(subject.stat)}</span>` : '')
-        + `</span>`
+        + (isThumb ? '' : `<span class="sd-art-text">`
+            + `<span class="sd-art-kicker">${sdArtEsc(kicker)}</span>`
+            + (name ? `<span class="sd-art-name">${sdArtEsc(name)}</span>` : '')
+            + (subject && subject.stat && variant === 'lead'
+                ? `<span class="sd-art-stat">${sdArtEsc(subject.stat)}</span>` : '')
+            + `</span>`)
         + portrait
         + `</div>`;
 }

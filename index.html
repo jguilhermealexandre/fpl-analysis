@@ -23,9 +23,9 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=294">
-    <link rel="stylesheet" href="styles/v2-design.css?v=294">
-    <link rel="stylesheet" href="styles/responsive.css?v=294">
+    <link rel="stylesheet" href="styles/common.css?v=295">
+    <link rel="stylesheet" href="styles/v2-design.css?v=295">
+    <link rel="stylesheet" href="styles/responsive.css?v=295">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -927,6 +927,15 @@
             background: var(--surface-2);
         }
         .v2-news-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        /* The panel a card falls back to. Same shape as the photo it replaces,
+           in the source's own colour, so a feed with no picture still reads as
+           that feed rather than as a gap. */
+        .v2-news-fallback {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            color: rgba(255, 255, 255, .82);
+        }
+        .v2-news-fallback svg { width: 22px; height: 22px; }
         /* The source is the news page's coloured badge now, not a grey line of
            uppercase text — the same element, the same class, the same colours,
            so BBC looks like BBC on both pages. The age sits beside it rather
@@ -1737,13 +1746,26 @@
         .v2-desk-more .icon { width: 14px; height: 14px; }
 
         .v2-desk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+        /* Picture and words, side by side. It was four stacked lines of text in
+           a box, which made a panel of three read as a list of links — every
+           other card on this page leads with a face. The art takes 30% and the
+           dek goes: at this width it was two lines of grey under a headline
+           that had already said it. */
         .v2-desk-card {
-            display: flex; flex-direction: column; gap: 5px;
-            padding: 14px 15px;
+            display: grid; grid-template-columns: 30% minmax(0, 1fr);
+            align-items: stretch;
+            overflow: hidden;
             border: 1px solid var(--border-emphasis); border-radius: var(--radius-lg);
             background: var(--surface-1);
             text-decoration: none;
             transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+        }
+        .v2-desk-art { display: block; min-width: 0; }
+        .v2-desk-art .sd-art { height: 100%; min-height: 104px; }
+        .v2-desk-text {
+            display: flex; flex-direction: column; gap: 5px; justify-content: center;
+            min-width: 0;
+            padding: 13px 15px;
         }
         .v2-desk-card:hover {
             border-color: var(--color-primary);
@@ -3785,23 +3807,24 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=294">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=294">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=294">
-    <link rel="preload" as="script" href="scripts/odds-panel.js?v=294">
-    <link rel="preload" as="script" href="scripts/live-gw.js?v=294">
-    <link rel="preload" as="script" href="scripts/matchday.js?v=294">
-    <link rel="preload" as="script" href="scripts/market-panel.js?v=294">
-    <link rel="preload" as="script" href="scripts/eo-layer.js?v=294">
-    <link rel="preload" as="script" href="scripts/readiness.js?v=294">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=294">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=294">
-    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=294">
-    <link rel="preload" as="script" href="scripts/auth.js?v=294">
-    <link rel="preload" as="script" href="scripts/lineup-store.js?v=294">
-    <link rel="preload" as="script" href="scripts/injury-feed.js?v=294">
-    <link rel="preload" as="script" href="scripts/common.js?v=294">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=294">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=295">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=295">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=295">
+    <link rel="preload" as="script" href="scripts/odds-panel.js?v=295">
+    <link rel="preload" as="script" href="scripts/live-gw.js?v=295">
+    <link rel="preload" as="script" href="scripts/matchday.js?v=295">
+    <link rel="preload" as="script" href="scripts/market-panel.js?v=295">
+    <link rel="preload" as="script" href="scripts/eo-layer.js?v=295">
+    <link rel="preload" as="script" href="scripts/readiness.js?v=295">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=295">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=295">
+    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=295">
+    <link rel="preload" as="script" href="scripts/auth.js?v=295">
+    <link rel="preload" as="script" href="scripts/lineup-store.js?v=295">
+    <link rel="preload" as="script" href="scripts/injury-feed.js?v=295">
+    <link rel="preload" as="script" href="scripts/scouts-art.js?v=295">
+    <link rel="preload" as="script" href="scripts/common.js?v=295">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=295">
     <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -4588,23 +4611,24 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=294"></script>
-    <script src="scripts/price-watch.js?v=294"></script>
-    <script src="scripts/xp-engine.js?v=294"></script>
-    <script src="scripts/odds-panel.js?v=294"></script>
-    <script src="scripts/live-gw.js?v=294"></script>
-    <script src="scripts/matchday.js?v=294"></script>
-    <script src="scripts/market-panel.js?v=294"></script>
-    <script src="scripts/eo-layer.js?v=294"></script>
-    <script src="scripts/lineup-store.js?v=294"></script>
-    <script src="scripts/readiness.js?v=294"></script>
-    <script src="scripts/push-alerts.js?v=294"></script>
-    <script src="scripts/notifications.js?v=294"></script>
-    <script src="scripts/transfer-engine.js?v=294"></script>
-    <script src="scripts/auth.js?v=294"></script>
-    <script src="scripts/injury-feed.js?v=294"></script>
-    <script src="scripts/common.js?v=294"></script>
-    <script src="scripts/sidebar-nav.js?v=294"></script>
+    <script src="scripts/error-monitor.js?v=295"></script>
+    <script src="scripts/price-watch.js?v=295"></script>
+    <script src="scripts/xp-engine.js?v=295"></script>
+    <script src="scripts/odds-panel.js?v=295"></script>
+    <script src="scripts/live-gw.js?v=295"></script>
+    <script src="scripts/matchday.js?v=295"></script>
+    <script src="scripts/market-panel.js?v=295"></script>
+    <script src="scripts/eo-layer.js?v=295"></script>
+    <script src="scripts/lineup-store.js?v=295"></script>
+    <script src="scripts/readiness.js?v=295"></script>
+    <script src="scripts/push-alerts.js?v=295"></script>
+    <script src="scripts/notifications.js?v=295"></script>
+    <script src="scripts/transfer-engine.js?v=295"></script>
+    <script src="scripts/auth.js?v=295"></script>
+    <script src="scripts/injury-feed.js?v=295"></script>
+    <script src="scripts/scouts-art.js?v=295"></script>
+    <script src="scripts/common.js?v=295"></script>
+    <script src="scripts/sidebar-nav.js?v=295"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5200,11 +5224,18 @@
                     <a class="v2-desk-more" href="fpl-scouts-desk.html">All articles <i data-lucide="arrow-right" class="icon"></i></a>
                 </div>
                 <div class="v2-desk-grid">
+                    ${/* Picture down the left, words on the right. The article's
+                          own generated artwork, in its text-free form: the
+                          headline is already printed beside it, and repeating it
+                          inside the image would say the same thing twice in two
+                          type sizes. */''}
                     ${debriefFirst.map(a => `<a class="v2-desk-card" href="articles/${encodeURIComponent(a.slug)}.html">
-                        <span class="v2-desk-kicker">${esc(a.category || 'Scout\u2019s Desk')}${a.gw ? ` \u00b7 GW${a.gw}` : ''}</span>
-                        <span class="v2-desk-headline">${esc(a.title)}</span>
-                        <span class="v2-desk-dek">${esc(a.dek || '')}</span>
-                        <span class="v2-desk-meta">${a.readTime ? `${a.readTime} min read` : ''}${a.words ? ` \u00b7 ${Number(a.words).toLocaleString()} words` : ''}</span>
+                        ${typeof sdArtwork === 'function' ? `<span class="v2-desk-art">${sdArtwork(a, 'thumb')}</span>` : ''}
+                        <span class="v2-desk-text">
+                            <span class="v2-desk-kicker">${esc(a.category || 'Scout\u2019s Desk')}${a.gw ? ` \u00b7 GW${a.gw}` : ''}</span>
+                            <span class="v2-desk-headline">${esc(a.title)}</span>
+                            <span class="v2-desk-meta">${a.readTime ? `${a.readTime} min read` : ''}${a.words ? ` \u00b7 ${Number(a.words).toLocaleString()} words` : ''}</span>
+                        </span>
                     </a>`).join('')}
                 </div>
             </div>`;
@@ -5762,6 +5793,27 @@
            enough to work on. */
         let v2NewsItems = [];
 
+        /* What a news card shows when there is no picture.
+
+           Two feeds publish items with no image at all, and any image can 404
+           or be blocked by the time it is asked for. This card had no answer to
+           either: no thumbnail rendered an empty box, and a failed one called
+           this.remove() and left the same empty box. The highlights list four
+           hundred lines down already had a proper fallback — a panel in the
+           source's colour with a newspaper mark — so this is that, hoisted to
+           where both can use it rather than written twice.
+
+           Defined beside the card that needs it, not inside the other
+           renderer's closure, which is why it could not be reached from here
+           before. */
+        const V2_NEWS_MARK = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M18 10h-8"/></svg>';
+        const V2_NEWS_COLORS = { bbc: '#BB1D1D', pl: '#38006A', sky: '#0062B2', guardian: '#05517E' };
+
+        function v2NewsFallback(badge) {
+            const c = V2_NEWS_COLORS[badge] || '#6366F1';
+            return `<span class="v2-news-fallback" style="background:${c}">${V2_NEWS_MARK}</span>`;
+        }
+
         function v2NewsCard(item) {
             const esc = t => String(t == null ? '' : t)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -5769,8 +5821,9 @@
             const age = when && !isNaN(when) ? v2NewsAge(Date.now() - when.getTime()) : '';
             return `<a class="v2-news-card" href="${esc(item.link)}" target="_blank" rel="noopener noreferrer">
                 <span class="v2-news-thumb">${item.thumbnail
-                    ? `<img src="${esc(item.thumbnail)}" alt="" loading="lazy" onerror="this.remove()">`
-                    : ''}</span>
+                    ? `<img src="${esc(item.thumbnail)}" alt="" loading="lazy"
+                        onerror="this.parentElement.innerHTML = ${esc(JSON.stringify(v2NewsFallback(item.badge)))}">`
+                    : v2NewsFallback(item.badge)}</span>
                 <span class="v2-news-meta">
                     <span class="news-card-category cat-${esc(item.badge || 'external')}">${esc(item.source || '')}</span>
                     ${age ? `<span class="v2-news-age">${esc(age)}</span>` : ''}
@@ -5888,8 +5941,9 @@
             const escH = s => String(s == null ? '' : s)
                 .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-            const newspaperSVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M18 10h-8"/></svg>';
-            const sourceColors = { bbc: '#BB1D1D', pl: '#38006A', sky: '#0062B2', guardian: '#05517E' };
+            // The same mark and the same palette the news cards above use.
+            const newspaperSVG = V2_NEWS_MARK;
+            const sourceColors = V2_NEWS_COLORS;
 
             function tAgo(ds) {
                 if (!ds) return '';

@@ -1744,7 +1744,10 @@ const V2_ICON_PATHS = {
     pointer: '<path d="M8 3v10l3-2 2 5 2-1-2-5h4Z"/>',
     expand: '<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/>',
     play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5Z"/>',
-    next: '<path d="M5 5v14l9-7Z"/><path d="M18 5v14"/>'
+    next: '<path d="M5 5v14l9-7Z"/><path d="M18 5v14"/>',
+    /* A left-pointing arrow for going back a step. The back buttons used `up`,
+       which points the wrong way for a flow that runs left to right. */
+    back: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>'
 };
 
 function v2Icon(name) {
@@ -2179,7 +2182,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=294')
+    fetch('footer.html?v=295')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
