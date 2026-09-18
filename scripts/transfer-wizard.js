@@ -1181,6 +1181,14 @@
                 <div class="twc-plan-rows">${rows}</div>`;
 
             el.innerHTML = `
+                <!-- Three bubbles, like the dashboard's, one size down. They
+                     were a flat strip of label-over-value that read as a
+                     table header rather than as the running state of a plan.
+
+                     Clear is gone: discarding every pending transfer is a
+                     destructive button sitting next to three harmless ones,
+                     and each row in the plan below already has its own undo.
+                     Preview squad keeps its place at the end of the row. -->
                 <div class="twc-head">
                     <div class="twc-stat">
                         <span class="twc-stat-l">Transfers</span>
@@ -1196,7 +1204,6 @@
                     </div>
                     <div class="twc-actions">
                         ${count ? `<button class="rc-btn" onclick="twOpenPreview()" data-tooltip="See the squad these transfers would leave you with, on a pitch, with its value and projection.">Preview squad</button>` : ''}
-                        ${count ? `<button class="rc-btn" onclick="twClearPending()" data-tooltip="Discard every pending transfer">Clear</button>` : ''}
                     </div>
                 </div>
                 ${filled ? `<div class="twc-plan">${cart}</div>` : ''}`;

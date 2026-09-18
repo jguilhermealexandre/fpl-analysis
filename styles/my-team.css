@@ -5133,7 +5133,12 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-cc-head .rc-btn { flex: 0 0 auto; }
 
 /* ===== Transfer Command Centre ===== */
-.twc-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 9px 11px; border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-1); margin-bottom: 8px; }
+/* The plan's running state. It was one bordered strip with three
+   label-over-value pairs inside it, which read as a table header. The strip is
+   gone and each figure is its own bubble, the way the dashboard states a
+   number — one size down, because this is a status line above a working
+   screen rather than the headline of a page. */
+.twc-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
 
 /* Single · Multi · Wildcard · Free Hit. Replaced a "Play wildcard" button here
    and a separate "Sell mode" toggle over the squad panel — two independent
@@ -5178,11 +5183,17 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 }
 
 /* The horizon on a Free Hit is a fact about the chip, not a choice. */
-.twf-hz.locked { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
 
-.twc-stat { display: flex; flex-direction: column; gap: 1px; padding: 0 8px; }
+.twc-stat {
+    display: flex; flex-direction: column; gap: 1px;
+    padding: 7px 14px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
 .twc-stat-l { font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
-.twc-stat-v { font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); }
+.twc-stat-v { font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); }
 .twc-stat-v.danger { color: var(--verdict-sell); }
 .twc-stat-v.warning { color: var(--verdict-monitor); }
 .twc-stat-v.success { color: var(--verdict-hold); }
@@ -6065,7 +6076,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf { display: flex; flex-direction: column; border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-1); overflow: hidden; }
 
 .twf-head { padding: 8px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); }
-.twf-head-top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.twf-head-top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; flex-wrap: wrap; }
 .twf-budget { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--text-primary); }
 .twf-budget em { font-style: normal; font-size: 9px; font-weight: 600; color: var(--color-warning); }
 .twf-head-bot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -6091,7 +6102,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    screen, so the two halves of one control were painted from two palettes. */
 .twf-view.active { background: var(--color-primary); color: #fff; }
 
-.twf-hzs { margin-left: auto; display: inline-flex; gap: 3px; }
 
 /* ----- Which transfer you are working on -----
 
@@ -6129,7 +6139,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    The twenty-row club grid is gone; this is what replaced its evidence. Each
    code is a button, so dropping one club out of a preset's selection does not
    mean running the preset again. */
-.twf-picked { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.twf-picked { display: flex; flex-wrap: wrap; gap: 4px; flex: 1 1 100%; }
 .twf-picked-club {
     display: inline-flex; align-items: center; gap: 3px;
     padding: 2px 5px 2px 7px;
@@ -6142,53 +6152,36 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-picked-club:hover { background: color-mix(in srgb, var(--color-primary) 18%, transparent); }
 .twf-picked-club:hover i { color: var(--verdict-sell); }
 
-/* The third block of the one-screen custom search, under the two filter
-   sections that produced it. */
-.twf-results { min-width: 0; padding: 0 0 0 14px; border-left: 1px solid var(--border-subtle); }
+.twf-results { min-width: 0; }
 .twf-results .twf-section-head { margin-bottom: 8px; }
 
-/* No room for two columns. Stacking puts the players under the filters again,
-   so the filter block is capped here instead — whatever you narrow by, the
-   list is a short scroll away rather than eight chip groups away. */
-@media (max-width: 1100px) {
-    .twf-body.custom { grid-template-columns: minmax(0, 1fr); }
-    .twf-filters { max-height: 300px; }
-    .twf-results { padding: 10px 0 0; border-left: 0; border-top: 1px solid var(--border-subtle); }
-}
-.twf-hz { padding: 3px 8px; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: transparent; font-family: var(--font-body); font-size: 10px; font-weight: 700; color: var(--text-muted); cursor: pointer; }
-.twf-hz.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+/* Two columns of cards. Eight in one column was a page you scrolled; eight in
+   two is a shortlist you compare, which is what a shortlist is for. */
+.twf-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
+@media (max-width: 900px) { .twf-cards { grid-template-columns: minmax(0, 1fr); } }
+
 
 .twf-body { padding: 8px; max-height: 640px; overflow-y: auto; }
 
-/* Custom search is the one view with filters AND results in it, so it is the
-   one that cannot be a single 640px scrollbox: the run presets and eight chip
-   groups fill that on their own and push every player below the fold of a
-   scrollbar sitting inside the page's own scrollbar. Two columns instead. The
-   pane is 1fr against the squad's 320px on the swap step, so there is room. */
-.twf-body.custom {
-    display: grid;
-    grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
-    gap: 14px;
-    max-height: none;
-    overflow: visible;
-}
-.twf-filters { min-width: 0; max-height: 620px; overflow-y: auto; padding-right: 4px; }
+/* The filters are a row in the header now, not a column beside the players,
+   so this is one full-width block again. */
+.twf-body.custom { max-height: none; overflow: visible; }
+/* The running total, at the end of the row it belongs to. */
 .twf-live {
     margin-left: auto;
-    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    display: inline-flex; align-items: center;
+    height: 28px; padding: 0 11px;
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
     color: var(--color-primary);
+    white-space: nowrap;
 }
-.twf-section-head .twf-live + .twf-reset { margin-left: 8px; }
 .twf-section + .twf-section { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-subtle); }
 .twf-section-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
 .twf-section-title { font-size: 11px; font-weight: 700; color: var(--text-primary); }
 .twf-section-sub { font-size: 10px; color: var(--text-muted); margin-left: auto; }
-.twf-reset { margin-left: auto; border: none; background: none; font-family: var(--font-body); font-size: 10px; font-weight: 600; color: var(--color-info); cursor: pointer; padding: 0; }
 
-.twf-presets { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
-.twf-preset { padding: 3px 9px; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: transparent; font-family: var(--font-body); font-size: 10px; font-weight: 600; color: var(--text-secondary); cursor: pointer; }
-.twf-preset:hover { border-color: var(--color-primary); color: var(--text-primary); }
-.twf-preset.active { background: var(--surface-3); }
 
 .twf-swing { padding: 1px 6px; border-radius: var(--radius-full); font-size: 9px; font-weight: 700; white-space: nowrap; }
 .twf-swing.improving { background: color-mix(in srgb, var(--verdict-hold) 16%, transparent); color: var(--verdict-hold); }
@@ -6199,20 +6192,64 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-r.d { background: var(--surface-3); color: var(--text-secondary); }
 .twf-r.l { background: var(--verdict-sell); color: #fff; }
 
-.twf-searchrow { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
-.twf-search { flex: 1 1 160px; padding: 5px 9px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-2); font-family: var(--font-body); font-size: 11px; color: var(--text-primary); }
-.twf-search:focus { outline: none; border-color: var(--color-info); }
+/* ---- the filter bar ----
+   A row of pills beside the view toggle. Everything in it is either the site's
+   own .v2-menu (three or more answers) or a .twf-tog (exactly two), so the bar
+   has two shapes in it and the shape tells you how many answers there are. */
+.twf-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    flex: 1 1 100%;
+    padding-top: 7px;
+    border-top: 1px solid var(--border-subtle);
+}
+.twf-bar .v2-menu-btn { height: 28px; font-size: 11.5px; padding: 0 9px; }
+.twf-bar .v2-menu-btn .v2-menu-v { font-size: 11.5px; }
 
-.twf-group { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; }
-.twf-group-l { flex: 0 0 96px; padding-top: 3px; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
-.twf-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.twf-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: transparent; font-family: var(--font-body); font-size: 10px; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all 140ms ease; }
-.twf-chip:hover { border-color: var(--color-primary); color: var(--text-primary); }
-.twf-chip.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
-.twf-chip.dead { opacity: .4; }
-.twf-chip[disabled] { opacity: .35; cursor: not-allowed; }
-.twf-chip em { font-style: normal; font-family: var(--font-mono); font-size: 9px; font-weight: 700; padding: 0 4px; border-radius: var(--radius-full); background: var(--surface-3); color: var(--text-muted); }
-.twf-chip.active em { background: rgba(255, 255, 255, .25); color: #fff; }
+/* The search keeps the shape every other search on the site has, one size
+   down to sit in a row of 28px pills. */
+.twf-search-wrap {
+    position: relative; display: inline-flex; align-items: center; gap: 6px;
+    height: 28px; padding: 0 10px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--radius-full);
+    background: var(--surface-1);
+    flex: 0 1 190px;
+}
+.twf-search-wrap svg { width: 13px; height: 13px; color: var(--text-muted); flex-shrink: 0; }
+.twf-search {
+    flex: 1; min-width: 0;
+    border: none; background: none; outline: none;
+    font-family: var(--font-body); font-size: 11.5px; color: var(--text-primary);
+}
+.twf-search::placeholder { color: var(--text-muted); }
+.twf-search-wrap:focus-within { border-color: var(--color-primary); }
+
+/* A two-answer filter. Same pill, but it carries its own state rather than a
+   chosen value, so the on state is filled instead of labelled. */
+.twf-tog {
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 28px; padding: 0 11px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--radius-full);
+    background: var(--surface-1);
+    font-family: var(--font-body); font-size: 11.5px; font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+.twf-tog:hover:not(:disabled) { border-color: var(--color-primary); color: var(--text-primary); }
+.twf-tog.is-on {
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--surface-1));
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+.twf-tog em {
+    font-style: normal; font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    color: var(--text-muted);
+}
+.twf-tog.is-on em { color: var(--color-primary); }
+.twf-tog:disabled { opacity: .45; cursor: not-allowed; }
+
 
 .twf-foot { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--border-default); background: var(--surface-2); }
 .twf-foot-why { flex: 1; font-size: 10px; color: var(--text-muted); line-height: 1.4; }
@@ -6220,7 +6257,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-back:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
 
 /* ----- Step 2, the shortlist ----- */
-.twf-sortrow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .twf-out { display: flex; align-items: center; gap: 6px; padding: 5px 8px; margin-bottom: 8px; border: 1px dashed var(--border-emphasis); border-radius: var(--radius-md); background: var(--surface-2); }
 .twf-out-l { font-size: 8px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--verdict-sell); }
 .twf-out-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
@@ -6250,8 +6286,8 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    behind this. Closed is the default because six open cards is a wall. */
 .twf-more {
     display: flex; align-items: center; justify-content: center; gap: 6px;
-    width: calc(100% - 24px); margin: 9px 12px 0;
-    padding: 7px 12px;
+    width: calc(100% - 24px); margin: 7px 12px 0;
+    padding: 5px 12px;
     border: 1px solid var(--v2-card-border, var(--border-emphasis));
     border-radius: 999px;
     background: var(--surface-2);
@@ -6265,7 +6301,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-more-c svg { width: 13px; height: 13px; }
 .twf-card.is-open .twf-more-c { transform: rotate(180deg); }
 .twf-card:not(.is-open) .twf-cols { display: none; }
-.twf-card.is-open .twf-cols { padding-top: 10px; }
+.twf-card.is-open .twf-cols { padding-top: 8px; }
 .twf-hero .pdm-hero { min-height: 92px; }
 .twf-hero .pdm-hero-chip {
     background: rgba(255, 255, 255, .22); color: var(--club-ink, #fff);
@@ -6299,14 +6335,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-gain.flat { background: var(--surface-3); color: var(--text-muted); }
 /* Where the projection comes from — the component breakdown the xP engine has
    always returned and nothing had ever put on screen. */
-.twf-bar-wrap { flex: 1; min-width: 60px; display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--surface-3); }
-.twf-seg { display: block; height: 100%; }
-.twf-seg.a { background: var(--color-primary); }
-.twf-seg.c { background: var(--color-info); }
-.twf-seg.s { background: #38BDF8; }
-.twf-seg.d { background: var(--color-wizard); }
-.twf-seg.b { background: var(--color-warning); }
-.twf-seg.p { background: var(--text-muted); }
 .twf-risk { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--verdict-sell); }
 
 .twf-strip { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 7px; }
@@ -6314,17 +6342,31 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-gw b { font-family: var(--font-mono); font-size: 11px; font-weight: 800; }
 .twf-gw.blank { background: var(--surface-3); color: var(--text-muted); }
 
-.twf-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.twf-col-h { font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
-.twf-spark { display: flex; align-items: flex-end; gap: 2px; height: 26px; margin-bottom: 5px; }
+/* "All the numbers", tightened.
+
+   Sixteen facts in two columns of full-width rows, each with its own rule
+   under it, ran to 245px of detail under a card that is itself only 220px.
+   Same sixteen facts, same two columns, but the rows lose the rule and the
+   padding that separated them and the value sits in a bubble instead — the
+   bubble is what makes a row scannable without a line under it, and it is
+   how every other number on this screen is already set. */
+.twf-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+.twf-col-h { font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px; }
+.twf-spark { display: flex; align-items: flex-end; gap: 2px; height: 22px; margin-bottom: 4px; }
 .twf-spark i { flex: 1; min-height: 2px; border-radius: 2px 2px 0 0; background: var(--color-info); }
 .twf-spark i.haul { background: var(--color-primary); }
 .twf-spark i.out { background: var(--surface-3); }
 .twf-spark i.none { background: none; }
-.twf-kv { display: flex; align-items: baseline; gap: 5px; padding: 2px 0; font-size: 10px; border-bottom: 1px solid var(--border-subtle); }
-.twf-kv:last-child { border-bottom: none; }
-.twf-kv > span:first-child { flex: 1; color: var(--text-muted); }
-.twf-kv b { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-primary); }
+.twf-kv { display: flex; align-items: center; gap: 4px; padding: 1px 0; font-size: 10px; }
+.twf-kv > span:first-child { flex: 1; min-width: 0; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.twf-kv b {
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;
+    color: var(--text-primary);
+    padding: 1px 6px; border-radius: var(--radius-full);
+    background: var(--surface-2);
+}
+.twf-kv b.up { background: color-mix(in srgb, var(--verdict-hold) 14%, transparent); }
+.twf-kv b.down { background: color-mix(in srgb, var(--verdict-sell) 14%, transparent); }
 .twf-kv b.up { color: var(--verdict-hold); }
 .twf-kv b.down { color: var(--verdict-sell); }
 .twf-dim { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); }
@@ -6357,8 +6399,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 @media (min-width: 1001px) and (max-width: 1400px) { .twf-cols { grid-template-columns: 1fr; } }
 @media (max-width: 620px) {
     .twf-cols { grid-template-columns: 1fr; }
-    .twf-group { flex-direction: column; gap: 3px; }
-    .twf-group-l { flex: none; padding-top: 0; }
     .twf-club-stats { flex: 1 1 100%; order: 9; }
 }
 
