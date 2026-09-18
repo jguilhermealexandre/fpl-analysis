@@ -2174,6 +2174,9 @@ function sdBuildProjection() {
    because a dozen pages load it with a script tag. Evaluating it inside a
    function scope gives it somewhere to live that is not the real global
    object, and hands back the pieces this file needs. */
+/* eslint-disable no-undef -- require and __dirname exist only on the Node side
+   of this dual-context file, and the guard on the first line is what keeps the
+   browser out of the block that uses them. */
 function sdLoadXpEngine() {
     if (typeof require === 'undefined') return null;      // browser: not needed
     let src;
@@ -2197,13 +2200,13 @@ function sdLoadXpEngine() {
     const names = ['xpBuildTeamFixtures', 'xpBuildTeamScores', 'xpBuildSeasonStats',
         'xpBuildPlayers', 'xpBuildPositionAverages', 'projectPlayerPointsForGW',
         'predictedGWPoints', 'expectedMinutesModel'];
-    // eslint-disable-next-line no-new-func
     const load = new Function('__ctx', `with (__ctx) {\n${src}\n${
         names.map(n => `__ctx.${n} = typeof ${n} === 'function' ? ${n} : null;`).join('\n')
     }\n}`);
     load(ctx);
     return ctx.projectPlayerPointsForGW ? ctx : null;
 }
+/* eslint-enable no-undef */
 
 /* What a player projects for one gameweek: through the engine when it loaded,
    through the season average when it did not. The second field names which, so

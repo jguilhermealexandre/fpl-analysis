@@ -498,7 +498,9 @@ async function readArticleInBrowser(browser, url) {
            browser asking for a public article the Premier League's own site
            links to, twice a day, once per article. A club that still says no is
            saying no, and the card falls back to its crest. */
-        page = await browser.newPage();
+        /* A tall window, because how much of the page counts as "in view"
+           decides how much of it a lazy loader bothers to fetch. */
+        page = await browser.newPage({ viewport: { width: 1280, height: 2000 } });
         const res = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: ARTICLE_NAV_TIMEOUT });
         if (res && !res.ok()) return { failed: `HTTP ${res.status()}` };
         /* A moment for the head to be filled in by whatever put it there. The
@@ -520,7 +522,10 @@ async function readArticleInBrowser(browser, url) {
            rendered size rather than off the markup, so a crest in a byline and
            a sprite in the nav are small and a hero is not, and take the largest
            thing that is plausibly a photograph. */
-        if (!meta.image) meta.image = await largestArticleImage(page);
+        if (!meta.image) {
+            await nudgeLazyImages(page);
+            meta.image = await largestArticleImage(page);
+        }
         return meta;
     } catch (e) {
         /* Reported rather than swallowed. "18 went through the browser and 3
@@ -546,25 +551,76 @@ const ARTICLE_IMG_MIN_W = 300;
 const ARTICLE_IMG_MIN_H = 170;
 const ARTICLE_IMG_SKIP = /logo|crest|badge|sprite|icon|avatar|placeholder|pixel|1x1|blank|spacer|advert/i;
 
+/* Lazy images do not exist until something looks at them.
+ *
+ * Eighteen articles went through the browser and fifteen of them loaded
+ * perfectly and still gave up nothing — not from the meta tags and not from the
+ * images either, which is the tell. Nothing had loaded yet: an <img> that has
+ * not been fetched has no natural size and, below the fold, no rendered one, so
+ * every candidate measured zero and was discarded as furniture.
+ *
+ * A reader scrolls. This scrolls a little way down the page and back, which is
+ * what an IntersectionObserver is waiting for, then gives the fetches a moment.
+ */
+async function nudgeLazyImages(page) {
+    try {
+        await page.evaluate(async () => {
+            const step = Math.max(400, Math.floor(window.innerHeight * 0.8));
+            for (let y = step; y <= step * 4; y += step) {
+                window.scrollTo(0, y);
+                await new Promise(r => setTimeout(r, 180));
+            }
+            window.scrollTo(0, 0);
+        });
+        await page.waitForTimeout(900);
+    } catch { /* a page that refuses to be scrolled is read as it stands */ }
+}
+
 async function largestArticleImage(page) {
     try {
         const found = await page.evaluate((cfg) => {
             const skip = new RegExp(cfg.skip, 'i');
             let best = null;
-            for (const img of document.images) {
-                const src = img.currentSrc || img.src || '';
-                if (!/^https?:\/\//i.test(src)) continue;
-                if (/\.svg(\?|#|$)/i.test(src)) continue;
-                if (skip.test(src)) continue;
-                const r = img.getBoundingClientRect();
-                const w = r.width || img.naturalWidth;
-                const h = r.height || img.naturalHeight;
-                if (w < cfg.minW || h < cfg.minH) continue;
+            const consider = (src, w, h) => {
+                if (!src || !/^https?:\/\//i.test(src)) return;
+                if (/\.svg(\?|#|$)/i.test(src)) return;
+                if (skip.test(src)) return;
+                if (w < cfg.minW || h < cfg.minH) return;
                 // A strip four times wider than it is tall is a banner, not a photo.
-                if (w / h > 4) continue;
+                if (w / h > 4) return;
                 const area = w * h;
                 if (!best || area > best.area) best = { src, area };
+            };
+
+            for (const img of document.images) {
+                const r = img.getBoundingClientRect();
+                /* Whichever of the three knows the size. A loaded image has a
+                   natural one; an unloaded image in a sized slot has a rendered
+                   one; and the width/height attributes are what the page
+                   intended before either existed. */
+                const w = Math.max(r.width, img.naturalWidth || 0, Number(img.getAttribute('width')) || 0);
+                const h = Math.max(r.height, img.naturalHeight || 0, Number(img.getAttribute('height')) || 0);
+                /* src last. A lazy image keeps its real URL in a data attribute
+                   or in srcset until it is fetched, and currentSrc is either
+                   empty or a grey placeholder until then. */
+                const fromSet = (img.getAttribute('srcset') || img.getAttribute('data-srcset') || '')
+                    .split(',').map(s => s.trim().split(/\s+/)[0]).filter(Boolean).pop();
+                consider(img.currentSrc || img.src || img.getAttribute('data-src')
+                    || img.getAttribute('data-lazy-src') || fromSet || '', w, h);
             }
+
+            /* And the ones that are not <img> at all. Club CMSes routinely put
+               the hero on a div as a background, where document.images cannot
+               see it. Only elements big enough to be the subject are asked. */
+            for (const el of document.querySelectorAll('div, section, figure, a, header, span')) {
+                const r = el.getBoundingClientRect();
+                if (r.width < cfg.minW || r.height < cfg.minH) continue;
+                const bg = el.ownerDocument.defaultView.getComputedStyle(el).backgroundImage;
+                if (!bg || bg === 'none') continue;
+                const m = /url\((['"]?)(.*?)\1\)/.exec(bg);
+                if (m) consider(m[2], r.width, r.height);
+            }
+
             return best ? best.src : null;
         }, { skip: ARTICLE_IMG_SKIP.source, minW: ARTICLE_IMG_MIN_W, minH: ARTICLE_IMG_MIN_H });
         if (!found) return null;
