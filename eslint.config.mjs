@@ -1740,6 +1740,7 @@ export default [
                 v2MountPageHelp: 'writable',
                 v2NewsAge: 'writable',
                 v2NewsCard: 'writable',
+                v2NewsCrest: 'writable',
                 v2NewsFallback: 'writable',
                 v2NewsItems: 'writable',
                 v2PlanHint: 'writable',
