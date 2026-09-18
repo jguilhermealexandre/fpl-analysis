@@ -230,9 +230,11 @@ test('opening the panel is what marks things read', () => {
 
 test('the panel separates what is new from what is not', () => {
     const nt = load();
+    /* No hrefs: neither a live score nor a gameweek phase has anywhere to
+       send you, which is what ntCollect now emits for both. */
     const events = [
-        { id: 'b', at: T0 + 1000, title: 'Saka — 13 points', body: '2 goals', tone: 'good', href: 'index.html' },
-        { id: 'a', at: T0 - 90000000, title: 'GW3 is done', body: 'planning time', tone: 'info', href: 'index.html' }
+        { id: 'b', at: T0 + 1000, title: 'Saka — 13 points', body: '2 goals', tone: 'good' },
+        { id: 'a', at: T0 - 90000000, title: 'GW3 is done', body: 'planning time', tone: 'info' }
     ];
     const html = nt.ntPanelHTML(events, T0, T0 + 2000);
     assert.match(html, /Since your last visit/);
@@ -240,6 +242,58 @@ test('the panel separates what is new from what is not', () => {
     assert.match(html, /Saka — 13 points/);
     assert.match(html, /nt-row good/);
     assert.ok(html.indexOf('Since your last visit') < html.indexOf('Earlier'), 'new first');
+});
+
+/* ===== which rows are clickable =====
+
+   Every row used to be an <a> defaulting to index.html, so a gameweek notice
+   read on the dashboard reloaded the page you were already on — and the rows
+   that did lead somewhere real looked exactly like the ones that did not. The
+   destination is the difference now, and it is decided where the event is made
+   rather than guessed at from its text. */
+
+test('a row with nowhere to go is text, not a link', () => {
+    const nt = load();
+    const html = nt.ntPanelHTML(
+        [{ id: 'p', at: T0, title: 'GW5 is locked', body: 'Your team is set.', tone: 'info' }], 0, T0);
+    assert.match(html, /<div class="nt-row info">/);
+    assert.doesNotMatch(html, /<a class="nt-row/);
+    assert.doesNotMatch(html, /index\.html/, 'and it does not invent a destination');
+});
+
+test('a squad-news row keeps the jump to that player, in place', () => {
+    const nt = load();
+    const html = nt.ntPanelHTML(
+        [{ id: 's', at: T0, title: 'Saka', body: 'is injured', tone: 'bad',
+           href: 'fpl-my-team-analysis.html#squad?player=7' }], 0, T0);
+    assert.match(html, /<a class="nt-row is-link bad" href="fpl-my-team-analysis\.html#squad\?player=7"/);
+    // An internal jump is where you were going anyway, so it does not open a tab.
+    assert.doesNotMatch(html, /target="_blank"/);
+});
+
+test('an injury story opens the club\u2019s own page in a new tab', () => {
+    const nt = load();
+    const html = nt.ntPanelHTML(
+        [{ id: 'i', at: T0, title: 'Tete', body: 'Fulham: Team News', tone: 'bad',
+           href: 'https://www.fulhamfc.com/news/team-news' }], 0, T0);
+    assert.match(html, /<a class="nt-row is-link bad" href="https:\/\/www\.fulhamfc\.com\/news\/team-news" target="_blank" rel="noopener noreferrer"/);
+});
+
+test('the events that carry no destination really carry none', () => {
+    /* The renderer decides by asking the event, so this is the half that has
+       to hold: a live line and a phase line must arrive without an href. */
+    const nt = load();
+    const squad = [{ id: 1, name: 'Saka', status: 'a' }];
+    const prev = { status: { 1: 'a' }, stats: { 1: { pts: 0, min: 0 } }, phase: 'upcoming', inj: [] };
+    const out = nt.ntCollect({
+        squad, live: { 1: { pts: 6, min: 90, g: 1 } }, phase: 'live', gw: 5, now: T0, prev
+    });
+    const live = out.find(e => e.kind === 'live');
+    const phase = out.find(e => e.kind === 'phase');
+    assert.ok(live, 'a live line was raised');
+    assert.equal(live.href, undefined, 'what he scored is not a place');
+    assert.ok(phase, 'a phase line was raised');
+    assert.equal(phase.href, undefined, 'nor is the gameweek turning over');
 });
 
 test('an empty feed explains itself rather than showing a blank box', () => {

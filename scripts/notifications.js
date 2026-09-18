@@ -191,8 +191,12 @@
                     tone: st.rc ? 'bad' : pts >= 6 ? 'good' : 'info',
                     title: `${p.name} — ${pts} point${pts === 1 ? '' : 's'}`,
                     body: `${ntLiveSummary(st)}${st.min ? ` · ${st.min}'` : ''}`,
-                    at: now,
-                    href: 'index.html'
+                    at: now
+                    /* No href. What he scored is a fact, and the only place it
+                       could have sent you was the page you are almost certainly
+                       already on. See the row builder: an event with no
+                       destination is drawn as text rather than as a link that
+                       reloads the dashboard. */
                 });
             });
 
@@ -268,7 +272,8 @@
                     body: 'Every match has finished. Time to plan the next one.'
                 } }[c.phase];
                 if (moved) {
-                    out.push({ id: `phase-${gw}-${c.phase}`, kind: 'phase', at: now, href: 'index.html', ...moved });
+                    // Also no href: the gameweek turning over is news, not a place.
+                    out.push({ id: `phase-${gw}-${c.phase}`, kind: 'phase', at: now, ...moved });
                 }
             }
 
@@ -406,18 +411,36 @@
                        news on your players, what they scored, and the gameweek turning over will show up.</p>
                 </div>`;
             }
-            /* Not a link. Most of these had no destination worth the click —
-               the default was index.html, so a "gameweek turned over" notice on
-               the dashboard reloaded the page you were already reading, and the
-               few that did point somewhere looked identical to the ones that
-               did not. A panel where every row is clickable and most of the
-               clicks do nothing teaches you not to click any of them. It is a
-               list of what happened; it is read, not used. */
-            const row = (e) => `<div class="nt-row ${esc(e.tone || 'info')}">
-                <span class="nt-row-title">${esc(e.title)}</span>
-                <span class="nt-row-body">${esc(e.body)}</span>
-                <span class="nt-row-when">${esc(ntAgo(e.at, now))}</span>
-            </div>`;
+            /* A row is a link when it has somewhere to go, and text when it
+               does not.
+
+               Every row used to be an <a>, defaulting to index.html — so a
+               "GW5 is locked" notice read on the dashboard reloaded the page
+               you were already on, and the rows that did lead somewhere real
+               looked exactly like the ones that did not. A panel where most of
+               the clicks do nothing teaches you not to click any of them,
+               including the two that work.
+
+               So the destination is the difference, and it is decided where the
+               event is made rather than sniffed out of a string here: a squad
+               news item carries the jump to that player, an injury story
+               carries the club's own article, and the live and phase lines
+               carry nothing because there is nothing for them to carry.
+
+               An external article opens in a new tab — it leaves the site, and
+               losing the panel you were reading to a club's website is not what
+               clicking a notification should cost. An internal jump navigates
+               in place, because that is where you were going anyway. */
+            const row = (e) => {
+                const inner = `<span class="nt-row-title">${esc(e.title)}</span>`
+                    + `<span class="nt-row-body">${esc(e.body)}</span>`
+                    + `<span class="nt-row-when">${esc(ntAgo(e.at, now))}</span>`;
+                if (!e.href) return `<div class="nt-row ${esc(e.tone || 'info')}">${inner}</div>`;
+                const external = /^https?:\/\//i.test(e.href);
+                return `<a class="nt-row is-link ${esc(e.tone || 'info')}" href="${esc(e.href)}"`
+                    + (external ? ' target="_blank" rel="noopener noreferrer"' : '')
+                    + `>${inner}<span class="nt-row-go" aria-hidden="true">\u2192</span></a>`;
+            };
 
             const fresh = events.filter(e => e.at > (lastSeen || 0));
             const older = events.filter(e => e.at <= (lastSeen || 0));

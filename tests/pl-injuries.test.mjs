@@ -20,7 +20,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { cleanUrl, publishedFrom, titleFrom, imageFrom, buildClubMap, sortItems, decodeEntities, looksMisaligned, carryFirstSeen, looksLikeInjuryNews }
+import { cleanUrl, publishedFrom, titleFrom, imageFrom, mergeArticleMeta, buildClubMap, sortItems, decodeEntities, looksMisaligned, carryFirstSeen, looksLikeInjuryNews }
     from '../tools/fetch-pl-injuries.mjs';
 
 // The real link behind "Ben White / Knock / Details".
@@ -322,4 +322,42 @@ test('the social meta still wins over the fallbacks below it', () => {
                 + '<link rel="image_src" href="https://cdn.club.com/ls.jpg">'
                 + '<script>{"image":"https://cdn.club.com/ld.jpg"}</script>'),
         'https://cdn.club.com/og.jpg');
+});
+
+
+/* ===== the second read =====
+
+   Eight clubs answer a plain fetch with nothing at all — not a headline, not a
+   date, not a picture — because a bare Node request fails a bot check that a
+   real browser passes. Chromium is already running for the injury table, so
+   those articles get another go through it. What comes back fills gaps; it
+   never overwrites. */
+
+test('the browser read fills what fetch missed and replaces nothing it found', () => {
+    const fetched = { published: '2026-09-18T11:00:00.000Z', title: 'Team News', image: null, ok: true };
+    const browsed = { published: null, title: 'Team News | Fulham', image: 'https://cdn/hero.jpg', ok: true };
+    assert.deepEqual(mergeArticleMeta(fetched, browsed), {
+        published: '2026-09-18T11:00:00.000Z',   // fetch had it; the browser's null must not win
+        title: 'Team News',                      // and it does not get relabelled either
+        image: 'https://cdn/hero.jpg',           // the gap is what the second read is for
+        ok: true
+    });
+});
+
+test('an article fetch was refused outright takes everything from the browser', () => {
+    const refused = { published: null, title: null, image: null, ok: false };
+    const browsed = { published: '2026-09-18T09:00:00.000Z', title: 'Update on White', image: 'https://cdn/a.jpg', ok: true };
+    assert.deepEqual(mergeArticleMeta(refused, browsed), {
+        published: '2026-09-18T09:00:00.000Z',
+        title: 'Update on White',
+        image: 'https://cdn/a.jpg',
+        ok: true
+    });
+});
+
+test('a page that gives up nothing twice keeps its nulls rather than throwing', () => {
+    assert.deepEqual(mergeArticleMeta(null, null),
+        { published: null, title: null, image: null, ok: false });
+    // The card falls back to the club crest on this, which is a good answer.
+    assert.equal(mergeArticleMeta({ title: 'x', ok: true }, null).image, null);
 });

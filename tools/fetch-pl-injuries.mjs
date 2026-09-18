@@ -435,8 +435,91 @@ async function render() {
         return m ? m[0].replace(/\s+/g, ' ').trim() : null;
     });
 
-    await browser.close();
-    return { scraped, pageUpdated };
+    /* The browser stays open. Half the club sites turn a plain fetch away —
+       see readArticlesInBrowser below — and starting a second Chromium for
+       them would cost another cold start for nothing. */
+    return { scraped, pageUpdated, browser };
+}
+
+/* The articles a plain fetch could not read, read the way a reader reads them.
+ *
+ * On one real scrape eight clubs answered nothing at all to fetch() — Aston
+ * Villa, Manchester United, Everton, Hull, Bournemouth, Coventry, Forest and
+ * Sunderland — not a headline, not a date, not a picture. They are not broken
+ * pages: they are behind a bot check that a bare Node request fails and a real
+ * browser passes. Chromium is already running for the injury table itself, so
+ * the ones fetch lost get another go through it.
+ *
+ * Crystal Palace is the other case this covers. Its pages answer fetch fine but
+ * carry no social meta in the HTML that arrives — the picture is put there by
+ * the page's own scripts, so it exists only after the page has run. Reading the
+ * rendered DOM finds it where reading the source cannot.
+ *
+ * So the pass is: anything with no title (fetch was refused) or no image (the
+ * markup did not carry one). A page that still gives up nothing keeps the null
+ * it already had, and the card falls back to the club crest.
+ */
+const ARTICLE_NAV_TIMEOUT = 25000;
+const ARTICLE_CONCURRENCY = 4;
+
+/* What fetch found and what the browser found, field by field.
+ *
+ * Never a wholesale replacement. The two reads see different pages — fetch sees
+ * the source, the browser sees it after its own scripts have run — and either
+ * can be the one that has a given field. A browser read that comes back with no
+ * date must not delete a date fetch already had, and the browser is only asked
+ * in the first place because something was missing, so it is the filler rather
+ * than the authority. */
+export function mergeArticleMeta(had, got) {
+    const a = had || {};
+    const b = got || {};
+    return {
+        published: a.published || b.published || null,
+        title: a.title || b.title || null,
+        image: a.image || b.image || null,
+        ok: !!(a.ok || b.ok)
+    };
+}
+
+async function readArticleInBrowser(browser, url) {
+    let page = null;
+    try {
+        page = await browser.newPage({ userAgent: UA });
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: ARTICLE_NAV_TIMEOUT });
+        /* A moment for the head to be filled in by whatever put it there. The
+           meta tags are written early — this is not waiting for the article to
+           finish rendering, only for the tags to exist. */
+        await page.waitForTimeout(1200);
+        const html = await page.content();
+        return { published: publishedFrom(html), title: titleFrom(html), image: imageFrom(html), ok: true };
+    } catch {
+        return null;
+    } finally {
+        if (page) { try { await page.close(); } catch { /* already gone */ } }
+    }
+}
+
+async function readArticlesInBrowser(browser, byUrl) {
+    const needed = [...byUrl.entries()]
+        .filter(([, m]) => !m || !m.title || !m.image)
+        .map(([u]) => u);
+    if (!needed.length) return 0;
+    console.log(`${needed.length} article(s) go through the browser — fetch got no headline or no picture`);
+
+    let gained = 0;
+    for (let i = 0; i < needed.length; i += ARTICLE_CONCURRENCY) {
+        const batch = needed.slice(i, i + ARTICLE_CONCURRENCY);
+        const metas = await Promise.all(batch.map(u => readArticleInBrowser(browser, u)));
+        batch.forEach((u, n) => {
+            const got = metas[n];
+            if (!got) return;
+            const had = byUrl.get(u) || {};
+            const merged = mergeArticleMeta(had, got);
+            if (!had.image && merged.image) gained++;
+            byUrl.set(u, merged);
+        });
+    }
+    return gained;
 }
 
 // ------------------------------------------------------------ article details
@@ -459,7 +542,7 @@ async function articleMeta(url) {
 const RUN_DIRECTLY = /fetch-pl-injuries\.mjs$/.test(process.argv[1] || '');
 if (RUN_DIRECTLY) {
 
-const { scraped, pageUpdated } = await render();
+const { scraped, pageUpdated, browser } = await render();
 console.log(`scraped ${scraped.length} rows from the injury table`);
 if (!scraped.length) {
     console.error('::error::the injury table produced no rows');
@@ -494,8 +577,14 @@ for (let i = 0; i < urls.length; i += 5) {
     const metas = await Promise.all(batch.map(articleMeta));
     batch.forEach((u, n) => byUrl.set(u, metas[n]));
 }
+const gained = await readArticlesInBrowser(browser, byUrl);
+try { await browser.close(); } catch { /* already gone */ }
+if (gained) console.log(`${gained} article(s) gave up a picture only through the browser`);
+
 const dated = [...byUrl.values()].filter(m => m && m.published).length;
+const pictured = [...byUrl.values()].filter(m => m && m.image).length;
 console.log(`${dated} of ${byUrl.size} articles published a date`);
+console.log(`${pictured} of ${byUrl.size} articles carry a picture`);
 
 // Whatever the last run stored, so an article keeps the moment we first saw it
 // rather than being re-dated on every scrape.

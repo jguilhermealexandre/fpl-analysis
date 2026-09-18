@@ -2753,8 +2753,18 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     padding: 9px 14px; text-decoration: none;
     border-left: 2px solid transparent; border-top: 1px solid var(--border-subtle);
 }
-/* No hover highlight: it is a line of text now, not a target. Lit on hover it
-   went on inviting the click it no longer answers. */
+/* Only the rows that lead somewhere light up, and only they carry the arrow.
+   A row with no destination is a line of text: lit on hover it would go on
+   inviting a click it does not answer. */
+.nt-row.is-link:hover { background: var(--surface-2); }
+.nt-row.is-link:hover .nt-row-title { color: var(--color-primary); }
+.nt-row.is-link { grid-template-columns: 1fr auto auto; }
+.nt-row-go {
+    grid-row: 1; grid-column: 3;
+    align-self: center;
+    font-size: 12px; color: var(--text-muted);
+}
+.nt-row.is-link:hover .nt-row-go { color: var(--color-primary); }
 .nt-row.good { border-left-color: var(--color-success); }
 .nt-row.bad { border-left-color: var(--color-error); }
 .nt-row.info { border-left-color: var(--border-default); }
