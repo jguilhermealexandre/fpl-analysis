@@ -655,11 +655,19 @@
             // horizon tells them apart.
             transferState.wildcard = strategy === 'wildcard' || strategy === 'freehit';
             transferState.sellMode = strategy !== 'single';
-            /* A Free Hit squad is judged over the one gameweek you keep it, so
-               a horizon chosen under another plan cannot carry into it — five
-               gameweeks of fixtures are irrelevant to a team you give back on
-               Sunday. Clearing each slot's filters re-seeds them at the right
-               window on the next read. */
+            /* The slots start their search again under the new plan.
+
+               This used to be about the horizon: the filters carried one, and a
+               window chosen under another plan could not follow a squad into a
+               Free Hit. They do not carry one any more — twfGWs() asks
+               twStrategyHorizon() live, so the window is already right without
+               this line.
+
+               It stays for what is left in there. A price band and a club list
+               chosen while spending one free transfer are the wrong starting
+               point for a wildcard with the whole budget open, and for a Free
+               Hit squad picked on one gameweek's fixtures. Re-seeding is a
+               cheap reset of a search you were going to redo anyway. */
             transferState.pending.forEach(s => { s.funnel = null; });
             if (!opts || opts.render !== false) renderTWAll();
         }

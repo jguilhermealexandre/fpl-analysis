@@ -94,14 +94,23 @@ test('a Free Hit is judged over the one gameweek you keep the squad', () => {
     assert.equal(tw.twStrategyHorizon(), 1, 'a free hit squad is one you rent');
 });
 
-test('switching strategy re-seeds the slots rather than leaving a stale window', () => {
-    // Filters are per-slot and remember a horizon. Going into a Free Hit with
-    // five-gameweek filters left on the slots would keep judging fixtures the
-    // squad never plays.
+test('switching strategy re-seeds the slots rather than leaving a stale search', () => {
+    /* Filters are per-slot. A price band and a club list chosen while spending
+       one free transfer are the wrong starting point for a wildcard with the
+       whole budget open, so a strategy switch drops them and the next read
+       seeds fresh ones.
+
+       This used to be about the horizon the filters carried. They no longer
+       carry one — twfGWs() asks twStrategyHorizon() live — so the search is
+       what is being pinned here, and tests/transfer-funnel-slots.test.mjs
+       pins the window. */
     const tw = load();
-    tw.transferState.pending = [{ soldPlayer: { id: 1, position: 2 }, replacement: null, funnel: { horizon: 8 } }];
+    tw.transferState.pending = [{
+        soldPlayer: { id: 1, position: 2 }, replacement: null,
+        funnel: { price: 'cheaper', clubs: [1, 14] }
+    }];
     tw.twSetStrategy('freehit');
-    assert.equal(tw.transferState.pending[0].funnel, null, 'the stale window is dropped');
+    assert.equal(tw.transferState.pending[0].funnel, null, 'the stale search is dropped');
 });
 
 test('the old entry points still work', () => {

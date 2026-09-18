@@ -124,17 +124,42 @@ test('the most recent same-position slot is the one inherited from', () => {
     assert.deepEqual([...open(ctx, 2).clubs], [9, 10], 'the latest search, not the oldest');
 });
 
-test('horizon and sort follow you everywhere', () => {
-    // How you read the market, not who you are looking for.
+test('sort and view follow you everywhere', () => {
+    /* How you read the market, not who you are looking for. Those two are
+       screen-level and cross slots on purpose, which is the opposite of the
+       club list and the price band above.
+
+       This used to assert a horizon as well. The 3 / 5 / 8 selector is gone —
+       twfGWs() decides the window now and there is no twfSetHorizon to call.
+       What replaced it is pinned in its own test below. */
     const ctx = load();
     ctx.transferState.pending = [slot(1, 2, 'CB'), slot(2, 4, 'ST')];
     open(ctx, 0);
-    ctx.twfSetHorizon(8);
     ctx.twfSetSort('form');
+    ctx.twfSetView('custom');
 
     const fwd = open(ctx, 1);
-    assert.equal(fwd.horizon, 8, 'a different position still reads over the same window');
-    assert.equal(fwd.sort, 'form');
+    assert.equal(fwd.sort, 'form', 'a different position still reads the market the same way round');
+    assert.equal(fwd.view, 'custom', 'and in the same view');
+});
+
+test('the horizon is five gameweeks, and one on a Free Hit', () => {
+    /* The setting became a constant, so the thing worth pinning moved with it:
+       that every number in the pane is judged over the same five gameweeks the
+       recommender in transfer-engine.js uses, and that a Free Hit is the one
+       case that overrides it — the squad is handed back after one gameweek, so
+       five gameweeks of fixtures describe a team you do not keep.
+
+       xpPlanGWs is stubbed in load() to return n gameweeks, so the length of
+       what comes back is the horizon that was asked for. */
+    const ctx = load();
+    assert.equal(ctx.twfGWs().length, 5, 'five with no chip in play');
+
+    ctx.twStrategyHorizon = () => 1;
+    assert.equal(ctx.twfGWs().length, 1, 'one on a Free Hit');
+
+    ctx.twStrategyHorizon = () => 8;
+    assert.equal(ctx.twfGWs().length, 5, 'and nothing else can widen it');
 });
 
 test('resetting clears the active slot and no other', () => {
@@ -183,7 +208,7 @@ test('filters can be read with no slot selected', () => {
     ctx.transferState.pending = [];
     ctx.transferState.activeSlot = -1;
     const s = ctx.twfState();
-    assert.ok(s && typeof s.horizon === 'number', 'a usable object rather than a throw');
+    assert.ok(s && typeof s.sort === 'string', 'a usable object rather than a throw');
     assert.equal(ctx.twfState(), s, 'and a stable one');
 });
 
