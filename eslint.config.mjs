@@ -1033,6 +1033,7 @@ export default [
                 rdChipLabel: 'writable',
                 rdLanesHTML: 'writable',
                 rdRows: 'writable',
+                rdSquad: 'writable',
                 rdSquadLink: 'writable',
                 rdStartsPct: 'writable',
                 rdSummary: 'writable',

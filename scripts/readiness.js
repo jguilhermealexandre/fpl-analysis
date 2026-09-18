@@ -84,9 +84,18 @@
 
            ctx: { squad, analysisResults, transferRec, captainRec, freeTransfers,
                   maxFreeTransfers, bank, chips, now } */
+        /* The fifteen the checks were built against, kept for the renderer.
+           Every row a check produces names somebody in this squad, and a name
+           is all a row carries — threading a player object through the forty
+           places that push one would be forty edits to answer a question the
+           squad already answers. Fifteen names, matched exactly, is not a
+           guess; it is the same lookup the dashboard's attention grid makes. */
+        let rdSquad = [];
+
         function rdBuild(ctx) {
             const c = ctx || {};
             const squad = c.squad || [];
+            rdSquad = squad;
             const analysisResults = c.analysisResults || [];
             const now = c.now != null ? c.now : Date.now();
             const xi = squad.filter(p => p.pickPosition <= 11);
@@ -378,9 +387,15 @@
             const esc = typeof escHTML === 'function' ? escHTML : (s => String(s == null ? '' : s));
             const mark = { clear: '\u2713', warn: '\u25CF', urgent: '\u25B2' };
 
+            const face = name => {
+                const p = rdSquad.find(x => x.name === name);
+                return p && typeof v2IdentityHTML === 'function'
+                    ? `<span class="rd-i-face">${v2IdentityHTML(p, 'v2-pid-portrait')}</span>` : '';
+            };
+
             const row = c => {
                 const detail = c.rows.map(r => {
-                    const body = `<span class="rd-i-name">${esc(r.name)}</span><span class="rd-i-why">${esc(r.reason)}</span>`;
+                    const body = `${face(r.name)}<span class="rd-i-name">${esc(r.name)}</span><span class="rd-i-why">${esc(r.reason)}</span>`;
                     return r.href
                         ? `<a class="rd-item" href="${esc(r.href)}">${body}<span class="rd-i-go">\u2192</span></a>`
                         : `<span class="rd-item">${body}</span>`;

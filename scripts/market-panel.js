@@ -87,9 +87,17 @@
                click landed you in the squad table on a player whose profile
                has nothing more to say about the change than this row already
                does. The tooltip carries the detail; nothing here navigates. */
+            /* The face and the badge, because every row here is a person and
+               the column was four surnames in a stack. The portrait variant
+               puts the crest on the face's corner rather than beside it, which
+               is the only way both fit in a column this narrow. */
+            const mark = typeof v2IdentityHTML === 'function'
+                ? `<span class="mk-face">${v2IdentityHTML(c.player, 'v2-pid-portrait')}</span>` : '';
+
             return `<div class="mk-row ${rising ? 'up' : 'down'}${c.tier === 'due' ? ' is-due' : ''}"
                 data-tooltip="${escHTML(`${c.player.name} — ${detail}`)}">
                 <span class="mk-arrow" aria-hidden="true">${rising ? '▲' : '▼'}</span>
+                ${mark}
                 <span class="mk-name">${escHTML(c.player.name)}</span>
                 <span class="mk-price">£${from.toFixed(1)}<i>→</i>£${to.toFixed(1)}</span>
                 <span class="mk-meter" aria-hidden="true"><i style="width:${pct}%"></i></span>

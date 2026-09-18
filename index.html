@@ -23,9 +23,9 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=299">
-    <link rel="stylesheet" href="styles/v2-design.css?v=299">
-    <link rel="stylesheet" href="styles/responsive.css?v=299">
+    <link rel="stylesheet" href="styles/common.css?v=300">
+    <link rel="stylesheet" href="styles/v2-design.css?v=300">
+    <link rel="stylesheet" href="styles/responsive.css?v=300">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -1011,7 +1011,20 @@
         .mk-none { font-size: 10px; color: var(--text-muted); line-height: 1.5; }
         .mk-more { font-size: 9px; color: var(--text-muted); padding: 4px 6px 0; }
 
-        .mk-row { display: grid; grid-template-columns: 12px 1fr auto; grid-template-areas: 'arrow name price' 'arrow meter tag'; gap: 2px 7px; align-items: center; padding: 5px 6px; border-radius: var(--radius-md); text-decoration: none; transition: background 140ms ease; }
+        .mk-row { display: grid; grid-template-columns: 12px 28px 1fr auto; grid-template-areas: 'arrow face name price' 'arrow face meter tag'; gap: 2px 7px; align-items: center; padding: 5px 6px; border-radius: var(--radius-md); text-decoration: none; transition: background 140ms ease; }
+        /* The mark spans both rows of the grid, so it sits against the whole
+           entry rather than against the name alone. */
+        /* .v2-pid-portrait declares --v2-pid-face on ITSELF (46px, sized for a
+           pitch card), so setting the variable on a wrapper does nothing: the
+           element's own declaration beats an inherited one. Every override of
+           it has to land on the .v2-pid element. */
+        .mk-face { grid-area: face; align-self: center; }
+        .mk-face .v2-pid-portrait { --v2-pid-face: 28px; --v2-pid-crest: 14px; }
+        /* The captain, on the line that names him. */
+        .v2-dlh-face { display: inline-flex; vertical-align: -6px; flex-shrink: 0; }
+        .v2-dlh-face .v2-pid-portrait { --v2-pid-face: 22px; --v2-pid-crest: 12px; }
+        .v2-dlh-face .v2-pid-initials { font-size: 8px; }
+        .mk-face .v2-pid-initials { font-size: 10px; }
         .mk-row { cursor: default; }
         .mk-row + .mk-row { margin-top: 3px; }
         .mk-arrow { grid-area: arrow; font-size: 11px; font-weight: 800; }
@@ -1117,6 +1130,11 @@
             background: var(--surface-2); color: var(--text-secondary); font-size: 11.5px;
         }
         a.rd-item:hover { background: var(--surface-3, var(--surface-2)); }
+        /* Baseline alignment is right for two runs of text and wrong for a
+           picture, which would hang its bottom edge off the row. */
+        .rd-i-face { flex-shrink: 0; align-self: center; }
+        .rd-i-face .v2-pid-portrait { --v2-pid-face: 22px; --v2-pid-crest: 12px; }
+        .rd-i-face .v2-pid-initials { font-size: 8px; }
         .rd-i-name { font-weight: 700; color: var(--text-primary); }
         .rd-i-why { flex: 1; min-width: 140px; color: var(--text-muted); line-height: 1.45; }
         .rd-i-go { color: var(--text-muted); }
@@ -1223,6 +1241,7 @@
             max-width: 100%; overflow: hidden;
         }
         .v2-info-panel .rd-i-name { flex-shrink: 0; }
+        .v2-info-panel .rd-i-face .v2-pid-portrait { --v2-pid-face: 20px; --v2-pid-crest: 11px; }
         /* One line each. The full reason is a click away on the squad page, and
            two of these wrapping to four lines apiece is what pushed this panel
            past the bottom of the pitch beside it. */
@@ -1944,7 +1963,13 @@
         .v2-info-panel .mk-net { font-size: 15px; }
         .v2-info-panel .mk-cols { grid-template-columns: 1fr 1fr; gap: 8px; }
         .v2-info-panel .mk-col { padding: 8px 8px 9px; }
-        .v2-info-panel .mk-row { grid-template-columns: 10px 1fr; grid-template-areas: 'arrow name' 'arrow price' 'meter meter'; gap: 1px 5px; padding: 4px 4px; }
+        /* The narrow variant stacks name over price, so the face spans all
+           three of its rows. A grid-area the template does not name is
+           auto-placed instead — which is how the mark ended up on a row of its
+           own under the meter. */
+        .v2-info-panel .mk-row { grid-template-columns: 10px 24px 1fr; grid-template-areas: 'arrow face name' 'arrow face price' 'meter meter meter'; gap: 1px 5px; padding: 4px 4px; }
+        .v2-info-panel .mk-face .v2-pid-portrait { --v2-pid-face: 24px; --v2-pid-crest: 13px; }
+        .v2-info-panel .mk-face .v2-pid-initials { font-size: 8.5px; }
         .v2-info-panel .mk-price { justify-self: start; }
         .v2-info-panel .mk-tag { display: none; }
 
@@ -3839,24 +3864,24 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=299">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=299">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=299">
-    <link rel="preload" as="script" href="scripts/odds-panel.js?v=299">
-    <link rel="preload" as="script" href="scripts/live-gw.js?v=299">
-    <link rel="preload" as="script" href="scripts/matchday.js?v=299">
-    <link rel="preload" as="script" href="scripts/market-panel.js?v=299">
-    <link rel="preload" as="script" href="scripts/eo-layer.js?v=299">
-    <link rel="preload" as="script" href="scripts/readiness.js?v=299">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=299">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=299">
-    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=299">
-    <link rel="preload" as="script" href="scripts/auth.js?v=299">
-    <link rel="preload" as="script" href="scripts/lineup-store.js?v=299">
-    <link rel="preload" as="script" href="scripts/injury-feed.js?v=299">
-    <link rel="preload" as="script" href="scripts/scouts-art.js?v=299">
-    <link rel="preload" as="script" href="scripts/common.js?v=299">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=299">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=300">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=300">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=300">
+    <link rel="preload" as="script" href="scripts/odds-panel.js?v=300">
+    <link rel="preload" as="script" href="scripts/live-gw.js?v=300">
+    <link rel="preload" as="script" href="scripts/matchday.js?v=300">
+    <link rel="preload" as="script" href="scripts/market-panel.js?v=300">
+    <link rel="preload" as="script" href="scripts/eo-layer.js?v=300">
+    <link rel="preload" as="script" href="scripts/readiness.js?v=300">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=300">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=300">
+    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=300">
+    <link rel="preload" as="script" href="scripts/auth.js?v=300">
+    <link rel="preload" as="script" href="scripts/lineup-store.js?v=300">
+    <link rel="preload" as="script" href="scripts/injury-feed.js?v=300">
+    <link rel="preload" as="script" href="scripts/scouts-art.js?v=300">
+    <link rel="preload" as="script" href="scripts/common.js?v=300">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=300">
     <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -4643,24 +4668,24 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=299"></script>
-    <script src="scripts/price-watch.js?v=299"></script>
-    <script src="scripts/xp-engine.js?v=299"></script>
-    <script src="scripts/odds-panel.js?v=299"></script>
-    <script src="scripts/live-gw.js?v=299"></script>
-    <script src="scripts/matchday.js?v=299"></script>
-    <script src="scripts/market-panel.js?v=299"></script>
-    <script src="scripts/eo-layer.js?v=299"></script>
-    <script src="scripts/lineup-store.js?v=299"></script>
-    <script src="scripts/readiness.js?v=299"></script>
-    <script src="scripts/push-alerts.js?v=299"></script>
-    <script src="scripts/notifications.js?v=299"></script>
-    <script src="scripts/transfer-engine.js?v=299"></script>
-    <script src="scripts/auth.js?v=299"></script>
-    <script src="scripts/injury-feed.js?v=299"></script>
-    <script src="scripts/scouts-art.js?v=299"></script>
-    <script src="scripts/common.js?v=299"></script>
-    <script src="scripts/sidebar-nav.js?v=299"></script>
+    <script src="scripts/error-monitor.js?v=300"></script>
+    <script src="scripts/price-watch.js?v=300"></script>
+    <script src="scripts/xp-engine.js?v=300"></script>
+    <script src="scripts/odds-panel.js?v=300"></script>
+    <script src="scripts/live-gw.js?v=300"></script>
+    <script src="scripts/matchday.js?v=300"></script>
+    <script src="scripts/market-panel.js?v=300"></script>
+    <script src="scripts/eo-layer.js?v=300"></script>
+    <script src="scripts/lineup-store.js?v=300"></script>
+    <script src="scripts/readiness.js?v=300"></script>
+    <script src="scripts/push-alerts.js?v=300"></script>
+    <script src="scripts/notifications.js?v=300"></script>
+    <script src="scripts/transfer-engine.js?v=300"></script>
+    <script src="scripts/auth.js?v=300"></script>
+    <script src="scripts/injury-feed.js?v=300"></script>
+    <script src="scripts/scouts-art.js?v=300"></script>
+    <script src="scripts/common.js?v=300"></script>
+    <script src="scripts/sidebar-nav.js?v=300"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5029,7 +5054,11 @@
                     <div class="v2-dlh-countdown" id="v2DeadlineCountdown">Loading…</div>
                     <div class="v2-dlh-bottom">
                         <span class="v2-dlh-fdr ${fdrClass}">Fixture outlook: ${fdrLabel} (FDR ${avgFDR.toFixed(1)})</span>
-                        ${captainRec ? `<span class="v2-dlh-captain"><i data-lucide="crown" class="icon" style="width:12px;height:12px;color:#F59E0B;vertical-align:-2px;"></i> Captain pick: <strong>${esc(captainRec.name)}</strong> vs ${esc(captainRec.opponent)}</span>` : ''}
+                        ${captainRec ? `<span class="v2-dlh-captain">${
+                            typeof v2IdentityHTML === 'function' && captainRec.code != null
+                                ? `<span class="v2-dlh-face">${v2IdentityHTML(captainRec, 'v2-pid-portrait')}</span>`
+                                : '<i data-lucide="crown" class="icon" style="width:12px;height:12px;color:#F59E0B;vertical-align:-2px;"></i>'
+                        } Captain pick: <strong>${esc(captainRec.name)}</strong> vs ${esc(captainRec.opponent)}</span>` : ''}
                     </div>`;
                 if (deadlineInterval) clearInterval(deadlineInterval);
                 function updateCountdown() {
@@ -6544,7 +6573,8 @@
                     if (score > bestCaptainScore) {
                         bestCaptainScore = score;
                         const oppName = nextFix ? `${nextFix.opponent}${nextFix.isHome ? '' : ' (A)'}` : '';
-                        captainRec = { name: p.name, form: p.form, opponent: oppName, xP: score.toFixed(1) };
+                        captainRec = { name: p.name, form: p.form, opponent: oppName, xP: score.toFixed(1),
+                            code: p.code, teamId: p.teamId, team: p.team };
                     }
                 });
 
