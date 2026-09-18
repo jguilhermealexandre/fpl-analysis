@@ -506,7 +506,22 @@ async function readArticleInBrowser(browser, url) {
            finish rendering, only for the tags to exist. */
         await page.waitForTimeout(1200);
         const html = await page.content();
-        return { published: publishedFrom(html), title: titleFrom(html), image: imageFrom(html), ok: true };
+        const meta = { published: publishedFrom(html), title: titleFrom(html), image: imageFrom(html), ok: true };
+        /* The picture the reader sees, when the page names none for sharing.
+         *
+           Of nineteen articles put through the browser, only four were actually
+           refused — Manchester United answered 403 and Manchester City 503. The
+           other fifteen loaded perfectly and still produced nothing, which
+           means they were never a blocking problem: they carry their picture in
+           some shape the meta patterns do not match.
+
+           A regex cannot get further here, and a browser does not need to. The
+           page is laid out: ask it which image is actually the big one. Read at
+           rendered size rather than off the markup, so a crest in a byline and
+           a sprite in the nav are small and a hero is not, and take the largest
+           thing that is plausibly a photograph. */
+        if (!meta.image) meta.image = await largestArticleImage(page);
+        return meta;
     } catch (e) {
         /* Reported rather than swallowed. "18 went through the browser and 3
            came back" says nothing about why the other fifteen did not, and
@@ -515,6 +530,47 @@ async function readArticleInBrowser(browser, url) {
         return { failed: String((e && e.message) || e).split('\n')[0].slice(0, 90) };
     } finally {
         if (page) { try { await page.close(); } catch { /* already gone */ } }
+    }
+}
+
+/* The biggest image the laid-out page actually shows.
+ *
+ * Deliberately conservative about what counts. Anything under a postage stamp
+ * is furniture; anything much wider than it is tall is a banner; and a src that
+ * announces itself as a logo, crest, badge, sprite, icon, avatar or placeholder
+ * is not the article's photograph whatever size it is drawn at. What survives
+ * is ranked by the area it occupies on screen, which is the same judgement a
+ * reader makes without thinking about it.
+ */
+const ARTICLE_IMG_MIN_W = 300;
+const ARTICLE_IMG_MIN_H = 170;
+const ARTICLE_IMG_SKIP = /logo|crest|badge|sprite|icon|avatar|placeholder|pixel|1x1|blank|spacer|advert/i;
+
+async function largestArticleImage(page) {
+    try {
+        const found = await page.evaluate((cfg) => {
+            const skip = new RegExp(cfg.skip, 'i');
+            let best = null;
+            for (const img of document.images) {
+                const src = img.currentSrc || img.src || '';
+                if (!/^https?:\/\//i.test(src)) continue;
+                if (/\.svg(\?|#|$)/i.test(src)) continue;
+                if (skip.test(src)) continue;
+                const r = img.getBoundingClientRect();
+                const w = r.width || img.naturalWidth;
+                const h = r.height || img.naturalHeight;
+                if (w < cfg.minW || h < cfg.minH) continue;
+                // A strip four times wider than it is tall is a banner, not a photo.
+                if (w / h > 4) continue;
+                const area = w * h;
+                if (!best || area > best.area) best = { src, area };
+            }
+            return best ? best.src : null;
+        }, { skip: ARTICLE_IMG_SKIP.source, minW: ARTICLE_IMG_MIN_W, minH: ARTICLE_IMG_MIN_H });
+        if (!found) return null;
+        return String(found).replace(/^http:\/\//i, 'https://').slice(0, 500);
+    } catch {
+        return null;
     }
 }
 
