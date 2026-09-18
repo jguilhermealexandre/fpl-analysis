@@ -3596,11 +3596,28 @@
             priceLockTimer = setInterval(tick, 1000);
         }
 
+        /* "Sell before drop" is one decision already made — this player, now,
+           before tonight's price change — so it should land on the question
+           that is left, which is who replaces him.
+         *
+           It used to stage the slot and leave you on step 1 looking at the plan
+           chooser, with the player picked but nothing showing for him: the
+           button had answered "who goes" and then asked you to say it again.
+           twSwapPlayer is the same path clicking a squad card takes — stage,
+           point the market at the slot, step 2 — so the button arrives exactly
+           where the click would have.
+
+           The plan is set first and deliberately. It is a single transfer by
+           definition, and choosing a plan clears whatever was staged under the
+           old one, so a strategy set after the slot would throw the slot away. */
         function tmSellBeforeDrop(playerId) {
             // Switch first: renderTransferWizard() resets transferState on its first
             // run, so a slot staged beforehand would be wiped before it was drawn.
             switchTab('transfer');
-            twPickOutPlayer(playerId);
+            if (typeof twSetStrategy === 'function' && transferState.strategy !== 'single') {
+                twSetStrategy('single');
+            }
+            twSwapPlayer(playerId);
         }
 
         function tmSetMarketTab(tab) {
