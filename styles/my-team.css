@@ -864,6 +864,29 @@
 .sq-kpi.urgent .sq-kpi-icon { background: var(--verdict-sell-bg); color: var(--verdict-sell); }
 .sq-kpi.passed .sq-kpi-value { color: var(--text-muted); }
 
+/* LOCKED, matched to the dashboard's.
+
+   The countdown borrows .mgr-deadline-value, which is tuned for a ticking
+   figure — 800 weight at -1.4px tracking, which is right for "2d 14h 09m 51s"
+   and wrong for a word: LOCKED came out squashed and grey here while the
+   dashboard printed it red at -0.01em. A digit clock and a word want different
+   tracking, so the locked state gets the dashboard's. */
+.sq-kpi.passed .mgr-deadline-value,
+.mgr-deadline.passed .mgr-deadline-value {
+    font-family: var(--font-body);
+    font-weight: 600;
+    /* --tracking-xl is what the dashboard's LOCKED resolves to, and !important
+       is the only way to set tracking on a leaf here: common.css forces
+       `body * { letter-spacing: inherit !important }`, so an element's own
+       declaration never applies and the value comes from whichever ancestor
+       last matched a heading rule. The two pages nest differently, which is
+       why the same word came out at -1.5px on one and untracked on the other.
+       Named from the scale rather than pinned to -1.5px, so both move together
+       when the scale does — it is already narrower on small screens. */
+    letter-spacing: var(--tracking-xl) !important;
+    color: #DC2626;
+}
+
 @media (max-width: 1100px) {
     .sq-kpis { grid-template-columns: repeat(2, 1fr) auto; }
 }
@@ -4551,14 +4574,23 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     border-radius: 999px;
 }
 /* The thumb is set against the track rather than against the panel, so it
-   reads as a control at a glance instead of as a faint seam. --text-muted
-   is the lightest ink on this site that is still unambiguously ink. */
-.tm-columns > .tm-section > .tm-watch::-webkit-scrollbar-thumb {
-    background: var(--text-muted);
-    border-radius: 999px;
-    border: 2px solid var(--surface-3);
+   reads as a control at a glance instead of as a faint seam — and it is the
+   brand green rather than grey ink, because a scrollbar is the one piece of
+   chrome a reader has to find on purpose, and grey on grey is not where the
+   eye goes on this site. Muted enough not to compete with the list beside it. */
+.tm-columns > .tm-section > .tm-watch::-webkit-scrollbar-track {
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--surface-3));
 }
-.tm-columns > .tm-section > .tm-watch::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+.tm-columns > .tm-section > .tm-watch::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-primary) 45%, transparent);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+.tm-columns > .tm-section > .tm-watch::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--color-primary) 72%, transparent);
+    background-clip: padding-box;
+}
 
 /* The legend is a column heading for the rows under it, so it keeps the
    same right-hand inset as the scrolling list or its columns stop lining

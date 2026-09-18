@@ -1411,7 +1411,9 @@
                 const diff = new Date(el.dataset.deadline).getTime() - Date.now();
                 if (!isFinite(diff)) { out.textContent = '—'; return; }
                 if (diff <= 0) {
-                    out.textContent = 'Locked';
+                    /* LOCKED, in caps, because that is what the dashboard's
+                       deadline says and they are the same fact on two pages. */
+                    out.textContent = 'LOCKED';
                     el.classList.add('passed');
                     clearInterval(deadlineTimer); deadlineTimer = null;
                     return;
