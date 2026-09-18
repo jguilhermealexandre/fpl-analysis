@@ -84,16 +84,50 @@ function sdArtTemplate(category) {
 
    Written out here rather than calling playerPhotoLargeHTML() because that
    lives in common.js, which the static article builder does not load. */
+/* Every address the club headshots have lived at, newest first.
+
+   The season segment is read from common.js when it is there rather than
+   written out again. It was hardcoded, which meant the one edit that moves the
+   whole site to premierleague26 would have left this file pointing at the
+   previous season's library for good. The literals are the fallback for the
+   static article builder, which loads this file alone.
+
+   Four URLs, not three. The frozen library is tried at both sizes: the site's
+   own large-photo helper skips its 250x250 directory, and that is the address
+   most likely to still hold a player the current library has not republished.
+   A recent signing is exactly the case that needs the extra try — the old
+   library is no longer being reshot, so anyone who moved clubs since it froze
+   is the player these fall through for.
+
+   If all four miss, the card drops to its faceless state and keeps the name,
+   which is the whole reason the name is set in type rather than being left to
+   the photograph. */
+function sdArtPhotoUrls(code) {
+    const base = typeof PLAYER_PHOTO_BASE !== 'undefined'
+        ? PLAYER_PHOTO_BASE : 'https://resources.premierleague.com';
+    const season = typeof PLAYER_PHOTO_SEASON !== 'undefined'
+        ? PLAYER_PHOTO_SEASON : 'premierleague25';
+    return [
+        `${base}/${season}/photos/players/250x250/${code}.png`,
+        `${base}/${season}/photos/players/110x140/${code}.png`,
+        `${base}/premierleague/photos/players/250x250/p${code}.png`,
+        `${base}/premierleague/photos/players/110x140/p${code}.png`
+    ];
+}
+
+/* The chain is walked by index rather than by a named attribute per step, so
+   adding a fifth address later is one entry in the list above and nothing
+   here. Inline handler because these cards are rebuilt by innerHTML on every
+   render and a listener would have to be reattached each time — same reasoning
+   as playerPhotoHTML() in common.js, and the CSP already allows it. */
 function sdArtPhoto(code, cls) {
     if (code == null || code === '') return '';
-    const base = 'https://resources.premierleague.com';
+    const urls = sdArtPhotoUrls(code);
     return `<img class="${cls}" alt="" loading="lazy" decoding="async" draggable="false"`
-        + ` src="${base}/premierleague25/photos/players/250x250/${code}.png"`
-        + ` data-photo-fallback="${base}/premierleague25/photos/players/110x140/${code}.png"`
-        + ` data-photo-fallback2="${base}/premierleague/photos/players/110x140/p${code}.png"`
-        + ` onerror="if (this.dataset.photoFallback) { this.src = this.dataset.photoFallback; delete this.dataset.photoFallback; }`
-        + ` else if (this.dataset.photoFallback2) { this.src = this.dataset.photoFallback2; delete this.dataset.photoFallback2; }`
-        + ` else { this.closest('.sd-art')?.classList.add('is-faceless'); this.remove(); }">`;
+        + ` src="${urls[0]}" data-photo-alts="${sdArtEsc(urls.slice(1).join(' '))}"`
+        + ` onerror="var a=(this.dataset.photoAlts||'').split(' ').filter(Boolean);`
+        + ` if (a.length) { this.src = a.shift(); this.dataset.photoAlts = a.join(' '); }`
+        + ` else { var h = this.closest('.sd-art'); if (h) h.classList.add('is-faceless'); this.remove(); }">`;
 }
 
 function sdArtEsc(s) {

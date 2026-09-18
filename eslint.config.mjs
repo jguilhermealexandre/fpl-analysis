@@ -1256,6 +1256,7 @@ export default [
                 sdArtEsc: 'writable',
                 sdArtKey: 'writable',
                 sdArtPhoto: 'writable',
+                sdArtPhotoUrls: 'writable',
                 sdArtTemplate: 'writable',
                 sdArticles: 'writable',
                 sdArtwork: 'writable',
