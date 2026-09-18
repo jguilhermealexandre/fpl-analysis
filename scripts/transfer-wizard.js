@@ -614,12 +614,71 @@
            panel arrives from the right, going back it arrives from the left,
            so the movement matches the rail above it rather than contradicting
            it. Set here, read once by the renderer, then cleared. */
+        /* ===== A step is a place, so Back goes back one =====
+         *
+         * The wizard is four screens and Back left the page entirely — you came
+         * to Compare from Replacements, pressed Back expecting Replacements,
+         * and landed wherever you were before My Team. Each step is a history
+         * entry now, on a `step` search parameter: the tab lives in the hash
+         * and My Team has its own popstate handler reading it, so a step must
+         * not look like a tab change. pushState never reloads, so a search
+         * parameter is safe on a hash-routed page.
+         *
+         * Step 1 carries no parameter. It is where the wizard starts, so the
+         * entry you arrived on IS step 1 — pushing one for it would mean two
+         * Backs to leave. */
+        const TW_URL_PARAM = 'step';
+
+        /* True only while re-applying a step the browser navigated to, so
+           restoring one does not push another entry for it. */
+        let twRestoringHistory = false;
+
+        function twStepUrl(step) {
+            const url = new URL(window.location.href);
+            if (step > 1) url.searchParams.set(TW_URL_PARAM, String(step));
+            else url.searchParams.delete(TW_URL_PARAM);
+            return url.pathname + url.search + url.hash;
+        }
+
         function twGoStep(n, opts) {
             const from = twStep();
             const to = Math.max(1, Math.min(TW_STEPS.length, n));
             transferState.step = to;
             transferState._stepDir = to === from ? 0 : (to > from ? 1 : -1);
+            if (to !== from && !twRestoringHistory) {
+                try {
+                    const next = twStepUrl(to);
+                    /* Forwards pushes, backwards replaces. Going back through
+                       the rail is the same move as pressing Back, so pushing
+                       for it would make the two disagree: one Back would then
+                       return you to the step you just left. */
+                    if (to > from) history.pushState({ twStep: to }, '', next);
+                    else history.replaceState({ twStep: to }, '', next);
+                } catch (e) { /* no usable history */ }
+            }
             if (!opts || opts.render !== false) renderTWAll();
+        }
+
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+            window.addEventListener('popstate', () => {
+                /* Only while the wizard is the screen in front of you. My Team's
+                   own handler runs first and re-applies the tab from the hash;
+                   this is registered later, so by the time it runs the right tab
+                   is already up. */
+                if (typeof transferState === 'undefined' || !transferState) return;
+                const pane = document.getElementById('transferDisplay');
+                if (!pane || pane.style.display === 'none') return;
+                let raw = null;
+                try { raw = new URL(window.location.href).searchParams.get(TW_URL_PARAM); } catch (e) { return; }
+                const want = raw ? parseInt(raw, 10) : 1;
+                if (!want || want === twStep()) return;
+                /* A step you never reached is not somewhere to land — Forward
+                   into Compare after clearing the plan would render a comparison
+                   of nothing. */
+                if (typeof twStepReachable === 'function' && !twStepReachable(want)) return;
+                twRestoringHistory = true;
+                try { twGoStep(want); } finally { twRestoringHistory = false; }
+            });
         }
 
         /* The furthest step this plan has actually reached, so the rail can

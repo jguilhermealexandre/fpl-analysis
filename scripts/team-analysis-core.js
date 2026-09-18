@@ -424,6 +424,10 @@
                         else if (typeof applySquadDeepLink === 'function') applySquadDeepLink();
                     } catch (e) { console.warn('Deep link ignored:', e.message); }
                 }
+                /* A shared ?player= link. After the squad exists, since this
+                   page only holds fifteen and a link naming anybody else should
+                   do nothing rather than open an empty card. */
+                if (typeof pdmOpenFromUrl === 'function') pdmOpenFromUrl();
             } catch (error) {
                 console.error('Error loading team:', error);
                 // friendlyFplErrorMessage distinguishes FPL's own post-deadline

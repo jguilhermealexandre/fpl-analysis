@@ -929,9 +929,14 @@
         /* Quick picks' one control, in the same pill as every filter next door
            — it sits on the row Custom search fills with its bar, so the two
            views cannot look like two different screens. */
+        /* Quick picks has one control, so it rides the view tray's own row at
+           the right-hand end rather than taking a line to itself: what you are
+           looking at on the left, how it is ordered on the right. Custom search
+           keeps its own line — a toggle and a search box are two things, and
+           the strip they open is full width underneath. */
         function twfSortRowHTML() {
             const s = twfState();
-            return `<div class="twf-bar">
+            return `<div class="twf-bar is-inline">
                 ${v2MenuHTML({
                     key: 'twf-sort', icon: 'sliders', label: 'Sort',
                     value: s.sort, onPick: 'twfSetSort',

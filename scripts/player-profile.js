@@ -2088,14 +2088,72 @@
            position string they already know; it is faster to keep the call sites
            as they are than to make every one of them agree that the id is
            enough. */
+        /* ===== The modal is a place, so it is in the URL =====
+         *
+         * Two things were wrong with it not being. Back did not close it: the
+         * browser went to the previous entry — on My Team that is the tab you
+         * came from — and the card stayed up over whatever arrived, which is
+         * how an Arsenal midfielder's profile ended up floating over the
+         * Transfer Wizard. And a card you are reading could not be sent to
+         * anyone: the link in the bar still said "the players page".
+         *
+         * One entry per opening. `?player=<id>` is a search parameter rather
+         * than part of the hash because My Team keeps its tab in the hash and
+         * has its own popstate handler reading it — a modal must not look like
+         * a tab change. pushState never reloads, so adding a search parameter
+         * to a hash-routed page is safe.
+         *
+         * Opening a second player from inside the modal REPLACES rather than
+         * pushes. Otherwise reading through four replacements in a row buries
+         * the page you came from under four Backs, and the entry you want is
+         * always the one before the modal, never the modal before this one. */
+        const PDM_URL_PARAM = 'player';
+
+        /* Whether the entry currently on top of the stack is one we pushed. It
+           cannot be read back off history.state reliably — another script may
+           have pushed over it — so it is tracked here and only ever trusted to
+           decide whether closing should spend a Back. */
+        let pdmOwnsHistoryEntry = false;
+
+        function pdmUrlWith(playerId) {
+            const url = new URL(window.location.href);
+            if (playerId == null) url.searchParams.delete(PDM_URL_PARAM);
+            else url.searchParams.set(PDM_URL_PARAM, String(playerId));
+            return url.pathname + url.search + url.hash;
+        }
+
         function openPlayerModal(playerId, position) {
             void position;
+            const wasOpen = pdmPlayerId != null;
             pdmPlayerId = playerId;
             renderPlayerModal();
             document.body.classList.add('v2-blurred');
+            try {
+                const next = pdmUrlWith(playerId);
+                if (wasOpen && pdmOwnsHistoryEntry) {
+                    history.replaceState({ pdm: playerId }, '', next);
+                } else {
+                    history.pushState({ pdm: playerId }, '', next);
+                    pdmOwnsHistoryEntry = true;
+                }
+            } catch (e) { /* a page served from file:// has no usable history */ }
         }
 
+        /* The close every button calls. It spends the history entry rather than
+           closing directly, so Back and the X do the same thing by the same
+           route — one way to leave, and no way for the URL to go on claiming a
+           card that is not on screen. popstate then calls pdmCloseNow(). */
         function closePlayerModal() {
+            if (pdmPlayerId == null) return;
+            if (pdmOwnsHistoryEntry) {
+                pdmOwnsHistoryEntry = false;
+                try { history.back(); return; } catch (e) { /* fall through */ }
+            }
+            pdmCloseNow();
+        }
+
+        function pdmCloseNow() {
+            if (pdmPlayerId == null) return;
             // Before the id is cleared, so a page tearing down a chart can still
             // see which player it belonged to.
             if (typeof pdmOnClose === 'function') pdmOnClose(pdmPlayerId);
@@ -2106,6 +2164,56 @@
             /* Emptied only after the fade, so the close animates rather than
                the card vanishing mid-transition. */
             setTimeout(() => { if (pdmPlayerId == null) pdmHost().innerHTML = ''; }, 260);
+        }
+
+        /* Leaving the entry the modal is on — by Back, by Forward, or by any
+           other script pushing over it — closes the card. This is the half that
+           fixes the modal outliving the page underneath it. */
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+            window.addEventListener('popstate', () => {
+                let wanted = null;
+                try { wanted = new URL(window.location.href).searchParams.get(PDM_URL_PARAM); } catch (e) { /* no URL API */ }
+                const id = wanted ? parseInt(wanted, 10) : null;
+                if (id && id === pdmPlayerId) return;   // same card, a tab moved under it
+                pdmOwnsHistoryEntry = false;
+                if (pdmPlayerId != null) pdmCloseNow();
+                /* Forward back into a card, or a shared link arriving through a
+                   history move rather than a load. */
+                if (id && pdmLookup(id)) {
+                    pdmPlayerId = id;
+                    renderPlayerModal();
+                    document.body.classList.add('v2-blurred');
+                    pdmOwnsHistoryEntry = true;
+                }
+            });
+        }
+
+        /* A shared link, opened once the page has the players to look the id up
+           in. Each page calls this at the end of its own load; a link naming
+           somebody this page does not hold quietly does nothing, and the
+           parameter is cleaned off so a stale URL is not passed on again.
+
+           pdmLookup is what answers "do I hold this player", and it is the same
+           lookup the render does — the players page holds everyone, My Team
+           only the fifteen, and neither needs a hook of its own to say so. */
+        function pdmOpenFromUrl() {
+            let raw = null;
+            try { raw = new URL(window.location.href).searchParams.get(PDM_URL_PARAM); } catch (e) { return; }
+            const id = raw ? parseInt(raw, 10) : null;
+            if (!id) return;
+            if (!pdmLookup(id)) {
+                try { history.replaceState(history.state, '', pdmUrlWith(null)); } catch (e) { /* no history */ }
+                return;
+            }
+            /* The parameter is already in the URL, so this opening replaces the
+               entry the page loaded on rather than pushing a second one — Back
+               from a shared link should leave the site, not strand you on the
+               same page with the card shut. */
+            pdmPlayerId = id;
+            renderPlayerModal();
+            document.body.classList.add('v2-blurred');
+            try { history.replaceState({ pdm: id }, '', pdmUrlWith(id)); } catch (e) { /* no history */ }
+            pdmOwnsHistoryEntry = false;
         }
 
         function renderDetailStat(label, value, barPct, color, context) {
