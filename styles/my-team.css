@@ -6363,12 +6363,43 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    A row of pills beside the view toggle. Everything in it is either the site's
    own .v2-menu (three or more answers) or a .twf-tog (exactly two), so the bar
    has two shapes in it and the shape tells you how many answers there are. */
+/* On the view tray's own row, at its right-hand end — not below it.
+   `flex: 1 1 100%` forced a line break, so the tray had a row, the controls
+   had a row, and the step's heading sat two rows above where it needed to.
+   One row: what you are looking at on the left, how you are narrowing it on
+   the right. */
 .twf-bar {
     display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
-    flex: 1 1 100%;
-    padding-top: 8px;
-    border-top: 1px solid var(--border-subtle);
+    flex: 0 1 auto;
+    margin-left: auto;
+    justify-content: flex-end;
 }
+/* Filters sits second from the right now, so a panel anchored to its left
+   edge would hang off the pane. */
+.twf-bar .apf-panel { left: auto; right: 0; }
+
+/* ---- the strip ----
+   When every group fits on one line the filters are not a panel at all: they
+   are a row under the bar, readable without opening anything. twfFitFilters()
+   lays it out like this, measures whether the row is wider than the head it
+   sits under, and takes the class off again when it is — so a set of groups
+   that would wrap stays the panel it already was. */
+.apf-menu.is-strip .apf-panel {
+    left: auto; right: 0;
+    flex-direction: row; flex-wrap: nowrap; align-items: flex-start;
+    gap: 16px;
+    width: max-content; min-width: 0; max-width: none;
+    max-height: none; overflow: visible;
+}
+.apf-menu.is-strip .twf-panel-head {
+    position: static;
+    flex-direction: column; align-items: flex-start; gap: 4px;
+    padding: 0; margin: 0; border: none; background: none;
+}
+.apf-menu.is-strip .apf-controls { flex-wrap: nowrap; }
+.apf-menu.is-strip .twf-picked { flex-wrap: nowrap; }
+/* The clubs already chosen, under the presets that chose them. */
+.apf-panel .twf-picked { margin-top: 2px; }
 .twf-bar .v2-menu-btn { height: 28px; font-size: 11.5px; padding: 0 9px; }
 .twf-bar .v2-menu-btn .v2-menu-v { font-size: 11.5px; }
 

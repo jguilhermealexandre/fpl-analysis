@@ -546,6 +546,9 @@
             const reopen = typeof v2MenuOpen !== 'undefined' ? v2MenuOpen : null;
             if (typeof renderTWMarketPane === 'function') renderTWMarketPane();
             if (reopen && typeof v2MenuReopen === 'function') v2MenuReopen(reopen);
+            // The panel is a fresh node after the re-render, so the strip/panel
+            // decision has to be taken again against it.
+            if (reopen === 'twf-filters') twfFitFilters();
             if (typeof lucide !== 'undefined') lucide.createIcons();
             // No initTooltips() here: it binds delegated listeners once at page
             // load and covers anything rendered afterwards by design.
@@ -782,10 +785,37 @@
                 ], 'Tackles, clearances, blocks, interceptions and recoveries. Worth 2 points once a per-match threshold is cleared \u2014 10 for defenders, 12 for midfielders.')
             ].join('');
 
+            /* Clubs used to be a menu of its own beside Filters. Three controls
+               plus a search box is more than the row can hold next to the view
+               tray, so the bar wrapped onto a line of its own and the whole
+               panel sat a row lower than it needed to. It is a filter like the
+               other nine, so it is a group in the panel like the other nine —
+               and the Filters badge already counted it.
+
+               Named, not counted, once some are chosen: "7 clubs selected" is a
+               number you cannot check; seven three-letter codes is a claim you
+               can disagree with, and each one drops on click. */
+            const clubPresets = [
+                ['all', 'All clubs', ''],
+                ['swing', 'Improving swings', 'Fixtures get easier partway through'],
+                ['attack', 'Best attack', 'The eight strongest attacks'],
+                ['defence', 'Best defence', 'The eight strongest defences']
+            ];
+            const clubGroup = `
+                <div class="apf-group">
+                    <span class="v2-menu-label" data-tooltip="Whose fixtures you want to own over ${escHTML(gws.length ? `GW${gws[0]}\u2013GW${gws[gws.length - 1]}` : 'the gameweeks ahead')}.">Clubs</span>
+                    <div class="apf-controls">${clubPresets.map(([v, l, note]) =>
+                        `<button class="filter-pill compact-pill${v === 'all' && !s.clubs.length ? ' active' : ''}"
+                            onclick="twfPick('clubs:${v}')"${note ? ` data-tooltip="${escHTML(note)}"` : ''}>${escHTML(l)}</button>`).join('')}</div>
+                    ${s.clubs.length ? `<div class="twf-picked">${s.clubs.map(id =>
+                        `<button class="twf-picked-club" onclick="twfToggleClub(${id})"
+                            data-tooltip="${escHTML(`Drop ${(teams[id] && teams[id].name) || 'this club'} from the selection.`)}">${escHTML((teams[id] && teams[id].short_name) || '?')}<i aria-hidden="true">\u00d7</i></button>`).join('')}</div>` : ''}
+                </div>`;
+
             const filters = `<div class="v2-menu apf-menu" id="v2menu-twf-filters">
-                <button class="apf-menu-btn${active ? ' is-on' : ''}" onclick="v2MenuToggle('twf-filters', event)"
+                <button class="apf-menu-btn${active ? ' is-on' : ''}" onclick="twfToggleFilters(event)"
                     aria-expanded="false" aria-haspopup="true"
-                    data-tooltip="Minutes, form, quality, price, ownership, set pieces, availability and your shortlist.">
+                    data-tooltip="Clubs, minutes, form, quality, price, ownership, set pieces, availability and your shortlist.">
                     ${typeof v2Icon === 'function' ? v2Icon('sliders') : ''}Filters${active ? `<span class="apf-menu-n">${active}</span>` : ''}
                 </button>
                 <div class="apf-panel" hidden>
@@ -804,55 +834,64 @@
                         ${active ? `<button class="twf-panel-reset" onclick="twfResetFilters()">Clear all</button>` : ''}
                     </div>
                     ${survivors.length ? '' : `<div class="twf-panel-dead">Every count below reads 0 because removing any single filter still leaves nothing \u2014 more than one is doing the cutting.</div>`}
+                    ${clubGroup}
                     ${groups}
                 </div>
             </div>`;
 
-            const clubLabel = s.clubs.length
-                ? `${s.clubs.length} club${s.clubs.length === 1 ? '' : 's'}`
-                : 'All clubs';
-            const clubs = `<div class="v2-menu" id="v2menu-twf-clubs">
-                <button class="v2-menu-btn${s.clubs.length ? ' is-on' : ''}" onclick="v2MenuToggle('twf-clubs', event)" aria-expanded="false" aria-haspopup="true"
-                    data-tooltip="Whose fixtures you want to own over ${escHTML(gws.length ? `GW${gws[0]}\u2013GW${gws[gws.length - 1]}` : 'the gameweeks ahead')}.">
-                    ${typeof v2Icon === 'function' ? v2Icon('shield') : ''}Clubs
-                    <span class="v2-menu-v">${escHTML(clubLabel)}</span>
-                    <span class="v2-menu-caret"></span>
-                </button>
-                <div class="v2-menu-panel" hidden>
-                    <div class="v2-menu-group">
-                        <span class="v2-menu-label">Clubs</span>
-                        <button class="v2-menu-opt${s.clubs.length ? '' : ' is-on'}" onclick="twfPick('clubs:all')"><span>All clubs</span></button>
-                        <button class="v2-menu-opt" onclick="twfPick('clubs:swing')"><span>Improving swings<span class="v2-menu-opt-note">Fixtures get easier partway through</span></span></button>
-                        <button class="v2-menu-opt" onclick="twfPick('clubs:attack')"><span>Best attack<span class="v2-menu-opt-note">The eight strongest attacks</span></span></button>
-                        <button class="v2-menu-opt" onclick="twfPick('clubs:defence')"><span>Best defence<span class="v2-menu-opt-note">The eight strongest defences</span></span></button>
-                    </div>
-                </div>
-            </div>`;
-
-            /* Named, not counted. "7 clubs selected" is a number you cannot
-               check; seven three-letter codes is a claim you can disagree with,
-               and each one drops on click. */
-            const chosen = s.clubs.length
-                ? `<span class="twf-picked">${s.clubs.map(id =>
-                    `<button class="twf-picked-club" onclick="twfToggleClub(${id})"
-                        data-tooltip="${escHTML(`Drop ${(teams[id] && teams[id].name) || 'this club'} from the selection.`)}">${escHTML((teams[id] && teams[id].short_name) || '?')}<i aria-hidden="true">\u00d7</i></button>`).join('')}</span>`
-                : '';
-
             return `<div class="twf-bar">
-                <div class="twf-search-wrap">
-                    ${typeof v2Icon === 'function' ? v2Icon('eye') : ''}
-                    <input class="twf-search" type="text" placeholder="Search by name\u2026" value="${escHTML(s.search)}" oninput="twfSearch(this.value)">
-                </div>
                 ${filters}
-                ${clubs}
                 ${/* The green "N left" pill is gone: the line over the cards
                       already says how many of how many, and two counts in two
                       shapes on one screen is one too many. The Filters button
                       still carries its badge, which answers a different
                       question — how many filters are on, not how many
                       players survived them. */''}
-                ${chosen}
+                <div class="twf-search-wrap">
+                    ${typeof v2Icon === 'function' ? v2Icon('eye') : ''}
+                    <input class="twf-search" type="text" placeholder="Search by name\u2026" value="${escHTML(s.search)}" oninput="twfSearch(this.value)">
+                </div>
             </div>`;
+        }
+
+        /* ===== One line if it fits, a panel if it does not =====
+         *
+         * The filters are a strip under the bar when the whole strip fits on a
+         * single line, because that is a control you can read without opening
+         * anything. They are a floating panel when it does not, because two or
+         * three wrapped lines of pills hanging over the cards is worse than a
+         * panel that admits it is one.
+         *
+         * Which of those it is cannot be decided when the markup is written —
+         * it depends on the pane's width, the reader's font size and how many
+         * groups this position has (a goalkeeper has no defensive-contribution
+         * group). So it is measured: lay it out as a single nowrap row, ask
+         * whether that row is wider than the head it would sit under, and take
+         * the class back off if it is.
+         *
+         * With ten groups it does not fit at any ordinary width, so in practice
+         * this settles on the panel — which is the outcome the rule asks for,
+         * arrived at by measuring rather than by assuming. It starts fitting on
+         * its own if the group list is ever trimmed. */
+        function twfFitFilters() {
+            const host = document.getElementById('v2menu-twf-filters');
+            if (!host) return;
+            const panel = host.querySelector('.apf-panel');
+            const head = host.closest('.twf-head');
+            if (!panel || !head || panel.hidden) { host.classList.remove('is-strip'); return; }
+
+            host.classList.add('is-strip');
+            /* scrollWidth is the width the row wants; the head is the width it
+               may have. Read both before anything else is touched, so this
+               costs one layout rather than one per group. */
+            const wanted = panel.scrollWidth;
+            const room = head.clientWidth;
+            if (wanted > room) host.classList.remove('is-strip');
+        }
+
+        function twfToggleFilters(event) {
+            if (typeof v2MenuToggle === 'function') v2MenuToggle('twf-filters', event);
+            twfFitFilters();
         }
 
         /* Narrowing and picking used to be two numbered steps with a "Show 13
