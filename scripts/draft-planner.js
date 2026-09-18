@@ -270,14 +270,17 @@
                 const chip = ds.chips[g];
                 const numTransfers = (ds.transfers[g] || []).length;
                 if (chip === 'wildcard' || chip === 'freehit') {
-                    // WC/FH: transfers don't cost FTs
-                    if (g !== gws[0]) ft = Math.min(ft + 1, 5);
-                } else {
-                    ft -= numTransfers;
-                    if (ft < 0) ft = 0;
-                    // Next GW: roll over unused + 1, max 5
-                    ft = Math.min(ft + 1, 5);
+                    // A chip week freezes the bank rather than rolling it on:
+                    // nothing spent, nothing earned. Same rule as the replay in
+                    // twDeriveFreeTransfers, which is where it is written up —
+                    // planning a wildcard must not quietly grow the count the
+                    // replay would give you for actually playing one.
+                    continue;
                 }
+                ft -= numTransfers;
+                if (ft < 0) ft = 0;
+                // Next GW: roll over unused + 1, max 5
+                ft = Math.min(ft + 1, 5);
             }
             return Math.max(0, ft);
         }

@@ -17,10 +17,47 @@ test('transfers made are deducted', () => {
     assert.equal(twDeriveFreeTransfers(rows, [], 5), 1);
 });
 
-test('a wildcard week costs nothing', () => {
+/* This test used to assert 2 — that a wildcard week costs nothing AND still
+   banks one. That is where the count came from that told a manager holding four
+   free transfers that he held five, and offered him a move on the grounds that
+   he was at the cap and would lose one by not spending it.
+
+   A chip week freezes the bank: the chip is that week's free transfer, so the
+   week neither spends nor earns. The assertion is rewritten rather than
+   relaxed, because the old number was the bug. */
+test('a wildcard week freezes the bank rather than rolling it on', () => {
     const rows = [{ event: 1, event_transfers: 0 }, { event: 2, event_transfers: 8 }];
     const chips = [{ event: 2, name: 'wildcard' }];
-    assert.equal(twDeriveFreeTransfers(rows, chips, 5), 2, 'eight transfers on a wildcard still bank one');
+    assert.equal(twDeriveFreeTransfers(rows, chips, 5), 1, 'eight transfers on a wildcard cost nothing and earn nothing');
+});
+
+test('a free hit freezes the bank the same way', () => {
+    const rows = [{ event: 1, event_transfers: 0 }, { event: 2, event_transfers: 11 }];
+    const chips = [{ event: 2, name: 'freehit' }];
+    assert.equal(twDeriveFreeTransfers(rows, chips, 5), 1);
+});
+
+test('a triple captain is not a transfer chip', () => {
+    // Only the two that hand out transfers freeze the count. Bench Boost and
+    // Triple Captain weeks are ordinary weeks.
+    const rows = [{ event: 1, event_transfers: 0 }, { event: 2, event_transfers: 0 }];
+    assert.equal(twDeriveFreeTransfers(rows, [{ event: 2, name: '3xc' }], 5), 2);
+    assert.equal(twDeriveFreeTransfers(rows, [{ event: 2, name: 'bboost' }], 5), 2);
+});
+
+test('the reported account replays to the figure FPL itself shows', () => {
+    /* A real account, checked against fantasy.premierleague.com on 2026-09-18:
+       no transfers all season, Triple Captain in GW3, Wildcard in GW4, and a
+       GW5 row already in history from that gameweek's deadline. The official
+       site said four. This said five.
+
+       Kept as a fixture because it is the only case to hand that sits BELOW the
+       cap with a chip behind it — which is the only shape that can tell a
+       frozen bank apart from a rolling one. Every published worked example uses
+       a manager already on five, where both models agree. */
+    const rows = [1, 2, 3, 4, 5].map(event => ({ event, event_transfers: 0 }));
+    const chips = [{ event: 3, name: '3xc' }, { event: 4, name: 'wildcard' }];
+    assert.equal(twDeriveFreeTransfers(rows, chips, 5), 4);
 });
 
 test('the cap is respected', () => {

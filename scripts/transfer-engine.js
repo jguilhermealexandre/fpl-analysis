@@ -114,9 +114,31 @@
 
            The official API does not publish the count, so it has to be
            reconstructed: everyone starts on one, each gameweek's transfers are
-           deducted, and one is added back afterwards up to the cap. Wildcard and
-           Free Hit weeks cost nothing. Lives here so the squad page and the
-           dashboard replay it identically rather than each keeping a copy. */
+           deducted, and one is added back at that gameweek's deadline up to the
+           cap. Lives here so the squad page and the dashboard replay it
+           identically rather than each keeping a copy.
+
+           A WILDCARD OR FREE HIT WEEK FREEZES THE BANK — it does not roll it on.
+
+           This read one too high for any season with a transfer chip in it, and
+           the report came from a real account: wildcard in GW4, four free
+           transfers on the official site, five here. Five is what you get by
+           treating a chip week as an ordinary week that happens to spend
+           nothing, which is what this did — it skipped the deduction but still
+           added the +1.
+
+           The chip does not merely make that week's transfers free, it IS that
+           week's free transfer. So the bank comes out of the week untouched:
+           nothing spent, nothing earned. The Premier League's own wording is
+           "you'll keep hold of any banked free transfers ... come the following
+           gameweek" — keep, not keep and add. Their worked example uses a
+           manager already at the cap of five, where freezing and adding give
+           the same five, so it settles nothing on its own; the account above
+           is below the cap, which is where the two models part. Reproducing
+           its real figure is what picked between them.
+
+           Do not "fix" this back by moving the +1 out of the branch again
+           without a below-cap count from the official site to justify it. */
         function twDeriveFreeTransfers(rows, chips, maxFT) {
             if (!rows || !rows.length) return 1;
             const chipByEvent = {};
@@ -125,10 +147,8 @@
             rows.forEach(row => {
                 if (row.event === 1) { ft = 1; return; }
                 const chip = chipByEvent[row.event];
-                if (chip !== 'wildcard' && chip !== 'freehit') {
-                    ft = Math.max(0, ft - (row.event_transfers || 0));
-                }
-                ft = Math.min(maxFT || 5, ft + 1);
+                if (chip === 'wildcard' || chip === 'freehit') return;   // frozen
+                ft = Math.min(maxFT || 5, Math.max(0, ft - (row.event_transfers || 0)) + 1);
             });
             return ft;
         }

@@ -1274,8 +1274,10 @@
 
         // FPL never exposes how many free transfers you hold, so it has to be
         // replayed from the transfer history: +1 per gameweek, capped, minus the
-        // transfers made, and gameweeks played under a Wildcard or Free Hit don't
-        // spend anything. GW1 is squad creation, which is unlimited.
+        // transfers made, and a gameweek played under a Wildcard or Free Hit
+        // leaves the bank exactly as it found it — see twDeriveFreeTransfers for
+        // why that is a freeze and not a free week. GW1 is squad creation, which
+        // is unlimited.
         function deriveFreeTransfers() {
             const rows = managerHistory?.current || [];
             if (!rows.length) return { count: 1, exact: false };
@@ -1284,13 +1286,17 @@
             let ft = typeof twDeriveFreeTransfers === 'function'
                 ? twDeriveFreeTransfers(rows, managerHistory?.chips, maxFreeTransfers)
                 : 1;
-            /* History only gains a row once a round has been scored, so moves
-               already made for the round being planned are not in the replay
-               above — leaving the panel offering two free transfers to a manager
-               who has just spent both. They are known here; deduct them. A
-               Wildcard or Free Hit played for that round would make them free
-               again, and neither is visible before the deadline, so the count
-               reads low for the one case where nothing was spent. */
+            /* History gains a row at each DEADLINE, not when the round is
+               finally scored — checked against a live account, whose GW5 row was
+               already present, on nil points, four hours after that deadline and
+               three days before the round ended. So the replay above is current
+               as far as the last deadline, and the moves it cannot know about
+               are the ones being staged right now for the round being planned.
+               Without deducting them the panel offers two free transfers to a
+               manager who has just spent both. A Wildcard or Free Hit played for
+               that round would make them free again, and neither is visible
+               before the deadline, so the count reads low for the one case where
+               nothing was spent. */
             const spent = pendingTransfers ? pendingTransfers.moves.length : 0;
             ft = Math.max(0, ft - spent);
             // Only trustworthy if the history covers every gameweek up to now.
