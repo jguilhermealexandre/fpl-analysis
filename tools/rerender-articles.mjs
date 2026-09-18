@@ -18,8 +18,23 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { sdMarkdown } = require('../scripts/scouts-desk.js');
+const { sdMarkdown, sdSetData } = require('../scripts/scouts-desk.js');
 const { sdArtwork } = require('../scripts/scouts-art.js');
+
+/* sdMarkdown puts a player's face beside the name in a table's first column,
+   and it finds the photo id in bootstrap. This tool used to run without any
+   data loaded — it only needed the markdown — so the permalink pages would
+   have re-rendered with every portrait missing while the reader modal, which
+   always has bootstrap, showed them. Same input, same output. */
+try {
+    sdSetData(
+        JSON.parse(fs.readFileSync('data/bootstrap-static.json', 'utf8')),
+        JSON.parse(fs.readFileSync('data/fixtures.json', 'utf8')),
+        null
+    );
+} catch (e) {
+    console.warn(`  ! no bootstrap loaded (${e.message}) — tables will re-render without faces`);
+}
 
 const PROSE = /(<div class="sd-prose">)([\s\S]*?)(<\/div>\s*<div class="sd-reader-foot">)/;
 /* The generated hero. Matched whether or not the page already has one, so a

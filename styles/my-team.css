@@ -6266,15 +6266,33 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    bottom of the screen on a laptop. */
 .twf-bar .apf-panel { max-height: min(70vh, 560px); overflow-y: auto; }
 
+/* Sticky, so the count and the way out stay put while the groups scroll
+   under them. The panel holds nine groups; without this the exit is below
+   the fold precisely when it is needed. */
+.twf-panel-head {
+    position: sticky; top: -14px; z-index: 1;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin: -14px -14px 0; padding: 14px 14px 10px;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border-subtle);
+}
+.twf-panel-h {
+    font-family: var(--font-display); font-size: 12.5px; font-weight: 700;
+    color: var(--text-primary);
+}
 .twf-panel-reset {
-    align-self: flex-start;
-    margin-top: 2px;
     border: none; background: none; padding: 0;
     font-family: var(--font-body); font-size: 11.5px; font-weight: 600;
     color: var(--color-info);
     cursor: pointer;
 }
 .twf-panel-reset:hover { text-decoration: underline; }
+.twf-panel-dead {
+    margin: 0; padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--verdict-sell, #EF4444) 9%, transparent);
+    font-size: 11px; line-height: 1.5; color: var(--text-secondary);
+}
 
 
 .twf-foot { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--border-default); background: var(--surface-2); }
@@ -6449,7 +6467,17 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-dir.down { color: var(--verdict-sell); }
 .twf-dir.flat { color: var(--text-muted); }
 
-.twf-empty { padding: 24px 14px; text-align: center; font-size: 11px; line-height: 1.6; color: var(--text-muted); }
+/* A dead end gets room. It used to be 24px of padding, so narrowing to
+   nothing collapsed the whole pane to a strip — and with the filter panel
+   open above it, the panel then hung most of its height over the page
+   behind, which is what made an ordinary empty result look like a broken
+   screen. */
+.twf-empty {
+    min-height: 260px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px;
+    padding: 24px 14px; text-align: center; font-size: 11px; line-height: 1.6; color: var(--text-muted);
+}
 .twf-empty div { margin-top: 6px; }
 .twf-linkbtn { border: none; background: none; padding: 0; font-family: var(--font-body); font-size: 11px; font-weight: 600; color: var(--color-info); cursor: pointer; text-decoration: underline; }
 .twf-trimmed { padding: 8px; text-align: center; font-size: 10px; color: var(--text-muted); }

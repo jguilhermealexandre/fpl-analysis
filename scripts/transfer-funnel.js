@@ -778,8 +778,22 @@
                     ${typeof v2Icon === 'function' ? v2Icon('sliders') : ''}Filters${active ? `<span class="apf-menu-n">${active}</span>` : ''}
                 </button>
                 <div class="apf-panel" hidden>
+                    <!-- The way out, pinned to the top of the panel.
+
+                         It was a link under nine groups, which put it below the
+                         fold of a scrolling panel — and the one moment you need
+                         it is the moment every group reads 0, because narrowing
+                         to nothing is exactly when a reader starts hunting for
+                         how to undo it. A dead end whose exit requires scrolling
+                         past the thing that caused it is not an exit. -->
+                    <div class="twf-panel-head">
+                        <span class="twf-panel-h">${survivors.length
+                            ? `${survivors.length} player${survivors.length === 1 ? '' : 's'} match`
+                            : 'Nothing matches'}</span>
+                        ${active ? `<button class="twf-panel-reset" onclick="twfResetFilters()">Clear all</button>` : ''}
+                    </div>
+                    ${survivors.length ? '' : `<div class="twf-panel-dead">Every count below reads 0 because removing any single filter still leaves nothing \u2014 more than one is doing the cutting.</div>`}
                     ${groups}
-                    ${active ? `<button class="twf-panel-reset" onclick="twfResetFilters()">Clear all filters</button>` : ''}
                 </div>
             </div>`;
 

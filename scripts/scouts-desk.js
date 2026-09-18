@@ -1614,6 +1614,73 @@ const SD_RECURRING = [
 ];
 
 
+/* ---------- faces in the tables ----------
+
+   An article is a column of prose and a stack of data tables, and the tables
+   are where a reader actually stops. As plain text they read like a printout,
+   which is what made the page feel like a document rather than part of this
+   site — every other screen here puts a player's face next to his name.
+
+   So a cell gets one when its whole text is a player's name — wherever it
+   sits. That was going to be first-column-only, on the theory that a name
+   further along is a data point rather than the row's subject, but the corpus
+   says otherwise: across 404 table rows that name a player, every single one
+   names exactly one, and six of them put it in the second column ("Most
+   captained | Haaland"). There is no row where this can produce two faces, and
+   restricting it to column one would only have missed the rows where the name
+   is the answer rather than the label.
+
+   The index is built once off whatever bootstrap is loaded and thrown away when
+   a new one arrives, so the browser and the build agree without either passing
+   anything in. No bootstrap — the rerender tool used to run without one — and
+   this is a no-op that leaves the text exactly as it was. */
+let _sdFaceIndex = null;
+let _sdFaceSource = null;
+
+function sdFaceIndex() {
+    if (_sdFaceIndex && _sdFaceSource === sdBoot) return _sdFaceIndex;
+    _sdFaceSource = sdBoot;
+    _sdFaceIndex = new Map();
+    (sdBoot?.elements || []).forEach(e => {
+        if (e.code == null) return;
+        const key = String(e.web_name || '').toLowerCase();
+        /* First writer wins. Two players can share a web_name; the earlier
+           element id is the longer-standing one, and a coin toss between two
+           faces is worse than either, so it is at least a stable coin toss. */
+        if (key && !_sdFaceIndex.has(key)) _sdFaceIndex.set(key, e.code);
+    });
+    return _sdFaceIndex;
+}
+
+/* The cell's text, stripped of the markup `inline()` has already applied, so a
+   name that was bolded still matches. */
+function sdFaceFor(cellHtml) {
+    const text = String(cellHtml).replace(/<[^>]*>/g, '').trim();
+    if (!text || text.length > 30) return null;
+    const code = sdFaceIndex().get(text.toLowerCase());
+    return code == null ? null : code;
+}
+
+function sdFaceCell(cellHtml) {
+    const code = sdFaceFor(cellHtml);
+    if (code == null) return cellHtml;
+    const base = 'https://resources.premierleague.com';
+    const alts = [
+        `${base}/premierleague25/photos/players/110x140/${code}.png`,
+        `${base}/premierleague/photos/players/250x250/p${code}.png`,
+        `${base}/premierleague/photos/players/110x140/p${code}.png`
+    ];
+    /* Same fall-through the artwork uses, and the same ending: a player the
+       league has not photographed loses the image and keeps his name, rather
+       than leaving a grey square in the column. */
+    return `<span class="sd-face-cell"><img class="sd-face" alt="" loading="lazy" decoding="async"`
+        + ` src="${base}/premierleague25/photos/players/250x250/${code}.png"`
+        + ` data-photo-alts="${alts.join(' ')}"`
+        + ` onerror="var a=(this.dataset.photoAlts||'').split(' ').filter(Boolean);`
+        + ` if (a.length) { this.src = a.shift(); this.dataset.photoAlts = a.join(' '); } else { this.remove(); }">`
+        + `<span>${cellHtml}</span></span>`;
+}
+
 // ---------- markdown ----------
 // A deliberately small subset: headings, bold, blockquote, tables, lists,
 // paragraphs. Everything is HTML-escaped BEFORE any markup is applied, so a
@@ -1756,7 +1823,8 @@ function sdMarkdown(md) {
             const body = [];
             while (i < lines.length && /^\|/.test(lines[i])) { body.push(cells(lines[i])); i++; }
             html += `<div class="sd-table-wrap article-table-wrapper"><table class="sd-table article-data-table"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead>`
-                + `<tbody>${body.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+                + `<tbody>${body.map(r => `<tr>${r.map(c =>
+                    `<td>${sdFaceCell(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
             continue;
         }
 
@@ -1840,7 +1908,10 @@ function renderArticlesPage() {
         return `<section class="sd-round${isLead ? ' is-lead' : ''}">
             <div class="sd-round-head">
                 <h2 class="sd-round-title">${escHTML(label)}</h2>
-                <span class="sd-round-n">${items.length} ${items.length === 1 ? 'piece' : 'pieces'}</span>
+                ${/* No count. "5 pieces" beside a heading is a number the
+                      reader can see for themselves by looking at the row
+                      under it, and it made every gameweek heading look like a
+                      folder rather than a date. */''}
                 ${note ? `<span class="sd-round-note">${escHTML(note)}</span>` : ''}
             </div>
             ${isLead ? lead(first) : ''}

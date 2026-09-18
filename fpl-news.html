@@ -53,9 +53,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=293">
-    <link rel="stylesheet" href="styles/v2-design.css?v=293">
-    <link rel="stylesheet" href="styles/responsive.css?v=293">
+    <link rel="stylesheet" href="styles/common.css?v=294">
+    <link rel="stylesheet" href="styles/v2-design.css?v=294">
+    <link rel="stylesheet" href="styles/responsive.css?v=294">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -1131,15 +1131,15 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=293"></script>
-    <script src="scripts/auth.js?v=293"></script>
-    <script src="scripts/injury-feed.js?v=293"></script>
-    <script src="scripts/common.js?v=293"></script>
+    <script src="scripts/error-monitor.js?v=294"></script>
+    <script src="scripts/auth.js?v=294"></script>
+    <script src="scripts/injury-feed.js?v=294"></script>
+    <script src="scripts/common.js?v=294"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=293"></script>
-    <script src="scripts/notifications.js?v=293"></script>
-    <script src="scripts/sidebar-nav.js?v=293"></script>
+    <script src="scripts/push-alerts.js?v=294"></script>
+    <script src="scripts/notifications.js?v=294"></script>
+    <script src="scripts/sidebar-nav.js?v=294"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -2133,7 +2133,13 @@
                            big and then a grid that could be any length. */
                         const [first, ...rest] = items;
                         const beside = rest.slice(0, 4).map(it => renderCard(it, false)).join('');
-                        const under = rest.slice(4, 8).map(it => renderCard(it, false)).join('');
+                        /* Everything left, not a fixed four. The shape is the
+                           lead against a 2x2 with a row of four under it; the
+                           row simply wraps when there is more, which keeps the
+                           shape and stops the block quietly dropping stories —
+                           it was capped at nine, so the tenth injury never
+                           appeared. */
+                        const under = rest.slice(4).map(it => renderCard(it, false)).join('');
                         return `<div class="${cls} news-mosaic">${head}
                             <div class="news-mosaic-top">
                                 <div class="news-mosaic-lead">${renderCard(first, true)}</div>
@@ -2232,14 +2238,24 @@
                        run in news order — a big one about your player should
                        still lead the page, not be filed under your squad. */
                     const rest = ext.slice(16);
+                    /* Squad stories are pulled from the whole feed, not just
+                       the tail: a piece about a player you own is worth
+                       gathering wherever it fell in news order, and the lead
+                       block above already showed the biggest of them. */
+                    const squadRest = ext.filter(i => i.isSquad);
                     return renderSection('', ext.slice(0, 5), { shape: 'lead', hideWhenEmpty: true })
                         + renderSection('Also in the news', ext.slice(5, 11), { shape: 'briefs', from: 6, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.external + ' In depth', ext.slice(11, 16),
                             { shape: 'split', count: true, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.injury + ' Injury news', injuryFeed,
                             { shape: 'mosaic', count: true, hideWhenEmpty: true })
-                        + renderSection(CAT_ICONS.squad + ' More from your players', rest.filter(i => i.isSquad),
-                            { shape: 'quad', accent: true, count: true, hideWhenEmpty: true })
+                        /* Your own players get the same spread the injury desk
+                           gets, and everything there is rather than four of it.
+                           It was capped at a row of four while the league
+                           section below ran to forty-odd, which put the stories
+                           you actually own in the smallest block on the page. */
+                        + renderSection(CAT_ICONS.squad + ' More from your players', squadRest,
+                            { shape: 'mosaic', accent: true, count: true, hideWhenEmpty: true })
                         + renderSection(CAT_ICONS.all + ' More from around the league', rest.filter(i => !i.isSquad),
                             { shape: 'digest', count: true, hideWhenEmpty: true })
                         || '<div class="news-empty">No news right now.</div>';
