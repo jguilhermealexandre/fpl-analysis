@@ -85,6 +85,10 @@ jobs:
           cp /tmp/bootstrap.json data/bootstrap-static.json
           cp /tmp/fixtures.json data/fixtures.json
 
+          # FPL names Tottenham "Spurs". Fixed here, once, so every consumer
+          # of the file gets the club's name rather than its nickname.
+          node tools/normalise-bootstrap.mjs data/bootstrap-static.json
+
           # Per-player stats for the round in progress. players-data.json also
           # carries this, but only via 610 sequential element-summary calls on the
           # four-hourly job, so a goal scored at 16:20 was not in the site's

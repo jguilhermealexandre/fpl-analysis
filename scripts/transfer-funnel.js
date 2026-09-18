@@ -669,24 +669,30 @@
             twfSetFilter(key, value);
         }
 
-        /* A two-answer filter is a toggle, and a toggle is named for the thing
-           it turns on — always, in both states, with the fill saying which
-           state it is in.
+        /* A two-answer filter is a segmented pair, not a single pill.
 
-           It briefly swapped its label instead, so an off "Nailed" read "Any
-           minutes" and an off "Heating up" read "Any form". Next to its count
-           that came out as "Any form 0", which looks like a filter reporting
-           no matches rather than an unused one offering fifteen. The count is
-           what turning it on would leave, which is only worth printing while
-           it is off — once it is on, the total at the end of the row is that
-           number. */
-        function twfToggleHTML(key, offV, label, tip, n, disabled) {
+           It was a pill that filled when on and named only the option it
+           turned on, which meant the other answer was never on screen: you
+           could see "Nailed" was off without ever being told that off meant
+           any minutes. A control you have to click to discover the choice is
+           not a control, it is a guess. Both halves are drawn, the chosen one
+           is filled, and clicking a half selects it rather than flipping
+           something.
+
+           The count rides the half that is not chosen, because that is the
+           one you might move to and the only one whose size you do not
+           already know — the total at the end of the row is the other. */
+        function twfSegHTML(key, options, tip, counts, disabled) {
             const s = twfState();
-            const isOn = s[key] === label.v;
-            const next = isOn ? offV : label.v;
-            return `<button class="twf-tog${isOn ? ' is-on' : ''}" role="switch" aria-checked="${isOn}"
-                ${disabled ? 'disabled' : `onclick="twfSetFilter('${key}','${next}')"`}
-                data-tooltip="${escHTML(tip)}">${escHTML(label.l)}${!isOn && n != null ? `<em>${n}</em>` : ''}</button>`;
+            const halves = options.map(o => {
+                const on = s[key] === o.v;
+                const n = counts && !on ? counts(o.v) : null;
+                return `<button class="twf-seg-h${on ? ' is-on' : ''}" role="radio" aria-checked="${on}"
+                    ${disabled ? 'disabled' : `onclick="twfSetFilter('${key}','${o.v}')"`}
+                    >${escHTML(o.l)}${n != null ? `<em>${n}</em>` : ''}</button>`;
+            }).join('');
+            return `<span class="twf-seg${disabled ? ' is-off' : ''}" role="radiogroup"
+                data-tooltip="${escHTML(tip)}">${halves}</span>`;
         }
 
         function twfFilterBarHTML(base, survivors, ctx, pos, gws) {
@@ -776,21 +782,22 @@
                     { v: 'sp', l: 'On any set piece' },
                     { v: 'pens', l: 'First-choice pens' }
                 ])}
-                ${twfToggleHTML('minutes', 'any', { v: 'nailed', l: 'Nailed' },
-                    'Only players with at least an 80% chance of starting \u2014 the most common reason a transfer fails.',
-                    countIf({ minutes: 'nailed' }))}
-                ${twfToggleHTML('form', 'any', { v: 'hot', l: 'Heating up' },
-                    'Only players scoring at least 15% above their season average over their last five.',
-                    countIf({ form: 'hot' }))}
-                ${twfToggleHTML('avail', 'all', { v: 'fit', l: 'Fit only' },
-                    'Off, the list includes players carrying a fitness flag. Flags are as published by FPL.',
-                    countIf({ avail: 'fit' }))}
-                ${twfToggleHTML('source', 'all', { v: 'favorites', l: 'Favourites' },
-                    'Only the players you starred on the Players Analysis page. Budget and minutes limits are lifted here, so an unaffordable target still shows, marked.',
-                    countIf({ source: 'favorites' }))}
-                <button class="twf-tog${s.defcon ? ' is-on' : ''}" role="switch" aria-checked="${s.defcon}"
-                    ${pos === 1 ? 'disabled data-tooltip="Goalkeepers cannot score defensive contribution points."'
-                        : `onclick="twfToggleDefcon()" data-tooltip="Only players clearing the defensive-contribution threshold. Tackles, clearances, blocks, interceptions and recoveries, worth 2 points once a per-match threshold is cleared \u2014 10 for defenders, 12 for midfielders."`}>Defensive${!s.defcon ? `<em>${countIf({ defcon: true })}</em>` : ''}</button>
+                ${twfSegHTML('minutes', [{ v: 'any', l: 'Any minutes' }, { v: 'nailed', l: 'Nailed' }],
+                    'Nailed is at least an 80% chance of starting \u2014 minutes are the most common reason a transfer fails.',
+                    v => countIf({ minutes: v }))}
+                ${twfSegHTML('form', [{ v: 'any', l: 'Any form' }, { v: 'hot', l: 'Heating up' }],
+                    'Heating up is scoring at least 15% above his season average over his last five.',
+                    v => countIf({ form: v }))}
+                ${twfSegHTML('avail', [{ v: 'fit', l: 'Fit only' }, { v: 'all', l: 'Include doubts' }],
+                    'Fitness flags as published by FPL.',
+                    v => countIf({ avail: v }))}
+                ${twfSegHTML('source', [{ v: 'all', l: 'All players' }, { v: 'favorites', l: 'Favourites' }],
+                    'Favourites are the players you starred on the Players Analysis page. Budget and minutes limits are lifted there, so an unaffordable target still shows, marked.',
+                    v => countIf({ source: v }))}
+                ${twfSegHTML('defcon', [{ v: false, l: 'Any defending' }, { v: true, l: 'Clears DefCon' }],
+                    pos === 1 ? 'Goalkeepers cannot score defensive contribution points.'
+                        : 'Tackles, clearances, blocks, interceptions and recoveries. Worth 2 points once a per-match threshold is cleared \u2014 10 for defenders, 12 for midfielders.',
+                    v => countIf({ defcon: v }), pos === 1)}
                 <span class="twf-live" data-tooltip="Players still matching every filter on this screen.">${survivors.length} left</span>
                 ${chosen}
             </div>`;
@@ -1132,7 +1139,13 @@
                     ${topBits ? `<span class="twf-card-top">${topBits}</span>` : ''}
                     <span class="twf-xp" data-tooltip="${escHTML(`Projected ${proj.total.toFixed(1)} points over GW${gws[0]}–GW${gws[gws.length - 1]}, against ${soldProj.total.toFixed(1)} for ${sold.name}.`)}">${proj.total.toFixed(1)}<i>xP</i></span>
                     <span class="twf-gain ${cls}">${gain > 0 ? '+' : ''}${gain.toFixed(1)}<i>vs ${escHTML(sold.name)}</i></span>
-                    ${risk < -0.15 ? `<span class="twf-risk" data-tooltip="Goals conceded and cards, netted off the projection.">${risk.toFixed(1)}</span>` : ''}
+                    ${/* The risk figure used to sit here, unlabelled, beside the
+                          gain — two signed numbers side by side, one of them
+                          answering a question nobody had asked. For a keeper it
+                          is always large and always negative, so on this card it
+                          read as the transfer being terrible. It is a component
+                          of the projection, so it belongs with the components,
+                          labelled. See "Conceded & cards" below. */''}
                 </div>
 
                 <div class="twf-strip" data-tooltip="Projected points gameweek by gameweek — team quality, opponent, venue, blanks and doubles are all already in these numbers.">${strip}</div>
@@ -1151,6 +1164,7 @@
                         <div class="twf-kv" data-tooltip="Chance of starting, and the minutes he averages when he does."><span>Starts</span><b>${Math.round(f.pStart * 100)}%</b><span class="twf-dim">${Math.round(f.expMins)}′</span></div>
                         <div class="twf-kv" data-tooltip="Share of his appearances returning 8 or more points, against the share returning 2 or fewer. Ceiling and floor."><span>Hauls / blanks</span><b>${Math.round(f.haulRate * 100)}%</b><span class="twf-dim">${Math.round(f.blankRate * 100)}%</span></div>
                         <div class="twf-kv"><span>Bonus / game</span><b>${f.bonusPerGame.toFixed(1)}</b></div>
+                        ${risk < -0.15 ? `<div class="twf-kv" data-tooltip="Goals conceded and cards, netted off the projection above."><span>Conceded &amp; cards</span><b class="down">${risk.toFixed(1)}</b></div>` : ''}
                         <div class="twf-kv" data-tooltip="Selected by ${p.ownership.toFixed(1)}% of managers${f.netTransfers ? `, ${f.netTransfers > 0 ? 'in' : 'out'} ${Math.abs(f.netTransfers).toLocaleString()} net this gameweek` : ''}."><span>Owned</span><b>${p.ownership.toFixed(1)}%</b>${f.netTransfers ? `<span class="twf-dim ${f.netTransfers > 0 ? 'up' : 'down'}">${f.netTransfers > 0 ? '↑' : '↓'}${Math.abs(f.netTransfers) >= 1000 ? Math.round(Math.abs(f.netTransfers) / 1000) + 'k' : Math.abs(f.netTransfers)}</span>` : ''}</div>
                         ${posStats}
                     </div>
@@ -1238,8 +1252,21 @@
 
         function twfSetFilter(key, value) {
             const s = twfState();
+            /* `defcon` is the one filter held as a boolean, and everything
+               reaching this function comes out of an onclick attribute as a
+               string. "false" is a non-empty string and therefore truthy, so
+               without this the "Any defending" half of its pair turned the
+               filter ON. Coerced here rather than at each call site, because
+               the call sites are markup. */
+            if (key === 'defcon') {
+                s.defcon = (value === true || value === 'true');
+                twfRerender();
+                return;
+            }
             // Clicking the active option again clears it, so a filter never
             // becomes a trap you have to hunt for the "Any" button to escape.
+            // The segmented pairs name both answers, so there is nothing to
+            // escape from and re-picking the chosen half is a no-op for them.
             s[key] = (s[key] === value && value !== 'any' && key !== 'source' && key !== 'avail') ? 'any' : value;
             twfRerender();
         }

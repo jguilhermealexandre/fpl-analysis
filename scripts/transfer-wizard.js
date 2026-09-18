@@ -516,7 +516,15 @@
                the step, and it is the only thing that animates. */
             container.innerHTML = `
                 <div class="tw-container" id="twContainer" data-tw-step="1">
-                    <div id="twRail"></div>
+                    <!-- The steps and the plan's running total share a row. They
+                         were stacked, which cost a whole band of the screen to
+                         four words and three small numbers, and pushed the work
+                         itself further down than it needed to be. The rail
+                         shrinks to fit; the figures sit at the end of it. -->
+                    <div class="tw-topbar">
+                        <div id="twRail"></div>
+                        <div id="twStats"></div>
+                    </div>
                     <div id="twBudgetBar"></div>
                     <div class="twr-panel" id="twRecoPanel">
                         <div class="twr-head">
@@ -1180,15 +1188,11 @@
                 ${balance}
                 <div class="twc-plan-rows">${rows}</div>`;
 
-            el.innerHTML = `
-                <!-- Three bubbles, like the dashboard's, one size down. They
-                     were a flat strip of label-over-value that read as a
-                     table header rather than as the running state of a plan.
-
-                     Clear is gone: discarding every pending transfer is a
-                     destructive button sitting next to three harmless ones,
-                     and each row in the plan below already has its own undo.
-                     Preview squad keeps its place at the end of the row. -->
+            /* The figures ride the step rail; the staged transfers stay
+               below it, where there is room for a row per swap. One render,
+               two destinations, so they cannot disagree about the bank. */
+            const statsEl = document.getElementById('twStats');
+            if (statsEl) statsEl.innerHTML = `
                 <div class="twc-head">
                     <div class="twc-stat">
                         <span class="twc-stat-l">Transfers</span>
@@ -1205,8 +1209,9 @@
                     <div class="twc-actions">
                         ${count ? `<button class="rc-btn" onclick="twOpenPreview()" data-tooltip="See the squad these transfers would leave you with, on a pitch, with its value and projection.">Preview squad</button>` : ''}
                     </div>
-                </div>
-                ${filled ? `<div class="twc-plan">${cart}</div>` : ''}`;
+                </div>`;
+
+            el.innerHTML = filled ? `<div class="twc-plan">${cart}</div>` : '';
         }
 
         /* ===== Step 2's left column · your squad =====
