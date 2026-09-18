@@ -1254,6 +1254,7 @@ export default [
                 sdActions: 'writable',
                 sdArchived: 'writable',
                 sdArtEsc: 'writable',
+                sdArtInitials: 'writable',
                 sdArtKey: 'writable',
                 sdArtPhoto: 'writable',
                 sdArtPhotoUrls: 'writable',

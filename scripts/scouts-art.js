@@ -127,7 +127,19 @@ function sdArtPhoto(code, cls) {
         + ` src="${urls[0]}" data-photo-alts="${sdArtEsc(urls.slice(1).join(' '))}"`
         + ` onerror="var a=(this.dataset.photoAlts||'').split(' ').filter(Boolean);`
         + ` if (a.length) { this.src = a.shift(); this.dataset.photoAlts = a.join(' '); }`
-        + ` else { var h = this.closest('.sd-art'); if (h) h.classList.add('is-faceless'); this.remove(); }">`;
+        + ` else { this.remove(); }">`;
+}
+
+/* The same rule as v2Initials() in common.js, written out because the static
+   article builder loads this file on its own. Two letters, split on the
+   separators a footballer's name actually uses. */
+function sdArtInitials(name) {
+    return String(name || '')
+        .split(/[\s.'\u2019-]+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(w => w[0].toUpperCase())
+        .join('');
 }
 
 function sdArtEsc(s) {
@@ -153,8 +165,26 @@ function sdArtwork(article, variant) {
     const t = SD_ART_TEMPLATES[key] || SD_ART_TEMPLATES.build;
     const subject = a.subject || null;
     const name = subject && subject.name ? String(subject.name) : '';
-    const face = subject ? sdArtPhoto(subject.code, 'sd-art-face') : '';
-    const faceless = !name || !face;
+    /* Faceless means the article has no subject at all — an explainer, a piece
+       about a club, a list. It does NOT mean the photograph failed to load.
+
+       That distinction was wrong and this is the fix. The league publishes no
+       shot for a player for days or weeks after he signs, and keeps serving
+       the old club's shot until they reshoot him; tools/check-player-photos.mjs
+       says so in as many words, and it is why every pitch card on this site
+       sets the player's initials behind the photo and lets the photo cover
+       them. The artwork removed its image and left a hole instead, so a
+       recent signing — Barcola, here — got a card with an empty frame where
+       the rest of the site would have shown a monogram.
+
+       Same construction as v2AvatarHTML(): the initials are always in the
+       markup, the photo sits over them, and a photo that cannot be fetched
+       takes itself out of the way rather than taking the portrait with it. */
+    const faceless = !name;
+    const portrait = faceless ? '' : `<span class="sd-art-portrait">`
+        + `<b class="sd-art-initials" aria-hidden="true">${sdArtEsc(sdArtInitials(name))}</b>`
+        + (subject.code != null ? sdArtPhoto(subject.code, 'sd-art-face') : '')
+        + `</span>`;
 
     /* The kicker carries the round when there is one. "Man of the Match"
        is a claim about a particular Saturday, and the archive is a stack
@@ -165,14 +195,14 @@ function sdArtwork(article, variant) {
         + ` style="--art-ink:${t.ink};--art-accent:${t.accent};--art-wash:${t.wash}"`
         + ` data-variant="${variant === 'lead' ? 'lead' : 'card'}" aria-hidden="true">`
         + `<span class="sd-art-bars"></span>`
-        + (faceless ? '' : `<span class="sd-art-ghost">${sdArtPhoto(subject.code, 'sd-art-ghost-img')}</span>`)
+        + (faceless || subject.code == null ? '' : `<span class="sd-art-ghost">${sdArtPhoto(subject.code, 'sd-art-ghost-img')}</span>`)
         + `<span class="sd-art-text">`
         + `<span class="sd-art-kicker">${sdArtEsc(kicker)}</span>`
         + (name ? `<span class="sd-art-name">${sdArtEsc(name)}</span>` : '')
         + (subject && subject.stat && variant === 'lead'
             ? `<span class="sd-art-stat">${sdArtEsc(subject.stat)}</span>` : '')
         + `</span>`
-        + (faceless ? '' : face)
+        + portrait
         + `</div>`;
 }
 

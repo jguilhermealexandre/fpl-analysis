@@ -437,14 +437,35 @@
     color: rgba(255,255,255,.72);
     margin-top: 10px;
 }
-/* The crisp photo. Anchored to the bottom-right so the head sits in the
-   frame's top half whatever the crop, which is where a portrait wants to be. */
+/* The portrait slot. Anchored bottom-right so the head sits in the frame's
+   top half whatever the crop, which is where a portrait wants to be.
+
+   It holds the initials and the photograph, in that order. The league
+   publishes no shot for a player for some days after he signs, and this is
+   what the rest of the site does about that — see v2AvatarHTML(): the
+   monogram is always in the markup and the photo covers it, so a photo that
+   never arrives leaves a portrait rather than a hole. */
+.sd-art-portrait {
+    position: absolute;
+    right: 0; bottom: 0;
+    width: 38%; height: 104%;
+    z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+}
+.sd-art-initials {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: color-mix(in srgb, var(--art-accent, #9CA3AF) 38%, transparent);
+    user-select: none;
+}
 .sd-art-face {
     position: absolute;
     right: 0; bottom: 0;
-    height: 104%;
-    width: auto;
-    z-index: 1;
+    height: 100%;
+    width: auto; max-width: 100%;
     object-fit: contain; object-position: bottom right;
     filter: drop-shadow(-8px 0 22px rgba(0,0,0,.4));
 }
@@ -454,11 +475,13 @@
 .sd-art[data-variant="card"] .sd-art-text { left: 13px; right: 40%; }
 .sd-art[data-variant="card"] .sd-art-kicker { font-size: 14px; padding-bottom: 4px; }
 .sd-art[data-variant="card"] .sd-art-name { font-size: 19px; padding-bottom: 4px; margin-top: 6px; }
+.sd-art[data-variant="card"] .sd-art-initials { font-size: 44px; }
 
 .sd-art[data-variant="lead"] { min-height: 210px; height: 100%; }
 .sd-art[data-variant="lead"] .sd-art-text { left: 24px; right: 38%; }
 .sd-art[data-variant="lead"] .sd-art-kicker { font-size: 25px; padding-bottom: 7px; }
 .sd-art[data-variant="lead"] .sd-art-name { font-size: 33px; padding-bottom: 7px; margin-top: 10px; }
+.sd-art[data-variant="lead"] .sd-art-initials { font-size: 80px; }
 
 /* No photo — the archive, and every evergreen piece. The type takes the whole
    frame rather than leaving a hole where a face would have been. */
@@ -470,6 +493,7 @@
     .sd-art[data-variant="lead"] .sd-art-text { left: 18px; right: 44%; }
     .sd-art[data-variant="lead"] .sd-art-kicker { font-size: 21px; }
     .sd-art[data-variant="lead"] .sd-art-name { font-size: 27px; }
+    .sd-art[data-variant="lead"] .sd-art-initials { font-size: 52px; }
 }
 
 /* The hero on a standalone article page. The reader's card has padding all
