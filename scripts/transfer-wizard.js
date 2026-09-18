@@ -1206,9 +1206,12 @@
                         <span class="twc-stat-l">In the bank</span>
                         <span class="twc-stat-v ${itbClass}">£${itb.toFixed(1)}m</span>
                     </div>
-                    <div class="twc-actions">
-                        ${count ? `<button class="rc-btn" onclick="twOpenPreview()" data-tooltip="See the squad these transfers would leave you with, on a pitch, with its value and projection.">Preview squad</button>` : ''}
-                    </div>
+                    ${/* Preview squad is gone. Step 4 is the preview — it puts
+                          the squad these transfers leave you with on a pitch,
+                          with its value and its projection, which is what this
+                          button opened early. A button that jumps you to the
+                          end of a four-step flow is a second route to the same
+                          place, sitting where the running figures should be. */''}
                 </div>`;
 
             el.innerHTML = filled ? `<div class="twc-plan">${cart}</div>` : '';

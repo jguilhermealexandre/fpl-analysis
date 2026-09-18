@@ -5198,8 +5198,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twc-stat-v.warning { color: var(--verdict-monitor); }
 .twc-stat-v.success { color: var(--verdict-hold); }
 .twc-unl { font-size: 10px; font-weight: 600; color: var(--color-primary); font-family: var(--font-sans); }
-.twc-actions { display: flex; gap: 5px; margin-left: auto; flex-wrap: wrap; }
-.twc-actions .rc-btn { flex: 0 0 auto; }
 .rc-btn.primary {
     background: var(--color-primary); border-color: var(--color-primary); color: #fff;
     box-shadow: 0 2px 8px color-mix(in srgb, var(--color-primary) 28%, transparent);
@@ -6087,23 +6085,38 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* Quick picks / Custom search. The primary choice on this screen — which of
    the two ways of answering "who replaces him" you want — so it reads heavier
    than the funnel's own step buttons sitting beside it. */
+/* The two ways to answer the question, and the most important control on the
+   screen — everything under it changes depending on which is chosen. It was
+   an 11px outline that read as one more pill in a row of pills, so the choice
+   it offers was easy to miss entirely.
+
+   A tray with a raised selected tab: the unchosen half now sits on a tinted
+   field so it reads as a switch with somewhere to go, rather than as a label
+   beside a button. */
 .twf-views {
     display: inline-flex;
+    padding: 3px;
+    gap: 3px;
     border: 1px solid var(--v2-card-border, var(--border-emphasis));
-    border-radius: var(--radius-full); overflow: hidden;
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
 }
 .twf-view {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 6px 13px; border: none; background: transparent; cursor: pointer;
-    font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .02em;
-    color: var(--text-muted); transition: background .15s ease, color .15s ease;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 16px; border: none; background: transparent; cursor: pointer;
+    border-radius: var(--radius-full);
+    font-family: var(--font-display); font-size: 12.5px; font-weight: 700; letter-spacing: .01em;
+    color: var(--text-secondary); transition: background .15s ease, color .15s ease, box-shadow .15s ease;
 }
-.twf-view svg { width: 13px; height: 13px; }
-.twf-view:hover { color: var(--text-secondary); }
+.twf-view svg { width: 14px; height: 14px; }
+.twf-view:hover:not(.active) { background: var(--surface-1); color: var(--text-primary); }
 /* Both selected states are the brand. Quick picks used --color-wizard, a
    violet defined for the old wizard chrome and used nowhere else on this
    screen, so the two halves of one control were painted from two palettes. */
-.twf-view.active { background: var(--color-primary); color: #fff; }
+.twf-view.active {
+    background: var(--color-primary); color: #fff;
+    box-shadow: 0 1px 6px color-mix(in srgb, var(--color-primary) 34%, transparent);
+}
 
 
 /* ----- Which transfer you are working on -----
@@ -6238,43 +6251,30 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-search::placeholder { color: var(--text-muted); }
 .twf-search-wrap:focus-within { border-color: var(--color-primary); }
 
-/* A two-answer filter, with both answers on screen.
+/* The count each option would leave, on the option. It is what makes these
+   pills rather than a <select>: you can compare the cost of four answers
+   without taking any of them. */
+.apf-panel .filter-pill .twf-n {
+    font-style: normal;
+    font-family: var(--font-mono); font-size: 9.5px; font-weight: 700;
+    color: var(--text-muted);
+}
+.apf-panel .filter-pill.active .twf-n { color: var(--color-primary); }
+.apf-panel .filter-pill { padding: 5px 11px; font-size: 11.5px; }
 
-   It was one pill that filled when on and named only the option it switched
-   to, so the alternative was never visible — you could see "Nailed" was off
-   without being told that off meant any minutes. Both halves are drawn now,
-   inside one rounded outline so the pair still reads as a single control in a
-   row of pills. */
-.twf-seg {
-    display: inline-flex; align-items: stretch;
-    height: 28px;
-    border: 1px solid var(--v2-card-border, var(--border-emphasis));
-    border-radius: var(--radius-full);
-    background: var(--surface-1);
-    overflow: hidden;
-}
-.twf-seg-h {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 0 11px;
-    border: none; background: none;
+/* Nine groups is a tall panel, so it scrolls rather than running off the
+   bottom of the screen on a laptop. */
+.twf-bar .apf-panel { max-height: min(70vh, 560px); overflow-y: auto; }
+
+.twf-panel-reset {
+    align-self: flex-start;
+    margin-top: 2px;
+    border: none; background: none; padding: 0;
     font-family: var(--font-body); font-size: 11.5px; font-weight: 600;
-    color: var(--text-muted);
+    color: var(--color-info);
     cursor: pointer;
-    white-space: nowrap;
-    transition: background 140ms ease, color 140ms ease;
 }
-.twf-seg-h + .twf-seg-h { border-left: 1px solid var(--border-subtle); }
-.twf-seg-h:hover:not(:disabled):not(.is-on) { color: var(--text-primary); background: var(--surface-2); }
-.twf-seg-h.is-on {
-    background: color-mix(in srgb, var(--color-primary) 14%, var(--surface-1));
-    color: var(--color-primary);
-}
-.twf-seg-h em {
-    font-style: normal; font-family: var(--font-mono); font-size: 10px; font-weight: 700;
-    color: var(--text-muted);
-}
-.twf-seg.is-off { opacity: .45; }
-.twf-seg.is-off .twf-seg-h { cursor: not-allowed; }
+.twf-panel-reset:hover { text-decoration: underline; }
 
 
 .twf-foot { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--border-default); background: var(--surface-2); }

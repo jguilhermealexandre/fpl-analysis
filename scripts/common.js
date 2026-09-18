@@ -2179,7 +2179,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=292')
+    fetch('footer.html?v=293')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
@@ -2562,6 +2562,19 @@ function v2MenuHTML({ key, icon, label, value, options, onPick, tip }) {
     </div>`;
 }
 
+/* Two menu shapes, one mechanism.
+
+   `.v2-menu` is the value picker — a label, a chosen value, a list. `.apf-menu`
+   is the filter panel — a button with a count, opening groups of pills. They
+   already share every rule in the stylesheet; they were opened and closed by
+   two sets of selectors, so a panel built as one could not be closed by the
+   other's Escape key or outside click. Both are handled here now, which is
+   what let Step 2's filters become the same component the All Players bar
+   uses. */
+const V2_MENU_HOSTS = '.v2-menu, .apf-menu';
+const V2_MENU_PANELS = '.v2-menu-panel, .apf-panel';
+const V2_MENU_BTNS = '.v2-menu-btn, .apf-menu-btn';
+
 function v2MenuToggle(key, event) {
     if (event) event.stopPropagation();
     const opening = v2MenuOpen !== key;
@@ -2570,8 +2583,26 @@ function v2MenuToggle(key, event) {
     const host = document.getElementById(`v2menu-${key}`);
     if (!host) return;
     v2MenuOpen = key;
-    const panel = host.querySelector('.v2-menu-panel');
-    const btn = host.querySelector('.v2-menu-btn');
+    const panel = host.querySelector(V2_MENU_PANELS);
+    const btn = host.querySelector(V2_MENU_BTNS);
+    if (panel) panel.hidden = false;
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+    host.classList.add('is-open');
+}
+
+/* Re-opens a menu that a re-render has just rebuilt.
+
+   A filter panel holds nine groups and you are usually setting two or three of
+   them. Every pick rebuilds the pane it lives in, so without this the panel
+   shut on the first click and every subsequent filter cost a reopen — which is
+   the whole reason a panel was worth collapsing into in the first place. */
+function v2MenuReopen(key) {
+    if (!key) return;
+    const host = document.getElementById(`v2menu-${key}`);
+    if (!host) { v2MenuOpen = null; return; }
+    v2MenuOpen = key;
+    const panel = host.querySelector(V2_MENU_PANELS);
+    const btn = host.querySelector(V2_MENU_BTNS);
     if (panel) panel.hidden = false;
     if (btn) btn.setAttribute('aria-expanded', 'true');
     host.classList.add('is-open');
@@ -2600,10 +2631,10 @@ function v2MenuSet(key, value) {
 
 function v2MenuCloseAll() {
     v2MenuOpen = null;
-    document.querySelectorAll('.v2-menu').forEach(host => {
+    document.querySelectorAll(V2_MENU_HOSTS).forEach(host => {
         host.classList.remove('is-open');
-        const panel = host.querySelector('.v2-menu-panel');
-        const btn = host.querySelector('.v2-menu-btn');
+        const panel = host.querySelector(V2_MENU_PANELS);
+        const btn = host.querySelector(V2_MENU_BTNS);
         if (panel) panel.hidden = true;
         if (btn) btn.setAttribute('aria-expanded', 'false');
     });
@@ -2615,7 +2646,7 @@ if (typeof document !== 'undefined' && typeof document.addEventListener === 'fun
         /* closest() rather than contains(): picking an option usually rebuilds
            the panel it was in, so by the time this runs the clicked node has
            been replaced and the document no longer holds it. */
-        if (ev.target instanceof Element && ev.target.closest('.v2-menu')) return;
+        if (ev.target instanceof Element && ev.target.closest(V2_MENU_HOSTS)) return;
         v2MenuCloseAll();
     });
     document.addEventListener('keydown', (ev) => {

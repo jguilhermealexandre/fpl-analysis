@@ -539,7 +539,13 @@
            budget bar and the whole squad list on every keystroke of the search
            box. */
         function twfRerender() {
+            /* Which menu was open, so it can be opened again on the far side.
+               renderTWMarketPane() replaces the node the click came from, so
+               the open state has to survive as a key rather than as an
+               element. */
+            const reopen = typeof v2MenuOpen !== 'undefined' ? v2MenuOpen : null;
             if (typeof renderTWMarketPane === 'function') renderTWMarketPane();
+            if (reopen && typeof v2MenuReopen === 'function') v2MenuReopen(reopen);
             if (typeof lucide !== 'undefined') lucide.createIcons();
             // No initTooltips() here: it binds delegated listeners once at page
             // load and covers anything rendered afterwards by design.
@@ -639,60 +645,49 @@
            the row grid was only evidence for. They stay, the grid goes, and
            what replaces the evidence is the answer — which clubs the preset
            just chose, by name. */
-        /* ===== The filter bar =====
+        /* ===== The filter panel =====
 
-           Every filter used to be a 300px column down the left: eight labelled
-           groups of chips stacked vertically, 620px tall, with the players it
-           filtered squeezed into what was left. That is a lot of screen given
-           to controls you set once and then want out of the way.
+           Nine controls in four shapes wrapped onto three rows: dropdowns,
+           segmented pairs, a search box and a count bubble, none of them the
+           control this site uses everywhere else for exactly this job.
 
-           They are a row of pills beside the view toggle now, in the site's own
-           menu component — the same pill every other filter on the site uses.
-           The shape follows the question: three or more answers is a dropdown,
-           two answers is a toggle that names the state it is in. A dropdown
-           holding two options is a click to find out there was nothing to
-           choose.
+           The All Players bar had already answered it — one "Filters" button
+           opening a panel of labelled groups, each group a row of pills. That
+           is the site's filter component, it holds nine groups as easily as
+           five, and it collapses the whole thing to a single button with a
+           number on it. So Step 2 uses it, down to the same classes.
 
-           The counts moved into the dropdowns with the options, where they are
-           read at the moment of choosing rather than scanned down a column.
-           The running total is one pill at the end of the row. */
+           Every option stays visible, which is the half the segmented pairs
+           got right and the dropdowns got wrong: inside the panel a group
+           shows all of its answers at once with the count each would leave,
+           so choosing never means opening something to find out what the
+           choices are. */
 
-        /* One entry point for every menu, because v2MenuHTML calls its handler
-           with a single string. "quality:top25" rather than nine near-identical
-           wrapper functions. */
         function twfPick(packed) {
             const i = String(packed).indexOf(':');
             if (i < 0) return;
             const key = packed.slice(0, i), value = packed.slice(i + 1);
-            if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
-            if (key === 'clubs') { twfClubPreset(value); return; }
+            /* The club menu is a value picker and closes on a choice, the way
+               every other v2 menu does. The filter panel does not: it holds
+               nine groups and you are usually setting several of them, so it
+               stays open across the re-render each pick causes. */
+            if (key === 'clubs') {
+                if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
+                twfClubPreset(value);
+                return;
+            }
             twfSetFilter(key, value);
         }
 
-        /* A two-answer filter is a segmented pair, not a single pill.
-
-           It was a pill that filled when on and named only the option it
-           turned on, which meant the other answer was never on screen: you
-           could see "Nailed" was off without ever being told that off meant
-           any minutes. A control you have to click to discover the choice is
-           not a control, it is a guess. Both halves are drawn, the chosen one
-           is filled, and clicking a half selects it rather than flipping
-           something.
-
-           The count rides the half that is not chosen, because that is the
-           one you might move to and the only one whose size you do not
-           already know — the total at the end of the row is the other. */
-        function twfSegHTML(key, options, tip, counts, disabled) {
+        /* How many filters are away from their default. It goes on the button,
+           so a closed panel still says whether anything is narrowing the list —
+           without it, a collapsed panel hides the fact that it is doing
+           something, which is the one real cost of collapsing it. */
+        function twfActiveFilterCount() {
             const s = twfState();
-            const halves = options.map(o => {
-                const on = s[key] === o.v;
-                const n = counts && !on ? counts(o.v) : null;
-                return `<button class="twf-seg-h${on ? ' is-on' : ''}" role="radio" aria-checked="${on}"
-                    ${disabled ? 'disabled' : `onclick="twfSetFilter('${key}','${o.v}')"`}
-                    >${escHTML(o.l)}${n != null ? `<em>${n}</em>` : ''}</button>`;
-            }).join('');
-            return `<span class="twf-seg${disabled ? ' is-off' : ''}" role="radiogroup"
-                data-tooltip="${escHTML(tip)}">${halves}</span>`;
+            const d = twfDefaultFilters();
+            return ['quality', 'price', 'own', 'setPiece', 'minutes', 'form', 'avail', 'source']
+                .filter(k => s[k] !== d[k]).length + (s.defcon ? 1 : 0) + (s.clubs.length ? 1 : 0);
         }
 
         function twfFilterBarHTML(base, survivors, ctx, pos, gws) {
@@ -703,32 +698,96 @@
                 const merged = Object.assign({}, s, over);
                 return scoped.filter(p => twfPasses(p, merged, ctx)).length;
             };
-            /* The count belongs on the option, so choosing it and knowing what
-               it costs are the same glance. Where an option also needs saying
-               what it means — "Cheaper" against which price? — both go in,
-               definition first: the count is only useful once you know what
-               you are counting. */
-            const opts = (key, list) => list.map(o => Object.assign({}, o, {
-                value: `${key}:${o.v}`,
-                label: o.l,
-                note: [o.note, `${countIf({ [key]: o.v })} left`].filter(Boolean).join(' \u00b7 ')
-            }));
-            const menu = (key, icon, label, list) => v2MenuHTML({
-                key: `twf-${key}`, icon, label,
-                value: `${key}:${s[key]}`, onPick: 'twfPick',
-                options: opts(key, list)
-            });
+
+            /* One group: a label, and every answer as a pill carrying what it
+               would leave. The count is the whole reason these are pills rather
+               than a <select> — you can compare the cost of four answers without
+               taking any of them. */
+            const group = (label, key, options, tip) => `
+                <div class="apf-group">
+                    <span class="v2-menu-label"${tip ? ` data-tooltip="${escHTML(tip)}"` : ''}>${escHTML(label)}</span>
+                    <div class="apf-controls">${options.map(o => {
+                        /* `cv` is the value this option really holds, where that
+                           is not the string the onclick has to carry. Only
+                           defcon needs it — it is the one filter kept as a
+                           boolean, and comparing `false === 'false'` marked
+                           neither of its pills active while counting both of
+                           them as ON, because a non-empty string is truthy. */
+                        const val = Object.prototype.hasOwnProperty.call(o, 'cv') ? o.cv : o.v;
+                        const on = s[key] === val;
+                        const n = countIf({ [key]: val });
+                        return `<button class="filter-pill compact-pill${on ? ' active' : ''}"
+                            onclick="twfPick('${key}:${o.v}')"
+                            ${o.tip ? `data-tooltip="${escHTML(o.tip)}"` : ''}>${escHTML(o.l)}<em class="twf-n">${n}</em></button>`;
+                    }).join('')}</div>
+                </div>`;
 
             const outPrice = ctx.outPrice;
             const qLabel = twfQualityLabel(pos);
+            const active = twfActiveFilterCount();
 
-            /* Clubs is a preset picker rather than a filter over one value, so
-               it names what is selected instead of echoing an option. */
+            const groups = [
+                group('Minutes', 'minutes', [
+                    { v: 'any', l: 'Any' },
+                    { v: 'nailed', l: 'Nailed', tip: 'At least an 80% chance of starting.' }
+                ], 'The most common reason a transfer fails.'),
+                group('Form', 'form', [
+                    { v: 'any', l: 'Any' },
+                    { v: 'hot', l: 'Heating up', tip: 'Scoring at least 15% above his season average over his last five.' }
+                ], 'The direction over his last five, not the level.'),
+                group('Underlying quality', 'quality', [
+                    { v: 'any', l: 'Any' },
+                    { v: 'top25', l: `Top 25%` },
+                    { v: 'top10', l: `Top 10%` }
+                ], `Percentile within his own position on ${qLabel}.`),
+                group('Price', 'price', [
+                    { v: 'any', l: 'Any' },
+                    { v: 'cheaper', l: 'Cheaper', tip: `Under \u00a3${outPrice.toFixed(1)}m \u2014 frees money for another slot.` },
+                    { v: 'same', l: 'Same money', tip: `Within \u00a30.5m of \u00a3${outPrice.toFixed(1)}m.` },
+                    { v: 'upgrade', l: 'Upgrade', tip: `Above \u00a3${outPrice.toFixed(1)}m \u2014 spends into this slot.` }
+                ], `Against the \u00a3${outPrice.toFixed(1)}m you get back.`),
+                group('Ownership', 'own', [
+                    { v: 'any', l: 'Any' },
+                    { v: 'template', l: 'Template', tip: 'Over 25% owned.' },
+                    { v: 'mid', l: 'Mid', tip: '8\u201325% owned.' },
+                    { v: 'diff', l: 'Differential', tip: 'Under 8% owned.' }
+                ], 'Where he sits against the template.'),
+                group('Set pieces', 'setPiece', [
+                    { v: 'any', l: 'Any' },
+                    { v: 'sp', l: 'On any' },
+                    { v: 'pens', l: 'First-choice pens' }
+                ], 'Taken from what FPL publishes, not inferred.'),
+                group('Availability', 'avail', [
+                    { v: 'fit', l: 'Fit only' },
+                    { v: 'all', l: 'Include doubts' }
+                ], 'Fitness flags as published by FPL.'),
+                group('Shortlist', 'source', [
+                    { v: 'all', l: 'All players' },
+                    { v: 'favorites', l: 'Favourites', tip: 'The players you starred on the Players Analysis page. Budget and minutes limits are lifted here, so an unaffordable target still shows, marked.' }
+                ], 'Everyone, or only the players you starred.'),
+                pos === 1 ? '' : group('Defensive contribution', 'defcon', [
+                    { v: 'false', cv: false, l: 'Any' },
+                    { v: 'true', cv: true, l: 'Clears the threshold' }
+                ], 'Tackles, clearances, blocks, interceptions and recoveries. Worth 2 points once a per-match threshold is cleared \u2014 10 for defenders, 12 for midfielders.')
+            ].join('');
+
+            const filters = `<div class="v2-menu apf-menu" id="v2menu-twf-filters">
+                <button class="apf-menu-btn${active ? ' is-on' : ''}" onclick="v2MenuToggle('twf-filters', event)"
+                    aria-expanded="false" aria-haspopup="true"
+                    data-tooltip="Minutes, form, quality, price, ownership, set pieces, availability and your shortlist.">
+                    ${typeof v2Icon === 'function' ? v2Icon('sliders') : ''}Filters${active ? `<span class="apf-menu-n">${active}</span>` : ''}
+                </button>
+                <div class="apf-panel" hidden>
+                    ${groups}
+                    ${active ? `<button class="twf-panel-reset" onclick="twfResetFilters()">Clear all filters</button>` : ''}
+                </div>
+            </div>`;
+
             const clubLabel = s.clubs.length
                 ? `${s.clubs.length} club${s.clubs.length === 1 ? '' : 's'}`
                 : 'All clubs';
-            const clubMenu = `<div class="v2-menu" id="v2menu-twf-clubs">
-                <button class="v2-menu-btn" onclick="v2MenuToggle('twf-clubs', event)" aria-expanded="false" aria-haspopup="true"
+            const clubs = `<div class="v2-menu" id="v2menu-twf-clubs">
+                <button class="v2-menu-btn${s.clubs.length ? ' is-on' : ''}" onclick="v2MenuToggle('twf-clubs', event)" aria-expanded="false" aria-haspopup="true"
                     data-tooltip="Whose fixtures you want to own over ${escHTML(gws.length ? `GW${gws[0]}\u2013GW${gws[gws.length - 1]}` : 'the gameweeks ahead')}.">
                     ${typeof v2Icon === 'function' ? v2Icon('shield') : ''}Clubs
                     <span class="v2-menu-v">${escHTML(clubLabel)}</span>
@@ -759,45 +818,8 @@
                     ${typeof v2Icon === 'function' ? v2Icon('eye') : ''}
                     <input class="twf-search" type="text" placeholder="Search by name\u2026" value="${escHTML(s.search)}" oninput="twfSearch(this.value)">
                 </div>
-                ${clubMenu}
-                ${menu('quality', 'ruler', 'Quality', [
-                    { v: 'any', l: 'Any' },
-                    { v: 'top25', l: `Top 25% ${qLabel}` },
-                    { v: 'top10', l: `Top 10% ${qLabel}` }
-                ])}
-                ${menu('price', 'cash', 'Price', [
-                    { v: 'any', l: 'Any' },
-                    { v: 'cheaper', l: 'Cheaper', note: `Under \u00a3${outPrice.toFixed(1)}m` },
-                    { v: 'same', l: 'Same money', note: `Within \u00a30.5m of \u00a3${outPrice.toFixed(1)}m` },
-                    { v: 'upgrade', l: 'Upgrade', note: `Above \u00a3${outPrice.toFixed(1)}m` }
-                ])}
-                ${menu('own', 'users', 'Owned', [
-                    { v: 'any', l: 'Any' },
-                    { v: 'template', l: 'Template', note: 'Over 25%' },
-                    { v: 'mid', l: 'Mid', note: '8\u201325%' },
-                    { v: 'diff', l: 'Differential', note: 'Under 8%' }
-                ])}
-                ${menu('setPiece', 'target', 'Set pieces', [
-                    { v: 'any', l: 'Any' },
-                    { v: 'sp', l: 'On any set piece' },
-                    { v: 'pens', l: 'First-choice pens' }
-                ])}
-                ${twfSegHTML('minutes', [{ v: 'any', l: 'Any minutes' }, { v: 'nailed', l: 'Nailed' }],
-                    'Nailed is at least an 80% chance of starting \u2014 minutes are the most common reason a transfer fails.',
-                    v => countIf({ minutes: v }))}
-                ${twfSegHTML('form', [{ v: 'any', l: 'Any form' }, { v: 'hot', l: 'Heating up' }],
-                    'Heating up is scoring at least 15% above his season average over his last five.',
-                    v => countIf({ form: v }))}
-                ${twfSegHTML('avail', [{ v: 'fit', l: 'Fit only' }, { v: 'all', l: 'Include doubts' }],
-                    'Fitness flags as published by FPL.',
-                    v => countIf({ avail: v }))}
-                ${twfSegHTML('source', [{ v: 'all', l: 'All players' }, { v: 'favorites', l: 'Favourites' }],
-                    'Favourites are the players you starred on the Players Analysis page. Budget and minutes limits are lifted there, so an unaffordable target still shows, marked.',
-                    v => countIf({ source: v }))}
-                ${twfSegHTML('defcon', [{ v: false, l: 'Any defending' }, { v: true, l: 'Clears DefCon' }],
-                    pos === 1 ? 'Goalkeepers cannot score defensive contribution points.'
-                        : 'Tackles, clearances, blocks, interceptions and recoveries. Worth 2 points once a per-match threshold is cleared \u2014 10 for defenders, 12 for midfielders.',
-                    v => countIf({ defcon: v }), pos === 1)}
+                ${filters}
+                ${clubs}
                 <span class="twf-live" data-tooltip="Players still matching every filter on this screen.">${survivors.length} left</span>
                 ${chosen}
             </div>`;
