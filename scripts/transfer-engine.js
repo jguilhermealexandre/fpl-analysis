@@ -41,7 +41,19 @@
                 if (total > bestScore) { bestScore = total; bestFormation = `${nD}-${nM}-${nF}`; bestXI = xi; }
             }
             formationScores.sort((a, b) => b.total - a.total);
-            if (!bestXI) { const av = squad.filter(p => p.lwScore > -100).sort((a, b) => b.lwScore - a.lwScore); bestXI = av.slice(0, 11); bestFormation = 'N/A'; }
+            /* Nothing legal fits — a squad short of bodies in some position,
+               which happens mid-plan and on a part-filled draft. The fallback
+               still has to field a team rather than the eleven best names: the
+               old one took the top eleven by score outright, and with two
+               keepers scoring well that is two keepers on the pitch. One
+               keeper, then the best of the rest. */
+            if (!bestXI) {
+                const av = squad.filter(p => p.lwScore > -100).sort((a, b) => b.lwScore - a.lwScore);
+                const keeper = av.find(p => p.pos === 1);
+                const outfield = av.filter(p => p.pos !== 1);
+                bestXI = (keeper ? [keeper] : []).concat(outfield.slice(0, keeper ? 10 : 11));
+                bestFormation = 'N/A';
+            }
             const xiIds = new Set(bestXI.map(p => p.id));
             const bench = squad.filter(p => !xiIds.has(p.id)).sort((a, b) => { if (a.pos === 1 && b.pos !== 1) return 1; if (b.pos === 1 && a.pos !== 1) return -1; return b.lwScore - a.lwScore; });
             return { xi: bestXI, bench, formation: bestFormation, formationScores };

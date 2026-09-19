@@ -548,7 +548,28 @@
         }
 
         // Wildcard makes every transfer free, so the cap becomes the squad itself.
-        function twMaxTransfers() { return transferState.wildcard ? 15 : 5; }
+        /* How many players a plan may hold.
+         *
+         * It was five for everything that was not a chip, which made Single a
+         * plan you could stage five transfers under — and Single's whole
+         * description is "one transfer at a time". The cap is the plan's now:
+         * one for Single, five for Multi, and a chip lets you rebuild the
+         * squad.
+         *
+         * Deliberately NOT capped at your free transfers. Exceeding them is
+         * legal and often right — that is what a hit is for, and the Points
+         * hit figure beside the counter prices it. Refusing the sixth transfer
+         * because you only have one free would be the wizard inventing a rule
+         * the game does not have.
+         *
+         * Fifteen on a chip is the squad size, which is the real limit: you
+         * cannot transfer a player you have already transferred out. */
+        const TW_PLAN_CAP = { single: 1, multi: 5, wildcard: 15, freehit: 15 };
+
+        function twMaxTransfers() {
+            if (transferState.wildcard) return 15;
+            return TW_PLAN_CAP[transferState.strategy] || 5;
+        }
 
         /* ===== How you are transferring =====
 
@@ -1296,6 +1317,7 @@
             const wc = transferState.wildcard;
             const ft = twFreeTransfers();
             const count = transferState.pending.length;
+            const max = twMaxTransfers();
             const filled = transferState.pending.filter(s => s.replacement).length;
             const itbClass = itb < 0 ? 'danger' : itb < 0.5 ? 'warning' : 'success';
 
@@ -1381,9 +1403,24 @@
             const statsEl = document.getElementById('twStats');
             if (statsEl) statsEl.innerHTML = `
                 <div class="twc-head">
+                    ${/* "5 / 1 free" reads as a limit — five allowed, one of
+                          them free — which is the opposite of what it says.
+                          It is five staged, of which one is free. The
+                          qualifier spells out what the rest cost rather than
+                          leaving the reader to find the hit figure beside it
+                          and work out that the two are about the same five. */''}
                     <div class="twc-stat">
                         <span class="twc-stat-l">Transfers</span>
-                        <span class="twc-stat-v">${count}${wc ? ` <span class="twc-unl">of 15 · unlimited</span>` : ` / ${ft} free`}</span>
+                        <span class="twc-stat-v" data-tooltip="${escHTML(wc
+                            ? `Your chip lifts the limit: up to 15 transfers this week and no hits.`
+                            : count > ft
+                                ? `${count} staged. ${ft} of them ${ft === 1 ? 'is' : 'are'} free; the other ${count - ft} cost 4 points each. You may stage up to ${max} under this plan.`
+                                : `${count} staged, out of ${ft} free transfer${ft === 1 ? '' : 's'}. You may stage up to ${max} under this plan.`)}">
+                            ${count}<span class="twc-unl">${wc
+                                ? 'of 15 · no hits'
+                                : count > ft
+                                    ? `${ft} free · ${count - ft} at \u22124`
+                                    : `${ft} free`}</span></span>
                     </div>
                     <div class="twc-stat">
                         <span class="twc-stat-l">Points hit</span>
@@ -2623,13 +2660,41 @@
         // Which plan the arrangement belongs to. Staging another transfer has to
         // rebuild it, or a player you just sold stays on the pitch.
         function twOvPlanKey() {
-            return transferState.pending
+            /* The confirmed plan belongs in the key as much as the staged one.
+               Without it, confirming empties `pending` and the key goes back to
+               the empty string it had before anything was staged — so an
+               arrangement built for the old squad was kept over a squad that had
+               changed underneath it, and the players who had just arrived were
+               not in it. */
+            const confirmed = (typeof twPlan !== 'undefined' ? twPlan : [])
+                .map(m => `${m.outId}>${m.inId}`).join(',');
+            const staged = transferState.pending
                 .map(s => `${s.soldPlayer.id}>${s.replacement ? s.replacement.id : '0'}`).join('|');
+            return `${confirmed}#${staged}`;
+        }
+
+        /* Is the arrangement we are holding a team you could actually field?
+         *
+           The key above catches the squad changing. This catches everything
+           else: an id that is no longer in the squad, a count that is not
+           eleven, two keepers. Nothing should be able to produce those — the
+           solver picks one keeper and twOvLegal refuses any swap that would
+           add a second — but this pitch is the last thing between a bad
+           arrangement and a manager reading it as their team, and rebuilding
+           from the solver is free. Cheap to check, and it cannot be wrong in
+           the direction that matters. */
+        function twOvArrangementOK(squad) {
+            if (!twOvXI || twOvXI.size !== 11) return false;
+            const xi = squad.filter(p => twOvXI.has(p.id));
+            if (xi.length !== 11) return false;
+            const n = pos => xi.filter(p => p.position === pos).length;
+            return n(1) === 1 && n(2) >= 3 && n(3) >= 2 && n(4) >= 1;
         }
 
         function twOvSyncIfNeeded() {
             const key = twOvPlanKey();
-            if (twOvXI && key === twOvKey) return;
+            const squad = twOvSquad();
+            if (twOvXI && key === twOvKey && twOvArrangementOK(squad)) return;
             const bal = twSquadBalance();
             twOvXI = new Set(bal.xi.map(p => p.id));
             twOvBench = bal.bench.map(p => p.id);

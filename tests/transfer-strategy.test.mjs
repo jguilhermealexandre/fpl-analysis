@@ -46,9 +46,13 @@ const evalIn = (ctx, expr) => vm.runInContext(expr, ctx);
 
 test('the four strategies derive the flags the rest of the screen reads', () => {
     const tw = load();
+    /* The cap is the plan's, not one number for everything that is not a chip.
+       Single was letting you stage five, which is the opposite of what Single
+       says it is. It is deliberately not capped at your free transfers either:
+       exceeding them is legal and often right — that is what a hit is for. */
     const table = [
         // strategy      wildcard  sellMode  transfer cap
-        ['single', false, false, 5],
+        ['single', false, false, 1],
         ['multi', false, true, 5],
         ['wildcard', true, true, 15],
         ['freehit', true, true, 15]
@@ -170,4 +174,35 @@ test('every strategy is offered with an explanation', () => {
         assert.ok(s.tip && s.tip.length > 30, `${s.id} explains itself: ${s.tip}`);
     }
     assert.deepEqual([...strategies.map(s => s.id)], ['single', 'multi', 'wildcard', 'freehit']);
+});
+
+
+/* ===== the cap is the plan's, and only the plan's =====
+
+   Two things were conflated in the report that produced this. The cap used to
+   be five for everything that was not a chip, so Single — "one transfer at a
+   time" — would let you stage five. And the counter read "5 / 1 free", which
+   parses as "five allowed, one of them free" rather than "five staged, one of
+   them free", so a manager with one free transfer read it as a claim they
+   could make five for nothing. */
+
+test('a plan caps at what the plan says, not at a single shared number', () => {
+    const tw = load();
+    const cap = s => { tw.twSetStrategy(s); return tw.twMaxTransfers(); };
+    assert.equal(cap('single'), 1, 'one transfer at a time means one');
+    assert.equal(cap('multi'), 5);
+    assert.equal(cap('wildcard'), 15, 'a chip is bounded by the squad, not by a rule');
+    assert.equal(cap('freehit'), 15);
+});
+
+test('having one free transfer does not cap the plan at one', () => {
+    /* twFreeTransfers() is stubbed at 1 in load(). Exceeding it costs four
+       points a go and is often the right move — refusing it would be the
+       wizard inventing a rule the game does not have. The hit is what prices
+       it, so that is what has to move, not the cap. */
+    const tw = load();
+    tw.twSetStrategy('multi');
+    assert.equal(tw.twMaxTransfers(), 5, 'still five with one free transfer');
+    tw.transferState.pending = [1, 2, 3].map(i => ({ soldPlayer: { id: i }, replacement: null }));
+    assert.equal(tw.getTWHitCost(), 8, 'and the two beyond the free one cost 4 each');
 });
