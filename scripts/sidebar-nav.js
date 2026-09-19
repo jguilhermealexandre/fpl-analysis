@@ -28,7 +28,7 @@ function v2HasTeam() {
 function loadSidebarNav() {
     if (!v2HasTeam()) return loadLandingNav();
     document.documentElement.classList.add('v2-shell-app');
-    return fetch('sidebar-nav.html?v=314')
+    return fetch('sidebar-nav.html?v=315')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -91,11 +91,43 @@ function loadSidebarNav() {
                everywhere else ntMount() draws the same feed out of storage, so
                the bell is on every page rather than on one of thirteen. */
             if (typeof ntMount === 'function') ntMount();
+
+            revealAdminLink();
         })
         .catch(error => {
             console.warn('Sidebar navigation could not be loaded:', error);
             return null;
         });
+}
+
+/* The Admin link, shown to the accounts it belongs to.
+ *
+ * A SECOND COPY OF A LIST, on purpose, and the same arrangement entitlement
+ * already lives under: functions/lib/admin.js holds the copy that decides, this
+ * one only decides whether to draw a link, and tests/admin-gate.test.mjs fails
+ * if the two ever disagree. The browser cannot be given the deciding copy —
+ * it is the browser — and the edge cannot dress the nav.
+ *
+ * So this is cosmetic, and safe to be wrong in one direction only. Someone who
+ * edits the array in their devtools reveals a link to a page the middleware
+ * will refuse them. Someone the list misses sees no link to a page they can
+ * still open by typing the address. Neither is a hole; the gate is elsewhere. */
+const SIDEBAR_ADMIN_USER_IDS = [
+    '2072e895-0395-43c9-b839-c9a25b2102b0',
+    '20987bc9-ea9b-4149-ac84-06a4e7251fee'
+];
+
+async function revealAdminLink() {
+    const item = document.getElementById('v2NavAdmin');
+    if (!item || typeof auSession !== 'function') return;
+    try {
+        const session = await auSession();
+        const id = session && session.userId ? String(session.userId).trim().toLowerCase() : null;
+        if (id && SIDEBAR_ADMIN_USER_IDS.indexOf(id) > -1) item.hidden = false;
+    } catch (e) {
+        /* No session, or the refresh failed. The link stays hidden, which is
+           the same thing it would be for anybody else. */
+    }
 }
 
 /* ===== The narrow-screen shell =====
@@ -112,7 +144,7 @@ function loadSidebarNav() {
 /* The landing shell: a top bar rather than a rail. */
 function loadLandingNav() {
     document.documentElement.classList.add('v2-shell-landing');
-    return fetch('landing-nav.html?v=314')
+    return fetch('landing-nav.html?v=315')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);

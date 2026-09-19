@@ -31,6 +31,7 @@
  * database-function version did — see lib/entitlement.js.
  */
 import { premiumReason } from './lib/premium.js';
+import { adminReason, isAdminUser } from './lib/admin.js';
 import { isPremiumProfile } from './lib/entitlement.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, ACCESS_COOKIE, REFRESH_COOKIE } from './lib/supabase.js';
 
@@ -85,6 +86,106 @@ async function entitlement(token) {
     if (!Array.isArray(rows)) return 'down';
     if (!rows.length) return 'noprofile';
     return isPremiumProfile(rows[0], Date.now()) ? 'premium' : 'free';
+}
+
+/* Whose token this is, according to the people who issued it.
+ *
+ * The premium gate never needs to know: row level security answers for the
+ * caller's own row, so no identity has to cross this file. The admin gate does
+ * need to know, and the tempting shortcut — base64-decode the JWT and read
+ * `sub` — is exactly the hole that makes it worthless. A JWT is only an
+ * assertion until something checks the signature, and anyone can write one
+ * claiming to be an id on the allowlist. So the token goes to Supabase and
+ * Supabase says who it belongs to, or rejects it.
+ *
+ * DELIBERATELY NOT CACHED, unlike the entitlement verdict above. Two people
+ * open this area, a handful of times, and each visit costs three round trips
+ * instead of one. That is a rounding error against a cache of verified
+ * identities, which is a thing worth getting wrong exactly once.
+ */
+async function verifiedUserId(token) {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: {
+            apikey: SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json'
+        }
+    });
+    // Supabase answers 403 with bad_jwt for a malformed or expired token, and
+    // 401 for a missing one. Both mean "sign in again", neither means "no".
+    if (res.status === 401 || res.status === 403) return { verdict: 'stale' };
+    if (!res.ok) return { verdict: 'down' };
+
+    let body = null;
+    try { body = await res.json(); } catch { return { verdict: 'down' }; }
+    const id = body && typeof body.id === 'string' ? body.id : null;
+    return id ? { verdict: 'ok', id } : { verdict: 'down' };
+}
+
+/* An honest refusal.
+ *
+ * 403 and not 404. Pretending the page is not there would be obscurity rather
+ * than access control, and it cannot work anyway: the repository is public, so
+ * /admin.html is readable in the source tree regardless. What it WOULD achieve
+ * is sending the two people the area exists for to debug a missing page when
+ * their session has simply lapsed. */
+function adminRefusal(reason) {
+    if (reason === 'data') {
+        return new Response('Not yours.\n', {
+            status: 403,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'private, no-store' }
+        });
+    }
+    return new Response(
+        '<!doctype html><meta charset="utf-8"><title>Restricted</title>'
+        + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        + '<meta name="robots" content="noindex,nofollow">'
+        + '<style>body{font:16px/1.6 system-ui,sans-serif;margin:12vh auto;max-width:34rem;padding:0 1.5rem;'
+        + 'color:#100F0F;background:#EAEAE8}a{color:#065F46}@media(prefers-color-scheme:dark)'
+        + '{body{color:#F2F2F0;background:#15191F}a{color:#00E57D}}</style>'
+        + '<h1>Restricted</h1><p>This part of EasyFPL is not open to your account.</p>'
+        + '<p><a href="/">Back to your dashboard</a></p>',
+        {
+            status: 403,
+            headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store' }
+        }
+    );
+}
+
+/* The admin area: a verified identity on a short list, and nothing else.
+ *
+ * Note what is NOT consulted here — the plan. Admin is not the top tier of
+ * premium, it is a different question, and wiring it to entitlement would mean
+ * anyone who ever pays inherits it. */
+async function adminGate(request, next, url, reason) {
+    if (reason === 'unreadable') {
+        return new Response('Bad request', { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    }
+
+    const cookies = request.headers.get('Cookie');
+    const token = readCookie(cookies, ACCESS_COOKIE);
+    const toLogin = () => new Response(null, {
+        status: 302,
+        headers: {
+            Location: `/login.html?next=${encodeURIComponent(url.pathname + url.search)}`,
+            'Cache-Control': 'private, no-store'
+        }
+    });
+
+    /* No access token — lapsed, or never signed in on this browser. Both go to
+       sign-in rather than to a refusal: the edge cannot run the refresh, and a
+       reader who is about to become an admin one redirect from now should not
+       be told they are not one. */
+    if (!token) return toLogin();
+
+    let who;
+    try { who = await verifiedUserId(token); } catch { who = { verdict: 'down' }; }
+
+    if (who.verdict === 'ok') {
+        return isAdminUser(who.id) ? uncacheable(await next()) : adminRefusal(reason);
+    }
+    if (who.verdict === 'stale') return toLogin();
+    return adminRefusal(reason);       // unreachable is not permission
 }
 
 /* One answer per token, briefly, and only when the answer was yes.
@@ -208,6 +309,13 @@ export async function onRequest(context) {
 
     const toApex = canonicalHost(url);
     if (toApex) return toApex;
+
+    /* Admin first, and separately from premium. The two ask different
+       questions — "is this account paid" against "is this account one of two
+       people" — and the admin paths are not premium paths, so neither list can
+       answer for the other. */
+    const admin = adminReason(url.pathname);
+    if (admin) return adminGate(request, next, url, admin);
 
     const reason = premiumReason(url.pathname);
     if (!reason) return next();          // the ordinary case, and it costs nothing
