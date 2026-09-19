@@ -51,8 +51,7 @@
         html.has-team #featurePlayers,
         html.has-team #featureTeams,
         html.has-team #featureRivals,
-        html.has-team #testimonials,
-        html.has-team #closingCta {
+        html.has-team #testimonials {
             display: none !important;
         }
         html.has-team #heroPersonalized {
@@ -3473,104 +3472,6 @@
             .testimonials-header h2 { font-size: 26px; }
         }
 
-        /* ===== CLOSING CTA SECTION ===== */
-        .closing-cta {
-            padding: 80px 24px;
-            background: linear-gradient(135deg, #059669 0%, #10B981 50%, #34D399 100%);
-            position: relative;
-            overflow: hidden;
-            text-align: center;
-        }
-
-        .closing-cta::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 1px, transparent 0);
-            background-size: 28px 28px;
-            pointer-events: none;
-        }
-
-        .closing-cta-inner {
-            max-width: 600px;
-            margin: 0 auto;
-            position: relative;
-            z-index: 1;
-        }
-
-        .closing-cta h2 {
-            font-family: var(--font-display);
-            font-size: 36px;
-            font-weight: 600;
-            color: #fff;
-            margin-bottom: 16px;
-            letter-spacing: -0.5px;
-        }
-
-        .closing-cta-desc {
-            font-size: 17px;
-            color: rgba(255,255,255,0.85);
-            line-height: 1.6;
-            margin-bottom: 32px;
-        }
-
-        .closing-cta-form {
-            display: flex;
-            align-items: center;
-            gap: var(--space-2);
-            max-width: 400px;
-            margin: 0 auto 12px;
-            background: #fff;
-            border-radius: var(--radius-full);
-            padding: 5px 5px 5px 20px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-            transition: all 200ms ease-out;
-        }
-
-        .closing-cta-form:focus-within {
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2), 0 0 0 3px rgba(255,255,255,0.3);
-        }
-
-        .closing-cta-form input {
-            border: none;
-            background: transparent;
-            font-family: var(--font-mono);
-            font-size: 15px;
-            color: var(--text-primary);
-            outline: none;
-            width: 100%;
-            min-width: 0;
-        }
-
-        .closing-cta-form input::placeholder {
-            color: var(--text-muted);
-            font-family: var(--font-body);
-        }
-
-        .closing-cta-form .btn {
-            border-radius: var(--radius-full);
-            flex-shrink: 0;
-            padding: 10px 24px;
-            font-size: 14px;
-        }
-
-        .closing-cta-hint {
-            font-size: 12px;
-            color: rgba(255,255,255,0.7);
-        }
-
-        .closing-cta-hint a {
-            color: #fff;
-            font-weight: 600;
-            text-decoration: underline;
-        }
-
-        @media (max-width: 768px) {
-            .closing-cta { padding: 48px 16px; }
-            .closing-cta h2 { font-size: 28px; }
-            .closing-cta-desc { font-size: 15px; }
-        }
-
         /* ===== QUICK ACTIONS ROW (returning users) ===== */
         .quick-actions {
             display: flex;
@@ -3911,13 +3812,13 @@
                     Join thousands of FPL managers using data-driven insights to climb their mini-leagues. Analyze your squad, find hidden gems, and plan transfers with confidence — completely free.
                 </p>
                 <div class="hero-cta-row">
-                    <!-- The way in. This used to open the Team ID box, because
-                         that was the whole of identity here and getting started
-                         and logging in were one act. They are two now: this is
-                         where a new reader starts, and the top bar carries the
-                         door for one coming back. The team id is asked for after
-                         the account exists, so it has somewhere to be kept. -->
-                    <a class="hero-cta-primary" href="/register.html">
+                    <!-- The way in is the Team ID box again. Accounts exist and
+                         their pages still answer, but they are off the furniture
+                         for now: six thousand people a month use this site with
+                         an id alone, and the front door should be the door they
+                         actually use. The register push can come back when
+                         there is a reason to funnel people through it. -->
+                    <a class="hero-cta-primary" onclick="openLoginModal()" style="cursor:pointer;">
                         Get Started — It's Free <i data-lucide="arrow-right" class="icon"></i>
                     </a>
                     <a class="hero-cta-secondary" onclick="document.getElementById('howItWorks').scrollIntoView({behavior:'smooth'})" style="cursor:pointer;">
@@ -4185,7 +4086,7 @@
                     <div class="welcome-path-label">Explore Team Analysis</div>
                     <div class="welcome-path-desc">See defensive and attacking stats for all 20 Premier League teams.</div>
                 </a>
-                <div class="welcome-path-card welcome-path-cta" onclick="document.getElementById('closingCta').scrollIntoView({behavior:'smooth'});" style="cursor:pointer;">
+                <div class="welcome-path-card welcome-path-cta" onclick="openLoginModal()" style="cursor:pointer;">
                     <div class="welcome-path-icon" style="background:var(--color-wizard-muted);">
                         <i data-lucide="wand-2" style="width:24px;height:24px;color:var(--color-wizard);"></i>
                     </div>
@@ -4540,24 +4441,6 @@
         </div>
     </section>
 
-    <!-- Closing CTA -->
-    <section class="closing-cta reveal-on-scroll" id="closingCta">
-        <div class="closing-cta-inner">
-            <h2>Ready to Climb Your Mini-League?</h2>
-            <p class="closing-cta-desc">Paste your Team ID and get personalized insights in seconds. No sign-up, no fees, no spam. Just pure FPL edge.</p>
-            <div class="closing-cta-form">
-                <input type="text" id="closingCtaInput" placeholder="Your Team ID" inputmode="numeric">
-                <button class="btn btn-primary btn-sm" onclick="submitFromClosingCta()">Let's Go</button>
-            </div>
-            <p class="closing-cta-hint">
-                Find your ID at <a href="https://fantasy.premierleague.com" target="_blank">fantasy.premierleague.com</a> → My Team → check the URL
-            </p>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="loadDemoTeam()" style="margin-top:10px;">
-                <i data-lucide="flask-conical" style="width:14px;height:14px;"></i> Try a Demo Team
-            </button>
-        </div>
-    </section>
-
     </div><!-- /.v2-main-content -->
 
     <script src="scripts/error-monitor.js?v=318"></script>
@@ -4632,7 +4515,6 @@
             document.getElementById('featureTeams').classList.remove('hidden');
             document.getElementById('featureRivals').classList.remove('hidden');
             document.getElementById('testimonials').classList.remove('hidden');
-            document.getElementById('closingCta').classList.remove('hidden');
             if (deadlineInterval) { clearInterval(deadlineInterval); deadlineInterval = null; }
         }
 
@@ -4643,16 +4525,6 @@
             saveTeamId(teamId);
             showNavTeamBadge(teamId);
             activateTeamPage(teamId);
-        }
-
-        function submitFromClosingCta() {
-            const input = document.getElementById('closingCtaInput');
-            const teamId = input.value.trim();
-            if (!teamId || isNaN(teamId)) return;
-            saveTeamId(teamId);
-            showNavTeamBadge(teamId);
-            activateTeamPage(teamId);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         /* Where the visitor was actually trying to go.
@@ -4718,7 +4590,6 @@
             document.getElementById('featureTeams').classList.add('hidden');
             document.getElementById('featureRivals').classList.add('hidden');
             document.getElementById('testimonials').classList.add('hidden');
-            document.getElementById('closingCta').classList.add('hidden');
             loadTicker(teamId);
         }
 
@@ -6603,9 +6474,6 @@
         // Enter key handlers
         document.getElementById('onboardingInput').addEventListener('keypress', e => {
             if (e.key === 'Enter') submitFromOnboarding();
-        });
-        document.getElementById('closingCtaInput').addEventListener('keypress', e => {
-            if (e.key === 'Enter') submitFromClosingCta();
         });
 
         // V2: load the shared sidebar partial, then check for a saved team ID.

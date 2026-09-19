@@ -112,6 +112,16 @@ test('the nav link ships hidden and points at the hub', () => {
     assert.match(link[0], /href="admin\.html"/);
 });
 
+test('and hidden actually hides it, despite the flex on every nav item', () => {
+    /* The attribute is only a user-agent display:none, and .v2-nav-item sets
+       display:flex — an author rule, which wins. That combination put the
+       Admin link in every visitor's sidebar on launch day. The stylesheet has
+       to say [hidden] means hidden, explicitly, and keep saying it. */
+    const css = read('styles/v2-design.css');
+    assert.match(css, /\.v2-nav-item\[hidden\]\s*\{\s*display:\s*none\s*!important/,
+        'without this rule, display:flex overrides the hidden attribute for everyone');
+});
+
 test('every admin page the repo ships is one the gate already covers', () => {
     /* Reads the directory rather than trusting a list, so a new admin-*.html
        cannot arrive unprotected. */

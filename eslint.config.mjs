@@ -1462,7 +1462,6 @@ export default [
                 statsView: 'writable',
                 statsVisibleCols: 'writable',
                 submitAIQuery: 'writable',
-                submitFromClosingCta: 'writable',
                 submitFromOnboarding: 'writable',
                 submitTeamIdDrawer: 'writable',
                 submitTeamIdNav: 'writable',
