@@ -51,17 +51,17 @@
     <meta name="twitter:title" content="EasyFPL — League Rivals">
     <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=324">
-    <link rel="stylesheet" href="styles/v2-design.css?v=324">
-    <link rel="stylesheet" href="styles/responsive.css?v=324">
-    <script src="scripts/error-monitor.js?v=324"></script>
-    <script src="scripts/auth.js?v=324"></script>
-    <script src="scripts/common.js?v=324"></script>
+    <link rel="stylesheet" href="styles/common.css?v=325">
+    <link rel="stylesheet" href="styles/v2-design.css?v=325">
+    <link rel="stylesheet" href="styles/responsive.css?v=325">
+    <script src="scripts/error-monitor.js?v=325"></script>
+    <script src="scripts/auth.js?v=325"></script>
+    <script src="scripts/common.js?v=325"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=324"></script>
-    <script src="scripts/notifications.js?v=324"></script>
-    <script src="scripts/sidebar-nav.js?v=324"></script>
+    <script src="scripts/push-alerts.js?v=325"></script>
+    <script src="scripts/notifications.js?v=325"></script>
+    <script src="scripts/sidebar-nav.js?v=325"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -823,6 +823,27 @@
         .sparkline-bar { width: 4px; border-radius: 1px; background: var(--color-primary); min-height: 2px; }
 
         /* ===== SQUAD STRENGTH ===== */
+        /* The pitch beside its two read-outs rather than above them. It is the
+           one thing on this tab you look at rather than read, and stacked it
+           pushed the fixture run a screen and a half down. v2WrapSections()
+           boxes each .section-header run inside its own column, so the left
+           column is one panel and the right is two stacked ones. */
+        .sq-col .pitch-container, .sq-col .pos-comparison, .sq-col .strength-grid { margin-bottom: 0; }
+        /* Stated as a min-width so that below the breakpoint none of it
+           applies and the single-column rules further down — which are less
+           specific than a .sq-col-side selector and would lose to it — govern
+           the stacked layout unopposed. */
+        @media (min-width: 1081px) {
+            .sq-layout { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+            .sq-layout .sq-col { min-width: 0; }
+            .sq-layout .v2-section:last-child { margin-bottom: 0; }
+            /* Four positions across a half-width column is 120px a card, and
+               six managers one per row is a column twice the pitch's height.
+               Both halve. */
+            .sq-col-side .pos-comparison { grid-template-columns: repeat(2, 1fr); }
+            .sq-col-side .strength-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+        }
+
         .strength-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6); }
         .strength-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-4); transition: all 150ms; }
         .strength-card:hover { transform: translateY(-2px); }
@@ -1215,23 +1236,28 @@
 
             <!-- Tab: Squad Strength -->
             <div class="tab-content" id="tab-strength">
-                <div class="section-header">
-                    <h2><i data-lucide="shield" style="width:20px;height:20px;display:inline;"></i> Position Comparison</h2>
-                </div>
-                <p class="section-desc">Your starting XI total points per position vs rival average.</p>
-                <div class="pos-comparison" id="posComparison"></div>
+                <div class="sq-layout">
+                    <div class="sq-col sq-col-pitch">
+                        <div class="section-header">
+                            <h2 style="color:var(--color-success);"><i data-lucide="target" style="width:20px;height:20px;display:inline;"></i> Most Popular XI</h2>
+                        </div>
+                        <p class="section-desc">The template team built from the most-started players across all managers.</p>
+                        <div class="pitch-container" id="templatePitch"></div>
+                    </div>
+                    <div class="sq-col sq-col-side">
+                        <div class="section-header">
+                            <h2><i data-lucide="shield" style="width:20px;height:20px;display:inline;"></i> Position Comparison</h2>
+                        </div>
+                        <p class="section-desc">Your starting XI total points per position vs rival average.</p>
+                        <div class="pos-comparison" id="posComparison"></div>
 
-                <div class="section-header">
-                    <h2 style="color:var(--color-success);"><i data-lucide="target" style="width:20px;height:20px;display:inline;"></i> Most Popular XI</h2>
+                        <div class="section-header">
+                            <h2><i data-lucide="calendar" style="width:20px;height:20px;display:inline;"></i> Fixture Difficulty Ranking</h2>
+                        </div>
+                        <p class="section-desc">Average <abbr title="Fixture Difficulty Rating — 1 (easiest) to 5 (hardest) based on opponent strength">FDR</abbr> of each manager's starting XI for the next 3 gameweeks. Lower = easier run.</p>
+                        <div class="strength-grid" id="strengthGrid"></div>
+                    </div>
                 </div>
-                <p class="section-desc">The template team built from the most-started players across all managers.</p>
-                <div class="pitch-container" id="templatePitch"></div>
-
-                <div class="section-header">
-                    <h2><i data-lucide="calendar" style="width:20px;height:20px;display:inline;"></i> Fixture Difficulty Ranking</h2>
-                </div>
-                <p class="section-desc">Average <abbr title="Fixture Difficulty Rating — 1 (easiest) to 5 (hardest) based on opponent strength">FDR</abbr> of each manager's starting XI for the next 3 gameweeks. Lower = easier run.</p>
-                <div class="strength-grid" id="strengthGrid"></div>
             </div>
 
             <!-- Tab: Matrix -->
