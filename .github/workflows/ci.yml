@@ -108,14 +108,23 @@ jobs:
         run: npm test 2>&1 | tee /tmp/test.log
 
       # A red test step used to say only "Process completed with exit code 1".
-      # The run log itself needs an authenticated download, so anyone without
-      # push access — or working from a machine that cannot run node at all —
-      # was left guessing which assertion broke. The job summary rides along
-      # with the check run and is readable without a token, so the failure
-      # travels with the result instead of behind it.
+      # The run log needs an authenticated download and — it turns out — so does
+      # the job summary: it renders in the UI but has no public API surface, so
+      # a machine without a token still could not read it. Annotations can:
+      # they ride on the check run, which is public on a public repository. So
+      # the failing test names go out as ::error annotations, and the fuller
+      # tail still goes to the summary for anyone looking at the UI.
+      #
+      # This matters more than usual here because the suite has an intermittent
+      # failure that predates the current work — runs alternate red and green on
+      # identical trees — and it cannot be hunted while every red run says only
+      # "exit code 1".
       - name: Say which test failed
         if: failure()
         run: |
+          grep -E '^✖|^not ok' /tmp/test.log 2>/dev/null | head -20 | while IFS= read -r line; do
+            echo "::error title=Unit tests::${line}"
+          done
           {
             echo '## Unit tests'
             echo ''
