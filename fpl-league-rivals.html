@@ -51,17 +51,17 @@
     <meta name="twitter:title" content="EasyFPL — League Rivals">
     <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=323">
-    <link rel="stylesheet" href="styles/v2-design.css?v=323">
-    <link rel="stylesheet" href="styles/responsive.css?v=323">
-    <script src="scripts/error-monitor.js?v=323"></script>
-    <script src="scripts/auth.js?v=323"></script>
-    <script src="scripts/common.js?v=323"></script>
+    <link rel="stylesheet" href="styles/common.css?v=324">
+    <link rel="stylesheet" href="styles/v2-design.css?v=324">
+    <link rel="stylesheet" href="styles/responsive.css?v=324">
+    <script src="scripts/error-monitor.js?v=324"></script>
+    <script src="scripts/auth.js?v=324"></script>
+    <script src="scripts/common.js?v=324"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=323"></script>
-    <script src="scripts/notifications.js?v=323"></script>
-    <script src="scripts/sidebar-nav.js?v=323"></script>
+    <script src="scripts/push-alerts.js?v=324"></script>
+    <script src="scripts/notifications.js?v=324"></script>
+    <script src="scripts/sidebar-nav.js?v=324"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -304,47 +304,60 @@
             background: var(--surface-1);
             border: 1px solid var(--border-default);
             border-radius: var(--radius-lg);
-            padding: var(--space-4);
-            transition: all 150ms;
+            overflow: hidden;
+            transition: border-color 150ms, transform 150ms, box-shadow 150ms;
         }
 
         .player-card:hover {
             border-color: var(--color-info);
             transform: translateY(-2px);
+            box-shadow: var(--v2-card-shadow, 0 6px 18px rgba(15, 23, 42, .08));
         }
 
         .player-card.danger { border-left: 3px solid var(--color-error); }
         .player-card.opportunity { border-left: 3px solid var(--color-success); }
 
-        .player-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: var(--space-3);
+        /* The club's colour behind the face, the way the player modal and the
+           captain hero do it. The shape is a soft wash rather than a solid
+           block so the name stays legible against every kit in the league. */
+        .pc-hero {
+            position: relative;
+            display: flex; align-items: center; gap: var(--space-3);
+            padding: var(--space-4);
+            overflow: hidden;
         }
-
-        .player-name {
-            font-size: 15px;
-            font-weight: 600;
-            margin-bottom: var(--space-1);
-            display: flex;
-            align-items: center;
-            gap: var(--space-2);
+        .pc-hero-shape {
+            position: absolute; inset: 0;
+            background: linear-gradient(115deg,
+                color-mix(in srgb, var(--club, #37003C) 24%, transparent) 0%,
+                color-mix(in srgb, var(--club, #37003C) 7%, transparent) 58%,
+                transparent 100%);
+            pointer-events: none;
         }
-
-        .player-meta {
-            font-size: 12px;
-            color: var(--text-muted);
+        /* Everything but the wash stacks above it. This must exclude the shape:
+           a bare `.pc-hero > *` matches it too, at the same specificity and
+           later in the file, which turned the absolutely-positioned wash into
+           a zero-height inline element and the club colour never appeared. */
+        .pc-hero > :not(.pc-hero-shape) { position: relative; }
+        .pc-hero .v2-pid-portrait { --v2-pid-face: 48px; --v2-pid-crest: 20px; flex-shrink: 0; }
+        .pc-hero-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+        .pc-hero-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 17px; font-weight: 700; color: var(--text-primary);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
+        .pc-hero-meta { font-size: 12px; color: var(--text-muted); }
+        .pc-hero-side { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); flex-shrink: 0; }
+        .pc-flags { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; justify-content: flex-end; }
 
         .player-price {
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--color-success);
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
         }
 
-        .ownership-bar-container { margin-bottom: var(--space-3); }
+        .ownership-bar-container { padding: 0 var(--space-4); margin-bottom: var(--space-3); }
 
         .ownership-bar-label {
             display: flex;
@@ -371,15 +384,23 @@
         .ownership-bar-fill.medium { background: var(--color-warning); }
         .ownership-bar-fill.low { background: var(--color-success); }
 
+        /* Three read-outs on one strip at the foot of the card, each a label
+           over its number, instead of three "Form: 4.2" run-ons. */
         .player-stats {
-            display: flex;
-            gap: var(--space-4);
-            font-size: 12px;
-            color: var(--text-muted);
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            border-top: 1px solid var(--border-subtle);
+            background: var(--surface-2);
         }
 
-        .player-stat { display: flex; align-items: center; gap: var(--space-1); }
-        .player-stat-value { color: var(--text-primary); font-weight: 500; }
+        .player-stat {
+            display: flex; flex-direction: column; align-items: center; gap: 1px;
+            padding: var(--space-2) var(--space-1);
+        }
+        .player-stat + .player-stat { border-left: 1px solid var(--border-subtle); }
+        .player-stat-k { font-size: 10px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: var(--text-muted); }
+        .player-stat-k abbr { text-decoration: none; border-bottom: 1px dotted var(--border-default); }
+        .player-stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: var(--text-primary); font-weight: 700; }
 
         .you-badge, .missing-badge {
             display: inline-block;
@@ -419,14 +440,45 @@
             color: var(--text-muted);
         }
 
+        /* The pill every other control on the site is, with its own caret.
+           A bare <select> at 12px on a white page is the least visible thing
+           in a section whose whole content depends on it — on Head-to-Head
+           nothing renders at all until it has been used, and it did not look
+           like something to use. */
         .matrix-filter select {
+            appearance: none; -webkit-appearance: none;
             background: var(--surface-1);
-            border: 1px solid var(--border-default);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center; background-size: 12px;
+            border: 1px solid var(--v2-card-border, var(--border-emphasis));
             color: var(--text-primary);
-            padding: var(--space-2) var(--space-3);
-            border-radius: var(--radius-md);
-            font-family: inherit;
-            font-size: 12px;
+            padding: 8px 34px 8px 14px;
+            border-radius: var(--radius-full);
+            font-family: var(--font-display, inherit);
+            font-size: 12.5px; font-weight: 600;
+            cursor: pointer;
+            transition: border-color 140ms ease, box-shadow 140ms ease;
+        }
+        .matrix-filter select:hover { border-color: var(--color-primary); }
+        .matrix-filter select:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
+        }
+        .matrix-filter label {
+            font-family: var(--font-display, inherit);
+            font-weight: 700; letter-spacing: .03em; text-transform: uppercase; font-size: 10px;
+        }
+        /* Head-to-Head opens on nothing but this control, so it is the page's
+           call to action until a rival is chosen rather than a filter beside
+           a table that is already full. */
+        #tab-h2h .matrix-controls { justify-content: center; margin-bottom: var(--space-5); }
+        #tab-h2h .matrix-filter select { font-size: 13.5px; padding: 10px 38px 10px 18px; }
+        #tab-h2h .matrix-filter select:not(:valid),
+        #tab-h2h .matrix-filter select.is-empty {
+            border-color: var(--color-primary);
+            background-color: var(--color-primary-muted);
+            color: var(--color-primary-text, var(--color-primary));
         }
 
         .matrix-container {
@@ -482,10 +534,14 @@
             padding-left: var(--space-4);
         }
 
+        .matrix-table td.player-cell .mx-p { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+        .matrix-table td.player-cell .mx-p .v2-pid { --v2-pid-face: 24px; --v2-pid-crest: 14px; flex-shrink: 0; }
+        .matrix-table td.player-cell .mx-p-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
         .matrix-table td.player-cell .pos {
             font-size: 10px;
             color: var(--text-muted);
-            margin-left: var(--space-2);
+            flex-shrink: 0;
         }
 
         .matrix-table tr:hover td { background: var(--surface-2); }
@@ -618,6 +674,39 @@
            Two columns, each a list of cards with a face on them: yours in
            the brand green, the rival's in the warning amber, so which side
            a player is on is the first thing the colour tells you. */
+        /* The two armbands face each other across a VS, because that is the one
+           pick in this comparison worth double and the two sides of it are
+           the point. Each gets the face and the club rather than a name on a
+           grey box. The strip is capped and centred — at full width two names
+           sat alone in half a screen each. */
+        .rv-cap-row {
+            display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch;
+            gap: var(--space-3); margin: var(--space-4) auto 0; max-width: 620px;
+        }
+        .rv-cap-box {
+            display: flex; flex-direction: column; gap: var(--space-2); align-items: center;
+            background: var(--surface-1); border: 1px solid var(--border-default);
+            border-top: 3px solid var(--border-default);
+            border-radius: var(--radius-lg); padding: var(--space-4) var(--space-3);
+        }
+        .rv-cap-box.mine { border-top-color: var(--color-primary); }
+        .rv-cap-box.theirs { border-top-color: var(--color-warning); }
+        .rv-cap-vs {
+            align-self: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px; font-weight: 800; letter-spacing: .1em;
+            color: var(--text-muted);
+        }
+        .rv-cap-label { font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--text-muted); text-align: center; }
+        .rv-cap-who { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; max-width: 100%; }
+        .rv-cap-who .v2-pid-portrait { --v2-pid-face: 52px; --v2-pid-crest: 22px; margin-bottom: 2px; }
+        .rv-cap-name { font-size: 16px; font-weight: 700; color: var(--text-primary); text-align: center; }
+        .rv-cap-sub { font-size: 11px; color: var(--text-muted); text-align: center; }
+        @media (max-width: 560px) {
+            .rv-cap-row { grid-template-columns: 1fr; }
+            .rv-cap-vs { padding: 2px 0; }
+        }
+
         .rv-diff-cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin-top: var(--space-6); }
         .rv-diff-head {
             display: flex; align-items: center; gap: 8px;
@@ -660,6 +749,46 @@
         .captain-badge { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 9px; font-weight: 700; text-transform: uppercase; background: #F59E0B; color: #000; }
         .captain-badge.vc { background: var(--surface-3); color: var(--text-secondary); }
         .bench-badge { display: inline-block; padding: 2px 6px; border-radius: var(--radius-sm); font-size: 9px; font-weight: 600; background: var(--surface-3); color: var(--text-muted); }
+        /* Two columns: the consensus — one hero, one bar, one slider — is a
+           fixed-width read, and the roll call of every manager's armband is
+           the thing that actually needs the room. They were stacked, which
+           left the table starting a screen and a half down. */
+        .cap-layout { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+        .cap-layout .cap-col { min-width: 0; }
+        .cap-layout .section-header { margin-top: 0; }
+        .cap-table-wrap { overflow-x: auto; }
+        @media (max-width: 1080px) { .cap-layout { grid-template-columns: 1fr; gap: var(--space-5); } }
+
+        /* The hero is built for a full-width card and this column is 420px, so
+           it takes the same treatment .pdm-hero.is-compact gives it elsewhere:
+           a narrower portrait, and the percentage lifted out of the right-hand
+           column into the corner so the name has the width to itself. Without
+           it the club, position and price ran under the two figures on the
+           right. */
+        .cap-col-consensus .cap-hero { min-height: 132px; padding: 0 16px; gap: 0 12px; }
+        .cap-col-consensus .cap-hero .pdm-hero-photo { height: 132px; width: 104px; }
+        .cap-col-consensus .cap-hero .pdm-hero-face { height: 132px; max-width: 104px; }
+        .cap-col-consensus .cap-hero .pdm-hero-text { padding: 16px 0 14px; }
+        .cap-col-consensus .cap-hero .pdm-hero-last { font-size: 25px; }
+        .cap-col-consensus .cap-hero .pdm-hero-meta { font-size: 11px; gap: 6px; margin-top: 6px; }
+        .cap-col-consensus .cap-hero .pdm-hero-crest { width: 16px; height: 16px; }
+        .cap-col-consensus .cap-hero { grid-template-columns: auto minmax(0, 1fr); }
+        .cap-col-consensus .cap-hero .pdm-hero-text { padding-right: 76px; }
+        .cap-col-consensus .cap-hero .pdm-hero-side {
+            position: absolute; top: 10px; right: 14px; z-index: 2;
+            align-items: flex-end; gap: 2px; padding: 0;
+        }
+        .cap-col-consensus .cap-hero .pdm-hero-price { font-size: 12px; font-weight: 700; opacity: .85; }
+        .cap-col-consensus .cap-hero .cap-hero-pct { margin-bottom: 0; font-size: 12px; padding: 2px 9px; }
+
+        /* A captain is a player, so he gets a face here too — the same
+           identity pair the squad table and the transfer lists use. */
+        .cap-p { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+        .cap-p .v2-pid { --v2-pid-face: 26px; --v2-pid-crest: 15px; flex-shrink: 0; }
+        .cap-p-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .cap-p-name { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cap-p-sub { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+        .cap-p.is-vc .cap-p-name { font-weight: 500; }
         .captain-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface-1); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border-default); }
         .captain-table th, .captain-table td { padding: var(--space-3) var(--space-4); text-align: left; border-bottom: 1px solid var(--border-subtle); }
         .captain-table th { background: var(--surface-2); font-weight: 600; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
@@ -709,37 +838,14 @@
         .fdr-chip.fdr-5 { background: var(--fdr-5); }
         .fdr-strip { display: flex; gap: 3px; }
         .chip-played-badge { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 9px; font-weight: 700; text-transform: uppercase; background: #A78BFA; color: #fff; }
-        .pitch-container { background: linear-gradient(180deg, #2d8a4e 0%, #256d3b 100%); border-radius: var(--radius-lg); padding: var(--space-6) var(--space-4); margin-bottom: var(--space-6); position: relative; overflow: hidden; min-height: 380px; }
-        .pitch-container::before { content: ''; position: absolute; top: 50%; left: 10%; right: 10%; border-top: 1px solid rgba(255,255,255,0.15); }
-        .pitch-container::after { content: ''; position: absolute; top: calc(50% - 60px); left: calc(50% - 60px); width: 120px; height: 120px; border: 1px solid rgba(255,255,255,0.15); border-radius: 50%; }
-        .pitch-row { display: flex; justify-content: center; gap: var(--space-4); margin-bottom: var(--space-4); position: relative; z-index: 1; }
-        .pitch-player { text-align: center; min-width: 70px; }
-        /* The portrait, with the position's colour as the ring around it.
-           This replaced a solid disc with "MID" written on it: the row a
-           player stands in already says his position, and the disc could not
-           say who he was. The ring keeps the colour, and the own/missing
-           states keep doing the job this pitch exists for — which of the
-           template you already have. */
-        .pitch-player-face {
-            width: 48px; height: 48px; border-radius: 50%;
-            display: grid; place-items: center;
-            margin: 0 auto var(--space-1);
-            border: 2px solid var(--v2-pos-color, rgba(255,255,255,0.5));
-            background: rgba(255,255,255,0.10);
-        }
-        .pitch-player-face .v2-pid-portrait { --v2-pid-face: 40px; --v2-pid-crest: 17px; }
-        .pitch-player-face.gk  { --v2-pos-color: var(--position-gk); }
-        .pitch-player-face.def { --v2-pos-color: var(--position-def); }
-        .pitch-player-face.mid { --v2-pos-color: var(--position-mid); }
-        .pitch-player-face.fwd { --v2-pos-color: var(--position-fwd); }
-        .pitch-player-face.you-have {
-            box-shadow: 0 0 0 2px rgba(255,255,255,0.85), 0 0 14px rgba(255,255,255,0.45);
-        }
-        .pitch-player-face.you-missing { opacity: 0.62; }
-        .pitch-player-initials { font-size: 11px; font-weight: 700; color: #fff; }
-        .pitch-player-name { font-size: 10px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-        .pitch-player-own { font-size: 9px; color: rgba(255,255,255,0.7); }
-        .pitch-label { text-align: center; color: rgba(255,255,255,0.6); font-size: 11px; font-weight: 600; margin-bottom: var(--space-6); text-transform: uppercase; letter-spacing: 1px; }
+        /* The pitch itself is .dp-pitch-card now — the same grass and the same
+           player cards every other page draws. This wrapper used to paint its
+           own green gradient with a halfway line and a centre circle on top
+           of it, so the real pitch sat on a second, differently-coloured one;
+           all it owes the page now is the gap underneath. The .pitch-player*
+           rules that dressed the old bespoke faces went with it. */
+        .pitch-container { margin-bottom: var(--space-6); }
+        .pitch-label { text-align: center; color: var(--text-muted); font-size: 11px; font-weight: 600; margin-bottom: var(--space-3); text-transform: uppercase; letter-spacing: 1px; }
         .pos-comparison { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
         @media (max-width: 600px) { .pos-comparison { grid-template-columns: repeat(2, 1fr); } }
         .pos-compare-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-4); text-align: center; }
@@ -880,8 +986,6 @@
             .matrix-table th.rotate { writing-mode: horizontal-tb; transform: none; height: auto; font-size: 8px; }
             .chart-container { height: 280px; }
             .pos-comparison { grid-template-columns: repeat(2, 1fr); }
-            .pitch-player { min-width: 55px; }
-            .pitch-player-circle { width: 36px; height: 36px; font-size: 9px; }
             .strength-grid { grid-template-columns: 1fr; }
         }
     </style>
@@ -1053,21 +1157,26 @@
 
             <!-- Tab: Captain Race -->
             <div class="tab-content" id="tab-captain">
-                <div class="section-header">
-                    <h2 style="color: var(--color-warning);"><i data-lucide="crown" style="width:20px;height:20px;display:inline;"></i> Captain Consensus</h2>
-                </div>
-                <div class="captain-hero" id="captainHero"></div>
-                <div class="cap-dist" id="capDistribution"></div>
-                <div class="cap-swing" id="capSwing"></div>
-
-                <div class="section-header" style="margin-top:var(--space-6);">
-                    <h2><i data-lucide="users" style="width:20px;height:20px;display:inline;"></i> Captain Choices</h2>
-                </div>
-                <div style="overflow-x:auto;">
-                    <table class="captain-table">
-                        <thead><tr><th>Manager</th><th>Captain</th><th>Vice Captain</th><th style="text-align:center;" title="Average points per match over the last 4 gameweeks">Form</th><th style="text-align:center;" title="Total FPL points scored this season">Total Pts</th></tr></thead>
-                        <tbody id="captainTableBody"></tbody>
-                    </table>
+                <div class="cap-layout">
+                    <div class="cap-col cap-col-consensus">
+                        <div class="section-header">
+                            <h2 style="color: var(--color-warning);"><i data-lucide="crown" style="width:20px;height:20px;display:inline;"></i> Captain Consensus</h2>
+                        </div>
+                        <div class="captain-hero" id="captainHero"></div>
+                        <div class="cap-dist" id="capDistribution"></div>
+                        <div class="cap-swing" id="capSwing"></div>
+                    </div>
+                    <div class="cap-col cap-col-table">
+                        <div class="section-header">
+                            <h2><i data-lucide="users" style="width:20px;height:20px;display:inline;"></i> Captain Choices</h2>
+                        </div>
+                        <div class="cap-table-wrap">
+                            <table class="captain-table">
+                                <thead><tr><th>Manager</th><th>Captain</th><th>Vice Captain</th><th style="text-align:center;" title="Average points per match over the last 4 gameweeks">Form</th><th style="text-align:center;" title="Total FPL points scored this season">Total Pts</th></tr></thead>
+                                <tbody id="captainTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1958,27 +2067,45 @@
             window.location.href = 'fpl-my-team-analysis.html#transfers';
         }
 
+        /* A differential is a player, so the card leads with the player: his
+           club's colour behind him, his face on it, his name large and the
+           one number the section exists to give you — league ownership — out
+           on the right. It was a name in bold, a grey run-on line and three
+           colon-separated stats on a bare box, which was the only place on
+           this page a player appeared without a face. */
         function renderPlayerCard(p, type) {
+            const pl = p.player;
             const barClass = p.pct >= 70 ? 'high' : p.pct >= 40 ? 'medium' : 'low';
-            const captainInfo = p.captainCount > 0 ? `<span class="captain-badge">ⓒ ${p.captainCount}</span>` : '';
-            const starterInfo = p.starterPct < p.pct ? `<div class="eo-bar-row" style="margin-top:4px;"><span class="eo-bar-label">Started by</span><div class="eo-bar-track"><div class="eo-bar-fill" style="width:${p.starterPct}%;background:var(--color-info);"></div></div><span class="eo-bar-value" style="color:var(--color-info);">${p.starterPct}%</span></div>` : '';
-            
+            const captainInfo = p.captainCount > 0
+                ? `<span class="captain-badge" data-tooltip="Captained by ${p.captainCount} manager${p.captainCount === 1 ? '' : 's'} in this league.">Ⓒ ${p.captainCount}</span>` : '';
+            const starterInfo = p.starterPct < p.pct
+                ? `<div class="eo-bar-row"><span class="eo-bar-label">Started by</span><div class="eo-bar-track"><div class="eo-bar-fill" style="width:${p.starterPct}%;background:var(--color-info);"></div></div><span class="eo-bar-value" style="color:var(--color-info);">${p.starterPct}%</span></div>` : '';
+
+            const code = typeof v2TeamCode === 'function' ? v2TeamCode(pl.teamId, pl.teamCode) : pl.teamCode;
+            const cols = (typeof CLUB_COLOURS !== 'undefined' && CLUB_COLOURS[code])
+                || (typeof CLUB_COLOURS_FALLBACK !== 'undefined' ? CLUB_COLOURS_FALLBACK : ['#37003C', '#FFFFFF']);
+            const ident = { name: pl.name, code: pl.code, teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName };
+
             return `
                 <div class="player-card ${type}">
-                    <div class="player-top">
-                        <div>
-                            <div class="player-name">
-                                ${escHTML(p.player.name)}
-                                ${p.youOwn ? '<span class="you-badge">You Own</span>' : '<span class="missing-badge">Missing</span>'}
+                    <div class="pc-hero" style="--club:${cols[0]};--club-ink:${cols[1]};">
+                        <span class="pc-hero-shape" aria-hidden="true"></span>
+                        ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident, 'v2-pid-portrait') : ''}
+                        <span class="pc-hero-text">
+                            <span class="pc-hero-name">${escHTML(pl.name)}</span>
+                            <span class="pc-hero-meta">${escHTML(pl.teamName)} · ${escHTML(pl.posName)}</span>
+                        </span>
+                        <span class="pc-hero-side">
+                            <span class="player-price">£${pl.price.toFixed(1)}m</span>
+                            <span class="pc-flags">
+                                ${p.youOwn ? '<span class="you-badge">You own</span>' : '<span class="missing-badge">Missing</span>'}
                                 ${captainInfo}
-                            </div>
-                            <div class="player-meta">${escHTML(p.player.teamName)} • ${escHTML(p.player.posName)}</div>
-                        </div>
-                        <div class="player-price">£${p.player.price.toFixed(1)}m</div>
+                            </span>
+                        </span>
                     </div>
                     <div class="ownership-bar-container">
                         <div class="ownership-bar-label">
-                            <span>League Ownership</span>
+                            <span>League ownership</span>
                             <span class="ownership-pct ${barClass}">${p.pct}%</span>
                         </div>
                         <div class="ownership-bar">
@@ -1987,9 +2114,9 @@
                         ${starterInfo}
                     </div>
                     <div class="player-stats">
-                        <div class="player-stat"><abbr title="Average points per match over the last 4 gameweeks">Form</abbr>: <span class="player-stat-value">${p.player.form}</span></div>
-                        <div class="player-stat"><abbr title="Total FPL points scored this season">Pts</abbr>: <span class="player-stat-value">${p.player.pts}</span></div>
-                        <div class="player-stat">Global: <span class="player-stat-value">${p.player.own}%</span></div>
+                        <div class="player-stat"><span class="player-stat-k"><abbr title="Average points per match over the last 4 gameweeks">Form</abbr></span><span class="player-stat-value">${pl.form}</span></div>
+                        <div class="player-stat"><span class="player-stat-k"><abbr title="Total FPL points scored this season">Points</abbr></span><span class="player-stat-value">${pl.pts}</span></div>
+                        <div class="player-stat"><span class="player-stat-k">Global</span><span class="player-stat-value">${pl.own}%</span></div>
                     </div>
                 </div>
             `;
@@ -2045,7 +2172,14 @@
                 }
                 
                 bodyHtml += '<tr>';
-                bodyHtml += `<td class="player-cell">${p.player.name} <span class="pos">${p.player.posName}</span></td>`;
+                /* player.name reaches here straight from the bootstrap and was
+                   being interpolated raw; it is escaped now, along with the
+                   face the rest of the site gives a player. */
+                const mxIdent = { name: p.player.name, code: p.player.code, teamId: p.player.teamId, teamCode: p.player.teamCode, team: p.player.teamName };
+                bodyHtml += `<td class="player-cell"><span class="mx-p">`
+                    + (typeof v2IdentityHTML === 'function' ? v2IdentityHTML(mxIdent) : '')
+                    + `<span class="mx-p-name">${escHTML(p.player.name)}</span>`
+                    + `<span class="pos">${escHTML(p.player.posName)}</span></span></td>`;
                 bodyHtml += `<td>${youCell}</td>`;
                 bodyHtml += `<td><span class="ownership-pct ${pctClass}">${p.pct}%</span></td>`;
                 
@@ -2091,6 +2225,23 @@
             
             const myCap = allPlayersById[managerPicks[myTeamId]?.captain];
             const rivalCap = allPlayersById[rivalMp.captain];
+            const rivalFirst = escHTML(rivalManager.player_name.split(' ')[0]);
+
+            /* The armband is the one pick in this comparison that is worth
+               double, so it gets the face and the club rather than a name on
+               a grey box — the same identity pair as the differential rows
+               directly underneath it. */
+            const capBox = (label, pl, side) => {
+                const ident = pl && { name: pl.name, code: pl.code, teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName };
+                return `<div class="rv-cap-box ${side}">
+                    <span class="rv-cap-label">${label}</span>
+                    <span class="rv-cap-who">
+                        ${ident && typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident, 'v2-pid-portrait') : ''}
+                        <span class="rv-cap-name">${escHTML(pl?.name || 'None')}</span>
+                        <span class="rv-cap-sub">${pl ? escHTML(pl.teamName || '') + ' · ' + escHTML(pl.posName || '') : 'No captain recorded'}</span>
+                    </span>
+                </div>`;
+            };
             
             let html = `
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin-top: var(--space-4);">
@@ -2104,20 +2255,15 @@
                     </div>
                     <div class="summary-card danger">
                         <div class="summary-value">${onlyRival.length}</div>
-                        <div class="summary-label">Only ${rivalManager.player_name.split(' ')[0]} Owns</div>
+                        <div class="summary-label">Only ${rivalFirst} Owns</div>
                     </div>
                 </div>
                 
                 ${myCap || rivalCap ? `
-                <div style="display:flex;gap:var(--space-4);margin-top:var(--space-4);justify-content:center;">
-                    <div style="background:var(--surface-1);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);text-align:center;">
-                        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">Your Captain</div>
-                        <div style="font-weight:600;">${myCap?.name || '?'}</div>
-                    </div>
-                    <div style="background:var(--surface-1);border:1px solid var(--border-default);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);text-align:center;">
-                        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;">${rivalManager.player_name.split(' ')[0]}'s Captain</div>
-                        <div style="font-weight:600;">${rivalCap?.name || '?'}</div>
-                    </div>
+                <div class="rv-cap-row">
+                    ${capBox('Your captain', myCap, 'mine')}
+                    <span class="rv-cap-vs">VS</span>
+                    ${capBox(`${rivalFirst}'s captain`, rivalCap, 'theirs')}
                 </div>` : ''}
                 
                 <div class="rv-diff-cols">
@@ -2288,9 +2434,7 @@
                 heroEl.innerHTML = `
                     <div class="pdm-hero cap-hero" style="--club:${capCols[0]};--club-ink:${capCols[1]};">
                         <div class="pdm-hero-shape" aria-hidden="true"></div>
-                        <div class="pdm-hero-photo">
-                            ${typeof playerPhotoLargeHTML === 'function' ? playerPhotoLargeHTML(topCapPlayer.code, 'pdm-hero-face') : ''}
-                        </div>
+                        <div class="pdm-hero-photo">${typeof playerPhotoLargeHTML === 'function' ? playerPhotoLargeHTML(topCapPlayer.code, 'pdm-hero-face') : ''}</div>
                         <div class="pdm-hero-text">
                             <span class="pdm-hero-last">${escHTML(topCapPlayer.name)}</span>
                             <span class="pdm-hero-meta">
@@ -2316,6 +2460,22 @@
                     </div>`;
             }
             
+            /* The armband cell: a face, the name, and the club and position
+               under it. It was a bold name with a run-on grey tail, which is
+               the one place in this table a player had no face. */
+            const capCell = (pl, bits, cls) => {
+                if (!pl) return '<span class="cap-p-sub">?</span>';
+                const ident = { name: pl.name, code: pl.code, teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName };
+                const sub = bits.filter(Boolean).map(escHTML).join(' · ');
+                return `<span class="cap-p${cls ? ' ' + cls : ''}">
+                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident) : ''}
+                    <span class="cap-p-text">
+                        <span class="cap-p-name">${escHTML(pl.name)}</span>
+                        ${sub ? `<span class="cap-p-sub">${sub}</span>` : ''}
+                    </span>
+                </span>`;
+            };
+
             // Captain table
             const tableBody = document.getElementById('captainTableBody');
             let rows = '';
@@ -2328,8 +2488,8 @@
                 
                 rows += `<tr class="${isYou ? 'you-row' : ''}">
                     <td>${isYou ? '<strong>' + escHTML(mp.manager.player_name) + '</strong>' : escHTML(mp.manager.player_name)} ${chipLabel}</td>
-                    <td><strong>${escHTML(capPlayer?.name || '?')}</strong> <span style="color:var(--text-muted);font-size:11px;">${escHTML(capPlayer?.teamName || '')} ${escHTML(capPlayer?.posName || '')}</span></td>
-                    <td>${escHTML(vcPlayer?.name || '?')} <span style="color:var(--text-muted);font-size:11px;">${escHTML(vcPlayer?.posName || '')}</span></td>
+                    <td>${capCell(capPlayer, [capPlayer?.teamName, capPlayer?.posName])}</td>
+                    <td>${capCell(vcPlayer, [vcPlayer?.posName], 'is-vc')}</td>
                     <td style="text-align:center;">${capPlayer?.form || '-'}</td>
                     <td style="text-align:center;">${capPlayer?.pts || '-'}</td>
                 </tr>`;
