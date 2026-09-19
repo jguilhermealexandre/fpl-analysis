@@ -42,6 +42,25 @@
  * than trusting this comment.
  */
 
+/* ===== The paywall is currently OFF =====
+ *
+ * Every page and script below is served to everyone, signed in or not. Nothing
+ * else has changed: the lists, the normaliser, premiumReason() and every test
+ * over them still describe exactly what WOULD be gated, and the nav still says
+ * Premium to the accounts that have it. The only thing this flag does is stop
+ * _middleware.js asking the question.
+ *
+ * It is a flag rather than a deletion because this is meant to be reverted.
+ * Turning the paywall back on is one word here — no lists to rebuild, no
+ * redirects to rewire, no tests to rewrite. A test asserts the current value so
+ * flipping it is always deliberate and never a silent side effect of an edit.
+ *
+ * Checked before switching this off: nothing gates premium content in the
+ * browser. premium.html's auIsPremium() calls only dress the refusal page,
+ * which is now unreachable, and common.js uses it for the sidebar label alone.
+ * The edge was the whole paywall, so this flag is the whole switch. */
+export const PAYWALL_ENABLED = false;
+
 /* Canonical paths, lowercase, with the extension the file actually has. The
    normaliser below is what makes matching them safe. */
 export const PREMIUM_PAGES = Object.freeze([

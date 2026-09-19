@@ -257,16 +257,25 @@
             }));
         }
 
-        // Best legal replacement for one squad player, or null if nothing beats him.
-        // Scored on what the swap does to the squad's total, not to the player's.
-        function twBestSwapFor(out, ctx) {
+        /* How many scored candidates to keep per squad player.
+
+           Only the ranking needs all of them; the alternatives offered on the
+           card come from the good end of the list, and thirty is far more than
+           three diverse options can ever need. The cap is a memory bound, not a
+           quality one — the sweep below scores every legal candidate either way,
+           because that is the expensive part and it has already happened. */
+        const TW_SCAN_KEEP = 30;
+
+        /* Every legal replacement for one squad player, best first.
+           Scored on what the swap does to the squad's total, not to the player's. */
+        function twScanSwaps(out, ctx) {
             const budget = (out.sellPrice || out.price) + ctx.bank;
             const outXP = twXPCached(out, ctx.gws, ctx.cache, ctx.useTeamContext);
             const slot = ctx.pool.findIndex(e => e.id === out.id);
-            if (slot < 0) return null;
+            if (slot < 0) return [];
 
             const trial = ctx.pool.slice();
-            let best = null;
+            const found = [];
 
             for (const cand of allPlayers) {
                 if (cand.position !== out.position) continue;
@@ -281,16 +290,67 @@
                 trial[slot] = { id: cand.id, pos: cand.position, lwScore: inXP, _ref: cand };
                 const gain = twSquadValue(trial) - ctx.baseValue;
 
-                if (!best || gain > best.gain) {
-                    best = { out, in: cand, gain, outXP, inXP,
+                found.push({ out, in: cand, gain, outXP, inXP,
                              // Individual delta, kept so the card can explain the
                              // difference between the two figures when they diverge.
                              rawDelta: inXP - outXP,
-                             outStarts: ctx.baseXIIds.has(out.id) };
-                }
+                             outStarts: ctx.baseXIIds.has(out.id) });
             }
             trial[slot] = ctx.pool[slot];
-            return best;
+            return found.sort((a, b) => b.gain - a.gain).slice(0, TW_SCAN_KEEP);
+        }
+
+        // Best legal replacement for one squad player, or null if there is none.
+        function twBestSwapFor(out, ctx) {
+            return twScanSwaps(out, ctx)[0] || null;
+        }
+
+        /* Three ways to use the same slot, rather than one answer three times.
+         *
+         * The recommender is deterministic and always was: it keeps the single
+         * highest-gain replacement for each player, so the same squad against the
+         * same data returns the same move every time. That is correct — there is
+         * one best move and picking a worse one at random to look lively would be
+         * dishonest — but it is not the whole truth, because the second and third
+         * best are usually a different KIND of move rather than a worse one.
+         *
+         * So the alternatives are chosen by what they do to the bank, which is
+         * the choice a manager is actually making. The best move sets the
+         * reference price; one option spends meaningfully less than it and one
+         * meaningfully more, each the strongest of its band. A player who frees
+         * £2m for next week and a player who spends the lot are genuinely
+         * different plans, and ranking them on gain alone hides that.
+         *
+         * Every option is real and legal — same filters, same scoring, same
+         * squad-total maths. The gain printed on each is its own. */
+        function twDiversifySwaps(all, k) {
+            /* Local, so the function can be lifted into a test on its own — and
+               it is used nowhere else. A gap smaller than this is the same move
+               at the same money, not a cheaper way to spend the slot. */
+            const PRICE_STEP = 0.5;
+            if (!all || !all.length) return [];
+            const want = k == null ? 3 : k;
+            const top = all[0];
+            const picks = [Object.assign({ altKind: 'best' }, top)];
+            const used = new Set([top.in.id]);
+
+            const take = (kind, found) => {
+                if (!found || used.has(found.in.id) || picks.length >= want) return;
+                picks.push(Object.assign({ altKind: kind }, found));
+                used.add(found.in.id);
+            };
+            // `all` is sorted by gain, so the first match in a band is the best of it.
+            take('cheaper', all.find(c => c.in.price <= top.in.price - PRICE_STEP));
+            take('pricier', all.find(c => c.in.price >= top.in.price + PRICE_STEP));
+            for (const c of all) {
+                if (picks.length >= want) break;
+                take('next', c);
+            }
+            return picks.slice(0, want);
+        }
+
+        function twAltSwapsFor(out, ctx, k) {
+            return twDiversifySwaps(twScanSwaps(out, ctx), k);
         }
 
         /* opts lets a host without the squad page's globals supply them:
@@ -445,6 +505,15 @@
             });
 
             const best = viable.sort((a, b) => b.net - a.net || a.n - b.n)[0];
+
+            /* The alternatives for each slot that made the cut, attached only
+               now — scanning is the expensive half of this function and there is
+               no sense doing it for moves the verdict discarded. alts[0] is the
+               move itself, because both come off the top of the same scan. */
+            if (best && best.moves.length) {
+                best.moves.forEach(m => { m.alts = twAltSwapsFor(m.out, ctx, 3); });
+            }
+
             return { best, options, moves: moves.slice(0, 5), gws, ft, horizon: TW_HORIZON,
                      sample: (typeof seasonGamesPlayed !== 'undefined' ? seasonGamesPlayed : null) };
         }

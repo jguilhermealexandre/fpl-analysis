@@ -22,7 +22,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
     normalisePath, premiumReason, isPremiumPath,
-    PREMIUM_PAGES, PREMIUM_SCRIPTS, PREMIUM_ALIASES
+    PREMIUM_PAGES, PREMIUM_SCRIPTS, PREMIUM_ALIASES, PAYWALL_ENABLED
 } from '../functions/lib/premium.js';
 
 const ROOT = new URL('..', import.meta.url);
@@ -225,4 +225,25 @@ test('no REWRITE quietly opens a premium page', () => {
     // A test that silently stopped examining anything would pass for ever.
     assert.ok(rewrites > 0, 'no premium rewrite was checked — has _redirects changed shape?');
     assert.ok(handoffs > 0, 'no premium redirect was checked — has _redirects changed shape?');
+});
+
+
+/* ===== The switch =====
+
+   The paywall is currently off: everything below is served to everyone. The
+   lists and the matcher above are deliberately untouched, so every test in this
+   file still describes what WOULD be gated the moment it goes back on.
+
+   These two exist so the flip is always deliberate. If someone turns it on, the
+   first assertion fails and they have to come here and say so on purpose; if
+   someone rewires the middleware to ignore the flag, the second one fails. */
+test('the paywall is off, and turning it on is a deliberate act', () => {
+    assert.equal(PAYWALL_ENABLED, false,
+        'the paywall was switched back on — update this test in the same commit, on purpose');
+});
+
+test('the middleware asks the question only when the flag says to', () => {
+    const src = read('functions/_middleware.js');
+    assert.match(src, /PAYWALL_ENABLED \? premiumReason\(/,
+        'the gate must be behind the flag, so one word in lib/premium.js restores it');
 });

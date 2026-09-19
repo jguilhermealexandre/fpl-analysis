@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { loadFunction } from './helpers/load.mjs';
 
 const twDeriveFreeTransfers = loadFunction('scripts/transfer-engine.js', 'twDeriveFreeTransfers');
+const twDiversifySwaps = loadFunction('scripts/transfer-engine.js', 'twDiversifySwaps');
 
 test('free transfers replay from history', () => {
     // FPL never publishes the count, so it is reconstructed. Getting it wrong
@@ -68,4 +69,45 @@ test('the cap is respected', () => {
 test('no history means the opening position', () => {
     assert.equal(twDeriveFreeTransfers([], [], 5), 1);
     assert.equal(twDeriveFreeTransfers(null, null, 5), 1);
+});
+
+
+/* ===== Three ways to spend one transfer =====
+
+   The recommender is deterministic: one squad against one set of data has
+   exactly one highest-gain swap, which is why the same two names kept coming
+   back. These options are not a fix for that and must not become one — picking
+   a worse move at random to look lively would be dishonest. What they do is
+   show that the runners-up are usually a different KIND of move, separated by
+   what they leave in the bank. */
+const cand = (id, price, gain) => ({ in: { id, price }, gain });
+
+test('the three options differ by price, not merely by rank', () => {
+    // 7.9 is only 0.1 below the 8.0 pick, so it is the same move at the same
+    // money and does not count as the cheaper option.
+    const picks = twDiversifySwaps([cand(1, 8.0, 5.0), cand(2, 7.9, 4.8), cand(3, 6.0, 4.2), cand(4, 10.0, 3.9)], 3);
+    assert.deepEqual(picks.map(p => p.in.id), [1, 3, 4]);
+    assert.deepEqual(picks.map(p => p.altKind), ['best', 'cheaper', 'pricier']);
+});
+
+test('the best move is always the first option', () => {
+    const picks = twDiversifySwaps([cand(1, 8, 5), cand(2, 4, 4.9)], 3);
+    assert.equal(picks[0].in.id, 1);
+    assert.equal(picks[0].gain, 5, 'and it keeps its own gain, not a blended one');
+});
+
+test('no player is offered twice in the same slot', () => {
+    const ids = twDiversifySwaps([cand(1, 8, 5), cand(2, 5, 4), cand(3, 11, 3)], 3).map(p => p.in.id);
+    assert.equal(new Set(ids).size, ids.length);
+});
+
+test('when the band is empty it falls back to the next best rather than padding', () => {
+    const picks = twDiversifySwaps([cand(1, 8, 5), cand(2, 8, 4), cand(3, 8, 3)], 3);
+    assert.deepEqual(picks.map(p => p.altKind), ['best', 'next', 'next']);
+});
+
+test('one candidate is one option, and none is none', () => {
+    assert.deepEqual(twDiversifySwaps([], 3), []);
+    assert.deepEqual(twDiversifySwaps(null, 3), []);
+    assert.equal(twDiversifySwaps([cand(1, 8, 5)], 3).length, 1);
 });

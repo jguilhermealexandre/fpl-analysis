@@ -9,10 +9,10 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=315">
-    <link rel="stylesheet" href="styles/v2-design.css?v=315">
-    <link rel="stylesheet" href="styles/responsive.css?v=315">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/common.css?v=316">
+    <link rel="stylesheet" href="styles/v2-design.css?v=316">
+    <link rel="stylesheet" href="styles/responsive.css?v=316">
     <style>
         /* ===== Chart palette =====
 
@@ -174,10 +174,10 @@
         </div>
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=315"></script>
-    <script src="scripts/auth.js?v=315"></script>
-    <script src="scripts/common.js?v=315"></script>
-    <script src="scripts/sidebar-nav.js?v=315"></script>
+    <script src="scripts/error-monitor.js?v=316"></script>
+    <script src="scripts/auth.js?v=316"></script>
+    <script src="scripts/common.js?v=316"></script>
+    <script src="scripts/sidebar-nav.js?v=316"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
         /* The quality dashboard.
@@ -193,6 +193,13 @@
          * Colours are read from CSS custom properties rather than written here,
          * so the two themes are defined once in the stylesheet above and the
          * charts redraw from the same source when the theme switch is thrown. */
+        /* The sidebar is injected rather than markup, so it has to be asked
+           for. It also puts .v2-shell-app on <html>, which is what gives the
+           main column its offset — without the call the page draws over the
+           rail instead of beside it. */
+        loadSidebarNav();
+        initIcons();
+
         const MA = { charts: [], data: { acc: null, odds: null } };
 
         const maCssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();

@@ -30,7 +30,7 @@
  * do is treat OUR OWN missing deployment step as an outage, which is what the
  * database-function version did — see lib/entitlement.js.
  */
-import { premiumReason } from './lib/premium.js';
+import { premiumReason, PAYWALL_ENABLED } from './lib/premium.js';
 import { adminReason, isAdminUser } from './lib/admin.js';
 import { isPremiumProfile } from './lib/entitlement.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, ACCESS_COOKIE, REFRESH_COOKIE } from './lib/supabase.js';
@@ -317,7 +317,10 @@ export async function onRequest(context) {
     const admin = adminReason(url.pathname);
     if (admin) return adminGate(request, next, url, admin);
 
-    const reason = premiumReason(url.pathname);
+    /* The paywall is off — see PAYWALL_ENABLED in lib/premium.js. The lists and
+       the matcher are untouched and still tested; this is the one place that
+       stops asking, so turning it back on is one word in that file. */
+    const reason = PAYWALL_ENABLED ? premiumReason(url.pathname) : null;
     if (!reason) return next();          // the ordinary case, and it costs nothing
 
     const cookies = request.headers.get('Cookie');

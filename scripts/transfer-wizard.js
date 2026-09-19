@@ -527,11 +527,12 @@
                     </div>
                     <div id="twBudgetBar"></div>
                     <div class="twr-panel" id="twRecoPanel">
+                        <!-- Question on the left, button on the right, nothing
+                             between them. The explanation that used to sit under
+                             the question described what the button does, which is
+                             a thing to find out by pressing it. -->
                         <div class="twr-head">
-                            <div>
-                                <div class="twr-title">Should I make a transfer?</div>
-                                <div class="twr-sub">Prices every legal move over the next five gameweeks by what it adds to your starting eleven — including the option of doing nothing.</div>
-                            </div>
+                            <div class="twr-title">Should I make a transfer?</div>
                             <button class="twr-run" onclick="twRunRecommendation()">Get recommendation</button>
                         </div>
                         <div id="twRecoBody"></div>
@@ -822,6 +823,54 @@
             }, 30);
         }
 
+        /* One option for one transfer slot, outlined on its own.
+         *
+         * The recommender returns one best move per slot and always did, which
+         * is why the same squad kept producing the same two names: it is
+         * deterministic, and there is exactly one highest-gain swap. What that
+         * hides is that the runners-up are usually a different KIND of move
+         * rather than a worse one — the same slot spent on a cheaper player who
+         * leaves money for next week, or on a dearer one who uses all of it.
+         *
+         * So each slot now shows three, and the tag says what separates them:
+         * the price gap against the recommended option, which is the decision
+         * the manager is actually making. Every figure on every card is that
+         * option's own — no card shows the recommended move's numbers. */
+        const TWR_ALT_LABEL = { best: 'Recommended', cheaper: 'Cheaper', pricier: 'Dearer', next: 'Alternative' };
+
+        function twrOptionCard(a, chosen, gws, bank) {
+            const isPick = a.in.id === chosen.in.id;
+            const gap = Math.round((a.in.price - chosen.in.price) * 10) / 10;
+            let label = TWR_ALT_LABEL[a.altKind] || TWR_ALT_LABEL.next;
+            if (isPick) label = TWR_ALT_LABEL.best;
+            else if (gap < 0) label = `£${Math.abs(gap).toFixed(1)}m cheaper`;
+            else if (gap > 0) label = `£${gap.toFixed(1)}m dearer`;
+
+            let detail = '';
+            if (typeof trRationale === 'function' && typeof trRenderCard === 'function') {
+                const rat = trRationale(a, { bank });
+                detail = rat ? trRenderCard(rat, { header: false }) : '';
+            }
+
+            const cls = a.gain >= 0 ? 'pos' : 'neg';
+            const sign = a.gain >= 0 ? '+' : '';
+            return `
+                <div class="twr-opt${isPick ? ' is-pick' : ''}">
+                    <span class="twr-opt-tag">${escHTML(label)}</span>
+                    <div class="twr-move">
+                        <span class="twr-out">${escHTML(a.out.name)}<small>£${(a.out.sellPrice || a.out.price).toFixed(1)}m · ${a.outXP.toFixed(1)} xP</small></span>
+                        <span class="twr-arrow">→</span>
+                        <span class="twr-in">${escHTML(a.in.name)}<small>£${a.in.price.toFixed(1)}m · ${a.inXP.toFixed(1)} xP</small></span>
+                        <span class="twr-gain ${cls}">${sign}${a.gain.toFixed(1)}<small>to your XI</small></span>
+                    </div>
+                    <p class="twr-why">${escHTML(twMoveReason(a, gws))}</p>
+                    ${detail ? `<details class="twr-detail">
+                        <summary>The case for it</summary>
+                        ${detail}
+                    </details>` : ''}
+                </div>`;
+        }
+
         function renderTWRecommendation(r) {
             const { best, moves, gws, ft, horizon } = r;
             const span = `GW${gws[0]}–GW${gws[gws.length - 1]}`;
@@ -887,12 +936,6 @@
                answer, and an answer you have to scroll past three paragraphs to
                re-read is not one. */
             let twrBank = getTWBank();
-            const detailFor = (m) => {
-                if (typeof trRationale !== 'function') return '';
-                const rat = trRationale(m, { bank: twrBank });
-                twrBank = Math.round((twrBank + ((m.out.sellPrice || m.out.price) - m.in.price)) * 10) / 10;
-                return rat ? trRenderCard(rat, { header: false }) : '';
-            };
 
             return `
                 <div class="twr-verdict act">
@@ -905,22 +948,22 @@
                         </div>
                     </div>
                 </div>
-                <div class="twr-moves">
-                    ${best.moves.map(m => {
-                        const detail = detailFor(m);
+                <div class="twr-slots">
+                    ${best.moves.map((m, i) => {
+                        const alts = (m.alts && m.alts.length) ? m.alts : [m];
+                        /* Every option in this slot is priced against the bank as
+                           it stands BEFORE the slot, because they are alternatives
+                           to each other rather than a sequence. The bank then rolls
+                           on the recommended one, which is the move the button
+                           below actually loads. */
+                        const bankHere = twrBank;
+                        twrBank = Math.round((twrBank + ((m.out.sellPrice || m.out.price) - m.in.price)) * 10) / 10;
                         return `
-                        <div class="twr-move-card">
-                            <div class="twr-move">
-                                <span class="twr-out">${escHTML(m.out.name)}<small>£${(m.out.sellPrice || m.out.price).toFixed(1)}m · ${m.outXP.toFixed(1)} xP</small></span>
-                                <span class="twr-arrow">→</span>
-                                <span class="twr-in">${escHTML(m.in.name)}<small>£${m.in.price.toFixed(1)}m · ${m.inXP.toFixed(1)} xP</small></span>
-                                <span class="twr-gain pos">+${m.gain.toFixed(1)}<small>to your XI</small></span>
+                        <div class="twr-slot">
+                            <div class="twr-slot-h">Transfer ${i + 1} · ${escHTML(m.out.name)} out — ${alts.length} way${alts.length === 1 ? '' : 's'} to spend it</div>
+                            <div class="twr-opts">
+                                ${alts.map(a => twrOptionCard(a, m, gws, bankHere)).join('')}
                             </div>
-                            <p class="twr-why">${escHTML(twMoveReason(m, gws))}</p>
-                            ${detail ? `<details class="twr-detail">
-                                <summary>The case for it</summary>
-                                ${detail}
-                            </details>` : ''}
                         </div>`;
                     }).join('')}
                 </div>
