@@ -4,14 +4,18 @@
    The dashboard already knew what was wrong with a squad. What it could not do
    was tell you when nothing was.
 
-   renderAttentionGrid() built two lists of problems and rendered them. Every
-   item was a symptom keyed off a player, which has two consequences. A clean
-   squad produced two empty columns — indistinguishable from a page that had not
-   finished loading — so the one state a manager most wants before a deadline,
-   "you are ready", was the only state the panel could not express. And a whole
-   class of mistake never appeared at all, because it is an absence rather than
-   a symptom: a fifth free transfer that cannot be banked, a chip set about to
-   expire. No player is flagged, so no row was ever created.
+   An attention grid used to build two lists of problems and render them below
+   the pitch. Every item was a symptom keyed off a player, which has two
+   consequences. A clean squad produced two empty columns — indistinguishable
+   from a page that had not finished loading — so the one state a manager most
+   wants before a deadline, "you are ready", was the only state the panel could
+   not express. And a whole class of mistake never appeared at all, because it
+   is an absence rather than a symptom: a fifth free transfer that cannot be
+   banked, a chip set about to expire. No player is flagged, so no row was ever
+   created.
+
+   That grid is gone now — this bar says everything it said, once — but the
+   shape below is still the answer to it.
 
    This file turns that list into a checklist. Every check is named, always runs,
    and reports clear or not — so the panel can count, and the count is what makes

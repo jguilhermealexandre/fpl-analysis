@@ -23,9 +23,9 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=313">
-    <link rel="stylesheet" href="styles/v2-design.css?v=313">
-    <link rel="stylesheet" href="styles/responsive.css?v=313">
+    <link rel="stylesheet" href="styles/common.css?v=314">
+    <link rel="stylesheet" href="styles/v2-design.css?v=314">
+    <link rel="stylesheet" href="styles/responsive.css?v=314">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -1051,21 +1051,18 @@
 
         @media (max-width: 640px) { .mk-cols { grid-template-columns: 1fr; } }
 
-        .v2-attention-grid {
-            display: grid;
-            /* minmax(0, …): a 1fr track keeps its content's min-content width
-               as a floor, and these two columns hold long headline rows. */
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            gap: 16px;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-
         /* ===== Readiness bar (scripts/readiness.js) =====
-           Spans both columns because it is about the squad, not about either
-           half of it. The clock lives here rather than only in the hero above:
-           "two hours left" and "three things outstanding" are one thought, and
-           splitting them across two panels made the countdown decorative. */
+           The last row of the Overview panel, and now the only place the
+           checks are shown: the two-column attention grid that used to repeat
+           them below the pitch is gone. The clock lives here rather than only
+           in the hero above — "two hours left" and "three things outstanding"
+           are one thought, and splitting them across two panels made the
+           countdown decorative.
+
+           grid-column is left over from when this spanned that grid. It is
+           inert on a non-grid parent, and removing it is a layout change this
+           machine cannot open a browser to check, so it stays until something
+           else touches this rule. */
         .rd-bar {
             grid-column: 1 / -1;
             padding: 0; border-radius: 12px;
@@ -1266,82 +1263,6 @@
         .v2-info-panel .rd-lane.done .rd-mark { font-size: 9px; }
         .v2-info-panel .rd-lane.done .rd-label { color: var(--text-secondary); }
 
-        .v2-attn-col {
-            background: var(--surface-1);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            padding: 16px 18px;
-        }
-        .v2-attn-col-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 17px;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-            color: var(--text-primary);
-            margin-bottom: 12px;
-        }
-        .v2-attn-col-header .icon { width: 15px; height: 15px; color: var(--text-muted); }
-        .v2-attn-col-count {
-            margin-left: auto;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: var(--radius-full);
-            background: var(--surface-2);
-            color: var(--text-muted);
-        }
-        /* One colour per severity, matched to the mark each row carries, so
-           the number at the top of the column reads as a summary of what is
-           under it rather than as an alarm regardless. */
-        .v2-attn-col-count.has-items { background: rgba(239,68,68,0.12); color: #DC2626; }
-        .v2-attn-col-count.sev-sell { background: color-mix(in srgb, var(--verdict-sell, #DC2626) 13%, transparent); color: var(--verdict-sell, #DC2626); }
-        .v2-attn-col-count.sev-move { background: color-mix(in srgb, var(--color-primary) 14%, transparent); color: var(--color-primary-text, var(--color-primary)); }
-        .v2-attn-col-count.sev-monitor { background: rgba(217,119,6,0.13); color: #D97706; }
-        .v2-attn-col-count.sev-hold { background: var(--surface-2); color: var(--text-secondary); }
-        a.v2-attn-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 9px 10px;
-            border-radius: var(--radius-md);
-            border-left: 3px solid var(--verdict-monitor);
-            background: var(--verdict-monitor-bg);
-            margin-bottom: 6px;
-            text-decoration: none;
-            transition: filter 0.15s;
-        }
-        a.v2-attn-row:hover { filter: brightness(0.97); }
-        a.v2-attn-row:last-child { margin-bottom: 0; }
-        a.v2-attn-row.sev-sell { border-left-color: var(--verdict-sell); background: var(--verdict-sell-bg); }
-        .v2-attn-row-name { font-size: 12.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
-        /* A face in front of a name, wherever this panel prints a player. Small
-           enough to sit inside a 12.5px row without moving it: the avatar is
-           the site's own, scaled down by its variable rather than restyled. */
-        .v2-attn-face { --v2-pid-face: 20px; display: inline-flex; flex-shrink: 0; }
-        .v2-attn-face .v2-pid-avatar { width: 20px; height: 20px; }
-        .v2-attn-face .v2-pid-initials { font-size: 8px; }
-        .v2-attn-stat.is-player .v2-attn-stat-v { display: flex; align-items: center; gap: 6px; }
-        .v2-attn-stat.is-player .v2-attn-face { --v2-pid-face: 22px; }
-        .v2-attn-stat.is-player .v2-attn-face .v2-pid-avatar { width: 22px; height: 22px; }
-        .v2-attn-row-reason { font-size: 11.5px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-        .v2-attn-row-arrow { color: var(--text-muted); flex-shrink: 0; }
-        .v2-attn-row-arrow .icon { width: 13px; height: 13px; }
-        .v2-attn-empty {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 10px;
-            border-radius: var(--radius-md);
-            background: rgba(16,185,129,0.06);
-            color: #059669;
-            font-size: 12.5px;
-            font-weight: 600;
-        }
-        .v2-attn-empty .icon { width: 15px; height: 15px; }
-
         /* --- Pitch view + Quick Actions --- */
         .v2-dashboard-main {
             display: grid;
@@ -1376,10 +1297,7 @@
         }
         .v2-pitch-title { font-size: 17px; font-weight: 600; letter-spacing: -0.5px; color: var(--text-primary); }
         .v2-pitch-formation { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--surface-2); padding: 2px 8px; border-radius: var(--radius-full); }
-        .v2-attn-sev { font-size: 9px; line-height: 1; margin-right: 6px; flex: none; }
         @media (pointer: coarse), (max-width: 767px) {
-            /* Measured at 39px and 18x18 respectively. */
-            .v2-attn-row { min-height: 44px; }
             /* The "Add league" link carries no class of its own. */
             .v2-league-prompt-actions a { position: relative; }
             .v2-league-prompt-actions a::after {
@@ -1392,15 +1310,6 @@
                 transform: translate(-50%, -50%); width: 44px; height: 44px;
             }
         }
-        .v2-attn-sev.move { color: var(--color-primary); }
-        .v2-attn-sev.hold { color: var(--text-muted); }
-        a.v2-attn-row.sev-move {
-            border-left-color: var(--color-primary);
-            background: var(--color-primary-muted);
-        }
-        a.v2-attn-row.sev-move .v2-attn-row-name { font-weight: 650; }
-        .v2-attn-sev.sell { color: var(--verdict-sell, #DC2626); }
-        .v2-attn-sev.monitor { color: #D97706; }
         .sr-only {
             position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
             overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
@@ -1995,7 +1904,6 @@
 
         @media (max-width: 900px) {
             .v2-status-strip { grid-template-columns: 1fr; }
-            .v2-attention-grid { grid-template-columns: 1fr; }
             .v2-dashboard-main { grid-template-columns: 1fr; }
             .v2-qa-cards { grid-template-columns: 1fr; }
         }
@@ -3832,26 +3740,6 @@
         }
         .fpl-toast-close:hover { color: var(--text-primary); }
 
-        /* ===== Attention-column summaries ===== */
-        .v2-attn-summary {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
-            padding: 10px 12px; margin-bottom: 4px;
-            border-bottom: 1px solid var(--border-subtle);
-        }
-        .v2-attn-stat { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-        .v2-attn-stat-v {
-            font-size: 17px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary);
-            line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .v2-attn-stat-l {
-            font-size: 9px; font-weight: 600; color: var(--text-muted);            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-        }
-        .v2-attn-summary.five { grid-template-columns: repeat(5, 1fr); }
-        .v2-attn-stat.warn .v2-attn-stat-v { color: var(--color-warning); }
-
-        @media (max-width: 640px) {
-            .v2-attn-summary, .v2-attn-summary.five { grid-template-columns: repeat(2, 1fr); row-gap: 10px; }
-        }
     </style>
     <!-- Why preload and not defer.
 
@@ -3871,24 +3759,24 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=313">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=313">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=313">
-    <link rel="preload" as="script" href="scripts/odds-panel.js?v=313">
-    <link rel="preload" as="script" href="scripts/live-gw.js?v=313">
-    <link rel="preload" as="script" href="scripts/matchday.js?v=313">
-    <link rel="preload" as="script" href="scripts/market-panel.js?v=313">
-    <link rel="preload" as="script" href="scripts/eo-layer.js?v=313">
-    <link rel="preload" as="script" href="scripts/readiness.js?v=313">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=313">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=313">
-    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=313">
-    <link rel="preload" as="script" href="scripts/auth.js?v=313">
-    <link rel="preload" as="script" href="scripts/lineup-store.js?v=313">
-    <link rel="preload" as="script" href="scripts/injury-feed.js?v=313">
-    <link rel="preload" as="script" href="scripts/scouts-art.js?v=313">
-    <link rel="preload" as="script" href="scripts/common.js?v=313">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=313">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=314">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=314">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=314">
+    <link rel="preload" as="script" href="scripts/odds-panel.js?v=314">
+    <link rel="preload" as="script" href="scripts/live-gw.js?v=314">
+    <link rel="preload" as="script" href="scripts/matchday.js?v=314">
+    <link rel="preload" as="script" href="scripts/market-panel.js?v=314">
+    <link rel="preload" as="script" href="scripts/eo-layer.js?v=314">
+    <link rel="preload" as="script" href="scripts/readiness.js?v=314">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=314">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=314">
+    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=314">
+    <link rel="preload" as="script" href="scripts/auth.js?v=314">
+    <link rel="preload" as="script" href="scripts/lineup-store.js?v=314">
+    <link rel="preload" as="script" href="scripts/injury-feed.js?v=314">
+    <link rel="preload" as="script" href="scripts/scouts-art.js?v=314">
+    <link rel="preload" as="script" href="scripts/common.js?v=314">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=314">
     <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -4208,9 +4096,6 @@
                 <!-- A few headlines from the same feeds the News page reads,
                      with a way through to the rest of them. -->
                 <section class="v2-news" id="v2News" style="display:none;"></section>
-
-                <!-- Needs Your Attention: Starting XI | Transfers -->
-                <div class="v2-attention-grid" id="v2AttentionGrid"></div>
 
                 <!-- The Scout's Desk, at the foot of the page. Written for the
                      round just played, and the one thing on the site that is
@@ -4675,24 +4560,24 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=313"></script>
-    <script src="scripts/price-watch.js?v=313"></script>
-    <script src="scripts/xp-engine.js?v=313"></script>
-    <script src="scripts/odds-panel.js?v=313"></script>
-    <script src="scripts/live-gw.js?v=313"></script>
-    <script src="scripts/matchday.js?v=313"></script>
-    <script src="scripts/market-panel.js?v=313"></script>
-    <script src="scripts/eo-layer.js?v=313"></script>
-    <script src="scripts/lineup-store.js?v=313"></script>
-    <script src="scripts/readiness.js?v=313"></script>
-    <script src="scripts/push-alerts.js?v=313"></script>
-    <script src="scripts/notifications.js?v=313"></script>
-    <script src="scripts/transfer-engine.js?v=313"></script>
-    <script src="scripts/auth.js?v=313"></script>
-    <script src="scripts/injury-feed.js?v=313"></script>
-    <script src="scripts/scouts-art.js?v=313"></script>
-    <script src="scripts/common.js?v=313"></script>
-    <script src="scripts/sidebar-nav.js?v=313"></script>
+    <script src="scripts/error-monitor.js?v=314"></script>
+    <script src="scripts/price-watch.js?v=314"></script>
+    <script src="scripts/xp-engine.js?v=314"></script>
+    <script src="scripts/odds-panel.js?v=314"></script>
+    <script src="scripts/live-gw.js?v=314"></script>
+    <script src="scripts/matchday.js?v=314"></script>
+    <script src="scripts/market-panel.js?v=314"></script>
+    <script src="scripts/eo-layer.js?v=314"></script>
+    <script src="scripts/lineup-store.js?v=314"></script>
+    <script src="scripts/readiness.js?v=314"></script>
+    <script src="scripts/push-alerts.js?v=314"></script>
+    <script src="scripts/notifications.js?v=314"></script>
+    <script src="scripts/transfer-engine.js?v=314"></script>
+    <script src="scripts/auth.js?v=314"></script>
+    <script src="scripts/injury-feed.js?v=314"></script>
+    <script src="scripts/scouts-art.js?v=314"></script>
+    <script src="scripts/common.js?v=314"></script>
+    <script src="scripts/sidebar-nav.js?v=314"></script>
     <script>
         initIcons();
         loadFooter();
@@ -5311,198 +5196,34 @@
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        function renderAttentionSummary(kind, ctx) {
-            const esc = t => String(t == null ? '' : t)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-            const cell = (v, l, tip, cls) =>
-                `<div class="v2-attn-stat ${cls || ''}"><span class="v2-attn-stat-v">${v}</span><span class="v2-attn-stat-l" ${tip ? `title="${esc(tip)}"` : ''}>${l}</span></div>`;
+        /* The deadline readiness bar, in the Overview panel.
 
-            /* A stat cell whose value is a player, with his face in front of
-               the name. Two of these — the captain and the vice — were the only
-               cells printing a person rather than a number, and a surname on
-               its own in a row of figures reads as one more figure. */
-            const faceCell = (player, label, tip, cls) => {
-                if (!player) return cell('\u2014', label, tip, cls);
-                const face = typeof v2AvatarHTML === 'function'
-                    ? `<span class="v2-attn-face">${v2AvatarHTML(player)}</span>` : '';
-                return `<div class="v2-attn-stat is-player ${cls || ''}">
-                    <span class="v2-attn-stat-v">${face}${esc(player.name.split(' ').pop())}</span>
-                    <span class="v2-attn-stat-l" ${tip ? `title="${esc(tip)}"` : ''}>${label}</span>
-                </div>`;
-            };
+           This used to render a second thing as well: a full-width "Needs Your
+           Attention" grid below the pitch, two columns of the same checks with
+           a strip of stat cells over each. The bar already names every check
+           and says which of them are clear, so the rows underneath were the
+           same answer a second time.
 
-            if (kind === 'xi') {
-                /* What belongs here is what a manager checks in the last hour
-                   before a deadline, and the two things most often got wrong are
-                   not the ones this panel used to show.
-
-                   The armband is only half a decision: if the captain plays no
-                   minutes at all the multiplier passes to the vice, so a vice who
-                   is himself a rotation risk quietly voids the biggest call of the
-                   week. And auto-substitutions only fire for a bench player who
-                   actually played and who keeps the formation legal, so a first
-                   substitute who is not going to start is no insurance at all.
-                   Both now have a cell. */
-                const xi = (ctx.squad || []).filter(p => p.pickPosition <= 11);
-                if (!xi.length) return '';
-                const bench = (ctx.squad || []).filter(p => p.pickPosition > 11)
-                    .sort((a, b) => a.pickPosition - b.pickPosition);
-                const proj = p => typeof predictedGWPoints === 'function' ? predictedGWPoints(p) : (p.epNext || 0);
-                const startProb = p => {
-                    if (typeof expectedMinutesModel !== 'function') return null;
-                    try { return expectedMinutesModel(p).pStart; } catch (e) { return null; }
-                };
-                const cap = xi.find(p => p.isCaptain);
-                const vice = (ctx.squad || []).find(p => p.isViceCaptain);
-                const total = xi.reduce((s, p) => s + proj(p) * (p.isCaptain ? 2 : 1), 0);
-                const counts = [2, 3, 4].map(t => xi.filter(p => p.position === t).length);
-
-                // Cover means an outfield substitute who is likely to play at all;
-                // a 4.0m benchwarmer in the first slot is the classic false comfort.
-                const outfieldBench = bench.filter(p => p.position !== 1);
-                const cover = outfieldBench.filter(p => p.status === 'a' && (startProb(p) ?? 0) >= 0.5).length;
-
-                const viceProb = vice ? startProb(vice) : null;
-                const viceOK = vice && vice.status === 'a' && (viceProb == null || viceProb >= 0.65);
-                const viceTip = !vice ? 'No vice-captain set'
-                    : `${vice.name} takes the armband only if ${cap ? cap.name : 'your captain'} plays no minutes at all.`
-                      + (viceProb != null ? ` He is ${Math.round(viceProb * 100)}% likely to start himself.` : '')
-                      + (vice.status !== 'a' ? ' He is carrying a fitness flag.' : '');
-
-                const flagged = xi.filter(p => p.status !== 'a').length;
-                const risky = xi.filter(p => p.status === 'a' && (startProb(p) ?? 1) < 0.65).length;
-                const capFx = cap && (cap.fixtures || [])[0];
-
-                return `<div class="v2-attn-summary five">
-                    ${cell(total.toFixed(0), 'projected', 'Projected points for your starting eleven this gameweek, with the captain doubled.')}
-                    ${faceCell(cap, 'captain',
-                        cap ? `${cap.name}${capFx ? ` — ${capFx.isHome ? 'home to' : 'away at'} ${capFx.opponent}` : ''}` : 'No captain set')}
-                    ${faceCell(vice, 'vice', viceTip, viceOK ? '' : 'warn')}
-                    ${cell(`${cover}/${outfieldBench.length || 0}`, 'bench cover',
-                        'Outfield substitutes fit and likely to play. Auto-subs only replace a starter with a bench player who actually featured and keeps the formation legal.',
-                        cover === 0 ? 'warn' : '')}
-                    ${cell(flagged + risky, 'at risk', 'Starters carrying an injury or fitness flag, or under a 65% chance of starting.', (flagged + risky) ? 'warn' : '')}
-                </div>`;
-            }
-
-            // Price moves used to be counted here, tallying only full meters
-            // while the rows beneath were drawn from anything past 80% — so the
-            // cell read 0 directly above two rows about players 89% and 92% of
-            // the way to a change. Both were right by their own definition and
-            // the pair was nonsense. Price now has its own panel; this column
-            // counts the thing it is actually about.
-            const sellNow = (ctx.squad || []).filter((p, i) =>
-                (ctx.analysisResults || [])[i] && ctx.analysisResults[i].verdict === 'sell').length;
-            let deadline = '—', deadlineTip = 'Deadline time unavailable';
-            if (ctx.deadlineTime) {
-                const ms = new Date(ctx.deadlineTime).getTime() - Date.now();
-                if (ms > 0) {
-                    const hrs = Math.floor(ms / 3600000), days = Math.floor(hrs / 24);
-                    deadline = days >= 1 ? `${days}d` : hrs >= 1 ? `${hrs}h` : `${Math.max(1, Math.floor(ms / 60000))}m`;
-                } else { deadline = 'closed'; }
-                deadlineTip = new Date(ctx.deadlineTime).toLocaleString();
-            }
-            const ft = ctx.freeTransfers != null ? ctx.freeTransfers : 1;
-            return `<div class="v2-attn-summary">
-                ${cell(ft, ft === 1 ? 'free transfer' : 'free transfers', 'Transfers you can make without taking a points hit.')}
-                ${cell('£' + (ctx.bank != null ? Number(ctx.bank).toFixed(1) : '0.0') + 'm', 'in the bank', 'Money available to spend right now.')}
-                ${cell(deadline, 'to deadline', deadlineTip, deadline !== 'closed' && /^[0-9]+[hm]$/.test(deadline) ? 'warn' : '')}
-                ${cell(sellNow, sellNow === 1 ? 'rated sell' : 'rated sell', 'Players your squad analysis rates as a sell on form, fixtures or minutes. Price movement is in Your market, below.', sellNow ? 'warn' : '')}
-            </div>`;
-        }
-
-        /* The two columns of the readiness panel.
-
-           The checks themselves moved to scripts/readiness.js — they are the
-           same checks with the same wording, but they now always run and report
-           clear or not, rather than only appending a row when something is
-           wrong. That is what lets the bar above the columns count them, and it
-           is what makes "nothing needs you" a state this panel can express
-           instead of two empty columns that look like a failed load. */
-        function renderAttentionGrid({ transferRec, squad, analysisResults, captainRec,
-                                       freeTransfers, maxFreeTransfers, bank, chips,
-                                       deadlineTime, currentGW }) {
-            const esc = t => String(t == null ? '' : t)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+           The stat cells went with it. The projected XI score and the armband
+           are on the pitch, the bank and the countdown are in this panel, and
+           the deadline is in the hero above — but bench cover, starters at
+           risk and rated sells had no second home, so those three are gone
+           rather than moved. The checks behind them are untouched: rdBuild
+           still runs all of them and the bar still names every one. */
+        function renderReadiness({ transferRec, squad, analysisResults, captainRec,
+                                   freeTransfers, maxFreeTransfers, bank, chips,
+                                   deadlineTime }) {
+            const rdSlot = document.getElementById('v2Readiness');
+            if (!rdSlot) return;
 
             const built = rdBuild({
                 squad, analysisResults, transferRec, captainRec,
                 freeTransfers, maxFreeTransfers, bank, chips
             });
-            /* Every row and every stat in this panel names a player from your
-               own fifteen, so a face can be found by the name alone — no need
-               to thread a player object through eleven separate checks in
-               readiness.js that already have one in scope but do not pass it.
-               Fifteen names, matched exactly, is not a guess. */
-            const faceOf = (name) => {
-                if (!name) return '';
-                const p = (squad || []).find(x => x.name === name);
-                return p && typeof v2AvatarHTML === 'function'
-                    ? `<span class="v2-attn-face">${v2AvatarHTML(p)}</span>` : '';
-            };
-
-            const xiItems = rdRows(built.checks, 'xi');
-            const txItems = rdRows(built.checks, 'tx');
-            const summaryCtx = { squad, analysisResults, freeTransfers, bank, deadlineTime };
-
-            function renderCol(items, iconName, title, emptyText, linkBase, summaryKind) {
-                let rowsHtml = '';
-                if (items.length === 0) {
-                    rowsHtml = `<div class="v2-attn-empty"><i data-lucide="check-circle" class="icon"></i> ${emptyText}</div>`;
-                } else {
-                    items.slice(0, 6).forEach(it => {
-                        // Severity was a border colour and nothing else, which a
-                        // red-green deficiency cannot read. Add a glyph and a label.
-                        const sevMap = {
-                            sell:    ['sell',    '\u25B2', 'Urgent',      'Urgent: '],
-                            move:    ['move',    '\u21C4', 'Recommended', 'Recommended move: '],
-                            hold:    ['hold',    '\u2014', 'Hold',        'Hold: '],
-                            monitor: ['monitor', '\u25CF', 'Worth watching', 'Monitor: ']
-                        };
-                        const sev = sevMap[it.severity] || sevMap.monitor;
-                        const sevMark = `<span class="v2-attn-sev ${sev[0]}" title="${sev[2]}">${sev[1]}</span>`;
-                        rowsHtml += `<a href="${it.href || linkBase}" class="v2-attn-row${it.severity === 'sell' ? ' sev-sell' : ''}${it.severity === 'move' ? ' sev-move' : ''}">
-                            <span class="sr-only">${sev[3]}</span>
-                            ${sevMark}${faceOf(it.name)}<span class="v2-attn-row-name">${esc(it.name)}</span>
-                            <span class="v2-attn-row-reason">${esc(it.reason)}</span>
-                            <span class="v2-attn-row-arrow"><i data-lucide="arrow-right" class="icon"></i></span>
-                        </a>`;
-                    });
-                }
-                /* The count takes the colour of the worst thing it is counting,
-                   the same colour that thing's own mark carries in the rows
-                   below. It was always red, which said "urgent" over a column
-                   of things merely worth watching — and made a genuinely
-                   urgent one indistinguishable from them. */
-                const SEV_RANK = ['sell', 'move', 'monitor', 'hold'];
-                const worst = SEV_RANK.find(k => items.some(it => it.severity === k)) || 'monitor';
-                const countBadge = items.length > 0
-                    ? `<span class="v2-attn-col-count has-items sev-${worst}">${items.length}</span>`
-                    : `<span class="v2-attn-col-count">0</span>`;
-                return `<div class="v2-attn-col">
-                    <div class="v2-attn-col-header"><i data-lucide="${iconName}" class="icon"></i> ${title}${countBadge}</div>
-                    ${renderAttentionSummary(summaryKind, summaryCtx)}
-                    ${rowsHtml}
-                </div>`;
-            }
-
-            const rdSlot = document.getElementById('v2Readiness');
-            if (rdSlot) rdSlot.innerHTML = rdSummaryHTML(built.summary, deadlineTime, Date.now(), built.checks);
-
-            const html = renderCol(xiItems, 'shield-alert', 'Starting XI', 'Lineup looks good — no issues flagged', 'fpl-my-team-analysis.html#lineup', 'xi')
-                       + renderCol(txItems, 'repeat', 'Transfers', 'No urgent transfer actions right now', 'fpl-my-team-analysis.html#transfers', 'tx');
-            /* The alerts offer used to be a third block here, under the two
-               attention columns and inside nothing — a floating paragraph on a
-               page made of panels. It now lives in the notification panel
-               beside "Activity", which is the list of exactly the things it
-               proposes to send you, so the switch sits on the thing it
-               switches. See ntHeadHTML() in scripts/notifications.js.
-
-               The reason it is not a load-time banner is unchanged: the
-               browser permission prompt is one-shot per origin, a refusal
-               cannot be asked again, so it is only ever raised from a click. */
-            document.getElementById('v2AttentionGrid').innerHTML = html;
+            rdSlot.innerHTML = rdSummaryHTML(built.summary, deadlineTime, Date.now(), built.checks);
+            /* The bar itself carries no data-lucide icons, but other panels
+               rendered in this same pass do and this is where they were being
+               initialised. Kept for that reason rather than for this one. */
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -6781,8 +6502,8 @@
                 // used — the market-wide view is the ticker at the top of the page.
                 if (typeof mkRenderInto === 'function') mkRenderInto(mine);
 
-                renderAttentionGrid({ transferRec, squad, analysisResults, captainRec,
-                    freeTransfers, maxFreeTransfers, bank, chips, deadlineTime, currentGW });
+                renderReadiness({ transferRec, squad, analysisResults, captainRec,
+                    freeTransfers, maxFreeTransfers, bank, chips, deadlineTime });
 
                 renderDeskFeed();
 

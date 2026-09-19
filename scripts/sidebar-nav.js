@@ -28,7 +28,7 @@ function v2HasTeam() {
 function loadSidebarNav() {
     if (!v2HasTeam()) return loadLandingNav();
     document.documentElement.classList.add('v2-shell-app');
-    return fetch('sidebar-nav.html?v=313')
+    return fetch('sidebar-nav.html?v=314')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -112,7 +112,7 @@ function loadSidebarNav() {
 /* The landing shell: a top bar rather than a rail. */
 function loadLandingNav() {
     document.documentElement.classList.add('v2-shell-landing');
-    return fetch('landing-nav.html?v=313')
+    return fetch('landing-nav.html?v=314')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -327,7 +327,6 @@ function initV2PageEntrance() {
 
     const selectors = [
         '.hero-personalized > .v2-top-row',
-        '.hero-personalized > .v2-attention-grid',
         '.hero-personalized > .v2-quick-actions',
         '.hero-personalized > .headlines-widget',
         /* The dashboard's own panels. Each ships display:none and is revealed

@@ -238,7 +238,13 @@ test('a recommended move with nobody to sell does not raise the row', () => {
     assert.equal(check.rows.length, 0);
 });
 
-test('rows are split into the column that renders them', () => {
+/* No renderer consumes the split any more — the two-column attention grid it
+   fed is gone, and the readiness bar draws every check in one list. The
+   invariant is still rdBuild's to hold: each check declares a column, and a
+   row belongs to exactly one of them. Kept because a row that is attributed
+   twice, or not at all, is a bug in the check table whether or not anything
+   is currently drawing columns. */
+test('every row is attributed to exactly one column', () => {
     const rd = load();
     const squad = cleanSquad();
     squad[0].status = 'i';
