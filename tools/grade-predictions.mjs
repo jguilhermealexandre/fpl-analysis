@@ -278,6 +278,16 @@ export function gradeRound(snapshot, actuals) {
 
 /* ---- the whole archive --------------------------------------------------- */
 
+/* A round as it appears in the published file: everything except the per-player
+   rows, which are the working data the pooled figures are computed from. Six
+   hundred of them per round would multiply the file fifty-fold for no reader,
+   and the grader recomputes them from the archive whenever they are wanted. */
+function published(round) {
+    const out = { ...round };
+    delete out.rows;
+    return out;
+}
+
 export function gradeAll({ boot, playersData, snapshots }) {
     const eventById = new Map((boot.events || []).map(e => [e.id, e]));
     const rounds = [];
@@ -328,7 +338,7 @@ export function gradeAll({ boot, playersData, snapshots }) {
             byPosition: overallByPosition,
             calibration: calibration(pooledStarters)
         },
-        rounds: rounds.map(({ rows, ...keep }) => keep)   // per-player rows stay out of the published file
+        rounds: rounds.map(published)
     };
 }
 

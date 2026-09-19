@@ -160,8 +160,8 @@ test('only finished, data-checked rounds are graded', () => {
        a round before FPL has checked it records a number that then changes. */
     const out = gradeAll({
         boot: { events: EVENTS },
-        playersData: { players: [1, 2, 3].map(id => ([5, 6, 7].map(round =>
-            ({ round, total_points: 4, minutes: 90 })))).map((h, i) => hist(i + 1, h)) },
+        playersData: { players: [1, 2, 3].map(id =>
+            hist(id, [5, 6, 7].map(round => ({ round, total_points: 4, minutes: 90 })))) },
         snapshots: [snapshotOf([player(1), player(2), player(3)]),
             { ...snapshotOf([player(1), player(2), player(3)]), gw: 5 },
             { ...snapshotOf([player(1), player(2), player(3)]), gw: 7 }]
