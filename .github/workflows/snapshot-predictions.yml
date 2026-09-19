@@ -1,0 +1,90 @@
+name: Snapshot Predictions
+
+# Seals what the model predicted, before the deadline it predicted for.
+#
+# Hourly, all week, because the window that matters moves: FPL deadlines land on
+# different days and times, and the tool decides for itself whether now is close
+# enough. Almost every run does nothing and exits green — that is the expected
+# shape, not a fault.
+#
+# Hourly rather than a cron aimed at each deadline, for one reason: this archive
+# cannot be backfilled. A prediction is computed from data that is overwritten
+# every fifteen minutes, so a deadline missed here is a gameweek that can never
+# be graded by anyone. Three or four cheap attempts inside the window beats one
+# clever one that a delayed runner can drop.
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Snapshot now even if the deadline is not close (the deadline must still be in the future)'
+        type: boolean
+        default: false
+
+# Writes data/model-log/ and nothing else.
+permissions:
+  contents: write
+
+# Shared with the other data jobs: they all write data/ on main, so they queue
+# rather than race.
+concurrency:
+  group: fpl-data-write
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      # No install step: the tool has no dependencies, and reads the same
+      # committed data files the site serves rather than the live API — see the
+      # header in tools/snapshot-predictions.mjs for why that is deliberate.
+      #
+      # It exits non-zero if the engine comes back broken (players failing to
+      # project, or a component breakdown that stops adding up to the total).
+      # Going red is right: a snapshot quietly full of zeros is worse than none,
+      # because nothing downstream can tell the difference a season later.
+      - name: Record what the model is predicting
+        run: node tools/snapshot-predictions.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+
+      - name: Commit and push if a round was sealed
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+          # Same re-apply-and-retry as the other data jobs: this pushes to a
+          # branch three other workflows also write, and a plain push would be
+          # rejected and silently drop the snapshot whenever one lands first.
+          # The whole directory is carried across the reset because the filename
+          # depends on which gameweek the tool chose, which the shell does not know.
+          mkdir -p /tmp/model-log
+          cp -r data/model-log/. /tmp/model-log/ 2>/dev/null || true
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p data/model-log
+            cp -r /tmp/model-log/. data/model-log/ 2>/dev/null || true
+            git add data/model-log
+            if git diff --staged --quiet; then
+              echo "No round sealed this run."
+              exit 0
+            fi
+            git commit -m "Seal model predictions - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt — main moved, re-applying."
+            sleep 5
+          done
+
+          echo "Could not push after 5 attempts."
+          exit 1
