@@ -1676,7 +1676,10 @@ const V2_ICON_PATHS = {
     report: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 15l3.5-4 3 2.5L20 7"/>',
     // The four chips, one mark each.
     crown: '<path d="M3 7l4 4 5-7 5 7 4-4-2 12H5L3 7Z"/><path d="M5 20h14"/>',
-    refresh: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/>'
+    refresh: '<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/>',
+    /* The same arc the other way. `refresh` turns clockwise, which reads as
+       "do it again"; this one turns back, which is what undoing looks like. */
+    revert: '<path d="M21 12a9 9 0 0 0-15-6.7L3 8"/><path d="M3 3v5h5"/>'
         + '<path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/>',
     boost: '<path d="M12 20V6"/><path d="m6 12 6-6 6 6"/><path d="M5 3h14"/>',
 
@@ -2188,7 +2191,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=317')
+    fetch('footer.html?v=318')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

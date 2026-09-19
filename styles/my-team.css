@@ -5231,6 +5231,35 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 
 .twc-panel-hint { margin-left: auto; font-size: 10.5px; color: var(--text-muted); }
 
+/* The way back to the real squad. An icon rather than a labelled button: it is
+   the exception on this header, not the thing you came here to press, and the
+   tooltip carries what it does. Sits after the hint, which already holds the
+   margin-left: auto, so this is simply the last thing on the row. */
+.tw-revert {
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--border-default);
+    background: var(--surface-1);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.tw-revert:hover {
+    color: var(--verdict-sell, var(--color-error));
+    border-color: color-mix(in srgb, var(--color-error) 40%, transparent);
+    background: color-mix(in srgb, var(--color-error) 8%, transparent);
+}
+.tw-revert svg, .tw-revert .v2-sec-icon { width: 15px; height: 15px; color: currentColor; }
+/* The squad column is narrow, and adding a third thing to its header was
+   enough to wrap "Your squad" onto two lines. The title holds its line; the
+   hint is the one that gives, because it is a sentence rather than a name. */
+.tw-outrail .twc-panel-head .twc-panel-title { flex-shrink: 0; white-space: nowrap; }
+.tw-outrail .twc-panel-head .twc-panel-hint {
+    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
 /* Squad-wide totals, shown on a wildcard or free hit only. Rebuilding fifteen
    players is a different question from swapping one, and the per-move deltas
    above cannot answer it. */
@@ -7561,13 +7590,43 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    .twov-card sits on .dp-card rather than replacing it, so a change to how a
    player is drawn anywhere reaches this pitch too. */
 .twov { margin: 4px 0 14px; }
-.twov-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-.twov-nums { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.twov-num { display: inline-flex; flex-direction: column; line-height: 1.15; }
-.twov-num b { font-family: var(--font-display); font-size: 19px; font-weight: 800; color: var(--text-primary); }
+.twov-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.twov-nums { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Each figure in its own chip rather than floating in a row of white space,
+   which is how the dashboard states a number beside a way through. */
+.twov-num {
+    display: inline-flex; align-items: baseline; gap: 6px;
+    padding: 5px 12px;
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
+    line-height: 1.15;
+}
+.twov-num b { font-family: var(--font-display); font-size: 17px; font-weight: 800; color: var(--text-primary); }
 .twov-num em { font-style: normal; font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
-.twov-num.dim b { font-size: 15px; color: var(--text-secondary); }
-.twov-head .rc-btn { margin-left: auto; }
+.twov-num.lead {
+    background: var(--color-primary-muted);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 26%, transparent);
+}
+.twov-num.lead b { color: var(--color-primary-text, var(--color-primary)); }
+.twov-num.dim b { font-size: 14px; color: var(--text-secondary); }
+
+/* The action, as the pill every other "and now do this" on the site is.
+   .rc-btn carries flex: 1, so in this header it stretched into a full-width
+   grey bar that read as a section divider rather than a button. */
+.twov-best {
+    margin-left: auto;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 14px;
+    border-radius: var(--radius-full);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
+    background: var(--color-primary-muted);
+    color: var(--color-primary-text, var(--color-primary));
+    font-family: var(--font-display); font-size: 12px; font-weight: 700;
+    white-space: nowrap; cursor: pointer;
+    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.twov-best:hover { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.twov-best svg, .twov-best .v2-sec-icon { width: 13px; height: 13px; color: currentColor; }
 .twov-hint { margin-bottom: 9px; font-size: 11px; color: var(--text-muted); line-height: 1.5; }
 
 .twov-card { cursor: pointer; transition: outline-color .14s ease, opacity .14s ease; outline: 2px solid transparent; outline-offset: 2px; }
@@ -7594,7 +7653,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twov .dp-card { position: relative; }
 
 @media (max-width: 620px) {
-    .twov-head .rc-btn { margin-left: 0; }
+    .twov-best { margin-left: 0; }
     .twov-nums { gap: 12px; }
 }
 
@@ -7674,15 +7733,21 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tw-conf-net.down .tw-conf-net-v { color: var(--color-error); }
 .tw-conf-net-t { font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
 
-.tw-conf-swaps { display: flex; flex-direction: column; gap: 14px; }
+/* Across, not down — within a swap and between them.
+   One swap stacked is two cards tall and that is fine; eight of them is a
+   column taller than the pitch beside it, and the figures that explain the
+   plan end up scrolled off the top. Out and in sit side by side with the
+   swing between them, and the swaps themselves stack, so three transfers is
+   three lines rather than nine cards. */
+.tw-conf-swaps { display: flex; flex-direction: column; gap: 10px; }
 /* Out above, in below, with the swing between them. Side by side in a column
    this narrow the two cards had about 150px each, which the photo and the
    price took entirely — every name came out as "Horn…" and half the prices
    were cut off mid-figure. Stacked, each card gets the whole column, and the
    pair still reads as one move because the arrow sits between them. */
 .tw-conf-swap {
-    display: grid; grid-template-columns: minmax(0, 1fr);
-    justify-items: stretch; gap: 5px;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center; gap: 8px;
 }
 .tw-conf-side { position: relative; border-radius: var(--v2-card-radius, 16px); overflow: hidden; border: 1px solid var(--v2-card-border, var(--border-emphasis)); }
 .tw-conf-side.out { opacity: .8; }
@@ -7697,8 +7762,8 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     background: rgba(0, 0, 0, .34); color: #fff;
 }
 .tw-conf-tag.is-in { background: var(--color-primary); }
-.tw-conf-mid { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px; }
-.tw-conf-arrow { font-size: 17px; color: var(--text-muted); line-height: 1; transform: rotate(90deg); }
+.tw-conf-mid { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.tw-conf-arrow { font-size: 15px; color: var(--text-muted); line-height: 1; }
 .tw-conf-delta {
     font-family: var(--font-mono, monospace);
     font-size: 12.5px; font-weight: 800;
@@ -7727,6 +7792,35 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twh-head .pdm-hero-price { font-size: 15px; }
 .tw-conf-side .pdm-hero-own,
 .twh-head .pdm-hero-own { font-size: 9px; }
+
+/* Side by side, each swap side gets about 190px — the club hero's three-column
+   grid does not fit in that, and it does not fail gracefully: the name, the
+   price and the ownership all land on top of each other. Two columns here, with
+   the price under the name rather than beside it, and the ownership dropped.
+   It is the one figure on the card nothing on this step turns on. */
+.tw-conf-side .pdm-hero.is-compact {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    min-height: 74px;
+    padding: 0 10px; gap: 0 9px;
+}
+.tw-conf-side .pdm-hero.is-compact .pdm-hero-photo { width: 46px; height: 74px; }
+.tw-conf-side .pdm-hero.is-compact .pdm-hero-face { height: 74px; max-width: 46px; }
+.tw-conf-side .pdm-hero.is-compact .pdm-hero-text { padding: 9px 0 2px; }
+.tw-conf-side .pdm-hero.is-compact .pdm-hero-first { font-size: 9.5px; font-weight: 500; }
+.tw-conf-side .pdm-hero.is-compact .pdm-hero-last { font-size: 15px; }
+.tw-conf-side .pdm-hero.is-compact .pdm-hero-meta { margin-top: 1px; font-size: 9px; gap: 3px; }
+.tw-conf-side .pdm-hero.is-compact .pdm-hero-crest { width: 12px; height: 12px; }
+.tw-conf-side .pdm-hero.is-compact .pdm-hero-side {
+    grid-column: 2; grid-row: 2;
+    flex-direction: row; align-items: baseline; justify-content: flex-start;
+    padding: 0 0 9px; text-align: left; gap: 6px;
+}
+.tw-conf-side .pdm-hero.is-compact .pdm-hero-price { font-size: 13.5px; }
+.tw-conf-side .pdm-hero.is-compact .pdm-hero-own { display: none; }
+/* The In/Out chip is the .tw-conf-tag on the corner; the hero's own would be a
+   second one saying the same thing in the same place. */
+.tw-conf-side .pdm-hero.is-compact .pdm-hero-chip { display: none; }
 
 /* ===== Confirming, and what it leaves ===== */
 .tw-guard .modal-container { width: min(520px, calc(100vw - 32px)); }

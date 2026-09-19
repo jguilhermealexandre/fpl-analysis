@@ -1594,10 +1594,27 @@
             const open = transferState.pending.filter(x => !x.replacement).length;
             const max = twMaxTransfers();
 
+            /* The way back to the team FPL says you own.
+             *
+               Confirming here changes this site and not fantasy.premierleague.com
+               — the wizard says so in as many words when you confirm — so a
+               manager who confirmed a plan to see what it looked like has no way
+               to get their real squad back short of transferring everyone
+               again. This is that way back. It is offered only when there is
+               something to undo, so it is not a button that does nothing for
+               most of the people looking at it. */
+            const reverting = typeof twPlan !== 'undefined' && twPlan.length;
+            const revertBtn = reverting
+                ? `<button class="tw-revert" onclick="twRevertToRealSquad()"
+                    aria-label="Undo the confirmed transfers"
+                    data-tooltip="Put this squad back to the team you actually have on fantasy.premierleague.com. Transfers you confirmed here changed EasyFPL only, and this undoes ${twPlan.length === 1 ? 'the one' : `all ${twPlan.length}`} of them.">${v2Icon('revert')}</button>`
+                : '';
+
             el.innerHTML = `<div class="twc-panel tw-outrail">
                 <div class="twc-panel-head">
                     <span class="twc-panel-title">${v2Icon('users')} Your squad</span>
                     <span class="twc-panel-hint">${picked ? `${picked}${transferState.sellMode ? ` of ${max}` : ''} in the plan` : 'Click anyone to replace them'}</span>
+                    ${revertBtn}
                 </div>
                 <div class="twc-panel-body">
                     ${open > 1 ? `<button class="tw-outrail-fill" onclick="twFillAllSlots()" data-tooltip="Pick the best affordable replacement for every open slot, sharing the bank across them.">${v2Icon('bolt')} Fill all ${open} slots</button>` : ''}
@@ -2719,16 +2736,21 @@
             };
             const rowFor = n => `<div class="dp-row">${xi.filter(p => p.position === n).map(p => card(p, null)).join('')}</div>`;
 
+            /* The three figures as chips and the action as a pill, which is
+               how the dashboard states a number beside a way through. Best
+               eleven was an .rc-btn, and .rc-btn carries flex: 1 — so in this
+               header it stretched into a full-width grey bar that read as a
+               section divider rather than as something to press. */
             return `<div class="twov">
                 <div class="twov-head">
                     <div class="twov-nums">
-                        <span class="twov-num" data-tooltip="Projected points for this eleven in GW${gw}. Move anyone and it moves with them.">
+                        <span class="twov-num lead" data-tooltip="Projected points for this eleven in GW${gw}. Move anyone and it moves with them.">
                             <b>${xiXP.toFixed(1)}</b><em>xP, this eleven</em></span>
                         <span class="twov-num dim" data-tooltip="What the four outside the eleven project. A bench that scores is cover; one that does not is dead money.">
                             <b>${benchXP.toFixed(1)}</b><em>on the bench</em></span>
                         <span class="twov-num dim" data-tooltip="The shape this eleven plays."><b>${shape}</b><em>shape</em></span>
                     </div>
-                    <button class="rc-btn" onclick="twOvReset()" data-tooltip="Go back to the strongest legal eleven from this squad.">Best eleven</button>
+                    <button class="twov-best" onclick="twOvReset()" data-tooltip="Go back to the strongest legal eleven from this squad.">Best eleven ${v2Icon('refresh')}</button>
                 </div>
                 <div class="twov-hint">Click a player, then click whoever should change places with him. The armband is set in the Lineup Wizard once the transfers are in.</div>
                 <div class="dp-pitch-card"><div class="dp-pitch">
@@ -2888,12 +2910,61 @@
             </label>`;
         }
 
+        /* Clicking a row of the plan bar.
+         *
+         * What that should do depends on where you are and whether the slot is
+         * filled. On Compare, with more than one transfer staged, the rows are
+         * how you read across the plan — so a filled one switches which pair is
+         * being compared rather than throwing you back to the market. Going
+         * back to step 2 from there meant the only way to see the other
+         * comparison was to re-pick a replacement you had already chosen.
+         *
+         * An unfilled slot has no comparison to show, so it still goes to the
+         * market: that is the one thing left to do with it. */
         function twSelectSlot(idx) {
             if (idx < 0 || idx >= transferState.pending.length) return;
+            const slot = transferState.pending[idx];
+            if (slot.replacement && twStep() === 3) {
+                transferState.activeSlot = idx;
+                transferState.mode = 'compare';
+                transferState.previewPlayer = slot.replacement;
+                renderTWAll();
+                return;
+            }
             transferState.activeSlot = idx;
             transferState.mode = 'market';
             transferState.previewPlayer = null;
             twGoStep(2);
+        }
+
+        /* ===== Back to the squad FPL says you own =====
+         *
+         * A confirmed plan lives in twPlan and nowhere else — selectedPlayers is
+         * left exactly as FPL handed it over — so putting the squad back is
+         * dropping the plan, and nothing has to be re-fetched or un-swapped.
+         *
+         * The staged transfers go too. They name players out of twSquad(), which
+         * is about to be a different set, and a slot pointing at somebody who is
+         * no longer in the squad is a slot that cannot be filled or removed. */
+        function twRevertToRealSquad() {
+            const had = (typeof twPlan !== 'undefined' && twPlan.length) || 0;
+            if (!had) return;
+            if (typeof twConfirmedClear === 'function') twConfirmedClear();
+            twPlan = [];
+            twConfirmedResult = null;
+            transferState.pending = [];
+            transferState.activeSlot = -1;
+            transferState.previewPlayer = null;
+            transferState.candidateCache = {};
+            transferState.mode = 'squad';
+            twSquadCardsBuilt = null;
+            transferRendered = false;
+            if (typeof updateStatus === 'function') {
+                updateStatus(`${had} confirmed transfer${had === 1 ? '' : 's'} undone \u2014 back to the squad FPL says you own`, 'success');
+            }
+            /* Steps 3 and 4 are about a plan that no longer exists. Step 2 still
+               makes sense on any squad, so a revert made from there stays put. */
+            twGoStep(twStep() >= 3 ? 2 : twStep());
         }
 
         function twRemoveSlot(idx) {
@@ -3156,9 +3227,14 @@
                      squad they produce takes the rest of the width. -->
                 <div class="twc-panel-body tw-conf-body">
                     <div class="tw-conf-left">
-                        <div class="tw-conf-sub">${n === 1 ? 'The transfer' : `The ${n} transfers`}</div>
-                        <div class="tw-conf-swaps">${swaps}</div>
-
+                        <!-- The figures lead. They were under the swaps, which
+                             put the three numbers the step turns on below a
+                             list that grows with every transfer — so on a
+                             wildcard the answer to "is this worth it" sat eight
+                             cards down. What it gains, what it costs and what
+                             is left are the verdict; the swaps are the working
+                             that produced it. -->
+                        <div class="tw-conf-sub">${n === 1 ? 'What this transfer does' : `What these ${n} transfers do`}</div>
                         <div class="tw-conf-net ${netCls}">
                             <span class="tw-conf-net-v">${net > 0 ? '+' : ''}${net.toFixed(1)}</span>
                             <span class="tw-conf-net-t">${net > 0.3
@@ -3180,6 +3256,9 @@
                             ${stat('Left in the bank', `\u00a3${itb.toFixed(1)}m`, itb < 0 ? 'down' : '',
                                 itb < 0 ? 'This plan spends more than you have.' : 'What remains once every transfer is made.', 'bank')}
                         </div>
+
+                        <div class="tw-conf-sub">${n === 1 ? 'The transfer' : `The ${n} transfers`}</div>
+                        <div class="tw-conf-swaps">${swaps}</div>
                     </div>
 
                     <div class="tw-conf-right">

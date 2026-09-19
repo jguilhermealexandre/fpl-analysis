@@ -1370,7 +1370,13 @@
 
         function twfResetFilters() {
             const s = twfState();
-            const keep = { sort: s.sort };
+            /* `view` is in the defaults, so resetting to them was also resetting
+               it — Clear all put you back in Quick picks, closing the search you
+               were in the middle of. Which view you are in and how it is ordered
+               are not filters; they are where you are standing. Clear all clears
+               what is narrowing the list and leaves you exactly where you were,
+               with the strip still open. */
+            const keep = { sort: s.sort, view: s.view };
             // In place: the filters may belong to a slot rather than to
             // transferState, and reassigning there would reset the wrong one.
             Object.assign(s, twfDefaultFilters(), keep);

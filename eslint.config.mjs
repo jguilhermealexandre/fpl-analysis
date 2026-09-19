@@ -1653,6 +1653,7 @@ export default [
                 twRenderSummaryPanel: 'writable',
                 twReservedFor: 'writable',
                 twRestoringHistory: 'writable',
+                twRevertToRealSquad: 'writable',
                 twRowPick: 'writable',
                 twRunGWs: 'writable',
                 twRunRecommendation: 'writable',

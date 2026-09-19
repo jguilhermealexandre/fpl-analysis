@@ -82,12 +82,19 @@ test('no history means the opening position', () => {
    what they leave in the bank. */
 const cand = (id, price, gain) => ({ in: { id, price }, gain });
 
+/* An array that came out of the sandbox has the sandbox's Array.prototype, and
+   node:assert/strict compares prototypes — so deepEqual against a literal here
+   fails with "same structure but not reference-equal" however right the values
+   are. Copying into a host array is the whole fix; the contents are primitives
+   and cross no realm. */
+const host = xs => [...xs];
+
 test('the three options differ by price, not merely by rank', () => {
     // 7.9 is only 0.1 below the 8.0 pick, so it is the same move at the same
     // money and does not count as the cheaper option.
     const picks = twDiversifySwaps([cand(1, 8.0, 5.0), cand(2, 7.9, 4.8), cand(3, 6.0, 4.2), cand(4, 10.0, 3.9)], 3);
-    assert.deepEqual(picks.map(p => p.in.id), [1, 3, 4]);
-    assert.deepEqual(picks.map(p => p.altKind), ['best', 'cheaper', 'pricier']);
+    assert.deepEqual(host(picks.map(p => p.in.id)), [1, 3, 4]);
+    assert.deepEqual(host(picks.map(p => p.altKind)), ['best', 'cheaper', 'pricier']);
 });
 
 test('the best move is always the first option', () => {
@@ -103,11 +110,11 @@ test('no player is offered twice in the same slot', () => {
 
 test('when the band is empty it falls back to the next best rather than padding', () => {
     const picks = twDiversifySwaps([cand(1, 8, 5), cand(2, 8, 4), cand(3, 8, 3)], 3);
-    assert.deepEqual(picks.map(p => p.altKind), ['best', 'next', 'next']);
+    assert.deepEqual(host(picks.map(p => p.altKind)), ['best', 'next', 'next']);
 });
 
 test('one candidate is one option, and none is none', () => {
-    assert.deepEqual(twDiversifySwaps([], 3), []);
-    assert.deepEqual(twDiversifySwaps(null, 3), []);
+    assert.deepEqual(host(twDiversifySwaps([], 3)), []);
+    assert.deepEqual(host(twDiversifySwaps(null, 3)), []);
     assert.equal(twDiversifySwaps([cand(1, 8, 5)], 3).length, 1);
 });
