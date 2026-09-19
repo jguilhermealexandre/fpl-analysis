@@ -105,4 +105,21 @@ jobs:
       # node:test, no browser and no test framework. Classic scripts are loaded
       # into a vm sandbox rather than imported, since there is nothing to import.
       - name: Unit tests
-        run: npm test
+        run: npm test 2>&1 | tee /tmp/test.log
+
+      # A red test step used to say only "Process completed with exit code 1".
+      # The run log itself needs an authenticated download, so anyone without
+      # push access — or working from a machine that cannot run node at all —
+      # was left guessing which assertion broke. The job summary rides along
+      # with the check run and is readable without a token, so the failure
+      # travels with the result instead of behind it.
+      - name: Say which test failed
+        if: failure()
+        run: |
+          {
+            echo '## Unit tests'
+            echo ''
+            echo '```'
+            tail -n 200 /tmp/test.log 2>/dev/null || echo 'no test output captured'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
