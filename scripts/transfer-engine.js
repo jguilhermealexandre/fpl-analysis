@@ -514,7 +514,23 @@
                 best.moves.forEach(m => { m.alts = twAltSwapsFor(m.out, ctx, 3); });
             }
 
+            /* Handed out so the card can let a manager pick a different option
+               without the headline going stale.
+             *
+             * Two moves are not independent — if both promote a bench player
+             * into the same eleven their separate gains double-count the same
+             * improvement — so a swapped option cannot simply have its own gain
+             * added. Re-scoring is the only honest answer, and it needs the
+             * pool and the base value that only exist in this closure. Handing
+             * the closures out costs nothing and means the number on screen is
+             * always the one the engine would have produced for that set.
+             *
+             * legality travels with it for the same reason: two options that
+             * are each affordable against the full bank may not be affordable
+             * together, and two from the same club can breach the three-per-club
+             * limit jointly while each looks fine alone. */
             return { best, options, moves: moves.slice(0, 5), gws, ft, horizon: TW_HORIZON,
+                     rescore: twJointGain, legal: twMovesLegal,
                      sample: (typeof seasonGamesPlayed !== 'undefined' ? seasonGamesPlayed : null) };
         }
 

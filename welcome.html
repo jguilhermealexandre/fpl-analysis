@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" class="v2-theme">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link your squad | EasyFPL</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <meta name="description" content="Link your FPL squad to EasyFPL.">
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="https://easyfpl.com/welcome">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/common.css?v=317">
+    <link rel="stylesheet" href="styles/v2-design.css?v=317">
+    <link rel="stylesheet" href="styles/auth.css?v=317">
+</head>
+<body>
+<div class="au-page">
+    <main class="au-card">
+        <a class="au-brand" href="/"><span class="au-brand-mark">e</span> EasyFPL</a>
+
+        <div class="au-error" id="auError" role="alert" aria-live="polite"></div>
+
+        <!-- While we find out whether this is even a question worth asking.
+             Somebody signing in on a second device already has an id on their
+             account, and being asked for it again would be the site forgetting
+             them. -->
+        <div id="wlChecking">
+            <h1 class="au-title">One moment…</h1>
+            <p class="au-sub">Checking whether your squad is already linked.</p>
+        </div>
+
+        <div id="wlAsk" hidden>
+            <h1 class="au-title">Link your squad</h1>
+            <p class="au-sub">Your FPL Team ID is what turns this from a stats site into yours — your squad,
+                your transfers, your rivals. It is a number, and it is not a password: it identifies a
+                public team page, so there is nothing secret about it.</p>
+
+            <form id="wlForm" novalidate>
+                <div class="au-field">
+                    <label class="au-label" for="wlInput">FPL Team ID</label>
+                    <input class="au-input" id="wlInput" name="teamId" type="text"
+                           inputmode="numeric" autocomplete="off" autofocus placeholder="e.g. 2951638">
+                    <div class="au-hint">Sign in at <a href="https://fantasy.premierleague.com" target="_blank" rel="noopener">fantasy.premierleague.com</a>,
+                        open <strong>Pick Team</strong> → <strong>View Gameweek history</strong>, and the number
+                        in the address bar is your ID.</div>
+                </div>
+                <button class="au-submit" id="wlSubmit" type="submit">Link my squad</button>
+            </form>
+
+            <!-- Refusing has to be a real option, and an obvious one. Everything
+                 free on this site works without an id, and the dashboard asks
+                 again in its own time. -->
+            <div class="au-alt">
+                <a href="/dashboard" id="wlSkip">Skip for now</a>
+                <span class="au-small">You can add it any time from the sidebar.</span>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="scripts/auth.js?v=317"></script>
+<script src="scripts/common.js?v=317"></script>
+<script>
+    /* The step after signing up.
+     *
+     * Not the step after REGISTERING, which is a different moment: signing up
+     * ends at "check your email" with no session at all, so there is nobody to
+     * ask yet. login.html sends people here once they are actually signed in,
+     * which for a new account is the first thing that happens after they click
+     * the link in that email.
+     *
+     * Deliberately not wired into the confirmation redirect itself. That URL
+     * has to appear verbatim in the Supabase project's allow list, and a link
+     * pointing somewhere the list does not know about falls back to the site
+     * default — which is the bug that once sent every confirmation email to
+     * localhost. See auRedirectQuery() in scripts/auth.js. */
+    const wlError = document.getElementById('auError');
+
+    function wlShow(id) {
+        for (const k of ['wlChecking', 'wlAsk']) {
+            const el = document.getElementById(k);
+            if (el) el.hidden = k !== id;
+        }
+    }
+
+    function wlDone() {
+        location.replace('/dashboard');
+    }
+
+    (async function decide() {
+        /* Already linked in this browser: nothing to ask. */
+        if (typeof getSavedTeamId === 'function' && getSavedTeamId()) return wlDone();
+
+        /* Or linked on the account but not yet in this browser — the second
+           device case. adoptTeamIdFromAccount() is the same one-way copy the
+           dashboard uses, so this page cannot disagree with it. */
+        try {
+            if (typeof adoptTeamIdFromAccount === 'function' && await adoptTeamIdFromAccount()) return wlDone();
+        } catch (e) { /* no session, or the profile is unreachable: just ask */ }
+
+        wlShow('wlAsk');
+        const input = document.getElementById('wlInput');
+        if (input) input.focus();
+    })();
+
+    document.getElementById('wlForm').addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        wlError.classList.remove('is-on');
+
+        const raw = document.getElementById('wlInput').value.trim();
+        /* Same rule saveTeamId() enforces. Checked here too so the reader gets a
+           sentence rather than a button that silently does nothing — saveTeamId
+           returns quietly on a bad id, which is right for a helper and wrong for
+           a form. */
+        if (!/^\d+$/.test(raw)) {
+            wlError.textContent = 'A Team ID is just digits — no spaces or letters.';
+            wlError.classList.add('is-on');
+            return;
+        }
+
+        saveTeamId(raw);
+        wlDone();
+    });
+</script>
+</body>
+</html>

@@ -836,15 +836,17 @@
          * the price gap against the recommended option, which is the decision
          * the manager is actually making. Every figure on every card is that
          * option's own — no card shows the recommended move's numbers. */
-        const TWR_ALT_LABEL = { best: 'Recommended', cheaper: 'Cheaper', pricier: 'Dearer', next: 'Alternative' };
-
-        function twrOptionCard(a, chosen, gws, bank) {
+        function twrOptionCard(a, chosen, gws, bank, slot) {
+            /* Local, so the card can be lifted into a test on its own, and
+               because nothing else names these. Only the gap-less case reaches
+               them — every other option is labelled by its price difference. */
+            const TWR_ALT_LABEL = { best: 'Recommended', cheaper: 'Cheaper', pricier: 'Costs more', next: 'Alternative' };
             const isPick = a.in.id === chosen.in.id;
             const gap = Math.round((a.in.price - chosen.in.price) * 10) / 10;
             let label = TWR_ALT_LABEL[a.altKind] || TWR_ALT_LABEL.next;
             if (isPick) label = TWR_ALT_LABEL.best;
             else if (gap < 0) label = `£${Math.abs(gap).toFixed(1)}m cheaper`;
-            else if (gap > 0) label = `£${gap.toFixed(1)}m dearer`;
+            else if (gap > 0) label = `£${gap.toFixed(1)}m more`;
 
             let detail = '';
             if (typeof trRationale === 'function' && typeof trRenderCard === 'function') {
@@ -854,8 +856,21 @@
 
             const cls = a.gain >= 0 ? 'pos' : 'neg';
             const sign = a.gain >= 0 ? '+' : '';
+
+            /* Pickable, and it has to look it. The alternatives read as greyed
+               out when they were only unselected, so each one is a button in
+               its own right: cursor, hover, keyboard, and a footer that says
+               what clicking does. The chosen one says it is the chosen one
+               instead, because there is nothing to do to it. */
+            const pick = isPick
+                ? '<span class="twr-opt-state is-on">In your plan</span>'
+                : '<span class="twr-opt-state">Use this one</span>';
+            const act = isPick ? '' :
+                ` role="button" tabindex="0" onclick="twSelectOption(${slot}, ${a.in.id})"`
+                + ` onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();twSelectOption(${slot}, ${a.in.id});}"`;
+
             return `
-                <div class="twr-opt${isPick ? ' is-pick' : ''}">
+                <div class="twr-opt${isPick ? ' is-pick' : ''}"${act}>
                     <span class="twr-opt-tag">${escHTML(label)}</span>
                     <div class="twr-move">
                         <span class="twr-out">${escHTML(a.out.name)}<small>£${(a.out.sellPrice || a.out.price).toFixed(1)}m · ${a.outXP.toFixed(1)} xP</small></span>
@@ -864,11 +879,57 @@
                         <span class="twr-gain ${cls}">${sign}${a.gain.toFixed(1)}<small>to your XI</small></span>
                     </div>
                     <p class="twr-why">${escHTML(twMoveReason(a, gws))}</p>
-                    ${detail ? `<details class="twr-detail">
+                    ${detail ? `<details class="twr-detail" onclick="event.stopPropagation()">
                         <summary>The case for it</summary>
                         ${detail}
                     </details>` : ''}
+                    ${pick}
                 </div>`;
+        }
+
+        /* Choosing one of the three.
+         *
+         * The headline above the cards is a figure for the whole set, and the
+         * set is not additive — so it is recomputed by the engine's own scorer
+         * rather than patched by adding this option's gain and subtracting the
+         * last one's. r.rescore closes over the pool the sweep was run against,
+         * which is the only place that number can honestly come from.
+         *
+         * A pair that is fine one at a time can be illegal together: each option
+         * was priced against the whole bank, and two from the same club can
+         * breach the three-per-club limit jointly. So the set is checked before
+         * it is accepted, and refused with a reason rather than silently. */
+        function twSelectOption(slot, inId) {
+            const r = twLastRecommendation;
+            if (!r || !r.best || !r.best.moves || !r.best.moves[slot]) return;
+
+            const current = r.best.moves[slot];
+            const alt = (current.alts || []).find(a => a.in.id === inId);
+            if (!alt || alt.in.id === current.in.id) return;
+
+            const next = r.best.moves.slice();
+            // The alternatives belong to the slot, not to whichever option is
+            // showing, so they travel across the swap.
+            next[slot] = Object.assign({}, alt, { alts: current.alts });
+
+            if (typeof r.legal === 'function' && !r.legal(next)) {
+                updateStatus(`${alt.in.name} will not fit alongside the other move — `
+                    + 'not enough money, or too many from one club', 'error');
+                return;
+            }
+
+            r.best.moves = next;
+            if (typeof r.rescore === 'function') {
+                r.best.gross = Math.round(r.rescore(next) * 10) / 10;
+                r.best.net = Math.round((r.best.gross - r.best.cost) * 10) / 10;
+            }
+
+            const el = document.getElementById('twRecoBody');
+            if (el) {
+                el.innerHTML = renderTWRecommendation(r);
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+            updateStatus(`Swapped in ${alt.in.name} — the plan below is what the button will load`, 'success');
         }
 
         function renderTWRecommendation(r) {
@@ -962,7 +1023,7 @@
                         <div class="twr-slot">
                             <div class="twr-slot-h">Transfer ${i + 1} · ${escHTML(m.out.name)} out — ${alts.length} way${alts.length === 1 ? '' : 's'} to spend it</div>
                             <div class="twr-opts">
-                                ${alts.map(a => twrOptionCard(a, m, gws, bankHere)).join('')}
+                                ${alts.map(a => twrOptionCard(a, m, gws, bankHere, i)).join('')}
                             </div>
                         </div>`;
                     }).join('')}

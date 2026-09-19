@@ -11,9 +11,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=316">
-    <link rel="stylesheet" href="styles/v2-design.css?v=316">
-    <link rel="stylesheet" href="styles/auth.css?v=316">
+    <link rel="stylesheet" href="styles/common.css?v=317">
+    <link rel="stylesheet" href="styles/v2-design.css?v=317">
+    <link rel="stylesheet" href="styles/auth.css?v=317">
 </head>
 <body>
 <div class="au-page">
@@ -51,7 +51,7 @@
     </main>
 </div>
 
-<script src="scripts/auth.js?v=316"></script>
+<script src="scripts/auth.js?v=317"></script>
 <script>
     /* Same open-redirect rule as everywhere else on this site: a `next` that
        parses as another origin is dropped rather than followed. */
@@ -87,10 +87,17 @@
        block in index.html. One shot and this tab only: the adoption used to
        run on every landing-page load with an empty browser, which could not
        tell a new device from somebody who had just signed out, and put the
-       squad back in both cases. */
+       squad back in both cases.
+
+       Then /welcome rather than /dashboard, because the first sign-in of a new
+       account is the first moment there is anybody to ask for a Team ID —
+       signing up ends at "check your email" with no session at all. It is not a
+       step for everyone else: welcome.html sends anyone whose squad is already
+       linked, in this browser or on their account, straight on without drawing
+       anything. A `next` still wins, so a shared link is never interrupted. */
     function auGoOn() {
         try { sessionStorage.setItem('easyfpl_signed_in', '1'); } catch (e) { /* private mode */ }
-        location.replace(auNext || '/dashboard');
+        location.replace(auNext || '/welcome');
     }
 
     /* Arriving from the confirmation email.

@@ -104,3 +104,56 @@ test('the plan is only read back for the same team and gameweek', () => {
     assert.deepEqual([...load(rec, '7', 9)], [], 'different gameweek');
     assert.deepEqual([...load(null, '7', 8)], [], 'nothing stored');
 });
+
+
+/* ===== Choosing between the three options =====
+
+   The cards are the only place a manager can act on the alternatives, so what
+   is asserted here is that they can: exactly one is marked as the plan, and
+   every other one carries a working way to become it. */
+const twrOptionCard = loadFunction(W, 'twrOptionCard', {
+    escHTML: (s) => String(s == null ? '' : s),
+    twMoveReason: () => 'because the fixtures turn'
+});
+
+const opt = (id, price, gain) => ({
+    out: { name: 'Out', price: 8.0, sellPrice: 8.0 },
+    in: { id, name: 'In' + id, price },
+    gain, outXP: 10, inXP: 10 + gain
+});
+
+test('exactly one option is the plan, and it is not clickable', () => {
+    const chosen = opt(1, 8.0, 5);
+    const html = [chosen, opt(2, 6.0, 4), opt(3, 9.5, 3)]
+        .map(a => twrOptionCard(a, chosen, [1], 0, 0)).join('');
+    assert.equal(html.split('is-pick').length - 1, 1, 'one card carries the pick');
+    assert.equal(html.split('twSelectOption(').length - 1, 4,
+        'the two alternatives each get a click and a keydown hook');
+});
+
+test('an alternative knows which slot it belongs to and who it brings in', () => {
+    const chosen = opt(1, 8.0, 5);
+    const html = twrOptionCard(opt(2, 6.0, 4), chosen, [1], 0, 1);
+    assert.match(html, /twSelectOption\(1, 2\)/, 'slot 1, player 2');
+    assert.ok(!/is-pick/.test(html), 'and it is not the pick');
+});
+
+test('the price difference is spelled in plain words', () => {
+    const chosen = opt(1, 8.0, 5);
+    // "dearer" was the first word here and nobody could parse it at a glance.
+    const up = twrOptionCard(opt(3, 9.5, 3), chosen, [1], 0, 0);
+    assert.match(up, /£1\.5m more/);
+    assert.ok(!/dearer/i.test(up), 'no "dearer"');
+
+    const down = twrOptionCard(opt(2, 6.0, 4), chosen, [1], 0, 0);
+    assert.match(down, /£2\.0m cheaper/);
+});
+
+test('opening the reasoning does not also choose the option', () => {
+    const chosen = opt(1, 8.0, 5);
+    const html = twrOptionCard(opt(2, 6.0, 4), chosen, [1], 0, 0);
+    if (html.includes('<details')) {
+        assert.match(html, /<details[^>]*stopPropagation/,
+            'the disclosure sits inside a clickable card and must swallow its own clicks');
+    }
+});
