@@ -408,6 +408,12 @@ html.v2-theme-transition::view-transition-new(root) {
     margin-bottom: 6px;
 }
 
+/* The hidden attribute is only a user-agent display:none, and the flex on
+   .v2-nav-item below overrides it — which put the Admin link, shipped hidden
+   and revealed per account, in everyone's sidebar. An author rule has to say
+   it explicitly. */
+.v2-nav-item[hidden] { display: none !important; }
+
 .v2-nav-item {
     display: flex;
     align-items: center;
@@ -2877,22 +2883,55 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
    be stated here instead of inherited from <button>. */
 .v2-landing-login { display: inline-flex; align-items: center; text-decoration: none; }
 
+/* ===== The Team ID, typed in the bar =====
+
+   A pill that reads as one control: the field and its button share a border
+   that lights up together on focus. Sized so the bar still fits a logo, a
+   theme switch and a burger at 900px, where the page links have already
+   dropped into the drawer.
+
+   Below 560px it gives up and hands over to .v2-landing-id-fallback, which is
+   the old button. Exactly one of the two is ever displayed — the selectors
+   carry both class names so the rule wins on specificity rather than on which
+   happens to come last. */
+.v2-landing-id {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 3px 3px 13px;
+    border: 1px solid var(--border-emphasis);
+    border-radius: 999px;
+    background: var(--surface-1);
+    transition: border-color 140ms ease;
+}
+.v2-landing-id:focus-within { border-color: var(--color-primary); }
+.v2-landing-id input {
+    width: 100px; min-width: 0;
+    border: none; background: none; outline: none; padding: 0;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    color: var(--text-primary);
+}
+.v2-landing-id input::placeholder { color: var(--text-muted); font-weight: 500; }
+.v2-landing-id input.is-bad { color: var(--color-error); }
+.v2-landing-id-go {
+    padding: 7px 15px;
+    border: none; border-radius: 999px;
+    background: var(--color-primary);
+    color: #fff;
+    font-family: inherit; font-size: 12.5px; font-weight: 700;
+    white-space: nowrap; cursor: pointer;
+    transition: filter 140ms ease;
+}
+.v2-landing-id-go:hover { filter: brightness(1.07); }
+
+.v2-landing-login.v2-landing-id-fallback { display: none; }
+
+@media (max-width: 560px) {
+    .v2-landing-id { display: none; }
+    .v2-landing-login.v2-landing-id-fallback { display: inline-flex; }
+}
+
 /* Signing in is the thing a returning reader does and creating an account is
    the thing a new one does; only one of them can be the loud one, and on a
    landing page it is the new reader. */
-.v2-landing-signin {
-    padding: 9px 14px;
-    white-space: nowrap;
-    border-radius: 999px;
-    background: transparent;
-    border: 1px solid var(--border-emphasis, var(--border-default));
-    color: var(--text-primary);
-    font-family: inherit; font-size: 13px; font-weight: 600;
-    cursor: pointer; text-decoration: none;
-    display: inline-flex; align-items: center;
-    transition: background 140ms ease, border-color 140ms ease;
-}
-.v2-landing-signin:hover { background: var(--surface-2); border-color: var(--color-primary); }
 
 /* The rail is gone, so the page gets the whole width and clears the bar. */
 .v2-shell-landing .v2-main-content {
@@ -2938,6 +2977,9 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     body.v2-landing-open .v2-landing-links { display: flex; }
     .v2-landing-links a { padding: 12px; min-height: 44px; display: flex; align-items: center; }
     .v2-landing-login { padding: 9px 14px; }
+    .v2-landing-id { padding-left: 11px; }
+    .v2-landing-id input { width: 82px; }
+    .v2-landing-id-go { padding: 7px 12px; }
 }
 
 @media (max-width: 560px) {

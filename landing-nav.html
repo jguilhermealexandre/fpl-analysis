@@ -23,12 +23,26 @@
             <span class="v2-theme-option v2-theme-dark"><i data-lucide="moon" class="icon"></i></span>
             <span class="v2-theme-option v2-theme-light"><i data-lucide="sun" class="icon"></i></span>
         </button>
-        <!-- Two doors rather than one. Until now "Log in" opened a box asking
-             for an FPL team id, because that was the whole of identity here.
-             There are accounts now, so signing in and starting are different
-             acts and say so. -->
-        <a class="v2-landing-signin" href="/login.html">Log in</a>
-        <a class="v2-landing-login" href="/register.html">Create account</a>
+        <!-- One door again, and it is the Team ID itself — typed here rather
+             than behind a button that opens a box to type it in. Nearly every
+             reader of this site arrives with an id and no account, so the bar
+             asks for the one thing it needs.
+
+             The button below is the same door for a screen too narrow to hold
+             a field: CSS shows exactly one of the two. It also stays the way
+             to the explanation and the demo squad, which a bar this size has
+             no room for — v2SubmitLandingId() opens it on an empty or
+             malformed id for that reason. -->
+        <form class="v2-landing-id" aria-label="Open your team"
+              onsubmit="return v2SubmitLandingId(event)">
+            <input type="text" id="v2LandingIdInput" placeholder="Team ID"
+                   inputmode="numeric" autocomplete="off" maxlength="9"
+                   aria-label="Your FPL Team ID"
+                   oninput="this.classList.remove('is-bad')">
+            <button type="submit" class="v2-landing-id-go">Go</button>
+        </form>
+        <button type="button" class="v2-landing-login v2-landing-id-fallback"
+                onclick="openLoginModal()">Log in</button>
     </div>
 
     <!-- Below the breakpoint the links collapse behind this. -->

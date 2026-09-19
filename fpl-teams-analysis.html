@@ -51,18 +51,18 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=319">
-    <link rel="stylesheet" href="styles/teams.css?v=319">
-    <link rel="stylesheet" href="styles/v2-design.css?v=319">
-    <link rel="stylesheet" href="styles/responsive.css?v=319">
-    <script src="scripts/error-monitor.js?v=319"></script>
-    <script src="scripts/auth.js?v=319"></script>
-    <script src="scripts/common.js?v=319"></script>
+    <link rel="stylesheet" href="styles/common.css?v=323">
+    <link rel="stylesheet" href="styles/teams.css?v=323">
+    <link rel="stylesheet" href="styles/v2-design.css?v=323">
+    <link rel="stylesheet" href="styles/responsive.css?v=323">
+    <script src="scripts/error-monitor.js?v=323"></script>
+    <script src="scripts/auth.js?v=323"></script>
+    <script src="scripts/common.js?v=323"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=319"></script>
-    <script src="scripts/notifications.js?v=319"></script>
-    <script src="scripts/sidebar-nav.js?v=319"></script>
+    <script src="scripts/push-alerts.js?v=323"></script>
+    <script src="scripts/notifications.js?v=323"></script>
+    <script src="scripts/sidebar-nav.js?v=323"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -427,6 +427,44 @@
                 xGoverperformance: totals.goals - totals.xG,
                 xGCoverperformance: totals.xGC - totals.conceded  // positive = conceding less than expected (good)
             };
+        }
+
+        /* xG for the stats table, on the same window and venue as the counting
+           columns beside it. Venue 'all' keeps the established sources — the
+           bootstrap season sums, or getTeamXgWindow for a recent window. A
+           venue filter needs per-match xG, which only the perGw series has; a
+           team whose series has not loaded reports 0 there, which is the same
+           answer these columns have always given for missing xG. Window first,
+           then venue, matching the counting columns: "home games among the
+           last five", not "the last five home games". */
+        function getXgScoped(teamId) {
+            const zero = { xGpg: 0, xGCpg: 0, xGdiff: 0, xGCdiff: 0 };
+            if (statsVenue === 'all') {
+                if (statsView === 'last5' || statsView === 'last10') {
+                    const r = getTeamXgWindow(teamId, statsView === 'last5' ? 5 : 10);
+                    return r ? { xGpg: r.xGpg, xGCpg: r.xGCpg,
+                                 xGdiff: r.xGoverperformance,
+                                 xGCdiff: r.totalConceded - r.totalXgc } : zero;
+                }
+                const sx = getTeamSeasonXg(teamId);
+                return sx ? { xGpg: sx.xGpg, xGCpg: sx.xGCpg,
+                              xGdiff: sx.xGoverperformance,
+                              xGCdiff: sx.totalConceded - sx.totalXgc } : zero;
+            }
+            const data = window.teamXgData && window.teamXgData[teamId];
+            if (!data || !data.hasPerGwData) return zero;
+            const wantHome = statsVenue === 'home';
+            let rows = Object.keys(data.perGw).map(Number).sort((x, y) => x - y).map(gw => data.perGw[gw]);
+            if (statsView === 'last5') rows = rows.slice(-5);
+            else if (statsView === 'last10') rows = rows.slice(-10);
+            rows = rows.filter(d => d.wasHome === wantHome);
+            if (!rows.length) return zero;
+            const t = rows.reduce((acc, d) => {
+                acc.xG += d.xG; acc.xGC += d.xGC_90min; acc.g += d.goals; acc.c += d.conceded;
+                return acc;
+            }, { xG: 0, xGC: 0, g: 0, c: 0 });
+            return { xGpg: t.xG / rows.length, xGCpg: t.xGC / rows.length,
+                     xGdiff: t.g - t.xG, xGCdiff: t.c - t.xGC };
         }
 
         // fixturePlayed() moved to scripts/common.js — three other pages were
@@ -1767,13 +1805,15 @@
         // the season stays readable while attention narrows.
         // ===== FULL SEASON CALENDAR =====
         let fullSeasonFixtures = [];
-        /* 'week' is the default now. The tab used to open on the full season
-           table — twenty rows by thirty-eight columns of three-letter codes,
-           which is a reference document rather than something to look at, and
-           is almost never the question anyone arrives with. That question is
-           "who plays who this week". The table is still a click away, and the
-           week view has arrows for walking through the season. */
-        let calendarViewMode = 'week'; // 'week', 'next10', 'remaining', 'all'
+        /* 'remaining' is the default: the season from here on, as a table.
+           The tab has opened on two other things in its life — the full
+           thirty-eight-column season table, which is a reference document
+           rather than an answer, and then the single-week view, which answered
+           "who plays who this week" but made anyone planning transfers click
+           again for the horizon. Remaining is the planning view: everything
+           still to come and nothing already spent. The week cards and the full
+           table are both still one pick away in the same menu. */
+        let calendarViewMode = 'remaining'; // 'week', 'next10', 'remaining', 'all'
         let calendarWeekGW = null;     // resolved to the planning gameweek on first render
         let calendarColorMode = 'fdr'; // 'fdr', 'attack', 'defense', 'cs'
 
@@ -2472,19 +2512,17 @@
             };
         }
 
+        /* Sum of values, never a count of entries. An earlier extractor counted
+           how many players appeared under a stat, which silently undercounts the
+           match where one player saves two penalties or scores two own goals —
+           the value field is the official occurrence count and is what gets
+           summed. */
         function extractStatCount(statsArr, identifier, side) {
             // side: 'h' or 'a'
             if (!statsArr) return 0;
             const stat = statsArr.find(s => s.identifier === identifier);
             if (!stat || !stat[side]) return 0;
             return stat[side].reduce((sum, entry) => sum + (entry.value || 0), 0);
-        }
-
-        function extractStatEntries(statsArr, identifier, side) {
-            if (!statsArr) return 0;
-            const stat = statsArr.find(s => s.identifier === identifier);
-            if (!stat || !stat[side]) return 0;
-            return stat[side].length; // number of players who got this stat
         }
 
         function calculateSeasonStats() {
@@ -2568,16 +2606,16 @@
                 // === Extract stats from the fixture stats array ===
                 const homeAssists = extractStatCount(st, 'assists', 'h');
                 const awayAssists = extractStatCount(st, 'assists', 'a');
-                const homeOG = extractStatEntries(st, 'own_goals', 'h');
-                const awayOG = extractStatEntries(st, 'own_goals', 'a');
-                const homePenSaved = extractStatEntries(st, 'penalties_saved', 'h');
-                const awayPenSaved = extractStatEntries(st, 'penalties_saved', 'a');
-                const homePenMissed = extractStatEntries(st, 'penalties_missed', 'h');
-                const awayPenMissed = extractStatEntries(st, 'penalties_missed', 'a');
-                const homeYC = extractStatEntries(st, 'yellow_cards', 'h');
-                const awayYC = extractStatEntries(st, 'yellow_cards', 'a');
-                const homeRC = extractStatEntries(st, 'red_cards', 'h');
-                const awayRC = extractStatEntries(st, 'red_cards', 'a');
+                const homeOG = extractStatCount(st, 'own_goals', 'h');
+                const awayOG = extractStatCount(st, 'own_goals', 'a');
+                const homePenSaved = extractStatCount(st, 'penalties_saved', 'h');
+                const awayPenSaved = extractStatCount(st, 'penalties_saved', 'a');
+                const homePenMissed = extractStatCount(st, 'penalties_missed', 'h');
+                const awayPenMissed = extractStatCount(st, 'penalties_missed', 'a');
+                const homeYC = extractStatCount(st, 'yellow_cards', 'h');
+                const awayYC = extractStatCount(st, 'yellow_cards', 'a');
+                const homeRC = extractStatCount(st, 'red_cards', 'h');
+                const awayRC = extractStatCount(st, 'red_cards', 'a');
                 const homeSaves = extractStatCount(st, 'saves', 'h');
                 const awaySaves = extractStatCount(st, 'saves', 'a');
                 const homeBonus = extractStatCount(st, 'bonus', 'h');
@@ -2631,6 +2669,11 @@
                     stats[teamId].form = last5Games.map(g => g.result);
                     last5Games.forEach(g => addToBucket(stats[teamId].last5, g));
                     last10Games.forEach(g => addToBucket(stats[teamId].last10, g));
+                    // The records themselves, ordered. The stats table aggregates
+                    // straight from these so any window-and-venue combination is
+                    // built from the same matches, rather than from buckets that
+                    // were summed under different assumptions.
+                    stats[teamId].history = history;
                 }
             });
 
@@ -2681,19 +2724,6 @@
                         { key: 'ownGoals', label: 'OG', title: 'Own Goals', inverted: true },
                     ]
                 },
-                discipline: {
-                    groupLabel: '<i data-lucide="clipboard-list" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i> DISCIPLINE & BETTING',
-                    groupClass: 'overall-group',
-                    cols: [
-                        { key: 'yellowCards', label: 'YC', title: 'Yellow Cards', inverted: true },
-                        { key: 'ycpg', label: 'YC/G', title: 'Yellow Cards per Game', decimals: 2, inverted: true },
-                        { key: 'redCards', label: 'RC', title: 'Red Cards', inverted: true },
-                        { key: 'btts', label: 'BTTS', title: 'Both Teams Scored' },
-                        { key: 'bttsPct', label: 'BTTS%', title: 'Both Teams Scored %', decimals: 0, suffix: '%' },
-                        { key: 'o25', label: 'O2.5', title: 'Over 2.5 Goals' },
-                        { key: 'o25Pct', label: 'O2.5%', title: 'Over 2.5 Goals %', decimals: 0, suffix: '%' },
-                    ]
-                },
                 fpl: {
                     groupLabel: '<i data-lucide=\"award\" style=\"width:14px;height:14px;display:inline-block;vertical-align:middle;\"></i> FPL POINTS',
                     groupClass: 'attack-group',
@@ -2712,7 +2742,6 @@
                     groupClass: 'defense-group',
                     cols: [
                         { key: 'xGpg', label: 'xG/G', title: 'Expected Goals per Game (from real Opta xG)', decimals: 2 },
-                        { key: 'npxGpg', label: 'NPxG/G', title: 'Non-Penalty xG per Game (~90% of xG)', decimals: 2 },
                         { key: 'xGdiffTotal', label: 'G-xG', title: 'Goals minus xG (+ = overperforming, lucky)', decimals: 1 },
                         { key: 'xGCpg', label: 'xGC/G', title: 'Expected Goals Conceded per Game', decimals: 2, inverted: true },
                         { key: 'xGCdiffTotal', label: 'GA-xGC', title: 'Goals Conceded minus xGC (- = overperforming defense)', decimals: 1, inverted: true },
@@ -2755,8 +2784,8 @@
             const catKeys = Object.keys(cats);
 
             // Lazily initialize statsVisibleCols with a curated, FPL-relevant default set.
-            // Everything else (discipline, betting %, home/away splits, raw totals, etc.)
-            // stays available via the column picker below, just off by default.
+            // Everything else (home/away splits, raw totals, etc.) stays available
+            // via the column picker below, just off by default.
             if (!statsVisibleCols) {
                 statsVisibleCols = new Set([
                     'ppg', 'form',           // Overall — standings context, recent results
@@ -2988,85 +3017,78 @@
             });
 
             // Convert to flat array with computed values
+            /* Every figure on a row is aggregated from the SAME set of matches:
+               the view window (season / last 10 / last 5) filtered by venue.
+               It was not always so. The venue toggle used to re-scope only
+               P, W, GF, GA and CS, then divide SEASON totals by venue games for
+               everything else — Home mode showed saves-per-game at roughly
+               double the truth — and points-per-game ignored home draws
+               entirely, because draws were never counted per venue. Folding the
+               per-match records makes every combination honest by construction:
+               there is no number on a row that did not come out of exactly the
+               matches the toggles name. */
             let teams = Object.values(seasonStats).map(team => {
-                const s = statsView === 'season' ? team.season : (statsView === 'last10' ? team.last10 : team.last5);
+                let recs = team.history || [];
+                if (statsView === 'last5') recs = recs.slice(-5);
+                else if (statsView === 'last10') recs = recs.slice(-10);
+                if (statsVenue === 'home') recs = recs.filter(r => r.isHome);
+                else if (statsVenue === 'away') recs = recs.filter(r => !r.isHome);
 
-                // Venue-aware base stats
-                let games, w, gf, ga, cs;
-                if (statsVenue === 'home') {
-                    games = s.homeP || 1; w = s.homeW || 0; gf = s.homeGf || 0; ga = s.homeGa || 0; cs = s.homeCs || 0;
-                } else if (statsVenue === 'away') {
-                    games = s.awayP || 1; w = s.awayW || 0; gf = s.awayGf || 0; ga = s.awayGa || 0; cs = s.awayCs || 0;
-                } else {
-                    games = s.p || 1; w = s.w; gf = s.gf; ga = s.ga; cs = s.cs;
-                }
-                const pts = (w * 3) + (statsVenue === 'all' ? s.d : 0);
+                const a = recs.reduce((acc, r) => {
+                    acc.gf += r.gf; acc.ga += r.ga;
+                    if (r.result === 'W') acc.w++; else if (r.result === 'D') acc.d++; else acc.l++;
+                    if (r.cs) acc.cs++;
+                    if (r.fts) acc.fts++;
+                    acc.assists += r.assists; acc.ownGoals += r.ownGoals;
+                    acc.penMissed += r.penMissed; acc.penSaved += r.penSaved;
+                    acc.saves += r.saves; acc.bonus += r.bonus; acc.bps += r.bps;
+                    if (r.o25) acc.o25++;
+                    const v = r.isHome ? acc.home : acc.away;
+                    v.p++; if (r.result === 'W') v.w++; v.gf += r.gf; if (r.cs) v.cs++;
+                    return acc;
+                }, { w: 0, d: 0, l: 0, gf: 0, ga: 0, cs: 0, fts: 0, assists: 0, ownGoals: 0,
+                     penMissed: 0, penSaved: 0, saves: 0, bonus: 0, bps: 0, o25: 0,
+                     home: { p: 0, w: 0, gf: 0, cs: 0 }, away: { p: 0, w: 0, gf: 0, cs: 0 } });
+
+                const p = recs.length;
+                const games = p || 1;
+                const pts = a.w * 3 + a.d;
+                const xg = getXgScoped(team.id);
+
                 return {
                     ...team,
-                    ...s,
-                    // Override base stats with venue-filtered values
-                    p: games,
-                    w: w,
-                    gf: gf,
-                    ga: ga,
-                    cs: cs,
+                    p, w: a.w, d: a.d, l: a.l, gf: a.gf, ga: a.ga, cs: a.cs, fts: a.fts,
+                    assists: a.assists, ownGoals: a.ownGoals,
+                    penMissed: a.penMissed, penSaved: a.penSaved,
+                    saves: a.saves, bonus: a.bonus, bps: a.bps, o25: a.o25,
                     pts,
-                    gd: gf - ga,
+                    gd: a.gf - a.ga,
                     ppg: pts / games,
-                    gpg: gf / games,
-                    gapg: ga / games,
-                    apg: s.assists / games,
-                    csPct: (cs / games) * 100,
-                    ftsPct: (s.fts / games) * 100,
-                    svpg: s.saves / games,
-                    ycpg: s.yellowCards / games,
-                    bttsPct: (s.btts / games) * 100,
-                    o25Pct: (s.o25 / games) * 100,
-                    bnspg: s.bonus / games,
-                    bpspg: s.bps / games,
-                    homeGpg: s.homeP > 0 ? s.homeGf / s.homeP : 0,
-                    awayGpg: s.awayP > 0 ? s.awayGf / s.awayP : 0,
-                    homeCsPct: s.homeP > 0 ? (s.homeCs / s.homeP) * 100 : 0,
-                    awayCsPct: s.awayP > 0 ? (s.awayCs / s.awayP) * 100 : 0,
-                    gAndA: gf + s.assists,
-                    gapg_combined: (gf + s.assists) / games,
-                    csBonus: cs + s.saves,
-                    // xG data — matched to current statsView window
-                    xGpg: (() => {
-                        if (statsView === 'last5') { const r = getTeamXgWindow(team.id, 5); return r ? r.xGpg : 0; }
-                        if (statsView === 'last10') { const r = getTeamXgWindow(team.id, 10); return r ? r.xGpg : 0; }
-                        const sx = getTeamSeasonXg(team.id); return sx ? sx.xGpg : 0;
-                    })(),
-                    xGCpg: (() => {
-                        if (statsView === 'last5') { const r = getTeamXgWindow(team.id, 5); return r ? r.xGCpg : 0; }
-                        if (statsView === 'last10') { const r = getTeamXgWindow(team.id, 10); return r ? r.xGCpg : 0; }
-                        const sx = getTeamSeasonXg(team.id); return sx ? sx.xGCpg : 0;
-                    })(),
-                    xGdiffTotal: (() => {
-                        if (statsView === 'last5') { const r = getTeamXgWindow(team.id, 5); return r ? r.xGoverperformance : 0; }
-                        if (statsView === 'last10') { const r = getTeamXgWindow(team.id, 10); return r ? r.xGoverperformance : 0; }
-                        const sx = getTeamSeasonXg(team.id); return sx ? sx.xGoverperformance : 0;
-                    })(),
-                    xGCdiffTotal: (() => {
-                        if (statsView === 'last5') { const r = getTeamXgWindow(team.id, 5); return r ? (r.totalConceded - r.totalXgc) : 0; }
-                        if (statsView === 'last10') { const r = getTeamXgWindow(team.id, 10); return r ? (r.totalConceded - r.totalXgc) : 0; }
-                        const sx = getTeamSeasonXg(team.id); return sx ? (sx.totalConceded - sx.totalXgc) : 0;
-                    })(),
+                    gpg: a.gf / games,
+                    gapg: a.ga / games,
+                    apg: a.assists / games,
+                    csPct: (a.cs / games) * 100,
+                    ftsPct: (a.fts / games) * 100,
+                    svpg: a.saves / games,
+                    bnspg: a.bonus / games,
+                    bpspg: a.bps / games,
+                    homeP: a.home.p, homeW: a.home.w,
+                    awayP: a.away.p, awayW: a.away.w,
+                    homeGpg: a.home.p ? a.home.gf / a.home.p : 0,
+                    awayGpg: a.away.p ? a.away.gf / a.away.p : 0,
+                    homeCsPct: a.home.p ? (a.home.cs / a.home.p) * 100 : 0,
+                    awayCsPct: a.away.p ? (a.away.cs / a.away.p) * 100 : 0,
+                    gAndA: a.gf + a.assists,
+                    gapg_combined: (a.gf + a.assists) / games,
+                    csBonus: a.cs + a.saves,
+                    // xG, on the same window and venue as everything above.
+                    xGpg: xg.xGpg,
+                    xGCpg: xg.xGCpg,
+                    xGdiffTotal: xg.xGdiff,
+                    xGCdiffTotal: xg.xGCdiff,
+                    netXGpg: xg.xGpg - xg.xGCpg,
                     r6xGpg: (() => { const r = getTeamXgWindow(team.id, 6); return r ? r.xGpg : 0; })(),
                     r6gapg: (() => { const r = getTeamXgWindow(team.id, 6); return r ? r.gapg : 0; })(),
-                    // NPxG/G placeholder (~90% of xG) — replace with real NPxG from backend when available
-                    npxGpg: (() => {
-                        if (statsView === 'last5') { const r = getTeamXgWindow(team.id, 5); return r ? r.xGpg * 0.9 : 0; }
-                        if (statsView === 'last10') { const r = getTeamXgWindow(team.id, 10); return r ? r.xGpg * 0.9 : 0; }
-                        const sx = getTeamSeasonXg(team.id); return sx ? sx.xGpg * 0.9 : 0;
-                    })(),
-                    netXGpg: (() => {
-                        let xgVal, xgcVal;
-                        if (statsView === 'last5') { const r = getTeamXgWindow(team.id, 5); xgVal = r ? r.xGpg : 0; xgcVal = r ? r.xGCpg : 0; }
-                        else if (statsView === 'last10') { const r = getTeamXgWindow(team.id, 10); xgVal = r ? r.xGpg : 0; xgcVal = r ? r.xGCpg : 0; }
-                        else { const sx = getTeamSeasonXg(team.id); xgVal = sx ? sx.xGpg : 0; xgcVal = sx ? sx.xGCpg : 0; }
-                        return xgVal - xgcVal;
-                    })(),
                 };
             });
 

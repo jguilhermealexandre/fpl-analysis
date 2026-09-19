@@ -51,13 +51,13 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=319">
-    <link rel="stylesheet" href="styles/players.css?v=319">
+    <link rel="stylesheet" href="styles/common.css?v=323">
+    <link rel="stylesheet" href="styles/players.css?v=323">
     <!-- The shared player profile card. Loaded after this page's own sheet so
          either can still override the other, exactly as on the squad page. -->
-    <link rel="stylesheet" href="styles/player-profile.css?v=319">
-    <link rel="stylesheet" href="styles/v2-design.css?v=319">
-    <link rel="stylesheet" href="styles/responsive.css?v=319">
+    <link rel="stylesheet" href="styles/player-profile.css?v=323">
+    <link rel="stylesheet" href="styles/v2-design.css?v=323">
+    <link rel="stylesheet" href="styles/responsive.css?v=323">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -87,21 +87,20 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=319">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=319">
-    <link rel="preload" as="script" href="scripts/routes-engine.js?v=319">
-    <link rel="preload" as="script" href="scripts/form-trend.js?v=319">
-    <link rel="preload" as="script" href="scripts/purple-patch.js?v=319">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=319">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=319">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=319">
-    <link rel="preload" as="script" href="scripts/player-profile.js?v=319">
-    <link rel="preload" as="script" href="scripts/players-ai.js?v=319">
-    <link rel="preload" as="script" href="scripts/auth.js?v=319">
-    <link rel="preload" as="script" href="scripts/common.js?v=319">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=319">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=319">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=319">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=323">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=323">
+    <link rel="preload" as="script" href="scripts/routes-engine.js?v=323">
+    <link rel="preload" as="script" href="scripts/form-trend.js?v=323">
+    <link rel="preload" as="script" href="scripts/purple-patch.js?v=323">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=323">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=323">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=323">
+    <link rel="preload" as="script" href="scripts/player-profile.js?v=323">
+    <link rel="preload" as="script" href="scripts/auth.js?v=323">
+    <link rel="preload" as="script" href="scripts/common.js?v=323">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=323">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=323">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=323">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -983,7 +982,7 @@
 
            Rising Form and Purple Patch both read a recent window against a season
            baseline, so neither can say anything until there is enough season to be
-           a baseline: Rising Form fills in around GW7, Purple Patch around GW9.
+           a baseline: Rising Form fills in around GW6, Purple Patch around GW9.
            That is the right answer for a manager and a useless one for showing
            somebody what this page does in September.
 
@@ -2865,7 +2864,12 @@
             // Scaled to the season played so far in demo mode — see demoPreview().
             const demo = demoPreview();
             const minRecentGames = demo ? Math.min(3, seasonGamesPlayed) : 3;
-            const minSeasonGames = demo ? Math.min(6, seasonGamesPlayed) : 6;
+            /* Five, down from six. The baseline comparison needs the recent
+               window (3 games) to be a genuine subset of the season, and at five
+               games it still is — 3 vs 5 leaves two games of daylight between
+               the two averages. What five buys is a whole gameweek earlier in
+               the season for a section that is otherwise empty furniture. */
+            const minSeasonGames = demo ? Math.min(5, seasonGamesPlayed) : 5;
             const minRecentMinutes = demo ? 60 * minRecentGames : 180;
 
             const scored = analyses
@@ -3192,7 +3196,7 @@
                     <div class="sub-tab-panel ${cfg.pos === activeGlobalPosition ? 'active' : ''}" id="rising-panel-${cfg.pos}">
                         ${posPlayers.length > 0
                             ? `<div class="rising-grid">${posPlayers.map((p, j) => renderRisingCard(p, j + 1)).join('')}</div>`
-                            : (seasonTooYoungNotice(6, 'Rising Form',
+                            : (seasonTooYoungNotice(5, 'Rising Form',
                                 'It compares a player\u2019s last five gameweeks against their own season average to spot form turning upward.')
                                 || '<div class="no-players">No players currently picking up form at this position</div>')
                         }
@@ -3209,7 +3213,7 @@
                         <div class="pa-filter-pills">${paPositionPills()}</div>
                     </div>
                 </div>
-                ${demoPreviewNotice('Rising Form', 6)}
+                ${demoPreviewNotice('Rising Form', 5)}
                 <div class="rising-section">
                     <div class="section-toolbar is-right-only">
                         <div class="section-toolbar-right">
@@ -3493,23 +3497,23 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=319"></script>
+    <script src="scripts/error-monitor.js?v=323"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=319"></script>
-    <script src="scripts/routes-engine.js?v=319"></script>
-    <script src="scripts/form-trend.js?v=319"></script>
-    <script src="scripts/purple-patch.js?v=319"></script>
-    <script src="scripts/players-tables.js?v=319"></script>
-    <script src="scripts/compare-report.js?v=319"></script>
+    <script src="scripts/xp-engine.js?v=323"></script>
+    <script src="scripts/routes-engine.js?v=323"></script>
+    <script src="scripts/form-trend.js?v=323"></script>
+    <script src="scripts/purple-patch.js?v=323"></script>
+    <script src="scripts/players-tables.js?v=323"></script>
+    <script src="scripts/compare-report.js?v=323"></script>
     <!-- The price meter and the season's price path, from the game's own price
          engine. Pure functions, no DOM — the profile card renders them. -->
-    <script src="scripts/price-watch.js?v=319"></script>
+    <script src="scripts/price-watch.js?v=323"></script>
     <!-- Everything the site knows about one player, in one card. Shared with the
          squad page; the trend charts this page adds to it are wired up in the
          inline block below via pdmPageSections()/pdmAfterRender(). -->
-    <script src="scripts/player-profile.js?v=319"></script>
+    <script src="scripts/player-profile.js?v=323"></script>
     <script>
         // buildStatWindows / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -5433,44 +5437,16 @@
         document.addEventListener('DOMContentLoaded', loadData);
     </script>
 
-    <!-- FPL AI Assistant Widget -->
-    <div id="fpl-ai-widget" class="ai-widget">
-        <div class="ai-header" onclick="toggleAIChat()">
-            <div class="ai-title">
-                <span class="ai-icon"><i data-lucide="bot" style="width:18px;height:18px;"></i></span> FPL Assistant
-            </div>
-            <button class="ai-toggle-btn" aria-label="Toggle chat panel">▲</button>
-        </div>
-        <div class="ai-body">
-            <div class="ai-messages" id="ai-messages">
-                <div class="ai-msg bot">
-                    Hello! I have access to data on all <strong><span id="ai-player-count">0</span> players</strong>. Ask me anything!
-                    <div class="ai-suggestions">
-                        <button onclick="askAI('Who are the best budget midfielders?')"><i data-lucide="coins" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Best budget mids</button>
-                        <button id="ai-compare-suggestion" onclick="askAI('Compare Salah and Palmer')"><i data-lucide="scale" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Compare players</button>
-                        <button onclick="askAI('Who has the easiest fixtures?')"><i data-lucide="calendar" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Easiest fixtures</button>
-                        <button onclick="askAI('Best differentials under 10% owned')"><i data-lucide="crosshair" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> Differentials</button>
-                    </div>
-                </div>
-            </div>
-            <div class="ai-input-area">
-                <input type="text" id="ai-input" placeholder="Ask about players, stats, or comparisons..." onkeypress="handleAIEnter(event)">
-                <button class="ai-send" onclick="submitAIQuery()">➤</button>
-            </div>
-        </div>
-    </div>
-
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/players-ai.js?v=319"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/auth.js?v=319"></script>
-    <script src="scripts/common.js?v=319"></script>
+    <script src="scripts/auth.js?v=323"></script>
+    <script src="scripts/common.js?v=323"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=319"></script>
-    <script src="scripts/notifications.js?v=319"></script>
-    <script src="scripts/sidebar-nav.js?v=319"></script>
+    <script src="scripts/push-alerts.js?v=323"></script>
+    <script src="scripts/notifications.js?v=323"></script>
+    <script src="scripts/sidebar-nav.js?v=323"></script>
     <script>
         loadSidebarNav();
         initIcons();
