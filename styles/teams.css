@@ -2154,16 +2154,22 @@
 }
 
 /* ===== SWINGS TAB PANELS ===== */
-/* Stacked, not side by side.
-
-   Two panels at half width each put a seven-gameweek fixture strip into about
-   300px, so the runs the page exists to show were the first thing squeezed.
-   Full width in the order the question is asked: who is good now, then which
-   patches are worth targeting, then whose run is about to turn. */
+/* Side by side again, with the lesson from the first attempt kept: two panels
+   at half width once squeezed a seven-gameweek strip into ~300px, so the pair
+   only holds while each column genuinely has room for a strip and a timeline —
+   below 1200px they stack. minmax(0, 1fr) so a long club name cannot widen its
+   column at the other panel's expense; the timelines already wrap on their
+   flex gaps. Swings and patches are one decision seen from two ends — what is
+   turning, and what is worth buying into — which is why they share a row. */
 .swings-layout {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-4);
+    align-items: start;
+}
+
+@media (max-width: 1200px) {
+    .swings-layout { grid-template-columns: 1fr; }
 }
 
 .swings-panel {
@@ -2778,7 +2784,9 @@
 .swing-delta.improving { color: var(--color-success); }
 .swing-delta.worsening { color: var(--color-error); }
 
-.swing-timeline { display: flex; align-items: center; gap: 8px; }
+/* wrap, or a long before-and-after run clips in the half-width column the
+   side-by-side layout gives it — the sides simply stack when tight. */
+.swing-timeline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .swing-side { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .swing-side-label {
     font-size: 8.5px; font-weight: 700; text-transform: uppercase;

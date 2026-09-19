@@ -51,17 +51,17 @@
     <meta name="twitter:title" content="EasyFPL — League Rivals">
     <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=321">
-    <link rel="stylesheet" href="styles/v2-design.css?v=321">
-    <link rel="stylesheet" href="styles/responsive.css?v=321">
-    <script src="scripts/error-monitor.js?v=321"></script>
-    <script src="scripts/auth.js?v=321"></script>
-    <script src="scripts/common.js?v=321"></script>
+    <link rel="stylesheet" href="styles/common.css?v=322">
+    <link rel="stylesheet" href="styles/v2-design.css?v=322">
+    <link rel="stylesheet" href="styles/responsive.css?v=322">
+    <script src="scripts/error-monitor.js?v=322"></script>
+    <script src="scripts/auth.js?v=322"></script>
+    <script src="scripts/common.js?v=322"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=321"></script>
-    <script src="scripts/notifications.js?v=321"></script>
-    <script src="scripts/sidebar-nav.js?v=321"></script>
+    <script src="scripts/push-alerts.js?v=322"></script>
+    <script src="scripts/notifications.js?v=322"></script>
+    <script src="scripts/sidebar-nav.js?v=322"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -173,61 +173,6 @@
         .primary-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-        }
-
-        /* League Info Card */
-        .league-info {
-            margin-top: var(--space-4);
-            padding: var(--space-4);
-            background: var(--surface-2);
-            border: 1px solid var(--border-default);
-            border-radius: var(--radius-md);
-            display: none;
-        }
-
-        .league-info.show { display: block; }
-
-        .league-name {
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: var(--space-2);
-        }
-
-        .league-meta {
-            font-size: 12px;
-            color: var(--text-muted);
-        }
-
-        .your-team-select {
-            margin-top: var(--space-4);
-            display: flex;
-            align-items: center;
-            gap: var(--space-4);
-            flex-wrap: wrap;
-        }
-
-        .your-team-select label {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-secondary);
-        }
-
-        .your-team-select select {
-            background: var(--surface-0);
-            border: 1px solid var(--border-default);
-            color: var(--text-primary);
-            padding: var(--space-2) var(--space-4);
-            border-radius: var(--radius-md);
-            font-family: inherit;
-            font-size: 13px;
-            min-width: 250px;
-        }
-
-        .your-team-select select:focus {
-            outline: none;
-            border-color: var(--color-info);
         }
 
         /* ===== STATUS BAR ===== */
@@ -992,23 +937,11 @@
                     <div class="input-help">Find it in your league URL: /leagues/12345/standings</div>
                 </div>
                 <div class="input-group">
-                    <label>Your Team ID (Optional)</label>
-                    <input type="text" id="yourTeamIdInput" placeholder="Auto-detect or enter manually">
-                    <div class="input-help">Leave blank to select from league after loading</div>
+                    <label>Your Team ID</label>
+                    <input type="text" id="yourTeamIdInput" inputmode="numeric" placeholder="Your Team ID">
+                    <div class="input-help">Filled in from the Team ID you use across the site.</div>
                 </div>
-                <button class="primary-btn" id="loadBtn" onclick="loadLeague()">Load League</button>
-            </div>
-            
-            <div class="league-info" id="leagueInfo">
-                <div class="league-name" id="leagueName">-</div>
-                <div class="league-meta" id="leagueMeta">-</div>
-                <div class="your-team-select">
-                    <label>Select Your Team:</label>
-                    <select id="yourTeamSelect">
-                        <option value="">-- Select your team --</option>
-                    </select>
-                    <button class="primary-btn" id="analyzeBtn" onclick="analyzeRivals()">Analyze Rivals →</button>
-                </div>
+                <button class="primary-btn" id="loadBtn" onclick="loadLeague()">Analyze League →</button>
             </div>
         </div>
 
@@ -1452,29 +1385,28 @@
                 
                 leagueData = await res.json();
                 managers = leagueData.standings.results.slice(0, MAX_MANAGERS);
-                
-                // Show league info
-                document.getElementById('leagueName').textContent = leagueData.league.name;
-                document.getElementById('leagueMeta').textContent = `${managers.length} managers loaded (showing top ${MAX_MANAGERS})`;
-                document.getElementById('leagueInfo').classList.add('show');
-                
-                // Populate select
-                const select = document.getElementById('yourTeamSelect');
-                select.innerHTML = '<option value="">-- Select your team --</option>';
-                managers.forEach(m => {
-                    const opt = document.createElement('option');
-                    opt.value = m.entry;
-                    opt.textContent = `${m.player_name} - ${m.entry_name} (Rank: ${m.rank})`;
-                    select.appendChild(opt);
-                });
-                
-                // Check if we have a pre-filled team ID
-                const prefilledId = document.getElementById('yourTeamIdInput').value.trim();
-                if (prefilledId && managers.some(m => m.entry == prefilledId)) {
-                    select.value = prefilledId;
+
+                /* One step, not three. There used to be a second card here —
+                   league name, a manager count, and a picker to find yourself
+                   in a list you are already in — because the Team ID was
+                   optional. It is not optional any more: the page always has
+                   the id the site runs on, so the league loads and the
+                   analysis starts. The one honest failure is an id outside the
+                   loaded slice of the standings, which is named rather than
+                   silently dropped into a picker that no longer exists. */
+                const teamId = document.getElementById('yourTeamIdInput').value.trim();
+                if (!/^\d+$/.test(teamId)) {
+                    showStatus('Enter your Team ID — it is the number the rest of the site already uses.', 'error');
+                    return false;
                 }
-                
+                if (!managers.some(m => String(m.entry) === teamId)) {
+                    showStatus(`Team ${teamId} is not in the top ${MAX_MANAGERS} of "${leagueData.league.name}" — `
+                        + 'this page reads the loaded slice of the standings.', 'error');
+                    return false;
+                }
+
                 showStatus(`Loaded ${managers.length} managers from "${leagueData.league.name}"`, 'success');
+                await analyzeRivals(teamId);
                 return true;
 
             } catch (err) {
@@ -1482,19 +1414,20 @@
                 return false;
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Load League';
+                btn.textContent = 'Analyze League →';
             }
         }
         
         // ===== ANALYZE RIVALS =====
-        async function analyzeRivals() {
-            myTeamId = document.getElementById('yourTeamSelect').value;
+        async function analyzeRivals(teamId) {
+            myTeamId = teamId != null ? String(teamId)
+                : document.getElementById('yourTeamIdInput').value.trim();
             if (!myTeamId) {
-                showStatus('Please select your team', 'error');
+                showStatus('Enter your Team ID above', 'error');
                 return;
             }
-            
-            const btn = document.getElementById('analyzeBtn');
+
+            const btn = document.getElementById('loadBtn');
             btn.disabled = true;
             btn.textContent = 'Analyzing...';
             showStatus('Fetching picks & history...', 'loading');
@@ -1646,7 +1579,7 @@
                 showStatus('Analysis failed: ' + err.message, 'error');
             } finally {
                 btn.disabled = false;
-                btn.textContent = 'Analyze Rivals →';
+                btn.textContent = 'Analyze League →';
             }
         }
         
@@ -2836,25 +2769,19 @@
             }
             updateClearLeagueBtn();
 
-            // Both ids are already known, so making the manager click Load League,
-            // re-pick the team they just told us about, then click Analyse is three
-            // steps that ask for nothing new. Go straight to the results and leave
-            // the setup card above them for anyone who wants to change either id.
-            // Falls back to the manual flow on its own: a failed league load shows
-            // its error, and a team outside the loaded slice leaves the picker empty.
+            // Both ids are already known, and loadLeague() analyses as soon as
+            // the league answers — so arriving here with a saved league is
+            // arriving at the results. A failed load or an id outside the
+            // loaded slice shows its error and leaves the setup card to edit.
             if (savedLeagueId && savedTeamId) {
-                const loaded = await loadLeague();
-                const select = document.getElementById('yourTeamSelect');
-                if (loaded && select && select.value) {
-                    await analyzeRivals();
-                }
+                await loadLeague();
             }
         });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>loadSidebarNav(); initIcons();
         v2MountPageHelp(
-            'This page compares your squad against a mini-league. Load a league, pick yourself out of it, and every section below reads your team against theirs.',
+            'This page compares your squad against a mini-league. Load a league — your Team ID is already filled in — and every section below reads your team against theirs.',
             [
                 { title: 'The tabs', steps: [
                     { title: 'Insights', text: 'Where you differ from the field: the template players you are missing, your own differentials, how the league picks, and where your gameweek diverged from theirs.' },
