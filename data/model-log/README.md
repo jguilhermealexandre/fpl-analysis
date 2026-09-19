@@ -48,3 +48,20 @@ early rather than waiting for one perfectly-timed moment.
 `tools/xp-engine-host.mjs`, which hosts the *shipped* script rather than
 reimplementing any of it — every number here came out of the same code the site
 runs.
+
+## Read by
+
+`tools/grade-predictions.mjs`, which joins each sealed round to the results in
+`data/players-data.json` and writes `data/model-accuracy.json`. It only scores a
+round FPL has marked finished **and** data-checked, so bonus points and appeals
+have settled and the figure cannot move afterwards.
+
+Three of its choices are what make the output worth reading, and all three are
+easy to get wrong in the flattering direction:
+
+- **Blanks are excluded.** Predicting zero for a player with no fixture is
+  arithmetic, not forecasting.
+- **Populations come from the prediction, never the result.** "Starters" means
+  the model said he would start — not that he turned out to.
+- **Every figure is reported against baselines** (FPL's `ep_next`, season
+  average, form). An MAE with nothing beside it says nothing.

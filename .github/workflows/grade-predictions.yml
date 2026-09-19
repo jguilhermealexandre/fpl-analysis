@@ -1,0 +1,76 @@
+name: Grade Predictions
+
+# Marks every sealed round in data/model-log/ against what FPL recorded, and
+# writes data/model-accuracy.json.
+#
+# Daily rather than hourly: a round can only be graded once FPL has finished
+# checking it, which from 2026/27 happens at 09:00 UK the day after the last
+# match of the gameweek. 11:00 UTC is comfortably past that, and nothing here is
+# time-critical — unlike the snapshot job, this reads only data that has already
+# stopped moving, so a late run costs nothing.
+#
+# The tool recomputes every round from scratch each time and writes only when
+# something other than its own timestamp changed, so most days are a no-op.
+on:
+  schedule:
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+
+# Writes data/model-accuracy.json and nothing else.
+permissions:
+  contents: write
+
+# Shared with the other data jobs: they all write data/ on main, so they queue
+# rather than race.
+concurrency:
+  group: fpl-data-write
+  cancel-in-progress: false
+
+jobs:
+  grade:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      # No install step: no dependencies. It reads the sealed snapshots and the
+      # committed results, and refuses to score a round it can only find part of
+      # rather than publishing a figure computed from a fraction of it.
+      - name: Mark the homework
+        run: node tools/grade-predictions.mjs
+
+      - name: Commit and push if anything was graded
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+          # Same re-apply-and-retry as the other data jobs: several workflows
+          # write data/ on main, and a plain push would be rejected and silently
+          # drop the result whenever one of them lands first. The file is a
+          # whole-file replacement, so there is nothing to merge.
+          cp data/model-accuracy.json /tmp/model-accuracy.json 2>/dev/null || true
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/model-accuracy.json data/model-accuracy.json 2>/dev/null || true
+            git add data/model-accuracy.json
+            if git diff --staged --quiet; then
+              echo "Nothing newly graded."
+              exit 0
+            fi
+            git commit -m "Grade model predictions - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt — main moved, re-applying."
+            sleep 5
+          done
+
+          echo "Could not push after 5 attempts."
+          exit 1
