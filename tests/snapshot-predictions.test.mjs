@@ -35,6 +35,21 @@ function anHourBeforeTheNextDeadline() {
     return { gw: target.id, now: Date.parse(target.deadline_time) - 3600000 };
 }
 
+/* Built once for the whole file.
+
+   Each call parses a 1.7MB bootstrap and runs the projection over 662 players,
+   and three tests were each doing it again to ask a different question of the
+   same answer. node --test runs files in parallel, so that was the heaviest
+   thing in the suite several times over for no extra coverage. */
+let SNAPSHOT;
+function snapshotOnce() {
+    if (SNAPSHOT === undefined) {
+        const next = anHourBeforeTheNextDeadline();
+        SNAPSHOT = next ? { ...next, result: takeSnapshot({ now: next.now, withinHours: 3 }) } : null;
+    }
+    return SNAPSHOT;
+}
+
 /* Between seasons there is no deadline ahead, the job correctly does nothing,
    and there is nothing to project. The engine tests below skip in that state
    rather than assert on an empty fixture list; this one holds the tool to the
@@ -108,10 +123,9 @@ test('the shipped engine loads outside a browser and reports itself ready', (t) 
 });
 
 test('a snapshot of the next real gameweek is alive, not a page of zeros', (t) => {
-    const next = anHourBeforeTheNextDeadline();
-    if (!next) return t.skip('no deadline ahead — between seasons');
-    const { gw, now } = next;
-    const r = takeSnapshot({ now, withinHours: 3 });
+    const snap = snapshotOnce();
+    if (!snap) return t.skip('no deadline ahead — between seasons');
+    const { gw, result: r } = snap;
 
     assert.equal(r.written, true, r.why || 'expected a snapshot an hour before a real deadline');
     assert.equal(r.gw, gw);
@@ -134,9 +148,9 @@ test('a snapshot of the next real gameweek is alive, not a page of zeros', (t) =
 });
 
 test('every archived number is finite, and the ones that cannot be recovered are there', (t) => {
-    const next = anHourBeforeTheNextDeadline();
-    if (!next) return t.skip('no deadline ahead — between seasons');
-    const { rows } = takeSnapshot({ now: next.now, withinHours: 3 });
+    const snap = snapshotOnce();
+    if (!snap) return t.skip('no deadline ahead — between seasons');
+    const { rows } = snap.result;
 
     for (const r of rows) {
         for (const k of ['xp', 'pStart', 'xMins', 'ep', 'ppg', 'form', 'sel', 'price']) {
@@ -156,10 +170,9 @@ test('every archived number is finite, and the ones that cannot be recovered are
 });
 
 test('the file it would write parses back, and one player sits on one line', (t) => {
-    const next = anHourBeforeTheNextDeadline();
-    if (!next) return t.skip('no deadline ahead — between seasons');
-    const { gw, now } = next;
-    const { text, rows } = takeSnapshot({ now, withinHours: 3 });
+    const snap = snapshotOnce();
+    if (!snap) return t.skip('no deadline ahead — between seasons');
+    const { gw, result: { text, rows } } = snap;
 
     const parsed = JSON.parse(text);
     assert.equal(parsed.gw, gw);
