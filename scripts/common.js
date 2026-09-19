@@ -923,6 +923,35 @@ function v2LoginAsDemo() {
     v2EnterWithTeam(DEMO_TEAM_ID);
 }
 
+/* The same submission, from the field in the landing bar.
+ *
+ * A good id goes straight in — that is the whole point of putting the field
+ * in the bar rather than behind a button that opens a box containing a field.
+ *
+ * Anything else opens the box, because the bar has nowhere to put a sentence.
+ * The box already carries where-to-find-it and the demo squad, and it is 64
+ * pixels tall up here with a burger and a theme switch beside it. A typo is
+ * carried across so the reader corrects what they wrote rather than retyping
+ * it, and the field is marked so the reason the box appeared is visible in
+ * the thing that caused it. */
+function v2SubmitLandingId(event) {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+
+    const input = document.getElementById('v2LandingIdInput');
+    const id = input ? input.value.trim() : '';
+
+    if (!/^\d+$/.test(id)) {
+        if (input && id) input.classList.add('is-bad');
+        openLoginModal();
+        const inBox = document.getElementById('v2LoginInput');
+        if (inBox && id) inBox.value = id;
+        return false;
+    }
+
+    v2EnterWithTeam(id);
+    return false;
+}
+
 /* Save it and reload into the signed-in shell. A reload rather than
    swapping the chrome in place: half this page is rendered for a visitor
    with no squad, and re-running it against one is what every page already
@@ -2191,7 +2220,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=319')
+    fetch('footer.html?v=320')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

@@ -23,12 +23,26 @@
             <span class="v2-theme-option v2-theme-dark"><i data-lucide="moon" class="icon"></i></span>
             <span class="v2-theme-option v2-theme-light"><i data-lucide="sun" class="icon"></i></span>
         </button>
-        <!-- One door again, and it is the Team ID box. The account pages
-             still exist and still answer at /login.html and /register.html;
-             they are just off the furniture while the id is how the site's
-             actual users get in. Two doors confused the ones who never made
-             an account — which is nearly all of them. -->
-        <button type="button" class="v2-landing-login" onclick="openLoginModal()">Log in</button>
+        <!-- One door again, and it is the Team ID itself — typed here rather
+             than behind a button that opens a box to type it in. Nearly every
+             reader of this site arrives with an id and no account, so the bar
+             asks for the one thing it needs.
+
+             The button below is the same door for a screen too narrow to hold
+             a field: CSS shows exactly one of the two. It also stays the way
+             to the explanation and the demo squad, which a bar this size has
+             no room for — v2SubmitLandingId() opens it on an empty or
+             malformed id for that reason. -->
+        <form class="v2-landing-id" aria-label="Open your team"
+              onsubmit="return v2SubmitLandingId(event)">
+            <input type="text" id="v2LandingIdInput" placeholder="Team ID"
+                   inputmode="numeric" autocomplete="off" maxlength="9"
+                   aria-label="Your FPL Team ID"
+                   oninput="this.classList.remove('is-bad')">
+            <button type="submit" class="v2-landing-id-go">Go</button>
+        </form>
+        <button type="button" class="v2-landing-login v2-landing-id-fallback"
+                onclick="openLoginModal()">Log in</button>
     </div>
 
     <!-- Below the breakpoint the links collapse behind this. -->

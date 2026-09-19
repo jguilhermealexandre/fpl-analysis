@@ -1794,6 +1794,7 @@ export default [
                 v2SetTeamName: 'writable',
                 v2Settings: 'writable',
                 v2StartCheckout: 'writable',
+                v2SubmitLandingId: 'writable',
                 v2SubmitLogin: 'writable',
                 v2SyncPlanFromAccount: 'writable',
                 v2SyncThemeRow: 'writable',
