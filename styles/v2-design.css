@@ -3963,3 +3963,24 @@ select[data-tooltip]:not([data-tooltip=""]), select[title]:not([title=""]),
 .sd-art[data-variant="thumb"] .sd-art-portrait { width: 62%; }
 .sd-art[data-variant="thumb"] .sd-art-ghost { right: 8%; opacity: .2; }
 .sd-art[data-variant="thumb"] .sd-art-initials { font-size: 34px; }
+
+/* ===== "Here" =====
+   Three pulses of a ring, driven by v2FlashTarget() in scripts/common.js —
+   what a link from the dashboard points at when it lands you on a page of
+   fifteen rows. Outline rather than box-shadow: it stays out of layout and
+   does not replace a shadow the element already carries. */
+@keyframes v2-flash-ring {
+    0%, 100% { outline-color: transparent; }
+    40%      { outline-color: var(--color-primary); }
+}
+.v2-flash {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    border-radius: inherit;
+    animation: v2-flash-ring 640ms ease-in-out 3;
+}
+/* Still says "here", without the motion. The class is removed on a timer
+   either way, so the ring goes when the animation would have. */
+@media (prefers-reduced-motion: reduce) {
+    .v2-flash { animation: none; outline-color: var(--color-primary); }
+}

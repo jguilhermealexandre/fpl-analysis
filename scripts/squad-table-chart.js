@@ -227,8 +227,28 @@
            one. openPlayerModal() lives in scripts/player-profile.js with the
            profile builder; these two are kept as the names the rest of the page
            and the dashboard deep links already call. */
+        /* Where a link from elsewhere lands.
+         *
+         * This opened the player's card over the page, which is not what a
+         * link promising "your squad" said it would do: you read the card,
+         * close it, and are back to hunting for the row among fifteen. It
+         * scrolls to the row and pulses it three times instead, so the page
+         * you were sent to is the page you arrive on and the row it meant is
+         * the one moving.
+         *
+         * Clicking the row is still what opens the card — that is
+         * toggleSquadRowDetail, and it is untouched.
+         *
+         * The row is queried a frame late: the squad renders, then the tab is
+         * switched, and a scrollIntoView on a row in a hidden panel does
+         * nothing at all. */
         function expandSquadRow(playerId) {
-            toggleSquadRowDetail(playerId);
+            const find = () => document.querySelector(`.sq-row[data-player-id="${playerId}"]`);
+            const flash = () => {
+                if (typeof v2FlashTarget === 'function') v2FlashTarget(find());
+            };
+            if (find()) requestAnimationFrame(flash);
+            else requestAnimationFrame(() => requestAnimationFrame(flash));
         }
 
         function toggleSquadRowDetail(playerId) {

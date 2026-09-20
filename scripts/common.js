@@ -1546,6 +1546,49 @@ function v2WrapSections(scope) {
     return wrapped;
 }
 
+// ===== SAYING "HERE" =====
+/* Three pulses of a ring around the thing you were sent to look at.
+ *
+ * A link from the dashboard — a fitness doubt in "Needs a look", a
+ * notification naming a player — lands you on a page of fifteen rows and six
+ * tabs, and the row it meant is somewhere in that. It used to answer the
+ * problem by opening the player's card over the page, which is a different
+ * screen rather than the one the link promised: you read the card, close it,
+ * and are back to looking for the row.
+ *
+ * Pointing at the row instead keeps you where the work is. Three is enough to
+ * catch an eye that was elsewhere while the page loaded and few enough to
+ * stop before it becomes something to wait out.
+ *
+ * An outline rather than a box-shadow, because an outline neither takes part
+ * in layout nor replaces a shadow the element already had — the same reason
+ * the pitch marks a held card with one. */
+const V2_FLASH_MS = 2000;
+
+function v2FlashTarget(target, opts) {
+    if (typeof document === 'undefined') return false;
+    const el = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!el) return false;
+    const o = opts || {};
+
+    if (o.scroll !== false && typeof el.scrollIntoView === 'function') {
+        try { el.scrollIntoView({ behavior: 'smooth', block: o.block || 'center' }); }
+        catch (e) { el.scrollIntoView(); }
+    }
+
+    /* Re-flashing the same element has to restart the animation, and removing
+       the class is not enough on its own — the browser coalesces the removal
+       and the re-add into no change at all. Reading a layout property between
+       them forces the reflow that makes it a restart. */
+    el.classList.remove('v2-flash');
+    void el.offsetWidth;
+    el.classList.add('v2-flash');
+
+    clearTimeout(el._v2FlashTimer);
+    el._v2FlashTimer = setTimeout(() => el.classList.remove('v2-flash'), V2_FLASH_MS);
+    return true;
+}
+
 // ===== DISMISSING PANELS =====
 /* Click away to close, for every overlay on the site.
  *
@@ -2220,7 +2263,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=325')
+    fetch('footer.html?v=326')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
