@@ -52,6 +52,14 @@
 .lp-wrap { max-width: var(--lp-w); margin: 0 auto; padding-inline: var(--lp-gutter); }
 
 /* ===== Type =====
+
+   Every letter-spacing below is !important, and has to be: common.css sets
+   `body * { letter-spacing: inherit !important }`, which forces the whole
+   document to take its tracking from body and beats a plain declaration at
+   any specificity. The old hero did the same thing — .hero-title marks its
+   tracking !important for exactly this reason. Without it the scale here is
+   inert and every heading renders at the body's value.
+
    Display face for anything that is a heading, body face for prose, and the
    headline sizes clamp rather than switching at a breakpoint — a 72px title
    has to survive a 380px phone, and stepping it down in three jumps leaves
@@ -60,7 +68,7 @@
     font-family: var(--font-display, 'Space Grotesk', sans-serif);
     font-size: clamp(40px, 6.2vw, 68px);
     line-height: 1.04;
-    letter-spacing: var(--lp-track-h1);
+    letter-spacing: var(--lp-track-h1) !important;
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
@@ -69,33 +77,33 @@
     font-family: var(--font-display, 'Space Grotesk', sans-serif);
     font-size: clamp(30px, 3.6vw, 44px);
     line-height: 1.1;
-    letter-spacing: var(--lp-track-h2);
+    letter-spacing: var(--lp-track-h2) !important;
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
 }
 .lp-h3 {
     font-family: var(--font-display, 'Space Grotesk', sans-serif);
-    font-size: 17px; line-height: 1.3; letter-spacing: var(--lp-track-h3);
+    font-size: 17px; line-height: 1.3; letter-spacing: var(--lp-track-h3) !important;
     font-weight: 650; color: var(--text-primary); margin: 0;
 }
 .lp-lead {
     font-size: clamp(16px, 1.5vw, 19px);
     line-height: 1.6;
-    letter-spacing: var(--lp-track-lead);
+    letter-spacing: var(--lp-track-lead) !important;
     color: var(--text-secondary);
     margin: 0;
 }
-.lp-body { font-size: 15px; line-height: 1.65; letter-spacing: var(--lp-track-body); color: var(--text-secondary); margin: 0; }
+.lp-body { font-size: 15px; line-height: 1.65; letter-spacing: var(--lp-track-body) !important; color: var(--text-secondary); margin: 0; }
 
 /* The rest of the page's prose, drawn in by the same small amount. The cells,
    bullets, quotes and captions are all body copy and should not read as a
    different typeface from .lp-body. */
 .lp-cell p, .lp-bullets li, .lp-wide-points li, .lp-quote-text,
 .lp-trust-inner, .lp-hero-note, .lp-quote-meta, .lp-cell-ico + * {
-    letter-spacing: var(--lp-track-body);
+    letter-spacing: var(--lp-track-body) !important;
 }
-.lp-btn { letter-spacing: var(--lp-track-body); }
+.lp-btn { letter-spacing: var(--lp-track-body) !important; }
 .lp-accent { color: var(--color-primary-text, var(--color-primary)); }
 
 /* The label over a section heading. Uppercase, tracked out, in the accent —
@@ -105,7 +113,7 @@
     display: inline-flex; align-items: center; gap: 7px;
     font-family: var(--font-display, 'Space Grotesk', sans-serif);
     font-size: 11.5px; font-weight: 700;
-    letter-spacing: .14em; text-transform: uppercase;
+    letter-spacing: .14em !important; text-transform: uppercase;
     color: var(--color-primary-text, var(--color-primary));
 }
 .lp-eyebrow svg, .lp-eyebrow .icon { width: 14px; height: 14px; }
@@ -300,7 +308,7 @@
     font-family: var(--font-display, 'Space Grotesk', sans-serif);
     font-size: 14px; font-weight: 700;
 }
-.lp-step p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--text-muted); letter-spacing: var(--lp-track-body); }
+.lp-step p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--text-muted); letter-spacing: var(--lp-track-body) !important; }
 @media (max-width: 860px) { .lp-steps { grid-template-columns: 1fr; gap: 16px; } }
 
 /* ===== Feature showcases =====
