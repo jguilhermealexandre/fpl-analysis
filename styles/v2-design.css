@@ -1165,25 +1165,43 @@ html.v2-theme body {
 }
 
 /* ============================================================
-   FOOTER, IN THE APP SHELL
+   DASHBOARD FOOTER
 
-   One footer for the whole site. The dashboard used to get its own — a
-   single compressed row on the page ground, with the Tools column and the
-   brand block hidden, on the argument that a manager already inside the
-   product does not need introducing to it.
+   The four-column footer is a landing-page component: it exists to
+   introduce the site to someone who has just arrived. Inside the dashboard
+   it earns none of that height. The Tools column is a second copy of the
+   sidebar the manager is already looking at, and the brand block introduces
+   a product they are demonstrably already using. Three things survive
+   because they still do work anywhere: where the data comes from, the two
+   link groups that are *not* in the sidebar, and the legal + freshness line.
 
-   That argument was fine and the result was not: a visitor who reads the
-   landing page and then opens the dashboard meets a different footer, and
-   the site stops looking like one site. Consistency wins. The four-column
-   band in common.css is now what every page renders, and the only thing
-   this block still does is the one difference the app shell genuinely
-   forces — clearing the fixed sidebar.
+   It also stops being a dark slab. On a light dashboard #111827 was the
+   heaviest element on the page and it sat under content it had nothing to
+   do with; a hairline and the page ground put it in the same design as
+   everything above it.
+
+   Scoped to the app shell, which is the thing that actually decides it: the
+   sidebar-width offset below is only correct when there is a sidebar.
+
+   This used to test for the absence of a logged-out .hero-banner, which is a
+   test only index.html can pass — so every other marketing page, which has
+   no hero-banner either, was served the dashboard footer: transparent, and
+   shifted 232px to the right for a rail that was not on the page. Every rule
+   carries the same prefix rather than being undone afterwards, so there is
+   one description of the dashboard footer rather than two that must agree.
    ============================================================ */
 
-/* loadFooter() appends to <body>, outside .v2-main-content, so the footer
-   does not inherit the main column's offset and would otherwise run
-   underneath the fixed sidebar. */
 html.v2-shell-app .site-footer {
+    background: transparent;
+    /* No rule across the top. The footer already separates itself by sitting
+       on the page ground below the last panel, and a full-width hairline under
+       a row of cards reads as the start of something rather than the end. */
+    border-top: none;
+    color: var(--text-muted);
+    margin-top: 36px;
+    /* loadFooter() appends to <body>, outside .v2-main-content, so the
+       footer does not inherit the main column's offset and would otherwise
+       run underneath the fixed sidebar. */
     margin-left: var(--v2-sidebar-w);
 }
 
@@ -1191,9 +1209,163 @@ html.v2-shell-app .site-footer {
     margin-left: var(--v2-sidebar-w-collapsed);
 }
 
+/* One row instead of a grid: badge on the left, link groups trailing right. */
+html.v2-shell-app .footer-top {
+    max-width: 1440px;
+    padding: 16px var(--v2-page-gutter);
+    display: flex;
+    align-items: center;
+    gap: 12px 28px;
+    flex-wrap: wrap;
+}
+
+/* The Learn/Company groups run inline — title, then its links as a row. */
+html.v2-shell-app .footer-col {
+    display: flex;
+    align-items: center;
+    gap: 8px 14px;
+    flex-wrap: wrap;
+    margin: 0;
+}
+
+/* After .footer-col, not before: the two carry equal specificity, so the
+   one that hides has to be the one the cascade reaches last. */
+html.v2-shell-app .footer-col--tools,
+html.v2-shell-app .footer-brand-name,
+html.v2-shell-app .footer-tagline {
+    display: none;
+}
+
+html.v2-shell-app .footer-col--learn {
+    margin-left: auto;
+}
+
+html.v2-shell-app .footer-col-title {
+    margin: 0;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    opacity: 0.75;
+}
+
+html.v2-shell-app .footer-links {
+    display: flex;
+    /* common.css stacks these into a column for the tall landing footer. */
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin: 0;
+    list-style: none;
+}
+
+html.v2-shell-app .footer-links li {
+    margin: 0;
+}
+
+html.v2-shell-app .footer-links a,
+html.v2-shell-app .footer-mail {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+html.v2-shell-app .footer-links a:hover,
+html.v2-shell-app .footer-mail:hover {
+    color: var(--color-primary);
+}
+
+/* The API badge keeps its pill, at the size of the row it now sits in. */
+html.v2-shell-app .footer-api-badge {
+    margin: 0;
+    padding: 5px 12px;
+    font-size: 11.5px;
+    color: var(--color-primary-text);
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+html.v2-shell-app .footer-bottom {
+    max-width: 1440px;
+    padding: 12px var(--v2-page-gutter) 16px;
+    border-top: 1px solid var(--border-subtle);
+    font-size: 11.5px;
+    color: var(--text-muted);
+}
+
 @media (max-width: 900px) {
     html.v2-shell-app .site-footer {
         margin-left: var(--v2-sidebar-w-collapsed);
+    }
+
+    html.v2-shell-app .footer-col--learn {
+        margin-left: 0;
+    }
+}
+
+/* ----- Footer: telling the categories from the links -----
+   Inline, the group labels scanned as more links: "FAQ COMPANY Contact Us"
+   read as one run. Three things separate them now — the labels are smaller,
+   tracked wider and lower in contrast; the gap inside a group is tighter
+   than the gap between groups; and a rule sits between the two groups so
+   the boundary is drawn rather than implied.
+
+   The email stops being a link with an icon stuck to it and becomes the
+   pill it always was in intent — which also balances the row, since the
+   API badge is the same shape at the other end of it. */
+
+html.v2-shell-app .footer-col-title {
+    font-size: 9.5px;
+    font-weight: 700;
+    /* common.css tracks everything matching [class*="title"] to -0.5px with
+       !important. That rule is aimed at headings; a small-caps category label
+       is the one place on the page that needs tracking to open up rather than
+       tighten, and negative tracking is exactly what made these read as links.
+       The original 1.5px in common.css was being overridden the same way. */
+    letter-spacing: 0.12em !important;
+    opacity: 0.55;
+}
+
+/* Tighter within a group than between groups: 12px against the row's 26px. */
+html.v2-shell-app .footer-col {
+    gap: 8px 12px;
+}
+
+html.v2-shell-app .footer-links {
+    gap: 12px;
+}
+
+html.v2-shell-app .footer-col--company {
+    border-left: 1px solid var(--border-emphasis);
+    padding-left: 26px;
+}
+
+html.v2-shell-app .footer-mail {
+    margin: 0 0 0 6px;
+    padding: 5px 12px;
+    border: 1px solid var(--border-emphasis);
+    border-radius: var(--radius-full);
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    transition: border-color 160ms ease, color 160ms ease;
+}
+
+html.v2-shell-app .footer-mail:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+    color: var(--color-primary);
+}
+
+html.v2-shell-app .footer-mail .icon {
+    width: 13px;
+    height: 13px;
+    opacity: 0.7;
+}
+
+/* The divider only makes sense while the groups sit side by side. */
+@media (max-width: 900px) {
+    html.v2-shell-app .footer-col--company {
+        border-left: none;
+        padding-left: 0;
     }
 }
 
