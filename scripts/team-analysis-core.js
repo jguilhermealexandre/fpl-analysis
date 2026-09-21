@@ -92,7 +92,7 @@
 
         // Shared state for Draft & analysis
         let playersDetailData = null; // Full players-data.json with per-GW history
-        let teamXgData = {};          // Team-level xG aggregated from player history
+        // teamXgData is declared and filled by scripts/team-xg.js.
         let teamFixtures6 = {};       // Next 6 fixtures per team (extended from teamFixtures)
         let transferRendered = false;  // Transfer wizard lazy rendering flag
         let lineupState = {
@@ -298,7 +298,11 @@
 
                 // Build team xG data before computeTeamScores() — it now reads teamXgData
                 // (via getTeamXgWindow/getTeamSeasonXg) to compute xgTrend/xgcTrend per team.
-                buildTeamXgData(bootData.elements);
+                /* Per-gameweek history, not bootstrap season totals: the trend
+                   readings derive a club's earlier form by subtracting the recent
+                   window from the season, and that only holds if both come from
+                   the same feed. See scripts/team-xg.js. */
+                buildTeamXgData({ teams: bootData.teams, players: (playersDetailData && playersDetailData.players) || [] }, fixturesData);
                 console.log('[xG] Team xG data built for', Object.keys(teamXgData).length, 'teams');
 
                 computeTeamScores(bootData.teams, fixturesData);

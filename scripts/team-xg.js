@@ -1,27 +1,49 @@
 /* ============================================
    EasyFPL — Team xG, aggregated from the matches players actually played
 
-   Lifted out of the players page's inline block so it can be run outside a
-   browser. tools/snapshot-predictions.mjs needs exactly this to archive what
-   Rising Form said at a deadline, and a model whose inputs only exist inside one
-   HTML file cannot be graded afterwards.
+   THE ONE IMPLEMENTATION. There were three, and they disagreed:
 
-   NOT the only implementation on the site, and the difference matters:
-   scripts/panels-and-tabs.js builds seasonXg from bootstrap's season totals for
-   anyone with minutes, while this sums the per-gameweek history rows. They give
-   different numbers. Only the my-team page loads that one and only the players
-   page loads this one, so nothing reads both — but they should be one function,
-   and are not yet.
+     players page   summed the per-gameweek history rows (this one)
+     my-team page   summed bootstrap's season totals, in panels-and-tabs.js
+     teams page     summed bootstrap's season totals, in its own inline block,
+                    asynchronously, with its own fetch of players-data.json
+
+   They are close but not equal, because bootstrap is refreshed every fifteen
+   minutes while the per-gameweek history only lands with the four-hourly sweep.
+   Mid-round the two feeds are hours apart: measured on GW5 data the gap was
+   0.70 xG across twenty clubs, and 5.8% for Sunderland alone.
+
+   WHY THE PER-GAMEWEEK SUM WINS, and it is not a matter of taste. ftTeamTrend()
+   derives a club's earlier form by SUBTRACTION — (season total - recent window)
+   / the matches left over. That arithmetic is only valid if both terms come from
+   the same feed. Mixing them put Sunderland's prior xG at 1.07 a game against a
+   true 1.35, a 21% understatement, and every point of that error lands straight
+   in the "Team xG rising" delta, which is recent minus prior. A season total
+   that is not the sum of its own per-gameweek parts cannot be subtracted from
+   them.
+
+   So: one feed, and seasonXg is by construction the sum of perGw. The cost is
+   freshness — during a live gameweek this trails bootstrap until the sweep runs,
+   which is the correct trade for a number that exists to be differenced.
 
    seasonXgc is the sum of xGC from matches a player finished (85+ minutes), so
    it is a per-90 figure rather than a per-appearance one.
+
+   Published on `window` as well as in scope: the teams page reads perGw directly
+   for its venue splits and recent-match strips, which are its own features and
+   are not duplicated anywhere.
    ============================================ */
 
         // Filled by buildTeamXgData(); read through the two accessors below.
         let teamXgData = {};
 
         function buildTeamXgData(staticData, fixturesData) {
-            const bootTeams = staticData.teams;
+            const bootTeams = (staticData && staticData.teams) || [];
+            /* No per-gameweek history is a real state — the sweep has not run
+               yet, or the file failed to load. Every club then has hasPerGwData
+               false and getTeamXgWindow returns null, which every caller already
+               treats as "cannot be read". Better than half a season of zeroes. */
+            const detail = (staticData && staticData.players) || [];
             bootTeams.forEach(t => {
                 teamXgData[t.id] = {
                     seasonXg: 0, seasonXa: 0, seasonXgc: 0,
@@ -34,7 +56,7 @@
                 if (teamXgData[f.team_h]) { teamXgData[f.team_h].seasonGames++; teamXgData[f.team_h].seasonConceded += f.team_a_score || 0; }
                 if (teamXgData[f.team_a]) { teamXgData[f.team_a].seasonGames++; teamXgData[f.team_a].seasonConceded += f.team_h_score || 0; }
             });
-            (staticData.players || []).forEach(player => {
+            detail.forEach(player => {
                 const tid = player.team;
                 if (!teamXgData[tid]) return;
                 (player.history || []).forEach(h => {
@@ -68,11 +90,13 @@
                     teamXgData[t.id].seasonXgc = gwKeys.reduce((sum, gw) => sum + teamXgData[t.id].perGw[gw].xGC_90min, 0);
                 }
             });
-            console.log('\ud83c\udfaf Team xG data built for', bootTeams.length, 'teams');
+            // The teams page reads perGw off window for its venue and recent-match
+            // strips; everything else goes through the two accessors below.
+            if (typeof window !== 'undefined') window.teamXgData = teamXgData;
         }
 
 
-        function getTeamXgWindow(teamId, windowSize) {
+        function getTeamXgWindow(teamId, windowSize = 6) {
             const data = teamXgData[teamId];
             if (!data || !data.hasPerGwData) return null;
             const gws = Object.keys(data.perGw).map(Number).sort((a, b) => a - b);

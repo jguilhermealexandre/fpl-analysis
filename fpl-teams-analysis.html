@@ -51,18 +51,19 @@
     <meta name="twitter:title" content="EasyFPL — Teams Analysis">
     <meta name="twitter:description" content="Compare all 20 Premier League teams — fixture difficulty, defensive and attacking strength, clean-sheet odds, and squad depth for smarter FPL decisions.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=329">
-    <link rel="stylesheet" href="styles/teams.css?v=329">
-    <link rel="stylesheet" href="styles/v2-design.css?v=329">
-    <link rel="stylesheet" href="styles/responsive.css?v=329">
-    <script src="scripts/error-monitor.js?v=329"></script>
-    <script src="scripts/auth.js?v=329"></script>
-    <script src="scripts/common.js?v=329"></script>
+    <link rel="stylesheet" href="styles/common.css?v=330">
+    <link rel="stylesheet" href="styles/teams.css?v=330">
+    <link rel="stylesheet" href="styles/v2-design.css?v=330">
+    <link rel="stylesheet" href="styles/responsive.css?v=330">
+    <script src="scripts/error-monitor.js?v=330"></script>
+    <script src="scripts/auth.js?v=330"></script>
+    <script src="scripts/common.js?v=330"></script>
+    <script src="scripts/team-xg.js?v=330"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=329"></script>
-    <script src="scripts/notifications.js?v=329"></script>
-    <script src="scripts/sidebar-nav.js?v=329"></script>
+    <script src="scripts/push-alerts.js?v=330"></script>
+    <script src="scripts/notifications.js?v=330"></script>
+    <script src="scripts/sidebar-nav.js?v=330"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -164,7 +165,7 @@
         let planningGW = 1;
         let isPreseason = false; // true until the season's first fixture kicks off — see computeIsPreseason() in scripts/common.js
         window.rawFixturesData = [];
-        window.teamXgData = {};      // Per-GW xG/xGC aggregated by team
+        // window.teamXgData is built and published by scripts/team-xg.js.
         window.playerElements = [];  // Raw bootstrap elements (for season xG)
 
         // Hash routing
@@ -228,10 +229,18 @@
             try {
                 showLoading(true);
 
-                const [bootstrapData, fixturesData] = await Promise.all([
+                /* players-data.json comes down with the other two rather than
+                   inside the xG builder, which used to fetch it itself. The
+                   builder is shared now (scripts/team-xg.js) and is synchronous,
+                   because three pages needed it and only this one could await. */
+                const [bootstrapData, fixturesData, playersData] = await Promise.all([
                     DataCache.fetchJSON(BOOTSTRAP_URL),
-                    DataCache.fetchJSON(FIXTURES_URL)
+                    DataCache.fetchJSON(FIXTURES_URL),
+                    DataCache.fetchJSON(PLAYERS_URL).catch(() => null)
                 ]);
+                if (playersData?.metadata?.lastUpdated && window.updateDataFreshness) {
+                    window.updateDataFreshness(playersData.metadata.lastUpdated);
+                }
                 
                 // Store fixtures globally (includes stats array with goals, assists, cards, bonus etc.)
                 window.rawFixturesData = fixturesData;
@@ -246,9 +255,8 @@
                 isPreseason = computeIsPreseason(bootstrapData, fixturesData);
 
                 // ===== BUILD TEAM xG DATA =====
-                // Try loading players-data.json for per-GW xG (gold standard)
-                // Falls back to bootstrap season-level xG if unavailable
-                await buildTeamXgData(bootstrapData);
+                buildTeamXgData({ teams: bootstrapData.teams, players: playersData?.players || [] },
+                    fixturesData);
 
                 allTeamsData = bootstrapData.teams.map(team => 
                     analyzeTeam(team, bootstrapData.teams, fixturesData)
@@ -271,163 +279,20 @@
         }
 
         // ===== xG DATA BUILDER =====
-        async function buildTeamXgData(bootstrapData) {
-            const teamXg = {};
-            const teams = bootstrapData.teams;
-            
-            // Initialize all teams
-            teams.forEach(t => {
-                teamXg[t.id] = {
-                    // Season totals (from bootstrap elements)
-                    seasonXg: 0, seasonXa: 0, seasonXgc: 0, seasonGoals: 0, seasonAssists: 0, seasonConceded: 0, seasonGames: 0,
-                    // Per-GW breakdown (populated from players-data.json if available)
-                    perGw: {},
-                    hasPerGwData: false
-                };
-            });
 
-            // 1. Season-level xG from bootstrap elements (always available)
-            (bootstrapData.elements || []).forEach(p => {
-                if (p.minutes > 0 && teamXg[p.team]) {
-                    const t = teamXg[p.team];
-                    t.seasonXg += parseFloat(p.expected_goals) || 0;
-                    t.seasonXa += parseFloat(p.expected_assists) || 0;
-                    t.seasonGoals += p.goals_scored || 0;
-                    t.seasonAssists += p.assists || 0;
-                }
-            });
+        /* buildTeamXgData, getTeamXgWindow and getTeamSeasonXg moved to
+           scripts/team-xg.js. This page had the third copy of them: it summed
+           bootstrap's season totals where the players page summed the
+           per-gameweek rows, and it fetched players-data.json itself, which is
+           why it alone was async. The per-gameweek sum won — see that file.
 
-            // Count season games from fixtures
-            const finishedFixtures = window.rawFixturesData.filter(fixturePlayed);
-            finishedFixtures.forEach(f => {
-                if (teamXg[f.team_h]) teamXg[f.team_h].seasonGames++;
-                if (teamXg[f.team_a]) teamXg[f.team_a].seasonGames++;
-            });
+           The venue split, the recent-match strip and the window stats below are
+           this page's own and stay here; they read perGw off window.teamXgData,
+           which the shared builder publishes. */
 
-            // Season xGC: for each fixture, home team's xGC = away team's xG and vice versa
-            // We'll compute this after per-GW data is loaded, or estimate from fixture results
-            // For now, compute from the goals conceded in bootstrap
-            finishedFixtures.forEach(f => {
-                if (teamXg[f.team_h]) teamXg[f.team_h].seasonConceded += f.team_a_score || 0;
-                if (teamXg[f.team_a]) teamXg[f.team_a].seasonConceded += f.team_h_score || 0;
-            });
-
-            // 2. Try loading per-GW xG from players-data.json (much richer)
-            try {
-                const playersRes = await fetch(PLAYERS_URL);
-                if (playersRes.ok) {
-                    const playersData = await playersRes.json();
-                    if (playersData?.metadata?.lastUpdated && window.updateDataFreshness) window.updateDataFreshness(playersData.metadata.lastUpdated);
-                    console.log(`${v2Icon('target')} Loaded players-data.json: ${playersData.metadata?.playerCount} players with per-GW history`);
-                    
-                    (playersData.players || []).forEach(player => {
-                        const tid = player.team;
-                        if (!teamXg[tid]) return;
-                        
-                        (player.history || []).forEach(h => {
-                            const gw = h.round;
-                            // Use fixture ID to handle DGWs (multiple fixtures in one round)
-                            const fixtureKey = h.fixture;
-                            if (!teamXg[tid].perGw[gw]) {
-                                teamXg[tid].perGw[gw] = {
-                                    xG: 0, xA: 0, xGC: 0,
-                                    goals: 0, assists: 0, conceded: 0,
-                                    wasHome: null, oppTeam: null,
-                                    xGC_90min: 0, // xGC from a 90-min player (= team xGC)
-                                    _fixtures: {} // track per-fixture scores to avoid double-counting
-                                };
-                            }
-                            const d = teamXg[tid].perGw[gw];
-                            d.xG += parseFloat(h.expected_goals) || 0;
-                            d.xA += parseFloat(h.expected_assists) || 0;
-                            
-                            // Use fixture-keyed dedup for goals/conceded (handles DGWs)
-                            const teamGoals = h.was_home ? (h.team_h_score || 0) : (h.team_a_score || 0);
-                            const teamConceded = h.was_home ? (h.team_a_score || 0) : (h.team_h_score || 0);
-                            if (!d._fixtures[fixtureKey]) {
-                                d._fixtures[fixtureKey] = { goals: teamGoals, conceded: teamConceded };
-                                d.goals += teamGoals;
-                                d.conceded += teamConceded;
-                            }
-                            
-                            d.wasHome = h.was_home;
-                            d.oppTeam = h.opponent_team;
-                            
-                            // xGC: use value from player who played 85+ minutes (per-fixture)
-                            if (h.minutes >= 85) {
-                                const xgc = parseFloat(h.expected_goals_conceded) || 0;
-                                // In DGWs, accumulate xGC across fixtures
-                                const fxKey = `_xgc_${fixtureKey}`;
-                                if (!d[fxKey]) {
-                                    d[fxKey] = true;
-                                    d.xGC_90min += xgc;
-                                } else if (xgc > 0) {
-                                    // Already have this fixture's xGC — keep the higher value
-                                }
-                            }
-                        });
-                    });
-                    
-                    // Mark teams that have per-GW data
-                    teams.forEach(t => {
-                        const gwKeys = Object.keys(teamXg[t.id].perGw);
-                        if (gwKeys.length > 0) {
-                            teamXg[t.id].hasPerGwData = true;
-                            // Also compute season xGC from per-GW data (more accurate)
-                            teamXg[t.id].seasonXgc = gwKeys.reduce((sum, gw) => 
-                                sum + teamXg[t.id].perGw[gw].xGC_90min, 0);
-                        }
-                    });
-                    
-                    const teamsWithData = teams.filter(t => teamXg[t.id].hasPerGwData).length;
-                    console.log(`${v2Icon('target')} Per-GW xG data available for ${teamsWithData}/20 teams`);
-                }
-            } catch (e) {
-                console.log('players-data.json not available, using season-level xG only');
-            }
-
-            window.teamXgData = teamXg;
-        }
 
         // Helper: get team xG stats for a window of recent GWs
-        function getTeamXgWindow(teamId, windowSize = 6) {
-            const data = window.teamXgData[teamId];
-            if (!data || !data.hasPerGwData) return null;
-            
-            const gws = Object.keys(data.perGw).map(Number).sort((a, b) => a - b);
-            const recentGws = gws.slice(-windowSize);
-            if (recentGws.length === 0) return null;
-            
-            const n = recentGws.length;
-            const totals = recentGws.reduce((acc, gw) => {
-                const d = data.perGw[gw];
-                acc.xG += d.xG;
-                acc.xA += d.xA;
-                acc.xGC += d.xGC_90min;
-                acc.goals += d.goals;
-                acc.assists += d.assists;
-                acc.conceded += d.conceded;
-                acc.homeGames += d.wasHome ? 1 : 0;
-                return acc;
-            }, { xG: 0, xA: 0, xGC: 0, goals: 0, assists: 0, conceded: 0, homeGames: 0 });
-            
-            return {
-                games: n,
-                xGpg: totals.xG / n,
-                xApg: totals.xA / n,
-                xGCpg: totals.xGC / n,
-                gpg: totals.goals / n,
-                apg: totals.assists / n,
-                gapg: totals.conceded / n,
-                totalXg: totals.xG,
-                totalGoals: totals.goals,
-                totalXgc: totals.xGC,
-                totalConceded: totals.conceded,
-                homeGames: totals.homeGames,
-                xGoverperformance: totals.goals - totals.xG,
-                xGCoverperformance: totals.xGC - totals.conceded  // positive = conceding less than expected (good)
-            };
-        }
+
 
         /* xG for the stats table, on the same window and venue as the counting
            columns beside it. Venue 'all' keeps the established sources — the
@@ -517,27 +382,7 @@
         }
 
         // Helper: get team season xG averages
-        function getTeamSeasonXg(teamId) {
-            const data = window.teamXgData[teamId];
-            if (!data) return null;
-            
-            const g = data.seasonGames || 1;
-            return {
-                games: data.seasonGames,
-                xGpg: data.seasonXg / g,
-                xApg: data.seasonXa / g,
-                xGCpg: data.seasonXgc / g,
-                gpg: data.seasonGoals / g,
-                gapg: data.seasonConceded / g,
-                totalXg: data.seasonXg,
-                totalGoals: data.seasonGoals,
-                totalXgc: data.seasonXgc,
-                totalConceded: data.seasonConceded,
-                netXGpg: (data.seasonXg - data.seasonXgc) / g,
-                xGoverperformance: data.seasonGoals - data.seasonXg,
-                xGCoverperformance: data.seasonXgc - data.seasonConceded
-            };
-        }
+
 
         // ===== TEAM ANALYSIS =====
         // Derive "big teams" dynamically from FPL strength ratings (top 8 by avg strength)

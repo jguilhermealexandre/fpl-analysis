@@ -1375,105 +1375,15 @@
         // ===== TEAM XG ENGINE =====
 
         // Build team-level xG data from player history (ported from teams-analysis)
-        function buildTeamXgData(bootstrapElements) {
-            teamXgData = {};
-            Object.keys(teams).forEach(tid => {
-                teamXgData[tid] = {
-                    seasonXg: 0, seasonXa: 0, seasonXgc: 0, seasonGoals: 0, seasonAssists: 0, seasonConceded: 0, seasonGames: 0,
-                    perGw: {}, hasPerGwData: false
-                };
-            });
 
-            // Season-level from bootstrap elements
-            (bootstrapElements || []).forEach(p => {
-                if (p.minutes > 0 && teamXgData[p.team]) {
-                    teamXgData[p.team].seasonXg += parseFloat(p.expected_goals) || 0;
-                    teamXgData[p.team].seasonXa += parseFloat(p.expected_assists) || 0;
-                    teamXgData[p.team].seasonGoals += p.goals_scored || 0;
-                    teamXgData[p.team].seasonAssists += p.assists || 0;
-                }
-            });
+        /* buildTeamXgData, getTeamXgWindow and getTeamSeasonXg used to live here.
+           They are scripts/team-xg.js now — this copy summed bootstrap's season
+           totals where the players page summed the per-gameweek rows, and the two
+           disagreed by up to 6% a club. See that file for why the per-gameweek
+           sum is the one that survived. */
 
-            // Season games + conceded from fixtures
-            const finished = allFixtures.filter(f => f.finished_provisional && f.team_h_score !== null);
-            finished.forEach(f => {
-                if (teamXgData[f.team_h]) { teamXgData[f.team_h].seasonGames++; teamXgData[f.team_h].seasonConceded += f.team_a_score || 0; }
-                if (teamXgData[f.team_a]) { teamXgData[f.team_a].seasonGames++; teamXgData[f.team_a].seasonConceded += f.team_h_score || 0; }
-            });
 
-            // Per-GW from players-data.json (richer)
-            if (playersDetailData && playersDetailData.players) {
-                playersDetailData.players.forEach(player => {
-                    const tid = player.team;
-                    if (!teamXgData[tid]) return;
-                    (player.history || []).forEach(h => {
-                        const gw = h.round;
-                        const fixtureKey = h.fixture;
-                        if (!teamXgData[tid].perGw[gw]) {
-                            teamXgData[tid].perGw[gw] = { xG: 0, xA: 0, xGC: 0, goals: 0, assists: 0, conceded: 0, wasHome: null, oppTeam: null, xGC_90min: 0, _fixtures: {} };
-                        }
-                        const d = teamXgData[tid].perGw[gw];
-                        d.xG += parseFloat(h.expected_goals) || 0;
-                        d.xA += parseFloat(h.expected_assists) || 0;
-                        const tGoals = h.was_home ? (h.team_h_score || 0) : (h.team_a_score || 0);
-                        const tConceded = h.was_home ? (h.team_a_score || 0) : (h.team_h_score || 0);
-                        if (!d._fixtures[fixtureKey]) {
-                            d._fixtures[fixtureKey] = true;
-                            d.goals += tGoals;
-                            d.conceded += tConceded;
-                        }
-                        d.wasHome = h.was_home;
-                        d.oppTeam = h.opponent_team;
-                        if (h.minutes >= 85) {
-                            const xgc = parseFloat(h.expected_goals_conceded) || 0;
-                            const fxKey = `_xgc_${fixtureKey}`;
-                            if (!d[fxKey]) { d[fxKey] = true; d.xGC_90min += xgc; }
-                        }
-                    });
-                });
 
-                Object.keys(teamXgData).forEach(tid => {
-                    const gwKeys = Object.keys(teamXgData[tid].perGw);
-                    if (gwKeys.length > 0) {
-                        teamXgData[tid].hasPerGwData = true;
-                        teamXgData[tid].seasonXgc = gwKeys.reduce((sum, gw) => sum + teamXgData[tid].perGw[gw].xGC_90min, 0);
-                    }
-                });
-            }
-        }
-
-        function getTeamXgWindow(teamId, windowSize = 6) {
-            const data = teamXgData[teamId];
-            if (!data || !data.hasPerGwData) return null;
-            const gws = Object.keys(data.perGw).map(Number).sort((a, b) => a - b);
-            const recentGws = gws.slice(-windowSize);
-            if (recentGws.length === 0) return null;
-            const n = recentGws.length;
-            const totals = recentGws.reduce((acc, gw) => {
-                const d = data.perGw[gw];
-                acc.xG += d.xG; acc.xA += d.xA; acc.xGC += d.xGC_90min;
-                acc.goals += d.goals; acc.conceded += d.conceded;
-                return acc;
-            }, { xG: 0, xA: 0, xGC: 0, goals: 0, conceded: 0 });
-            return {
-                games: n, xGpg: totals.xG / n, xGCpg: totals.xGC / n,
-                gpg: totals.goals / n, gapg: totals.conceded / n,
-                totalXg: totals.xG, totalGoals: totals.goals,
-                totalXgc: totals.xGC, totalConceded: totals.conceded
-            };
-        }
-
-        function getTeamSeasonXg(teamId) {
-            const data = teamXgData[teamId];
-            if (!data) return null;
-            const g = data.seasonGames || 1;
-            return {
-                games: data.seasonGames, xGpg: data.seasonXg / g, xGCpg: data.seasonXgc / g,
-                gpg: data.seasonGoals / g, gapg: data.seasonConceded / g,
-                totalXg: data.seasonXg, totalGoals: data.seasonGoals,
-                totalXgc: data.seasonXgc, totalConceded: data.seasonConceded
-            };
-        }
 
         /* Upcoming fixtures per team, kept by GAMEWEEK rather than by fixture count.
 
