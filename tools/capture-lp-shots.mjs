@@ -42,6 +42,14 @@ const SHOTS = [
        picture of the furniture around it. */
     { file: 'wizard', url: '/fpl-my-team-analysis.html#transfers', wait: 10000, sel: '#transferDisplay, .v2-main-content',
       vw: 1500, vh: 1100, max: 900 },
+    /* The two screens the feature pages were borrowing someone else's picture
+       for: the news page was showing the Transfer Wizard and the Scout's Desk
+       was showing the player board. A feature page that illustrates itself with
+       a different screen is a small lie, and an easy one to stop telling. */
+    { file: 'news', url: '/fpl-news.html', wait: 10000, sel: '.news-grid, .v2-section, main',
+      vw: 1500, vh: 1100, max: 900 },
+    { file: 'scouts-desk', url: '/fpl-scouts-desk.html', wait: 10000, sel: '.sd-feed, .sd-page, main',
+      vw: 1500, vh: 1100, max: 900 },
 
     /* The two nav cards. A detail rather than a whole screen: the art box in
        a 182px card is about 158x62, so a wide crop of the part that says what
