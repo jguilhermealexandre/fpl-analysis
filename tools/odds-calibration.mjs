@@ -32,7 +32,7 @@ function sandbox() {
     const ctx = {
         console: { log() {}, warn() {}, error() {} },
         document: {
-            getElementById: () => null, querySelector: () => null,
+            getElementById: () => null, querySelector: () => null, querySelectorAll: () => [],
             createElement: () => ({ style: {}, classList: { add() {}, remove() {}, toggle() {} }, dataset: {}, setAttribute() {} }),
             body: { appendChild() {}, insertAdjacentHTML() {} },
             addEventListener() {}, activeElement: null
@@ -41,6 +41,17 @@ function sandbox() {
         location: { hash: '', search: '', href: 'http://local/' },
         navigator: { userAgent: 'node' },
         setTimeout, clearTimeout, fetch: () => Promise.reject(new Error('offline')),
+        /* buildTeamXgData() calls this and common.js owns the definition, but
+           common.js bootstraps a page as it loads — it injects a script tag
+           and wires observers — so it is seeded here instead, the way
+           tools/rising-form-host.mjs seeds it.
+
+           Verbatim from scripts/common.js. Note that rising-form-host.mjs
+           carries an older, narrower copy of the same helper (provisional
+           only, no `started`), which is the drift a second copy invites; this
+           one is the current definition. */
+        fixturePlayed: (f) => !!f && f.team_h_score !== null && f.team_h_score !== undefined
+            && (f.finished || f.finished_provisional || f.started),
         escHTML: (s) => String(s == null ? '' : s),
         computeIsPreseason: () => false,
         Chart: undefined, lucide: undefined
@@ -57,6 +68,13 @@ function sandbox() {
    ratings the model is being measured on are not the ones it ships with. */
 const SCRIPTS = [
     'scripts/xp-engine.js',
+    /* The team xG engine was extracted out of panels-and-tabs.js and this list
+       was not updated with it, so buildTeamXgData stopped existing in the
+       sandbox. calibrationSample() answers a failed load with null and a line
+       on stdout — by design, so a bad deploy does not take the odds job down —
+       which is exactly why it went unnoticed: the calibration was measuring
+       nothing at all. */
+    'scripts/team-xg.js',
     'scripts/team-analysis-core.js',
     'scripts/squad-table-chart.js',
     'scripts/panels-and-tabs.js'
@@ -82,7 +100,12 @@ export function calibrationSample(odds, boot, fixtures) {
             allFixtures = __fixtures;
             processFixtures(__fixtures);
             processFixtures6(__fixtures);
-            buildTeamXgData(__boot.elements);
+            /* Its signature moved with it: ({teams, players}, fixtures), not
+               the bare element list it used to take. No players file is
+               threaded through here, and the accessors fall back to the
+               bootstrap season totals without one — which is what this
+               sandbox has always fed it. */
+            buildTeamXgData({ teams: __boot.teams, players: [] }, __fixtures);
             computeTeamScores(__boot.teams, __fixtures);
         `, Object.assign(ctx, { __boot: boot, __fixtures: fixtures }));
 
