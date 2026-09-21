@@ -221,6 +221,71 @@ const POPULATIONS = [
 
 const POSITIONS = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
 
+/* Did the Rising Form board pick players who then scored?
+
+   The board is a RANKING, not a points prediction, so it cannot be graded with
+   RMSE. What it claims is an ordering — these players, in this order, are the
+   ones worth buying — and the honest tests of an ordering are whether the
+   players it named beat the ones it did not, and whether its own order
+   correlates with what happened.
+
+   The comparison pool is everyone who had a fixture and was not on the board,
+   which is a harsh baseline on purpose: it includes every premium in the game.
+   The board is explicitly tilted towards low ownership, so beating the field on
+   raw points is not what it is trying to do and a shortfall there is not
+   automatically a failure. `meanOwnership` is reported beside the points for
+   exactly that reason — a board that scores the same as the field at a third of
+   the ownership has done something useful, and one that scores the same at the
+   same ownership has not.
+
+   Small samples are the norm here: fifty-odd players a week, and a top ten is
+   ten. Nothing below is significant on one round and the note says so. */
+export function gradeRising(snapshot, actuals) {
+    const board = snapshot.rising || [];
+    if (!board.length) return null;
+
+    const pointsOf = (id) => {
+        const a = actuals.get(id);
+        return a ? a.points : null;
+    };
+    const scored = board
+        .map(r => ({ ...r, actual: pointsOf(r.id) }))
+        .filter(r => r.actual != null);
+    if (!scored.length) return { gw: snapshot.gw, skipped: 'nobody on the board had a fixture' };
+
+    const onBoard = new Set(board.map(r => r.id));
+    const rest = [];
+    for (const [id, a] of actuals) if (!onBoard.has(id)) rest.push(a.points);
+
+    const mean = (xs) => (xs.length ? xs.reduce((t, v) => t + v, 0) / xs.length : null);
+    const round2 = (v) => (Number.isFinite(v) ? Math.round(v * 100) / 100 : null);
+    const returnRate = (xs) => (xs.length
+        ? Math.round((xs.filter(v => v >= 6).length / xs.length) * 100) : null);
+
+    const pts = scored.map(r => r.actual);
+    const topN = (n) => scored.slice(0, n).map(r => r.actual);
+
+    return {
+        gw: snapshot.gw,
+        counts: { ranked: board.length, graded: scored.length, field: rest.length },
+        board: {
+            meanPoints: round2(mean(pts)),
+            returnRate: returnRate(pts),
+            meanOwnership: round2(mean(scored.map(r => r.sel))),
+            meanFdr: round2(mean(scored.map(r => r.fdrNear).filter(Number.isFinite)))
+        },
+        top10: { meanPoints: round2(mean(topN(10))), returnRate: returnRate(topN(10)) },
+        field: {
+            meanPoints: round2(mean(rest)),
+            returnRate: returnRate(rest)
+        },
+        /* Does its own order mean anything? Spearman between board rank and
+           points scored. Negative rank against points is the good direction, so
+           this is signed to make positive good. */
+        rankCorrelation: round2(-spearman(scored.map(r => r.rank), pts))
+    };
+}
+
 export function gradeRound(snapshot, actuals) {
     const withFixture = (snapshot.players || []).filter(p => p.xp != null && p.fx && p.fx.length);
     const blanks = (snapshot.players || []).filter(p => p.fx && p.fx.length === 0).length;
@@ -272,6 +337,7 @@ export function gradeRound(snapshot, actuals) {
         byPosition,
         calibration: calibration(starters),
         captaincy: captaincy(starters),
+        rising: gradeRising(snapshot, actuals),
         rows
     };
 }
@@ -319,6 +385,38 @@ export function gradeAll({ boot, playersData, snapshots }) {
     }
     const pooledStarters = pooled.filter(r => r.pStart >= 0.5);
 
+    /* Rising Form across the rounds that carried a board. Pooled the same way
+       the xP figures are — by player-round rather than by averaging rounds — so
+       a week with eight names does not count as much as a week with sixty. */
+    const risingRounds = rounds.map(r => r.rising).filter(r => r && !r.skipped);
+    const weighted = (pick, count) => {
+        let num = 0, den = 0;
+        for (const r of risingRounds) {
+            const v = pick(r), n = count(r);
+            if (Number.isFinite(v) && n) { num += v * n; den += n; }
+        }
+        return den ? Math.round((num / den) * 100) / 100 : null;
+    };
+    const risingOverall = risingRounds.length ? {
+        gameweeks: risingRounds.map(r => r.gw),
+        playerRounds: risingRounds.reduce((t, r) => t + r.counts.graded, 0),
+        board: {
+            meanPoints: weighted(r => r.board.meanPoints, r => r.counts.graded),
+            returnRate: weighted(r => r.board.returnRate, r => r.counts.graded),
+            meanOwnership: weighted(r => r.board.meanOwnership, r => r.counts.graded)
+        },
+        field: {
+            meanPoints: weighted(r => r.field.meanPoints, r => r.counts.field),
+            returnRate: weighted(r => r.field.returnRate, r => r.counts.field)
+        },
+        rankCorrelation: weighted(r => r.rankCorrelation, r => r.counts.graded),
+        note: risingRounds.length < 10
+            ? `${risingRounds.length} gameweek(s) of board. Nothing here is significant yet — `
+                + 'a ranking needs ten to fifteen rounds before its edge can be told from noise.'
+            : 'Board against the rest of the field. The board is tilted towards low ownership, '
+                + 'so read meanPoints next to meanOwnership rather than on its own.'
+    } : null;
+
     return {
         metadata: {
             lastUpdated: null,               // stamped by the caller
@@ -336,7 +434,8 @@ export function gradeAll({ boot, playersData, snapshots }) {
         overall: {
             populations: overall,
             byPosition: overallByPosition,
-            calibration: calibration(pooledStarters)
+            calibration: calibration(pooledStarters),
+            rising: risingOverall
         },
         rounds: rounds.map(published)
     };

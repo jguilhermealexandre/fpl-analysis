@@ -51,13 +51,13 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=328">
-    <link rel="stylesheet" href="styles/players.css?v=328">
+    <link rel="stylesheet" href="styles/common.css?v=329">
+    <link rel="stylesheet" href="styles/players.css?v=329">
     <!-- The shared player profile card. Loaded after this page's own sheet so
          either can still override the other, exactly as on the squad page. -->
-    <link rel="stylesheet" href="styles/player-profile.css?v=328">
-    <link rel="stylesheet" href="styles/v2-design.css?v=328">
-    <link rel="stylesheet" href="styles/responsive.css?v=328">
+    <link rel="stylesheet" href="styles/player-profile.css?v=329">
+    <link rel="stylesheet" href="styles/v2-design.css?v=329">
+    <link rel="stylesheet" href="styles/responsive.css?v=329">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -87,20 +87,21 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=328">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=328">
-    <link rel="preload" as="script" href="scripts/routes-engine.js?v=328">
-    <link rel="preload" as="script" href="scripts/form-trend.js?v=328">
-    <link rel="preload" as="script" href="scripts/purple-patch.js?v=328">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=328">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=328">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=328">
-    <link rel="preload" as="script" href="scripts/player-profile.js?v=328">
-    <link rel="preload" as="script" href="scripts/auth.js?v=328">
-    <link rel="preload" as="script" href="scripts/common.js?v=328">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=328">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=328">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=328">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=329">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=329">
+    <link rel="preload" as="script" href="scripts/routes-engine.js?v=329">
+    <link rel="preload" as="script" href="scripts/team-xg.js?v=329">
+    <link rel="preload" as="script" href="scripts/form-trend.js?v=329">
+    <link rel="preload" as="script" href="scripts/purple-patch.js?v=329">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=329">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=329">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=329">
+    <link rel="preload" as="script" href="scripts/player-profile.js?v=329">
+    <link rel="preload" as="script" href="scripts/auth.js?v=329">
+    <link rel="preload" as="script" href="scripts/common.js?v=329">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=329">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=329">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=329">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -289,7 +290,6 @@
         let teamFixtures = {};
         let teams = {};
         let teamAnalysis = {};
-        let teamXgData = {};
         let fixtureSwingData = {};
         let seasonStats = {};          // per-club W/D/L, goals, CS — xpBuildSeasonStats()
         let playersDetailData = null;  // players-data.json, under the name the profile card reads
@@ -782,89 +782,9 @@
         // ============================================
         // xG DATA BUILDER (from players-data.json)
         // ============================================
-        function buildTeamXgData(staticData, fixturesData) {
-            const bootTeams = staticData.teams;
-            bootTeams.forEach(t => {
-                teamXgData[t.id] = {
-                    seasonXg: 0, seasonXa: 0, seasonXgc: 0,
-                    seasonGoals: 0, seasonAssists: 0, seasonConceded: 0, seasonGames: 0,
-                    perGw: {}, hasPerGwData: false
-                };
-            });
-            const finishedFx = fixturesData.filter(fixturePlayed);
-            finishedFx.forEach(f => {
-                if (teamXgData[f.team_h]) { teamXgData[f.team_h].seasonGames++; teamXgData[f.team_h].seasonConceded += f.team_a_score || 0; }
-                if (teamXgData[f.team_a]) { teamXgData[f.team_a].seasonGames++; teamXgData[f.team_a].seasonConceded += f.team_h_score || 0; }
-            });
-            (staticData.players || []).forEach(player => {
-                const tid = player.team;
-                if (!teamXgData[tid]) return;
-                (player.history || []).forEach(h => {
-                    const gw = h.round;
-                    const fk = h.fixture;
-                    teamXgData[tid].seasonXg += parseFloat(h.expected_goals) || 0;
-                    teamXgData[tid].seasonXa += parseFloat(h.expected_assists) || 0;
-                    teamXgData[tid].seasonGoals += h.goals_scored || 0;
-                    teamXgData[tid].seasonAssists += h.assists || 0;
-                    if (!teamXgData[tid].perGw[gw]) {
-                        teamXgData[tid].perGw[gw] = { xG: 0, xA: 0, xGC: 0, goals: 0, assists: 0, conceded: 0, wasHome: null, oppTeam: null, xGC_90min: 0, _fixtures: {} };
-                    }
-                    const d = teamXgData[tid].perGw[gw];
-                    d.xG += parseFloat(h.expected_goals) || 0;
-                    d.xA += parseFloat(h.expected_assists) || 0;
-                    const tg = h.was_home ? (h.team_h_score || 0) : (h.team_a_score || 0);
-                    const tc = h.was_home ? (h.team_a_score || 0) : (h.team_h_score || 0);
-                    if (!d._fixtures[fk]) { d._fixtures[fk] = true; d.goals += tg; d.conceded += tc; }
-                    d.wasHome = h.was_home; d.oppTeam = h.opponent_team;
-                    if (h.minutes >= 85) {
-                        const xgc = parseFloat(h.expected_goals_conceded) || 0;
-                        const xk = `_xgc_${fk}`;
-                        if (!d[xk]) { d[xk] = true; d.xGC_90min += xgc; }
-                    }
-                });
-            });
-            bootTeams.forEach(t => {
-                const gwKeys = Object.keys(teamXgData[t.id].perGw);
-                if (gwKeys.length > 0) {
-                    teamXgData[t.id].hasPerGwData = true;
-                    teamXgData[t.id].seasonXgc = gwKeys.reduce((sum, gw) => sum + teamXgData[t.id].perGw[gw].xGC_90min, 0);
-                }
-            });
-            console.log('\ud83c\udfaf Team xG data built for', bootTeams.length, 'teams');
-        }
 
-        function getTeamXgWindow(teamId, windowSize) {
-            const data = teamXgData[teamId];
-            if (!data || !data.hasPerGwData) return null;
-            const gws = Object.keys(data.perGw).map(Number).sort((a, b) => a - b);
-            const recentGws = gws.slice(-windowSize);
-            if (recentGws.length === 0) return null;
-            const n = recentGws.length;
-            const totals = recentGws.reduce((acc, gw) => {
-                const d = data.perGw[gw];
-                acc.xG += d.xG; acc.xA += d.xA; acc.xGC += d.xGC_90min;
-                acc.goals += d.goals; acc.conceded += d.conceded;
-                return acc;
-            }, { xG: 0, xA: 0, xGC: 0, goals: 0, conceded: 0 });
-            return {
-                games: n, xGpg: totals.xG / n, xGCpg: totals.xGC / n,
-                gpg: totals.goals / n, gapg: totals.conceded / n,
-                totalXg: totals.xG, totalGoals: totals.goals,
-                totalXgc: totals.xGC, totalConceded: totals.conceded
-            };
-        }
 
-        function getTeamSeasonXg(teamId) {
-            const data = teamXgData[teamId];
-            if (!data) return null;
-            const g = data.seasonGames || 1;
-            return {
-                games: data.seasonGames, xGpg: data.seasonXg / g, xGCpg: data.seasonXgc / g,
-                gpg: data.seasonGoals / g, gapg: data.seasonConceded / g,
-                totalXg: data.seasonXg, totalGoals: data.seasonGoals,
-                totalXgc: data.seasonXgc, totalConceded: data.seasonConceded
-            };
-        }
+
 
         // ============================================
         // CLEAN SHEET PROBABILITY MODEL (from transfer-wizard)
@@ -2957,7 +2877,7 @@
                     <div class="rising-signals">
                         ${p.signals.map(s => `
                             <div class="rising-signal">
-                                <span class="rising-signal-icon">${s.icon}</span>
+                                <span class="rising-signal-icon"><i data-lucide="${s.icon || 'activity'}" style="width:14px;height:14px;"></i></span>
                                 <span class="rising-signal-label">${s.label}</span>
                                 <div class="rising-signal-bar">
                                     <div class="rising-signal-bar-fill" style="width: ${s.strength * 10}%; background: ${s.color}"></div>
@@ -3187,23 +3107,24 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=328"></script>
+    <script src="scripts/error-monitor.js?v=329"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=328"></script>
-    <script src="scripts/routes-engine.js?v=328"></script>
-    <script src="scripts/form-trend.js?v=328"></script>
-    <script src="scripts/purple-patch.js?v=328"></script>
-    <script src="scripts/players-tables.js?v=328"></script>
-    <script src="scripts/compare-report.js?v=328"></script>
+    <script src="scripts/xp-engine.js?v=329"></script>
+    <script src="scripts/routes-engine.js?v=329"></script>
+    <script src="scripts/team-xg.js?v=329"></script>
+    <script src="scripts/form-trend.js?v=329"></script>
+    <script src="scripts/purple-patch.js?v=329"></script>
+    <script src="scripts/players-tables.js?v=329"></script>
+    <script src="scripts/compare-report.js?v=329"></script>
     <!-- The price meter and the season's price path, from the game's own price
          engine. Pure functions, no DOM — the profile card renders them. -->
-    <script src="scripts/price-watch.js?v=328"></script>
+    <script src="scripts/price-watch.js?v=329"></script>
     <!-- Everything the site knows about one player, in one card. Shared with the
          squad page; the trend charts this page adds to it are wired up in the
          inline block below via pdmPageSections()/pdmAfterRender(). -->
-    <script src="scripts/player-profile.js?v=328"></script>
+    <script src="scripts/player-profile.js?v=329"></script>
     <script>
         // buildStatWindows / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -5130,13 +5051,13 @@
     </div><!-- /.v2-main-content -->
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/auth.js?v=328"></script>
-    <script src="scripts/common.js?v=328"></script>
+    <script src="scripts/auth.js?v=329"></script>
+    <script src="scripts/common.js?v=329"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=328"></script>
-    <script src="scripts/notifications.js?v=328"></script>
-    <script src="scripts/sidebar-nav.js?v=328"></script>
+    <script src="scripts/push-alerts.js?v=329"></script>
+    <script src="scripts/notifications.js?v=329"></script>
+    <script src="scripts/sidebar-nav.js?v=329"></script>
     <script>
         loadSidebarNav();
         initIcons();

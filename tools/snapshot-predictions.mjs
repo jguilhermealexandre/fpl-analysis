@@ -40,6 +40,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { REPO_ROOT, buildProjector, projectOne, PARTS } from './xp-engine-host.mjs';
+import { rankRisingForm } from './rising-form-host.mjs';
 
 const OUT_DIR = 'data/model-log';
 const DEFAULT_WINDOW_H = 3;
@@ -133,7 +134,7 @@ function buildRow(el, player, engine, gw) {
     return row;
 }
 
-function serialise(meta, rows) {
+function serialise(meta, rows, rising) {
     /* Metadata readable, one player per line. A snapshot is written once and
        never edited, so this is for the human who opens it in a year, not for
        diffing. Every piece goes through JSON.stringify — the file is parsed
@@ -142,7 +143,8 @@ function serialise(meta, rows) {
         .map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v)}`)
         .join(',\n');
     const body = rows.map(r => `    ${JSON.stringify(r)}`).join(',\n');
-    return `{\n${head},\n  "players": [\n${body}\n  ]\n}\n`;
+    const board = (rising || []).map(r => `    ${JSON.stringify(r)}`).join(',\n');
+    return `{\n${head},\n  "players": [\n${body}\n  ],\n  "rising": [\n${board}\n  ]\n}\n`;
 }
 
 export function takeSnapshot({ now = Date.now(), withinHours = DEFAULT_WINDOW_H, force = false } = {}) {
@@ -194,6 +196,21 @@ export function takeSnapshot({ now = Date.now(), withinHours = DEFAULT_WINDOW_H,
             + `(e.g. id ${drift[0].id}: parts ${drift[0].partsTotal} vs xp ${drift[0].xp})`);
     }
 
+    /* The Rising Form board, from the same committed files and the same moment.
+
+       Wrapped because it is the secondary artifact. The xP snapshot is the one
+       that can never be rebuilt — bootstrap-static.json is overwritten every
+       fifteen minutes — so losing a whole gameweek of it because the rising
+       engine threw would be the worst trade available. A board that failed says
+       so in the metadata and the rest of the file still lands. */
+    let rising = [];
+    let risingError = null;
+    try {
+        rising = rankRisingForm(boot, fixtures, readJSON('data/players-data.json', null) || {}, gw);
+    } catch (err) {
+        risingError = err.message;
+    }
+
     const projected = rows.filter(r => r.xp != null);
     const withFixture = rows.filter(r => r.fx && r.fx.length);
     const meta = {
@@ -213,8 +230,15 @@ export function takeSnapshot({ now = Date.now(), withinHours = DEFAULT_WINDOW_H,
             withFixture: withFixture.length,
             doubles: rows.filter(r => r.fx && r.fx.length > 1).length,
             blanks: rows.filter(r => r.fx && r.fx.length === 0).length,
-            failed: failed.length
+            failed: failed.length,
+            rising: rising.length
         },
+        risingError: risingError || undefined,
+        risingNote: 'What scripts/form-trend.js ranked as rising at this deadline, in order. '
+            + 'Each row carries the terms the ranking was made of — the recent and prior '
+            + 'windows, the weighted near-term FDR and the ownership — because a score with '
+            + 'nothing beside it cannot be argued with afterwards. Ownership is as it stood '
+            + 'at takenAt and moves within hours.',
         note: 'What scripts/xp-engine.js projected for this gameweek, recorded before the deadline '
             + 'and never edited afterwards. Written by tools/snapshot-predictions.mjs. '
             + 'Availability, ep_next, form and points_per_game are as they stood at takenAt; '
@@ -222,10 +246,11 @@ export function takeSnapshot({ now = Date.now(), withinHours = DEFAULT_WINDOW_H,
     };
     // undefined does not survive JSON, but being explicit beats relying on it.
     if (!meta.forced) delete meta.forced;
+    if (!meta.risingError) delete meta.risingError;
 
-    const text = serialise(meta, rows);
+    const text = serialise(meta, rows, rising);
     JSON.parse(text);            // never ship a file we cannot read back
-    return { written: true, gw, meta, text, rows };
+    return { written: true, gw, meta, text, rows, rising };
 }
 
 function main() {
@@ -251,6 +276,9 @@ function main() {
     console.log(`GW${gw}: ${c.projected}/${c.elements} players projected, `
         + `${c.withFixture} with a fixture, ${c.doubles} doubles, ${c.blanks} blanks, `
         + `${meta.hoursBeforeDeadline}h before the deadline.`);
+    console.log(meta.risingError
+        ? `::warning::Rising Form board not archived: ${meta.risingError}`
+        : `Rising Form: ${c.rising} players ranked.`);
 
     if (flag('--dry-run')) {
         const top = result.rows.filter(r => r.xp != null).sort((a, b) => b.xp - a.xp).slice(0, 5);

@@ -228,6 +228,26 @@ test('every signal states the numbers behind it', () => {
     for (const s of r.signals) assert.match(s.detail, /\d/, `${s.label} shows its figures`);
 });
 
+test('every signal carries the whole of what a card draws', () => {
+    /* The regression this exists for: the engine moved out of the page and the
+       signals lost their `icon`, so every row on every card rendered the word
+       "undefined" beside the label. Nothing threw — the template simply
+       interpolated a missing field. Any renderer reading one of these four is
+       one field away from doing it again, and `strength` sets a CSS width, so a
+       non-number there is a silently broken bar rather than a visible error. */
+    const r = withTeam.risingFormFor(player());
+    for (const s of r.signals) {
+        for (const k of ['icon', 'label', 'detail', 'color']) {
+            assert.ok(s[k], `${s.label || '?'} has ${k}`);
+            assert.notEqual(String(s[k]), 'undefined');
+        }
+        assert.equal(typeof s.strength, 'number', `${s.label} strength is a number`);
+        assert.ok(Number.isFinite(s.strength), `${s.label} strength is finite`);
+        // A name, not markup: the page owns how an icon is drawn.
+        assert.doesNotMatch(s.icon, /[<>]/, `${s.label} names an icon rather than carrying a tag`);
+    }
+});
+
 /* ---- the pool ---- */
 
 test('the pool carries the reason it is empty', () => {

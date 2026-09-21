@@ -185,3 +185,62 @@ test('the file it would write parses back, and one player sits on one line', (t)
     const lines = text.split('\n');
     assert.ok(lines.length > rows.length, 'players should not be crammed onto one line');
 });
+
+/* ---- the Rising Form board ---------------------------------------------- */
+
+test('the rising board is archived beside the projections, from the shipped engine', (t) => {
+    const snap = snapshotOnce();
+    if (!snap) return t.skip('no deadline ahead — between seasons');
+    const { result } = snap;
+
+    /* This runs scripts/form-trend.js itself rather than a copy in Node. If the
+       engine ever stops evaluating outside a browser the board goes empty and
+       the snapshot still writes, which is the right trade for an unbackfillable
+       archive — but it must not go empty quietly. */
+    assert.equal(result.meta.risingError, undefined,
+        `the board should build: ${result.meta.risingError || ''}`);
+    assert.ok(result.rising.length > 0, 'somebody is always rising by GW5 or so');
+    assert.equal(result.meta.counts.rising, result.rising.length);
+
+    const parsed = JSON.parse(result.text);
+    assert.equal(parsed.rising.length, result.rising.length, 'it survives serialisation');
+});
+
+test('every row says what the ranking was made of, not just its result', (t) => {
+    const snap = snapshotOnce();
+    if (!snap) return t.skip('no deadline ahead — between seasons');
+    const board = snap.result.rising;
+
+    /* A score with nothing beside it cannot be argued with a year later, and
+       arguing with it later is the whole reason for writing it down. Ownership
+       and the near-term FDR in particular are gone within hours: ownership
+       moves continuously and the fixture list rolls forward. */
+    board.forEach((r) => {
+        for (const k of ['id', 'rank', 'score', 'pos', 'team', 'price', 'sel',
+            'fdrNear', 'ppgRecent', 'ppgPrior', 'mpgRecent']) {
+            assert.ok(Number.isFinite(r[k]), `row ${r.id} has a finite ${k}`);
+        }
+        assert.ok(Array.isArray(r.signals) && r.signals.length >= 2,
+            `row ${r.id} carries the signals that put it there`);
+    });
+
+    // Ranks are dense and in score order — the archive IS the ordering.
+    board.forEach((r, i) => assert.equal(r.rank, i + 1));
+    for (let i = 1; i < board.length; i++) {
+        assert.ok(board[i - 1].score >= board[i].score, 'ranked best first');
+    }
+});
+
+test('the archived board agrees with the eligibility the engine publishes', (t) => {
+    const snap = snapshotOnce();
+    if (!snap) return t.skip('no deadline ahead — between seasons');
+    const board = snap.result.rising;
+
+    /* The two gates that exist to keep unbuyable players off it. A substitute
+       and an injury are the failures this section shipped with, so they get an
+       assertion against real data rather than a fixture. */
+    board.forEach((r) => {
+        assert.ok(r.mpgRecent >= 60, `row ${r.id} is a starter, not a substitute`);
+        assert.ok(r.ppgRecent > r.ppgPrior, `row ${r.id} is actually ahead of himself`);
+    });
+});

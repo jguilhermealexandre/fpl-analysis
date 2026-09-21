@@ -274,6 +274,11 @@
         /* The pillars. Player's own numbers first and heaviest; his club second
            and lighter, because team-level terms are what made the old board four
            clubs deep. */
+        /* Each signal names an icon rather than carrying its markup. The
+           version of this that lived in the page put `<i data-lucide=...>`
+           strings inside the model, which is how a data engine ends up owning a
+           rendering detail — and how the section broke when the engine moved out
+           and the tag came with it. */
         function rfPillars(player, split, ctx) {
             const pos = RF_POS[player.position];
             const isDefPos = (pos === 'GK' || pos === 'DEF');
@@ -296,7 +301,7 @@
                 const oneHaul = total > 0 && Math.max.apply(null, pts) > total * 0.6;
                 const v = Math.min(14, ptsGap * 2.2) * (oneHaul ? 0.5 : 1);
                 score += v;
-                signals.push({ label: 'Points trending up', color: '#FB923C',
+                signals.push({ label: 'Points trending up', icon: 'flame', color: '#FB923C',
                     detail: oneHaul
                         ? `${split.ppgPrior.toFixed(1)} → ${split.ppgRecent.toFixed(1)} pts/g, on one big score`
                         : `${split.ppgPrior.toFixed(1)} → ${split.ppgRecent.toFixed(1)} pts/g`,
@@ -325,7 +330,7 @@
                 const v = Math.min(18, uplift);
                 score += v;
                 if (parts.length) {
-                    signals.push({ label: 'Stats improving', color: '#FBBF24',
+                    signals.push({ label: 'Stats improving', icon: 'zap', color: '#FBBF24',
                         detail: parts.slice(0, 2).join(', '), strength: Math.min(10, v) });
                 }
             }
@@ -337,7 +342,7 @@
                 if (split.mpgRecent > split.mpgPrior + 10) {
                     const v = Math.min(6, ((split.mpgRecent - split.mpgPrior) / 25) * 6);
                     score += v;
-                    signals.push({ label: 'More minutes', color: '#A78BFA',
+                    signals.push({ label: 'More minutes', icon: 'clock', color: '#A78BFA',
                         detail: `${split.mpgPrior.toFixed(0)} → ${split.mpgRecent.toFixed(0)} mpg`,
                         strength: Math.min(10, v) });
                 }
@@ -349,7 +354,7 @@
             if (ts && ts.formRating > 55) {
                 const v = Math.min(8, ((ts.formRating - 55) / 45) * 8) * 0.8;
                 score += v;
-                signals.push({ label: 'Team in form', color: '#4ADE80',
+                signals.push({ label: 'Team in form', icon: 'trending-up', color: '#4ADE80',
                     detail: `${ts.wins}W ${ts.draws}D ${ts.losses}L`,
                     strength: Math.min(10, v) });
             }
@@ -363,6 +368,7 @@
                     score += v;
                     signals.push({
                         label: isDefPos ? 'Team xGC improving' : 'Team xG rising',
+                        icon: isDefPos ? 'shield-check' : 'circle-dot',
                         color: '#34D399',
                         // The sample is named because at this stage it is small.
                         detail: isDefPos
@@ -384,6 +390,7 @@
                     score += v;
                     signals.push({
                         label: isDefPos ? 'CS regression due' : 'Goals regression due',
+                        icon: 'refresh-cw',
                         color: '#C084FC',
                         detail: isDefPos
                             ? `${seasonXg.totalConceded} conceded against ${seasonXg.totalXgc.toFixed(1)} xGC in ${seasonXg.games}`
@@ -398,13 +405,13 @@
             if (outlook && outlook.turn != null && outlook.turn > 0.3) {
                 const v = Math.min(8, outlook.turn * 4);
                 score += v;
-                signals.push({ label: 'Fixtures easing', color: '#60A5FA',
+                signals.push({ label: 'Fixtures easing', icon: 'calendar', color: '#60A5FA',
                     detail: `FDR ${outlook.fdrPast.toFixed(1)} behind him, ${outlook.fdrNear.toFixed(1)} in front`,
                     strength: Math.min(10, v) });
             } else if (outlook && outlook.fdrNear <= 2.5) {
                 const v = Math.min(6, (3 - outlook.fdrNear) * 5);
                 score += v;
-                signals.push({ label: 'Kind run now', color: '#4ADE80',
+                signals.push({ label: 'Kind run now', icon: 'circle-check', color: '#4ADE80',
                     detail: `FDR ${outlook.fdrNear.toFixed(1)} over the next three`,
                     strength: Math.min(10, v) });
             }
@@ -454,7 +461,7 @@
                term put him there. */
             const own = Number(player.selectedBy);
             if (isFinite(own) && own <= 5) {
-                signals.push({ label: 'Under the radar', color: '#F472B6',
+                signals.push({ label: 'Under the radar', icon: 'eye-off', color: '#F472B6',
                     detail: `${own.toFixed(1)}% owned`, strength: Math.min(10, (5 - own) * 2) });
             }
 

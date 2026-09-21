@@ -14,7 +14,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { errorStats, ranks, spearman, actualsFor, gradeRound, gradeAll } from '../tools/grade-predictions.mjs';
+import { errorStats, ranks, spearman, actualsFor, gradeRound, gradeAll, gradeRising } from '../tools/grade-predictions.mjs';
 import { REPO_ROOT } from '../tools/xp-engine-host.mjs';
 
 // ---- the arithmetic
@@ -220,4 +220,95 @@ test('the join finds real players in the real results', (t) => {
     assert.ok(Number.isFinite(g.populations.all.rmse), 'RMSE against real scores must be a number');
     assert.ok(g.populations.all.rmse > 0, 'a flat 2.5 prediction cannot be exactly right');
     assert.ok(g.calibration.length > 0, 'calibration buckets should fill');
+});
+
+/* ---- Rising Form: grading a ranking rather than a number ----------------- */
+
+/* The board claims an ORDER, not a points total, so RMSE cannot touch it. What
+   it claims is that these players, in this order, are the ones worth buying —
+   so the tests are whether the named players beat the ones who were not named,
+   and whether the board's own order tracks what happened. */
+
+const risingSnap = (rising) => ({ gw: 7, rising });
+const acts = (pairs) => new Map(pairs.map(([id, points]) => [id, { points, minutes: 90, fixtures: 1 }]));
+const boardRow = (id, rank, over = {}) => ({ id, rank, score: 60 - rank, sel: 2, fdrNear: 2.5, ...over });
+
+test('the board is measured against everyone it did not name', () => {
+    const snap = risingSnap([boardRow(1, 1), boardRow(2, 2)]);
+    // 1 and 2 are on the board; 3 and 4 are the field.
+    const r = gradeRising(snap, acts([[1, 10], [2, 8], [3, 2], [4, 0]]));
+    assert.equal(r.counts.graded, 2);
+    assert.equal(r.counts.field, 2, 'the field is the rest of the game, premiums included');
+    assert.equal(r.board.meanPoints, 9);
+    assert.equal(r.field.meanPoints, 1);
+});
+
+test('a player on the board with no fixture is not counted as a zero', () => {
+    // Predicting nothing for a blank is arithmetic, not forecasting — the same
+    // rule the xP grading uses.
+    const snap = risingSnap([boardRow(1, 1), boardRow(2, 2)]);
+    const r = gradeRising(snap, acts([[1, 6]]));
+    assert.equal(r.counts.graded, 1);
+    assert.equal(r.board.meanPoints, 6);
+});
+
+test('ownership is reported beside the points, because the board is tilted', () => {
+    /* A board that matches the field at a third of the ownership has done
+       something; one that matches it at the same ownership has not. Reading
+       meanPoints alone would call both of them a failure. */
+    const snap = risingSnap([boardRow(1, 1, { sel: 0.5 }), boardRow(2, 2, { sel: 3.5 })]);
+    const r = gradeRising(snap, acts([[1, 5], [2, 5], [3, 5]]));
+    assert.equal(r.board.meanOwnership, 2);
+});
+
+test('the rank correlation is signed so that positive means the order worked', () => {
+    const good = gradeRising(risingSnap([boardRow(1, 1), boardRow(2, 2), boardRow(3, 3)]),
+        acts([[1, 12], [2, 6], [3, 1]]));
+    assert.ok(good.rankCorrelation > 0.9, 'best-first order that held up');
+
+    const backwards = gradeRising(risingSnap([boardRow(1, 1), boardRow(2, 2), boardRow(3, 3)]),
+        acts([[1, 1], [2, 6], [3, 12]]));
+    assert.ok(backwards.rankCorrelation < -0.9, 'exactly wrong reads as exactly wrong');
+});
+
+test('the return rate counts returns, not appearances', () => {
+    const r = gradeRising(risingSnap([boardRow(1, 1), boardRow(2, 2), boardRow(3, 3), boardRow(4, 4)]),
+        acts([[1, 9], [2, 6], [3, 5], [4, 2]]));
+    assert.equal(r.board.returnRate, 50, 'two of four reached six points');
+});
+
+test('no board is null rather than a set of zeroes', () => {
+    // A snapshot written before the board existed, or one where the engine
+    // threw. Neither is a reading of zero.
+    assert.equal(gradeRising({ gw: 7 }, acts([[1, 5]])), null);
+    assert.equal(gradeRising(risingSnap([]), acts([[1, 5]])), null);
+});
+
+test('a board nobody played is skipped, not scored', () => {
+    const r = gradeRising(risingSnap([boardRow(1, 1)]), acts([[9, 5]]));
+    assert.equal(r.skipped, 'nobody on the board had a fixture');
+});
+
+test('gradeAll pools the board by player-round and says the sample is thin', () => {
+    const boot = { events: [{ id: 7, finished: true, data_checked: true }] };
+    const playersData = { players: [
+        { id: 1, history: [{ round: 7, total_points: 10, minutes: 90 }] },
+        { id: 2, history: [{ round: 7, total_points: 2, minutes: 90 }] },
+        { id: 3, history: [{ round: 7, total_points: 4, minutes: 90 }] }
+    ] };
+    const snapshots = [{
+        gw: 7, deadlineTime: '2026-10-10T10:00:00Z', takenAt: '2026-10-10T08:00:00Z',
+        players: [
+            { id: 1, pos: 3, sel: 1, pStart: 0.9, fx: [{ o: 2, h: 1, d: 3 }], xp: 5, ep: 4, ppg: 4, form: 4 },
+            { id: 2, pos: 3, sel: 1, pStart: 0.9, fx: [{ o: 2, h: 1, d: 3 }], xp: 3, ep: 3, ppg: 3, form: 3 },
+            { id: 3, pos: 3, sel: 1, pStart: 0.9, fx: [{ o: 2, h: 1, d: 3 }], xp: 3, ep: 3, ppg: 3, form: 3 }
+        ],
+        rising: [boardRow(1, 1), boardRow(2, 2)]
+    }];
+    const out = gradeAll({ boot, playersData, snapshots });
+    assert.ok(out.overall.rising, 'the season view carries the board');
+    assert.equal(out.overall.rising.playerRounds, 2);
+    assert.equal(out.overall.rising.board.meanPoints, 6);   // (10 + 2) / 2
+    assert.equal(out.overall.rising.field.meanPoints, 4);   // player 3 alone
+    assert.match(out.overall.rising.note, /not significant yet|Nothing here is significant/);
 });
