@@ -91,5 +91,11 @@ jobs:
             exit 0
           fi
           git commit -m "Recapture landing page screenshots - $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git pull --rebase --autostash origin main
-          git push
+          # The branch this run was dispatched on, not main. Hardcoding main
+          # meant a run on a feature branch tried to rebase that branch onto
+          # main and died in the data files' conflicts, throwing away a capture
+          # that had already succeeded.
+          BRANCH="${GITHUB_REF_NAME}"
+          echo "pushing to $BRANCH"
+          git pull --rebase --autostash origin "$BRANCH"
+          git push origin "HEAD:$BRANCH"
