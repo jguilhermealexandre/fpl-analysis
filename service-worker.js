@@ -1,12 +1,28 @@
-/* Bumped to v8 with the shared player profile card: styles/player-profile.css
-   and scripts/player-profile.js join the precache list below, and cache.addAll
-   is atomic — a device holding the v7 list would never fetch either.
+/* Bumped to v9 with the soft-404 fix, and the bump IS part of that fix.
 
-   v7 went with the data-cache key fix below. The bump is the fix for everyone
-   already carrying the bug: activate deletes every cache whose name is not this
-   one, and that is the only thing that reclaims the entries the old key piled up
-   on devices in the wild. */
-const CACHE_NAME = 'easyfpl-v8';
+   Two things were wrong and they were hiding each other.
+
+   /scripts/players-ai.js was removed with the FPL assistant but left in the
+   precache list below. cache.addAll is atomic, so a missing entry should have
+   stopped the worker installing outright — except Cloudflare Pages was
+   answering every unknown path with 200 and the full dashboard, so the fetch
+   "succeeded" and a 322 KB HTML document went into the cache under a .js key.
+   The list has been wrong for days and nothing said so.
+
+   That same soft 404 is what let one visitor generate 34,557 requests in an
+   hour on 19 September (see functions/_middleware.js). Fixing it means unknown
+   asset paths now return a real 404 — which would have turned the stale entry
+   above into a worker that never installs for anybody. Both had to be fixed in
+   the same change.
+
+   tools/check-service-worker.mjs now proves every precached path exists, so a
+   deleted file cannot quietly rot the list again.
+
+   The version bump is the remedy for devices already carrying the bad entries:
+   activate deletes every cache whose name is not this one, and that is the only
+   thing that reclaims an HTML document cached as JavaScript.
+*/
+const CACHE_NAME = 'easyfpl-v9';
 
 const STATIC_ASSETS = [
   '/',
@@ -32,7 +48,6 @@ const STATIC_ASSETS = [
   '/scripts/xp-engine.js',
   '/scripts/live-gw.js',
   '/scripts/transfer-engine.js',
-  '/scripts/players-ai.js',
   '/scripts/players-tables.js',
   '/scripts/player-profile.js',
   '/footer.html',
@@ -128,8 +143,14 @@ self.addEventListener('fetch', event => {
       fetch(event.request)
         .then(response => {
           const safe = cleanResponse(response);
-          const clone = safe.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(cacheKey, clone));
+          /* Only a success is worth keeping, for the same reason the data
+             branch above checks one: an error page stored here is what gets
+             served the next time the network is gone, in place of the last
+             good copy of the page. */
+          if (safe.ok) {
+            const clone = safe.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(cacheKey, clone));
+          }
           return safe;
         })
         .catch(() => caches.match(cacheKey))
@@ -143,8 +164,16 @@ self.addEventListener('fetch', event => {
       caches.match(event.request).then(cached => {
         const networkFetch = fetch(event.request).then(response => {
           const safe = cleanResponse(response);
-          const clone = safe.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          /* A success, and not an HTML document answering for a script or a
+             stylesheet. That pair is exactly what a soft 404 looks like, and
+             caching it hands the browser a page where it asked for code — with
+             no network round trip left in which to notice. */
+          const type = safe.headers.get('Content-Type') || '';
+          const isPage = event.request.destination === 'document';
+          if (safe.ok && (isPage || !type.includes('text/html'))) {
+            const clone = safe.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          }
           return safe;
         });
         return cached || networkFetch;

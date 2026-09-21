@@ -303,6 +303,66 @@ function canonicalHost(url) {
     });
 }
 
+
+/* ===== The soft 404, and the 2.5 GB it cost =====
+
+   Cloudflare Pages answers an unmatched path with index.html and a 200. For a
+   navigation that is a defensible SPA fallback. For an ASSET it is a trap, and
+   on 19 September it ran away: one visitor in Poland produced 34,557 requests in
+   an hour — forty times the whole site's normal traffic — for paths like
+
+       /assets/fonts/scripts/scripts/scripts/.../notifications.js
+
+   Every one of them returned 200 and the full 322 KB dashboard. Two site
+   properties combined to make that possible:
+
+     1. Every asset on every page is referenced RELATIVELY (`scripts/x.js`, not
+        `/scripts/x.js`) — 270 of them. A document served at any path other than
+        the one it was written for re-requests all of them one directory deeper.
+     2. Those deeper paths do not exist, so each came back as another 200 and
+        another copy of the page, which gave the next round something to resolve
+        against.
+
+   A `.js` request answered with an HTML document is never correct. Nothing can
+   execute it, nothing can cache it usefully, and the only thing it can do is
+   feed the next iteration. So this turns that case into a real 404 with an empty
+   body: the loop has nothing to chew on and the 322 KB goes away.
+
+   Navigations are deliberately untouched — /dashboard and /squad-analysis are
+   200 rewrites that the product depends on (see _redirects), and deciding which
+   HTML paths are real needs a file list this has no way to read.
+
+   Cached at the edge for a day so a client stuck in a loop stops reaching the
+   origin at all. */
+const ASSET_EXT = /\.(?:js|mjs|css|json|map|png|jpe?g|gif|svg|webp|avif|ico|woff2?|ttf|otf|eot|txt|xml|webmanifest)$/i;
+
+function looksLikeAsset(pathname) {
+    return ASSET_EXT.test(pathname);
+}
+
+/* A response is the fallback page if it is HTML. A real asset never is — the
+   static handler serves .js as JavaScript and .css as CSS — so the content type
+   is enough, and it does not need a list of which files exist. */
+function isHtml(res) {
+    const t = res.headers.get('Content-Type') || '';
+    return t.includes('text/html');
+}
+
+async function assetOrNotFound(next) {
+    const res = await next();
+    if (!isHtml(res)) return res;
+    return new Response(null, {
+        status: 404,
+        headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'public, max-age=86400',
+            // Names the decision, so this is debuggable from a response header
+            // rather than from a bandwidth bill.
+            'X-EasyFPL-Reason': 'asset-path-not-found'
+        }
+    });
+}
+
 export async function onRequest(context) {
     const { request, next } = context;
     const url = new URL(request.url);
@@ -310,12 +370,21 @@ export async function onRequest(context) {
     const toApex = canonicalHost(url);
     if (toApex) return toApex;
 
+
     /* Admin first, and separately from premium. The two ask different
        questions — "is this account paid" against "is this account one of two
        people" — and the admin paths are not premium paths, so neither list can
        answer for the other. */
     const admin = adminReason(url.pathname);
     if (admin) return adminGate(request, next, url, admin);
+
+    /* After the admin gate, and the order is load-bearing. Two of the paths
+       adminReason() protects are .json — /data/model-accuracy.json and
+       /data/model-log/* — so an asset check placed above it would hand the
+       admin archive to anyone who asked. It goes here instead: past the gate,
+       and still ahead of the entitlement lookup, which a missing file has no
+       business paying for. */
+    if (looksLikeAsset(url.pathname)) return assetOrNotFound(next);
 
     /* The paywall is off — see PAYWALL_ENABLED in lib/premium.js. The lists and
        the matcher are untouched and still tested; this is the one place that

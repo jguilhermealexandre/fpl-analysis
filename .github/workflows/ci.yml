@@ -76,6 +76,12 @@ jobs:
 
       # Inline <script> in every page must at least parse. Cheap insurance for
       # the ~14.6k lines that ESLint cannot see until they are extracted.
+      # cache.addAll() is atomic: one stale path and the service worker never
+      # installs for anybody. A soft 404 hid exactly that for days — see the
+      # header in service-worker.js.
+      - name: Service worker precaches only files that exist
+        run: node tools/check-service-worker.mjs
+
       - name: Inline page scripts parse
         run: node tools/check-inline-syntax.mjs
 
