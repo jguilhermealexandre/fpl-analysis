@@ -51,13 +51,13 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=326">
-    <link rel="stylesheet" href="styles/players.css?v=326">
+    <link rel="stylesheet" href="styles/common.css?v=327">
+    <link rel="stylesheet" href="styles/players.css?v=327">
     <!-- The shared player profile card. Loaded after this page's own sheet so
          either can still override the other, exactly as on the squad page. -->
-    <link rel="stylesheet" href="styles/player-profile.css?v=326">
-    <link rel="stylesheet" href="styles/v2-design.css?v=326">
-    <link rel="stylesheet" href="styles/responsive.css?v=326">
+    <link rel="stylesheet" href="styles/player-profile.css?v=327">
+    <link rel="stylesheet" href="styles/v2-design.css?v=327">
+    <link rel="stylesheet" href="styles/responsive.css?v=327">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -87,20 +87,20 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=326">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=326">
-    <link rel="preload" as="script" href="scripts/routes-engine.js?v=326">
-    <link rel="preload" as="script" href="scripts/form-trend.js?v=326">
-    <link rel="preload" as="script" href="scripts/purple-patch.js?v=326">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=326">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=326">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=326">
-    <link rel="preload" as="script" href="scripts/player-profile.js?v=326">
-    <link rel="preload" as="script" href="scripts/auth.js?v=326">
-    <link rel="preload" as="script" href="scripts/common.js?v=326">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=326">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=326">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=326">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=327">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=327">
+    <link rel="preload" as="script" href="scripts/routes-engine.js?v=327">
+    <link rel="preload" as="script" href="scripts/form-trend.js?v=327">
+    <link rel="preload" as="script" href="scripts/purple-patch.js?v=327">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=327">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=327">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=327">
+    <link rel="preload" as="script" href="scripts/player-profile.js?v=327">
+    <link rel="preload" as="script" href="scripts/auth.js?v=327">
+    <link rel="preload" as="script" href="scripts/common.js?v=327">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=327">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=327">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=327">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -2850,6 +2850,10 @@
          *
          * Players need ≥2 signals and a minimum composite score to appear.
          * Window sizes: team xG uses 6-game (matches teams-analysis), player stats uses 3-game.
+         *
+         * Eligibility compares the last three gameweeks with the ones before
+         * them — never with the season, which contains them. Five gameweeks is
+         * therefore the minimum: three recent and two to compare against.
          */
         function generateRisingForm(analyses) {
             if (isPreseason) {
@@ -2864,11 +2868,8 @@
             // Scaled to the season played so far in demo mode — see demoPreview().
             const demo = demoPreview();
             const minRecentGames = demo ? Math.min(3, seasonGamesPlayed) : 3;
-            /* Five, down from six. The baseline comparison needs the recent
-               window (3 games) to be a genuine subset of the season, and at five
-               games it still is — 3 vs 5 leaves two games of daylight between
-               the two averages. What five buys is a whole gameweek earlier in
-               the season for a section that is otherwise empty furniture. */
+            /* Five: exactly what the three-and-two split below needs, and the
+               reason the number is five rather than six or four. */
             const minSeasonGames = demo ? Math.min(5, seasonGamesPlayed) : 5;
             const minRecentMinutes = demo ? 60 * minRecentGames : 180;
 
@@ -2880,10 +2881,16 @@
                     if ((p.l5?.minutes || 0) < minRecentMinutes) return false;
                     // Availability: must be currently available
                     if (p.status !== 'a') return false;
-                    // True form: recent PPG must exceed season PPG by 15%
-                    const l5PPG = recentPPGForStreak(p).ppg;
-                    const seasonPPG = (p.season?.points || 0) / (p.season?.games || 1);
-                    if (l5PPG <= seasonPPG * 1.15) return false;
+                    /* True form: the recent run must beat what came before it.
+                       Two disjoint samples — see risingPpgSplit(). Comparing the
+                       recent window against the SEASON, which contains it, is
+                       what emptied this section for every player in the league. */
+                    const split = risingPpgSplit(p);
+                    if (!split) return false;
+                    if (split.recent <= split.prior * 1.15) return false;
+                    /* And it has to be a return, not a smaller nothing: a prior
+                       window of zero makes any positive number a 15% rise. */
+                    if (split.recent < 3.0) return false;
                     // Attacking output: MID/FWD must show xGI > 0.2 per 90
                     const pos = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' }[p.position];
                     if (pos === 'MID' || pos === 'FWD') {
@@ -3497,23 +3504,23 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=326"></script>
+    <script src="scripts/error-monitor.js?v=327"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=326"></script>
-    <script src="scripts/routes-engine.js?v=326"></script>
-    <script src="scripts/form-trend.js?v=326"></script>
-    <script src="scripts/purple-patch.js?v=326"></script>
-    <script src="scripts/players-tables.js?v=326"></script>
-    <script src="scripts/compare-report.js?v=326"></script>
+    <script src="scripts/xp-engine.js?v=327"></script>
+    <script src="scripts/routes-engine.js?v=327"></script>
+    <script src="scripts/form-trend.js?v=327"></script>
+    <script src="scripts/purple-patch.js?v=327"></script>
+    <script src="scripts/players-tables.js?v=327"></script>
+    <script src="scripts/compare-report.js?v=327"></script>
     <!-- The price meter and the season's price path, from the game's own price
          engine. Pure functions, no DOM — the profile card renders them. -->
-    <script src="scripts/price-watch.js?v=326"></script>
+    <script src="scripts/price-watch.js?v=327"></script>
     <!-- Everything the site knows about one player, in one card. Shared with the
          squad page; the trend charts this page adds to it are wired up in the
          inline block below via pdmPageSections()/pdmAfterRender(). -->
-    <script src="scripts/player-profile.js?v=326"></script>
+    <script src="scripts/player-profile.js?v=327"></script>
     <script>
         // buildStatWindows / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -5440,13 +5447,13 @@
     </div><!-- /.v2-main-content -->
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/auth.js?v=326"></script>
-    <script src="scripts/common.js?v=326"></script>
+    <script src="scripts/auth.js?v=327"></script>
+    <script src="scripts/common.js?v=327"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=326"></script>
-    <script src="scripts/notifications.js?v=326"></script>
-    <script src="scripts/sidebar-nav.js?v=326"></script>
+    <script src="scripts/push-alerts.js?v=327"></script>
+    <script src="scripts/notifications.js?v=327"></script>
+    <script src="scripts/sidebar-nav.js?v=327"></script>
     <script>
         loadSidebarNav();
         initIcons();
