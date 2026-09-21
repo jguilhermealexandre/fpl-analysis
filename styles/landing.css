@@ -26,13 +26,27 @@
 */
 
 :root {
-    --lp-w: 1120px;
+    /* Wider than the 1120 it started at: at 1440 and up the old column left a
+       lot of room unused and the feature rows read cramped against it. The
+       number itself lives in v2-design.css as --v2-measure, which is what the
+       shared header centres on. */
+    --lp-w: var(--v2-measure, 1280px);
     --lp-gutter: 24px;
     /* The vertical rhythm. Sections are one of these apart, never an
        arbitrary number, so the page has a beat rather than a list of
        margins. */
     --lp-gap: 120px;
     --lp-gap-sm: 80px;
+
+    /* Tracking, in em so it scales with the type rather than against it.
+       Large sizes close up hard; body text is drawn in only slightly, which
+       is what "a touch tighter than normal" means at 15px; uppercase labels
+       go the other way and open out, because caps need the air. */
+    --lp-track-h1: -0.042em;
+    --lp-track-h2: -0.03em;
+    --lp-track-h3: -0.016em;
+    --lp-track-lead: -0.011em;
+    --lp-track-body: -0.008em;
 }
 
 .lp-wrap { max-width: var(--lp-w); margin: 0 auto; padding-inline: var(--lp-gutter); }
@@ -46,7 +60,7 @@
     font-family: var(--font-display, 'Space Grotesk', sans-serif);
     font-size: clamp(40px, 6.2vw, 68px);
     line-height: 1.04;
-    letter-spacing: -0.035em;
+    letter-spacing: var(--lp-track-h1);
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
@@ -55,23 +69,33 @@
     font-family: var(--font-display, 'Space Grotesk', sans-serif);
     font-size: clamp(30px, 3.6vw, 44px);
     line-height: 1.1;
-    letter-spacing: -0.028em;
+    letter-spacing: var(--lp-track-h2);
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
 }
 .lp-h3 {
     font-family: var(--font-display, 'Space Grotesk', sans-serif);
-    font-size: 17px; line-height: 1.3; letter-spacing: -0.012em;
+    font-size: 17px; line-height: 1.3; letter-spacing: var(--lp-track-h3);
     font-weight: 650; color: var(--text-primary); margin: 0;
 }
 .lp-lead {
     font-size: clamp(16px, 1.5vw, 19px);
     line-height: 1.6;
+    letter-spacing: var(--lp-track-lead);
     color: var(--text-secondary);
     margin: 0;
 }
-.lp-body { font-size: 15px; line-height: 1.65; color: var(--text-secondary); margin: 0; }
+.lp-body { font-size: 15px; line-height: 1.65; letter-spacing: var(--lp-track-body); color: var(--text-secondary); margin: 0; }
+
+/* The rest of the page's prose, drawn in by the same small amount. The cells,
+   bullets, quotes and captions are all body copy and should not read as a
+   different typeface from .lp-body. */
+.lp-cell p, .lp-bullets li, .lp-wide-points li, .lp-quote-text,
+.lp-trust-inner, .lp-hero-note, .lp-quote-meta, .lp-cell-ico + * {
+    letter-spacing: var(--lp-track-body);
+}
+.lp-btn { letter-spacing: var(--lp-track-body); }
 .lp-accent { color: var(--color-primary-text, var(--color-primary)); }
 
 /* The label over a section heading. Uppercase, tracked out, in the accent —
@@ -108,7 +132,11 @@
 .lp-btn-ghost:hover { border-color: var(--color-primary); color: var(--color-primary-text, var(--color-primary)); }
 
 /* ===== Hero ===== */
-.lp-hero { padding: clamp(64px, 9vw, 116px) 0 0; text-align: center; position: relative; overflow: hidden; }
+/* padding-block, never a padding shorthand: .lp-hero and .lp-section are also
+   .lp-wrap, whose side gutter a shorthand silently rewrites to zero — which
+   put every section 24px left of the header and left phone widths with no
+   gutter at all. */
+.lp-hero { padding-block: clamp(64px, 9vw, 116px) 0; text-align: center; position: relative; overflow: hidden; }
 /* A single wash behind the headline, in the brand colour, rather than the
    four overlapping gradients and the pulsing blob the old hero had. It is
    behind the text and it does not move. */
@@ -171,9 +199,14 @@
         color-mix(in srgb, var(--color-primary) 55%, transparent), transparent);
 }
 .lp-frame img { display: block; width: 100%; height: auto; }
-/* The hero shot only — cropped so the app runs past the bottom of the frame. */
-.lp-frame.is-cropped { max-height: 540px; }
-.lp-frame.is-cropped img { object-fit: cover; object-position: top center; }
+/* The hero shot — a window onto the app, cut off at the bottom because the
+   screen continues past the fold, which is the point it is making. It is the
+   one frame that is on screen before anything has been scrolled, so it starts
+   moving on its own rather than waiting for the observer. */
+.lp-frame.is-hero { height: clamp(260px, 40vw, 540px); --lp-pan: 14%; }
+/* Qualified past .lp-frame.is-pan img, which sets paused at the same
+   specificity and is declared later in this file. */
+.lp-shot-hero .lp-frame.is-hero img { animation-play-state: running; }
 
 /* A light and a dark capture of every screen; the theme picks one. Both are
    in the markup because swapping a src on theme change means a visible
@@ -196,13 +229,13 @@
 }
 .lp-trust-inner {
     display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 32px;
-    padding: 20px 0;
+    padding-block: 20px;
     font-size: 13px; color: var(--text-muted);
 }
 .lp-trust-inner strong { color: var(--text-secondary); font-weight: 650; }
 
 /* ===== Section scaffolding ===== */
-.lp-section { padding: var(--lp-gap) 0 0; }
+.lp-section { padding-block: var(--lp-gap) 0; }
 /* A feature row is one row in a run of them, so it takes the smaller gap —
    the larger one separates parts of the page, not items within a part. */
 .lp-section.is-tight { padding-top: var(--lp-gap-sm); }
@@ -236,7 +269,18 @@
 .lp-cell-ico svg, .lp-cell-ico .icon { width: 17px; height: 17px; }
 .lp-cell p { margin-top: 7px; font-size: 13.5px; line-height: 1.6; color: var(--text-muted); }
 
-/* ===== Feature showcases ===== */
+/* ===== Feature showcases =====
+
+   Three shapes, not one repeated four times. Strict left/right/left/right
+   gives every section the same weight and turns the middle of the page into
+   a rhythm you stop reading; these say something about the features instead.
+
+     1. A split row — one feature, its screen beside it.
+     2. A wide block — the player database, which is the widest screen in the
+        product and the one worth showing at full measure.
+     3. A pair — fixtures and rivals, both about the field around your squad,
+        read side by side because that is how you use them.
+*/
 .lp-feature { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
 .lp-feature.is-reverse .lp-feature-text { order: 2; }
 .lp-feature-text .lp-h2 { margin-top: 14px; font-size: clamp(26px, 2.9vw, 36px); }
@@ -248,10 +292,63 @@
     color: var(--color-primary-text, var(--color-primary));
 }
 .lp-feature .lp-btn { margin-top: 26px; }
-/* The screenshot in a feature row is capped: these are 1700px-tall captures
-   and the row should stay a row. */
-.lp-feature .lp-frame { max-height: 420px; }
-.lp-feature .lp-frame img { object-fit: cover; object-position: top left; }
+
+/* ----- 2. The wide block ----- */
+.lp-wide { text-align: center; }
+.lp-wide .lp-section-head { margin-inline: auto; }
+.lp-wide-points {
+    list-style: none; margin: 24px 0 0; padding: 0;
+    display: flex; flex-wrap: wrap; gap: 10px 28px; justify-content: center;
+}
+.lp-wide-points li { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-secondary); }
+.lp-wide-points svg, .lp-wide-points .icon {
+    width: 16px; height: 16px; flex-shrink: 0;
+    color: var(--color-primary-text, var(--color-primary));
+}
+.lp-wide .lp-btn { margin-top: 26px; }
+.lp-wide .lp-frame { margin-top: 36px; }
+
+/* ----- 3. The pair ----- */
+.lp-duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(20px, 2.6vw, 32px); }
+.lp-duo-card { display: flex; flex-direction: column; }
+.lp-duo-card .lp-h2 { margin-top: 12px; font-size: clamp(22px, 2.1vw, 27px); }
+.lp-duo-card .lp-body { margin-top: 12px; }
+/* The link sits on the baseline shared by both cards, whichever has the
+   longer paragraph, and the shot goes under it. */
+.lp-duo-card .lp-btn { margin-top: 20px; align-self: flex-start; }
+.lp-duo-card .lp-frame { margin-top: 24px; }
+
+/* ===== The screens, moving =====
+
+   A landing page full of stills of a dashboard reads as a brochure. Each
+   shot is taller than the frame holding it, so the frame shows a window onto
+   it and the window drifts — slowly, and alternating, so it eases at both
+   ends instead of jumping back to the top.
+
+   Paused until the section is on screen. .is-in is set by the same observer
+   that fades the section in, so a shot never animates where nobody is
+   looking and a long page is not running six of these at once. */
+.lp-frame.is-pan { overflow: hidden; }
+.lp-frame.is-pan img {
+    display: block; width: 100%; height: auto;
+    animation: lp-pan 26s ease-in-out infinite alternate;
+    animation-play-state: paused;
+}
+.lp-reveal.is-in .lp-frame.is-pan img,
+.is-in .lp-frame.is-pan img { animation-play-state: running; }
+@keyframes lp-pan {
+    from { transform: translateY(0); }
+    to   { transform: translateY(calc(-1 * var(--lp-pan, 14%))); }
+}
+/* How far each frame can travel is how much taller its shot is than the
+   window, so it is set per shape rather than globally. */
+.lp-feature .lp-frame { height: 340px; --lp-pan: 11%; }
+.lp-wide .lp-frame { height: clamp(300px, 38vw, 520px); --lp-pan: 26%; }
+.lp-duo-card .lp-frame { height: 260px; --lp-pan: 13%; }
+
+/* A screen you can look at properly: hovering stops the drift rather than
+   fighting you for the part you were reading. */
+.lp-frame.is-pan:hover img { animation-play-state: paused; }
 
 /* ===== Testimonials ===== */
 .lp-quotes { margin-top: 48px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
@@ -307,10 +404,14 @@
        keeps a two-column page from marching, and in one column it just means
        half the sections open with a picture of something not yet named. */
     .lp-feature.is-reverse .lp-feature-text { order: 0; }
-    .lp-feature .lp-frame { max-height: 340px; }
+    .lp-duo { grid-template-columns: 1fr; gap: 44px; }
+    .lp-feature .lp-frame { height: 280px; }
+    .lp-duo-card .lp-frame { height: 300px; --lp-pan: 20%; }
 }
 @media (max-width: 640px) {
     :root { --lp-gutter: 16px; }
+    .lp-feature .lp-frame, .lp-duo-card .lp-frame { height: 220px; }
+    .lp-wide-points { flex-direction: column; align-items: flex-start; text-align: left; }
     .lp-grid { grid-template-columns: 1fr; }
     .lp-trust-inner { justify-content: flex-start; gap: 10px 24px; }
     .lp-cta-row .lp-btn { flex: 1 1 auto; }
@@ -323,4 +424,6 @@
 @media (prefers-reduced-motion: reduce) {
     .lp-reveal { opacity: 1; transform: none; transition: none; }
     .lp-btn:hover { transform: none; }
+    /* The drift is the decoration; the top of each screen is the content. */
+    .lp-frame.is-pan img { animation: none; transform: none; }
 }

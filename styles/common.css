@@ -1738,11 +1738,17 @@ h4 {
     letter-spacing: var(--tracking-md) !important;
 }
 
-/* Keep headings readable and consistent at every viewport size. */
+/* Keep headings readable and consistent at every viewport size.
+
+   A flat -0.5px, which is the wrong shape for tracking: it is a fixed
+   distance, so it reads as -0.03em on a 17px heading and -0.007em — near
+   nothing — on a 68px one, when large type is exactly what needs to be
+   drawn in. The landing headings opt out and set their own em-based scale
+   in styles/landing.css; everything else keeps this. */
 body :is(
     h1, h2, h3, h4, h5, h6,
     [class*="title"], [class*="heading"]
-) {
+):not(.lp-h1):not(.lp-h2):not(.lp-h3) {
     letter-spacing: -0.5px !important;
 }
 
