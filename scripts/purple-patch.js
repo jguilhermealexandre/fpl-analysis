@@ -49,35 +49,6 @@
             return { ppg: (p.l5?.points || 0) / g, games: g };
         }
 
-        /* Recent form against what came BEFORE it, as two disjoint samples.
-         *
-         * Rising Form used to gate on "last five PPG beats season PPG by 15%".
-         * Through GW5 the last five games ARE the season, so that read x > 1.15x
-         * and rejected all 610 eligible players — the section was empty by
-         * construction, not because nobody was in form. Even later in the season
-         * the season average contains the window being compared against it,
-         * which flattens the signal all year.
-         *
-         * Splitting the history instead asks the same question of two samples
-         * that share no match, which is the comparison the section's own signals
-         * already make (points and minutes both read L3 against the prior two).
-         * Returns null when there is not enough season to split, so the caller
-         * can say "too young" rather than quietly pass everyone.
-         */
-        function risingPpgSplit(p, recentN) {
-            const n = recentN || 3;
-            const rows = (p && p.history) || [];
-            // A prior window of one match is a coin toss, not a baseline.
-            if (rows.length < n + 2) return null;
-            const ppg = rs => rs.reduce((s, g) => s + (parseFloat(g.total_points) || 0), 0) / (rs.length || 1);
-            return {
-                recent: ppg(rows.slice(-n)),
-                prior: ppg(rows.slice(0, -n)),
-                recentGames: n,
-                priorGames: rows.length - n
-            };
-        }
-
         function detectPurplePatch(p) {
             const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
             const pos = posMap[p.position];

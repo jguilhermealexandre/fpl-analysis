@@ -187,56 +187,11 @@ test('nothing is invented when the feed is silent', () => {
     assert.equal(w.columns.every(c => c.state === 'dnp' || c.state === 'blank'), true);
 });
 
-/* ===== Rising Form's eligibility comparison =====
+/* risingPpgSplit lived here until the Rising Form engine absorbed it.
 
-   The bug this guards is not an off-by-one, it is a comparison that cannot be
-   true. The gate asked whether the last five gameweeks beat the SEASON by 15%,
-   and through GW5 the last five gameweeks are the season — so it evaluated
-   x > 1.15x for all 610 eligible players and the section rendered empty with
-   "no players currently picking up form", which reads as a finding rather than
-   as a broken test. */
-const risingPpgSplit = loadFunction('scripts/purple-patch.js', 'risingPpgSplit');
-
-const gw = (pts, minutes = 90) => ({ total_points: pts, minutes });
-
-test('the two windows never share a match', () => {
-    const s = risingPpgSplit({ history: [gw(1), gw(1), gw(9), gw(9), gw(9)] });
-    assert.equal(s.recent, 9, 'the last three');
-    assert.equal(s.prior, 1, 'and only the ones before them');
-    assert.equal(s.recentGames, 3);
-    assert.equal(s.priorGames, 2);
-});
-
-test('a flat scorer does not read as rising', () => {
-    const s = risingPpgSplit({ history: [gw(4), gw(4), gw(4), gw(4), gw(4)] });
-    assert.equal(s.recent, s.prior, 'identical form is identical in both windows');
-    assert.equal(s.recent > s.prior * 1.15, false);
-});
-
-test('the comparison is possible at all — the regression that emptied the section', () => {
-    /* With five played and a five-game recent window, recent and season are the
-       same five matches. Any test of the form "recent beats season by x%" is
-       then unsatisfiable. The split has to leave games out of the baseline. */
-    const history = [gw(2), gw(3), gw(12), gw(11), gw(10)];
-    const seasonPpg = history.reduce((a, g) => a + g.total_points, 0) / history.length;
-    const lastFivePpg = seasonPpg; // by construction, at five played
-    assert.equal(lastFivePpg > seasonPpg * 1.15, false, 'the old gate, shown impossible');
-
-    const s = risingPpgSplit({ history });
-    assert.equal(s.recent > s.prior * 1.15, true, 'the new one separates a real climb');
-});
-
-test('too little season to split returns nothing rather than passing everyone', () => {
-    // Four played leaves a one-match baseline; that is a coin toss, not a form line.
-    assert.equal(risingPpgSplit({ history: [gw(5), gw(5), gw(5), gw(5)] }), null);
-    assert.equal(risingPpgSplit({ history: [] }), null);
-    assert.equal(risingPpgSplit({}), null);
-    assert.equal(risingPpgSplit(null), null);
-});
-
-test('a longer season keeps the window at three and grows the baseline', () => {
-    const history = Array.from({ length: 12 }, () => gw(2)).concat([gw(8), gw(8), gw(8)]);
-    const s = risingPpgSplit({ history });
-    assert.equal(s.recentGames, 3);
-    assert.equal(s.priorGames, 12, 'the baseline is everything else, not a fixed five');
-});
+   It was the right idea — a recent window against the matches before it, never
+   against a season containing them — and rfSplit() in scripts/form-trend.js is
+   that idea with the minutes, starts and per-metric windows the model also
+   needs. Two functions answering one question is the fault this codebase keeps
+   paying for, so the older one went. tests/form-trend.test.mjs carries the
+   behaviour forward. */

@@ -1228,14 +1228,18 @@ function updateCompareBar() {
                 }
 
                 const ppg = (ts.wins * 3 + ts.draws) / played;
+                /* The window names itself: it is a disjoint split now — the
+                   club's last few matches against the ones before them — so a
+                   fixed "last 6" in the label would be describing a comparison
+                   this no longer makes. */
                 const trendRow = trend.usable
-                    ? row('xG trend (last 6)',
+                    ? row(`xG trend (last ${trend.recentGames})`,
                         `${trend.xgDelta >= 0 ? '+' : ''}${num(trend.xgDelta, 2)} xG · ${trend.xgcDelta >= 0 ? '+' : ''}${num(trend.xgcDelta, 2)} xGC`,
                         (trend.xgDelta > 0.1 || trend.xgcDelta > 0.1) ? 'var(--color-success)'
                             : (trend.xgDelta < -0.1 || trend.xgcDelta < -0.1) ? 'var(--color-error)' : null,
                         'Their last six matches against their own season average. Positive is more chances created and fewer conceded.')
-                    : row('xG trend (last 6)', '—', null,
-                        `A six-match window only says something against a longer season — ${teamName} have played ${played} of the ${trend.need || 10} matches this needs.`);
+                    : row('xG trend', '—', null,
+                        `A recent run only says something against the matches before it — ${teamName} have played ${played} of the ${trend.need || 4} this needs.`);
 
                 return `
                     <div class="report-team-card">

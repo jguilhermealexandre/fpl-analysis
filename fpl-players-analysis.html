@@ -51,13 +51,13 @@
     <meta name="twitter:title" content="EasyFPL — Player Analysis">
     <meta name="twitter:description" content="Deep-dive FPL player analysis — scout recommendations, routes to points, rising form alerts, and advanced stats for every Premier League player.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=327">
-    <link rel="stylesheet" href="styles/players.css?v=327">
+    <link rel="stylesheet" href="styles/common.css?v=328">
+    <link rel="stylesheet" href="styles/players.css?v=328">
     <!-- The shared player profile card. Loaded after this page's own sheet so
          either can still override the other, exactly as on the squad page. -->
-    <link rel="stylesheet" href="styles/player-profile.css?v=327">
-    <link rel="stylesheet" href="styles/v2-design.css?v=327">
-    <link rel="stylesheet" href="styles/responsive.css?v=327">
+    <link rel="stylesheet" href="styles/player-profile.css?v=328">
+    <link rel="stylesheet" href="styles/v2-design.css?v=328">
+    <link rel="stylesheet" href="styles/responsive.css?v=328">
     <style>
         /* The sticky header now lives in players.css and pins to the scrolling
            table container rather than to the viewport, so the offset that used to
@@ -87,20 +87,20 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=327">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=327">
-    <link rel="preload" as="script" href="scripts/routes-engine.js?v=327">
-    <link rel="preload" as="script" href="scripts/form-trend.js?v=327">
-    <link rel="preload" as="script" href="scripts/purple-patch.js?v=327">
-    <link rel="preload" as="script" href="scripts/players-tables.js?v=327">
-    <link rel="preload" as="script" href="scripts/compare-report.js?v=327">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=327">
-    <link rel="preload" as="script" href="scripts/player-profile.js?v=327">
-    <link rel="preload" as="script" href="scripts/auth.js?v=327">
-    <link rel="preload" as="script" href="scripts/common.js?v=327">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=327">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=327">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=327">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=328">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=328">
+    <link rel="preload" as="script" href="scripts/routes-engine.js?v=328">
+    <link rel="preload" as="script" href="scripts/form-trend.js?v=328">
+    <link rel="preload" as="script" href="scripts/purple-patch.js?v=328">
+    <link rel="preload" as="script" href="scripts/players-tables.js?v=328">
+    <link rel="preload" as="script" href="scripts/compare-report.js?v=328">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=328">
+    <link rel="preload" as="script" href="scripts/player-profile.js?v=328">
+    <link rel="preload" as="script" href="scripts/auth.js?v=328">
+    <link rel="preload" as="script" href="scripts/common.js?v=328">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=328">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=328">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=328">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -2149,7 +2149,10 @@
             // Cross-wires the Rising Form 3-pillar analysis into recommendations
             let risingFormBonus = 0;
             if (window._risingFormScores && window._risingFormScores[p.id]) {
-                risingFormBonus = Math.min(5, window._risingFormScores[p.id] * 0.4);
+                // Rising Form scores 0-100 since the engine rewrite; this used
+                // to multiply a single-digit score by 0.4, which against the new
+                // scale would cap every rising player at the same 5.
+                risingFormBonus = Math.min(5, window._risingFormScores[p.id] / 20);
             }
 
             // ── ENHANCEMENT: Purple Patch sustainability bonus ──
@@ -2827,34 +2830,22 @@
         // ============================================
         // RISING FORM — Players Picking Up Form
         // ============================================
-        /**
-         * Rising Form model — identifies players with converging positive signals.
-         *
-         * Three pillars (matching teams-analysis methodology):
-         *   1. TEAM FORM — results momentum (W/D/L recency-weighted) + team xG quality trend
-         *      • formRating (0-100, recency-weighted) measures results momentum
-         *      • xG trend: recent-6 xG/g vs season xG/g (rising = team creating more / conceding less)
-         *      • xG regression: team underperforming xG (actual goals < xG) → positive reversion likely
-         *      These are SEPARATE sub-signals because a team can have bad results but rising xG
-         *      (unlucky) — that's actually a strong BUY signal.
-         *
-         *   2. FIXTURE SWING — fixtures getting easier or already easy
-         *      • fixtureSwingData: compares GW1-3 FDR vs GW4-6 FDR (threshold ±0.3)
-         *      • Currently easy: avg FDR of next 3 ≤ 2.5
-         *      • Home-heavy: upcoming fixtures skewed home (≥60% of next 5)
-         *
-         *   3. PLAYER STATS — underlying xG / ICT improving recently
-         *      • L3 vs season-excluding-L3 per-game rates for position-specific key metrics
-         *      • FPL points trend: L3 avg vs prior-2 avg (within L5 window)
-         *      • Minutes trend: gaining game time (rotation risk decreasing)
-         *
-         * Players need ≥2 signals and a minimum composite score to appear.
-         * Window sizes: team xG uses 6-game (matches teams-analysis), player stats uses 3-game.
-         *
-         * Eligibility compares the last three gameweeks with the ones before
-         * them — never with the season, which contains them. Five gameweeks is
-         * therefore the minimum: three recent and two to compare against.
-         */
+        /* Rising Form — one engine, in scripts/form-trend.js.
+
+           This section used to carry its own copy of the model, and the copy had
+           drifted far enough to be worth naming. Three of its six pillars could
+           not fire at all: they wanted six match rows, or ten matches from a
+           club, out of a five-match season, and scored 0 of 667 players between
+           them. Its fixture signal compared the next three gameweeks against the
+           three AFTER them, so it fired only when the near fixtures were the
+           worse of the two — and it carried the heaviest weight in the model.
+           The board that produced ranked hard fixtures above kind ones (top ten
+           averaging FDR 3.5, bottom ten 2.4) and filled with substitutes,
+           because 180 minutes across five matches is 36 a game.
+
+           risingFormRanked() is the whole of it now, shared with the scouting
+           report so the two cannot disagree about who is rising. What this
+           section still owns is how the cards are drawn. */
         function generateRisingForm(analyses) {
             if (isPreseason) {
                 return renderEmptyState(
@@ -2863,324 +2854,11 @@
                     'trending-up'
                 );
             }
-            const posMap = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-
-            // Scaled to the season played so far in demo mode — see demoPreview().
-            const demo = demoPreview();
-            const minRecentGames = demo ? Math.min(3, seasonGamesPlayed) : 3;
-            /* Five: exactly what the three-and-two split below needs, and the
-               reason the number is five rather than six or four. */
-            const minSeasonGames = demo ? Math.min(5, seasonGamesPlayed) : 5;
-            const minRecentMinutes = demo ? 60 * minRecentGames : 180;
-
-            const scored = analyses
-                .filter(p => {
-                    if ((p.l5?.games || 0) < minRecentGames) return false;
-                    if ((p.season?.games || 0) < minSeasonGames) return false; // need season baseline
-                    // Minutes threshold: must have played 180+ minutes over L5
-                    if ((p.l5?.minutes || 0) < minRecentMinutes) return false;
-                    // Availability: must be currently available
-                    if (p.status !== 'a') return false;
-                    /* True form: the recent run must beat what came before it.
-                       Two disjoint samples — see risingPpgSplit(). Comparing the
-                       recent window against the SEASON, which contains it, is
-                       what emptied this section for every player in the league. */
-                    const split = risingPpgSplit(p);
-                    if (!split) return false;
-                    if (split.recent <= split.prior * 1.15) return false;
-                    /* And it has to be a return, not a smaller nothing: a prior
-                       window of zero makes any positive number a 15% rise. */
-                    if (split.recent < 3.0) return false;
-                    // Attacking output: MID/FWD must show xGI > 0.2 per 90
-                    const pos = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' }[p.position];
-                    if (pos === 'MID' || pos === 'FWD') {
-                        const l5XGIper90 = (p.l5?.xGI || 0) / ((p.l5?.minutes || 1) / 90);
-                        if (l5XGIper90 <= 0.2) return false;
-                    }
-                    return true;
-                })
-                .map(p => {
-                    const pos = posMap[p.position];
-                    const g5 = p.l5?.games || 1;
-                    const gS = p.season?.games || 1;
-                    const signals = [];
-                    let risingScore = 0;
-                    const isDefPos = (pos === 'GK' || pos === 'DEF');
-
-                    // ─────────────────────────────────────────────
-                    // PILLAR 1: TEAM PICKING UP FORM
-                    // ─────────────────────────────────────────────
-                    const ts = p.teamScores; // from computeTeamScores()
-                    const seasonXg = getTeamSeasonXg(p.teamId);
-                    const recent6Xg = getTeamXgWindow(p.teamId, 6); // 6-game window per teams-analysis
-
-                    // 1a. Results momentum — recency-weighted W/D/L (formRating 0-100)
-                    let teamFormSignal = 0;
-                    if (ts && ts.formRating > 55) {
-                        // Only fire when form is genuinely above average (55+)
-                        // Scale: 55→0, 100→9
-                        teamFormSignal = Math.min(9, ((ts.formRating - 55) / 45) * 9);
-                        risingScore += teamFormSignal * 1.5;
-                        signals.push({
-                            icon: '<i data-lucide="trending-up" style="width:14px;height:14px;"></i>', label: 'Team in form',
-                            detail: `${ts.wins}W ${ts.draws}D ${ts.losses}L (L5)`,
-                            strength: Math.min(10, teamFormSignal),
-                            color: '#4ADE80'
-                        });
-                    }
-
-                    // 1b. Team xG quality trend — is the underlying process improving?
-                    // Compare recent 6 xG/g (or xGC/g for defenders) to season average.
-                    // Uses same 6-game window and thresholds as teams-analysis xgTrend/xgcTrend.
-                    let xgTrendSignal = 0;
-                    if (recent6Xg && seasonXg && seasonXg.games >= 10) {
-                        if (isDefPos) {
-                            // Defensive: team conceding less xG recently → improving
-                            // Threshold ±0.20 per game (from teams-analysis xgcTrend)
-                            const xgcDelta = seasonXg.xGCpg - recent6Xg.xGCpg; // positive = improving
-                            if (xgcDelta > 0.10) {
-                                xgTrendSignal = Math.min(10, (xgcDelta / 0.6) * 10);
-                                risingScore += xgTrendSignal * 2;
-                                signals.push({
-                                    icon: '<i data-lucide="shield-check" style="width:14px;height:14px;"></i>', label: 'Team xGC improving',
-                                    detail: `${recent6Xg.xGCpg.toFixed(2)} vs ${seasonXg.xGCpg.toFixed(2)} xGC/g`,
-                                    strength: xgTrendSignal,
-                                    color: '#34D399'
-                                });
-                            }
-                        } else {
-                            // Attacking: team creating more xG recently → rising
-                            // Threshold ±0.25 per game (from teams-analysis xgTrend)
-                            const xgDelta = recent6Xg.xGpg - seasonXg.xGpg; // positive = rising
-                            if (xgDelta > 0.10) {
-                                xgTrendSignal = Math.min(10, (xgDelta / 0.6) * 10);
-                                risingScore += xgTrendSignal * 2;
-                                signals.push({
-                                    icon: '<i data-lucide="circle-dot" style="width:14px;height:14px;"></i>', label: 'Team xG rising',
-                                    detail: `${recent6Xg.xGpg.toFixed(2)} vs ${seasonXg.xGpg.toFixed(2)} xG/g`,
-                                    strength: xgTrendSignal,
-                                    color: '#34D399'
-                                });
-                            }
-                        }
-                    }
-
-                    // 1c. xG regression potential — team due positive mean reversion
-                    // If team scored fewer goals than xG (underperforming), goals should
-                    // increase to match underlying quality. Inverse for defense.
-                    let regressionSignal = 0;
-                    if (seasonXg && seasonXg.games >= 10) {
-                        if (isDefPos) {
-                            // Defense: conceding more goals than xGC → due to concede less
-                            const xgcOverperf = (seasonXg.totalConceded - seasonXg.totalXgc);
-                            if (xgcOverperf > 2) { // conceding 2+ more goals than xGC
-                                regressionSignal = Math.min(8, (xgcOverperf / 6) * 8);
-                                risingScore += regressionSignal * 1.5;
-                                signals.push({
-                                    icon: '<i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>', label: 'CS regression due',
-                                    detail: `${seasonXg.totalConceded} GA vs ${seasonXg.totalXgc.toFixed(1)} xGC`,
-                                    strength: Math.min(10, regressionSignal),
-                                    color: '#C084FC'
-                                });
-                            }
-                        } else {
-                            // Attack: scoring fewer goals than xG → due to score more
-                            const xgUnderperf = (seasonXg.totalXg - seasonXg.totalGoals);
-                            if (xgUnderperf > 2) { // 2+ fewer goals than xG
-                                regressionSignal = Math.min(8, (xgUnderperf / 6) * 8);
-                                risingScore += regressionSignal * 1.5;
-                                signals.push({
-                                    icon: '<i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>', label: 'Goals regression due',
-                                    detail: `${seasonXg.totalGoals} G vs ${seasonXg.totalXg.toFixed(1)} xG`,
-                                    strength: Math.min(10, regressionSignal),
-                                    color: '#C084FC'
-                                });
-                            }
-                        }
-                    }
-
-                    // ─────────────────────────────────────────────
-                    // PILLAR 2: FIXTURE SWING / EASY RUN
-                    // ─────────────────────────────────────────────
-                    let fixtureSignal = 0;
-
-                    // 2a. Fixture swing — FDR dropping from GW1-3 to GW4-6
-                    const swing = fixtureSwingData[p.teamId];
-                    if (swing && swing.direction === 'improving') {
-                        fixtureSignal = Math.min(10, Math.abs(swing.swing) * 4);
-                        risingScore += fixtureSignal * 2.5;
-                        signals.push({
-                            icon: '<i data-lucide="calendar" style="width:14px;height:14px;"></i>', label: 'Fixtures improving',
-                            detail: `FDR ${swing.currentFdr} → ${swing.futureFdr} (GW${swing.swingGW}+)`,
-                            strength: fixtureSignal,
-                            color: '#60A5FA'
-                        });
-                    }
-
-                    // 2b. Currently easy fixtures (avg FDR3 ≤ 2.5)
-                    const avgFdr = p.fixtures?.avgFDR3 || 3;
-                    if (avgFdr <= 2.5) {
-                        const easyBonus = Math.min(8, (3 - avgFdr) * 6);
-                        fixtureSignal = Math.max(fixtureSignal, easyBonus);
-                        risingScore += easyBonus * 1.2;
-                        if (!swing || swing.direction !== 'improving') {
-                            signals.push({
-                                icon: '<i data-lucide="circle-check" style="width:14px;height:14px;"></i>', label: 'Easy run now',
-                                detail: `FDR ${avgFdr.toFixed(1)}`,
-                                strength: Math.min(10, easyBonus * 1.5),
-                                color: '#4ADE80'
-                            });
-                        }
-                    }
-
-                    // 2c. Home-heavy upcoming stretch (≥3 of next 5 at home)
-                    const next5 = p.fixtures?.next5 || [];
-                    const homeCount = next5.filter(f => f.isHome).length;
-                    if (next5.length >= 4 && homeCount >= 3) {
-                        const homeRatio = homeCount / next5.length;
-                        const homeBonus = Math.min(5, (homeRatio - 0.5) * 15);
-                        if (homeBonus > 1) {
-                            risingScore += homeBonus;
-                            signals.push({
-                                icon: '<i data-lucide="landmark" style="width:14px;height:14px;"></i>', label: 'Home-heavy run',
-                                detail: `${homeCount}/${next5.length} at home`,
-                                strength: Math.min(10, homeBonus * 2),
-                                color: '#60A5FA'
-                            });
-                        }
-                    }
-
-                    // ─────────────────────────────────────────────
-                    // PILLAR 3: PLAYER UNDERLYING STATS IMPROVING
-                    // ─────────────────────────────────────────────
-
-                    // 3a. Key metric uplift — L3 per-game vs rest-of-season per-game
-                    // Exclude L3 from season baseline to avoid circular comparison
-                    let statUplift = 0;
-                    const history = p.history || [];
-                    if (history.length >= 6) {
-                        const last3 = history.slice(-3);
-                        const restOfSeason = history.slice(0, -3);
-                        const rosGames = restOfSeason.length || 1;
-
-                        const computePerGame = (games, n) => ({
-                            xGI: games.reduce((s, g) => s + (parseFloat(g.expected_goal_involvements) || 0), 0) / n,
-                            xG: games.reduce((s, g) => s + (parseFloat(g.expected_goals) || 0), 0) / n,
-                            xA: games.reduce((s, g) => s + (parseFloat(g.expected_assists) || 0), 0) / n,
-                            bps: games.reduce((s, g) => s + (parseFloat(g.bps) || 0), 0) / n,
-                            creativity: games.reduce((s, g) => s + (parseFloat(g.creativity) || 0), 0) / n,
-                            threat: games.reduce((s, g) => s + (parseFloat(g.threat) || 0), 0) / n,
-                            influence: games.reduce((s, g) => s + (parseFloat(g.influence) || 0), 0) / n,
-                            xGC: games.reduce((s, g) => s + (parseFloat(g.expected_goals_conceded) || 0), 0) / n,
-                            saves: games.reduce((s, g) => s + (parseFloat(g.saves) || 0), 0) / n
-                        });
-
-                        const baselinePerGame = computePerGame(restOfSeason, rosGames);
-                        const l3PerGame = computePerGame(last3, 3);
-
-                        // Position-specific key metrics with FPL-appropriate weights
-                        let keyMetrics;
-                        const detailParts = [];
-                        if (pos === 'GK') {
-                            keyMetrics = [
-                                { key: 'xGC', weight: 3, invert: true, label: 'xGC' },
-                                { key: 'saves', weight: 2, invert: false, label: 'Saves' }
-                            ];
-                        } else if (pos === 'DEF') {
-                            keyMetrics = [
-                                { key: 'xGC', weight: 2.5, invert: true, label: 'xGC' },
-                                { key: 'xGI', weight: 2, invert: false, label: 'xGI' },
-                                { key: 'bps', weight: 1, invert: false, label: 'BPS' }
-                            ];
-                        } else if (pos === 'MID') {
-                            keyMetrics = [
-                                { key: 'xGI', weight: 3, invert: false, label: 'xGI' },
-                                { key: 'creativity', weight: 1.5, invert: false, label: 'Creativity' },
-                                { key: 'threat', weight: 1.5, invert: false, label: 'Threat' }
-                            ];
-                        } else { // FWD
-                            keyMetrics = [
-                                { key: 'xG', weight: 3, invert: false, label: 'xG' },
-                                { key: 'xA', weight: 1.5, invert: false, label: 'xA' },
-                                { key: 'threat', weight: 1.5, invert: false, label: 'Threat' }
-                            ];
-                        }
-
-                        keyMetrics.forEach(m => {
-                            const baseVal = baselinePerGame[m.key] || 0.001;
-                            const recentVal = l3PerGame[m.key] || 0;
-                            let pctChange;
-                            if (m.invert) {
-                                // For xGC: lower is better, so improvement = baseline - recent
-                                pctChange = baseVal > 0.01 ? (baseVal - recentVal) / baseVal : 0;
-                            } else {
-                                pctChange = baseVal > 0.01 ? (recentVal - baseVal) / baseVal : 0;
-                            }
-                            // Only credit improvements, not declines
-                            const contribution = Math.max(0, pctChange) * m.weight * 5;
-                            statUplift += contribution;
-                            if (pctChange > 0.10) { // 10% threshold to show in detail
-                                detailParts.push(`${m.label} +${(pctChange * 100).toFixed(0)}%`);
-                            }
-                        });
-
-                        statUplift = Math.min(15, statUplift);
-                        risingScore += statUplift * 2;
-
-                        if (statUplift >= 2 && detailParts.length > 0) {
-                            signals.push({
-                                icon: '<i data-lucide="zap" style="width:14px;height:14px;"></i>', label: 'Stats improving',
-                                detail: detailParts.slice(0, 2).join(', '),
-                                strength: Math.min(10, statUplift),
-                                color: '#FBBF24'
-                            });
-                        }
-                    }
-
-                    // 3b. FPL points trend — L3 avg vs prior-2 avg (within L5)
-                    if (history.length >= 5) {
-                        const last5Pts = history.slice(-5).map(g => parseFloat(g.total_points) || 0);
-                        const last3Pts = last5Pts.slice(-3);
-                        const prior2Pts = last5Pts.slice(0, 2);
-                        const l3Avg = last3Pts.reduce((s, v) => s + v, 0) / 3;
-                        const p2Avg = prior2Pts.reduce((s, v) => s + v, 0) / 2;
-                        if (l3Avg > p2Avg + 1) {
-                            const ptsTrend = Math.min(8, (l3Avg - p2Avg) * 1.5);
-                            risingScore += ptsTrend;
-                            signals.push({
-                                icon: '<i data-lucide="flame" style="width:14px;height:14px;"></i>', label: 'Points trending up',
-                                detail: `${p2Avg.toFixed(1)} → ${l3Avg.toFixed(1)} pts/g`,
-                                strength: Math.min(10, ptsTrend * 1.5),
-                                color: '#FB923C'
-                            });
-                        }
-                    }
-
-                    // 3c. Minutes trending up (rotation risk decreasing)
-                    if (history.length >= 5) {
-                        const last5Mins = history.slice(-5).map(g => parseFloat(g.minutes) || 0);
-                        const last3MinsAvg = last5Mins.slice(-3).reduce((s, v) => s + v, 0) / 3;
-                        const prior2MinsAvg = last5Mins.slice(0, 2).reduce((s, v) => s + v, 0) / 2;
-                        if (last3MinsAvg > prior2MinsAvg + 10 && prior2MinsAvg < 75) {
-                            const minsTrend = Math.min(5, (last3MinsAvg - prior2MinsAvg) / 15);
-                            risingScore += minsTrend * 1.5;
-                            signals.push({
-                                icon: '<i data-lucide="clock" style="width:14px;height:14px;"></i>', label: 'More minutes',
-                                detail: `${prior2MinsAvg.toFixed(0)} → ${last3MinsAvg.toFixed(0)} mpg`,
-                                strength: Math.min(10, minsTrend * 2),
-                                color: '#A78BFA'
-                            });
-                        }
-                    }
-
-                    return {
-                        ...p, pos, signals, risingScore, statUplift,
-                        teamFormSignal, xgTrendSignal, regressionSignal, fixtureSignal,
-                        signalCount: signals.length
-                    };
-                })
-                .filter(p => p.signalCount >= 2 && p.risingScore >= 6) // need ≥2 converging signals, lowered threshold
-                .sort((a, b) => b.risingScore - a.risingScore);
+            /* Eligibility, the pillars, and the fixture and ownership weighting
+               all live in the engine now. The fixture list travels with the call
+               because "how hard is his next match" is a question about fixtures,
+               not about the player. */
+            const scored = risingFormRanked(analyses, { fixtures: allFixtures });
 
             // Split by position
             const byPos = { GK: [], DEF: [], MID: [], FWD: [] };
@@ -3204,7 +2882,7 @@
                         ${posPlayers.length > 0
                             ? `<div class="rising-grid">${posPlayers.map((p, j) => renderRisingCard(p, j + 1)).join('')}</div>`
                             : (seasonTooYoungNotice(5, 'Rising Form',
-                                'It compares a player\u2019s last five gameweeks against their own season average to spot form turning upward.')
+                                'It compares a player\u2019s last three matches against the ones before them, so it needs five before it can say anything.')
                                 || '<div class="no-players">No players currently picking up form at this position</div>')
                         }
                     </div>
@@ -3245,9 +2923,14 @@
         }
 
         function renderRisingCard(p, rank) {
-            const g = p.l5?.games || 1;
-            const ptsPerGame = ((p.l5?.points || 0) / g).toFixed(1);
-            const fdr = p.fixtures?.avgFDR3 || 3;
+            /* The recent window and the weighted near-term FDR — the two
+               numbers the ranking was actually made of. The card used to show a
+               five-match average and a flat three-fixture FDR, neither of which
+               was what put the player on the board. */
+            const rs = (typeof rfSplit === 'function') ? rfSplit(p) : null;
+            const ptsPerGame = rs ? rs.ppgRecent.toFixed(1)
+                : ((p.l5?.points || 0) / (p.l5?.games || 1)).toFixed(1);
+            const fdr = (typeof p.fdrNear === 'number') ? p.fdrNear : (p.fixtures?.avgFDR3 || 3);
             const fdrClass = fdr <= 2 ? 'fdr-1' : fdr <= 2.5 ? 'fdr-2' : fdr <= 3.5 ? 'fdr-3' : fdr <= 4 ? 'fdr-4' : 'fdr-5';
             const posColors = { GK: '#FBBF24', DEF: '#34D399', MID: '#60A5FA', FWD: '#F87171' };
 
@@ -3504,23 +3187,23 @@
         }
 
     </script>
-    <script src="scripts/error-monitor.js?v=327"></script>
+    <script src="scripts/error-monitor.js?v=328"></script>
     <!-- The site's one projection. This page used to be the exception that could
          not reach it and carried calculateMultiGWxPts instead; the context it
          needs is assembled in the inline block above. -->
-    <script src="scripts/xp-engine.js?v=327"></script>
-    <script src="scripts/routes-engine.js?v=327"></script>
-    <script src="scripts/form-trend.js?v=327"></script>
-    <script src="scripts/purple-patch.js?v=327"></script>
-    <script src="scripts/players-tables.js?v=327"></script>
-    <script src="scripts/compare-report.js?v=327"></script>
+    <script src="scripts/xp-engine.js?v=328"></script>
+    <script src="scripts/routes-engine.js?v=328"></script>
+    <script src="scripts/form-trend.js?v=328"></script>
+    <script src="scripts/purple-patch.js?v=328"></script>
+    <script src="scripts/players-tables.js?v=328"></script>
+    <script src="scripts/compare-report.js?v=328"></script>
     <!-- The price meter and the season's price path, from the game's own price
          engine. Pure functions, no DOM — the profile card renders them. -->
-    <script src="scripts/price-watch.js?v=327"></script>
+    <script src="scripts/price-watch.js?v=328"></script>
     <!-- Everything the site knows about one player, in one card. Shared with the
          squad page; the trend charts this page adds to it are wired up in the
          inline block below via pdmPageSections()/pdmAfterRender(). -->
-    <script src="scripts/player-profile.js?v=327"></script>
+    <script src="scripts/player-profile.js?v=328"></script>
     <script>
         // buildStatWindows / recencyWeightedAvg / calculateExpectedPoints / generateComparisonReport /
         // generateSituationalPicks / generatePlayerNarrative / getRadarAxes / getBudgetContext /
@@ -5447,13 +5130,13 @@
     </div><!-- /.v2-main-content -->
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="scripts/auth.js?v=327"></script>
-    <script src="scripts/common.js?v=327"></script>
+    <script src="scripts/auth.js?v=328"></script>
+    <script src="scripts/common.js?v=328"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=327"></script>
-    <script src="scripts/notifications.js?v=327"></script>
-    <script src="scripts/sidebar-nav.js?v=327"></script>
+    <script src="scripts/push-alerts.js?v=328"></script>
+    <script src="scripts/notifications.js?v=328"></script>
+    <script src="scripts/sidebar-nav.js?v=328"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -5467,7 +5150,7 @@
             [
                 { title: 'The tabs', steps: [
                     { title: 'Recommendations', text: 'Who to buy, split into budget, premium and differential. Ranked on form, underlying numbers, minutes, value and fixtures together — <strong>Balanced</strong> lets form lead, <strong>Fixture-first</strong> weights the next three opponents heavily, so the same players re-rank on who they face.' },
-                    { title: 'Rising Form', text: 'Players with at least two signals pointing the same way at once — team form, underlying numbers, minutes, fixtures. One signal is noise; several agreeing is a trend, usually before the price moves.' },
+                    { title: 'Rising Form', text: 'Players with at least two signals pointing the same way at once — points, underlying numbers, minutes, his club’s xG, the fixtures in front of him. One signal is noise; several agreeing is a trend. Weighted towards the next match or two, and towards players the field has not bought yet.' },
                     { title: 'Purple Patch', text: 'Players scoring well above their own baseline, rated on whether the run is backed by process or about to regress. The score is the sustainability, not the streak.' },
                     { title: 'Charts', text: 'Scatter plots for spotting value, over- and under-performance and differentials by eye. The position filters at the top apply to every chart at once.' },
                     { title: 'Routes to Points', text: 'How many different ways a player has of scoring — goals, assists, clean sheets, saves, bonus. Four routes is less dependent on any one of them going right than one route is.' },
