@@ -63,6 +63,17 @@ function main() {
         }
     }
 
+    /* Every other same-origin asset the worker names — the notification icon
+       and badge live outside STATIC_ASSETS and are fetched only when a push
+       arrives, which is the least observable moment on the site. /icon-192.png
+       sat there broken for the whole life of the feature. */
+    for (const m of src.matchAll(/(?:icon|badge):\s*'(\/[^']+)'/g)) {
+        const rel = m[1].slice(1).split('?')[0];
+        if (!fs.existsSync(path.join(ROOT, rel))) {
+            problems.push(`${m[1]} is used as a notification icon but does not exist`);
+        }
+    }
+
     /* A worker whose cache name never changes cannot evict anything: activate
        deletes caches that are not the current name, so the name IS the eviction
        mechanism. */

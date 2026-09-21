@@ -214,8 +214,13 @@ self.addEventListener('push', event => {
     tag: data.tag || 'easyfpl',
     renotify: data.renotify === true,
     data: { url: data.url || '/' },
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    /* /icon-192.png never existed — there is no raster icon in this repo, and
+       the soft 404 meant the request came back as 322 KB of dashboard HTML
+       rather than as a missing image, so nothing ever said so. favicon.svg is
+       the real file; a browser that will not take an SVG here falls back to its
+       own default, which is exactly what was happening anyway. */
+    icon: '/favicon.svg',
+    badge: '/favicon.svg',
     timestamp: Date.now()
   };
   event.waitUntil(self.registration.showNotification(title, options));
