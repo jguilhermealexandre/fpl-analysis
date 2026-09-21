@@ -1,0 +1,3319 @@
+/* The FDR and position overrides that used to sit here are gone.
+   They redefined both palettes at :root for every page that loads this file,
+   so a fixture rated 4 was orange on the Teams pages and a different orange on
+   every other one, and a goalkeeper was yellow here and amber everywhere else.
+   styles/common.css owns both scales; there is nothing about a Teams page that
+   makes a difficulty mean something different. */
+/* ===== PAGE HEADER ===== */
+.page-header {
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border-default);
+    padding: 10px 24px;
+}
+.page-header-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+
+
+/* ===== MAIN CONTENT ===== */
+.main-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--space-4);
+}
+
+.page-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+.page-subtitle { color: var(--text-muted); font-size: 12px; }
+.gw-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-info);
+    margin-left: var(--space-3);
+}
+
+/* No margin-left:auto here. It dates from when the search sat at the right of
+   a bar of pills; with the .stats-search-box margin-right:auto that replaced
+   that arrangement, two auto margins made the box centre itself in the
+   toolbar instead of sitting flush left. */
+.search-box {
+    position: relative;
+}
+
+.search-input {
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-4);
+    padding-left: 36px;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 13px;
+    width: 200px;
+    transition: all 200ms ease-out;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--color-info);
+    width: 260px;
+}
+
+.search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+/* ===== TEAMS GRID ===== */
+.rankings-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+}
+
+.rankings-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.rankings-pills {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.rankings-pill {
+    padding: 6px 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-default);
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: all 200ms ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+
+.rankings-pill:hover {
+    color: var(--text-primary);
+    background: var(--surface-3);
+    border-color: var(--border-emphasis);
+}
+
+.rankings-pill.active {
+    background: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.25), 0 1px 3px rgba(16, 185, 129, 0.15);
+}
+
+/* A fixed four columns of 1fr each looked responsive and was not: 1fr has an
+   auto minimum, so every track kept the card's 280px min-content floor and
+   four of them ran 199px past a 1240px window — the breakpoints below only
+   dropped a column at 1200, which is where the trouble started rather than
+   where it ended. auto-fill fits as many 232px-or-wider cards as the row can
+   hold and needs no breakpoints at all, and min() keeps the track from
+   exceeding the container on a narrow phone. */
+.teams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(232px, 100%), 1fr));
+    gap: var(--space-3);
+}
+.teams-grid > * { min-width: 0; }
+
+/* ===== COMPACT TEAM CARD ===== */
+.team-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3);
+    transition: all 150ms ease-out;
+    cursor: pointer;
+}
+
+.team-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-emphasis);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Card Header - Compact */
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.team-badge {
+    width: 32px;
+    height: 32px;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.team-badge img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+.team-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.team-name,
+.momentum-hover-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.team-meta {
+    font-size: 10px;
+    color: var(--text-muted);
+    display: flex;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.rank-badge {
+    width: 24px;
+    height: 24px;
+    background: var(--surface-3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.rank-badge.top-3 {
+    background: linear-gradient(135deg, var(--color-success), #22c55e);
+    color: #000;
+}
+
+/* Power Metrics - Redesigned with bars */
+.power-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: var(--space-3);
+}
+
+.power-metric {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    text-align: left;
+    border-top: none;
+}
+
+.power-metric.attack .power-bar-fill { background: var(--color-error); }
+.power-metric.defense .power-bar-fill { background: var(--color-info); }
+.power-metric.fixture .power-bar-fill { background: var(--color-success); }
+.power-metric.form-metric .power-bar-fill { background: var(--color-warning); }
+
+.power-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--text-secondary);
+    width: 52px;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.power-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--surface-3);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.power-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 400ms ease-out;
+}
+
+.power-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    width: 28px;
+    text-align: right;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.power-value.good { color: var(--color-success); }
+.power-value.bad { color: var(--color-error); }
+
+.power-metric.highlight .power-bar { height: 8px; }
+.power-metric.highlight .power-label { color: var(--text-primary); font-weight: 600; }
+.power-metric.highlight .power-value { font-size: 14px; }
+
+/* FDR Strip - Compact */
+.fdr-strip {
+    display: flex;
+    gap: 2px;
+    margin-bottom: var(--space-2);
+}
+
+.fdr-badge {
+    flex: 1;
+    padding: 6px 2px;
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-size: 9px;
+    font-weight: 600;
+    color: #000;
+    position: relative;
+}
+
+.fdr-badge .opp { 
+    font-weight: 600; 
+    display: block;
+    font-size: 10px;
+}
+.fdr-badge .venue { 
+    font-size: 8px; 
+    opacity: 0.7;
+}
+
+.fdr-1 { background: var(--fdr-1); }
+.fdr-2 { background: var(--fdr-2); }
+.fdr-3 { background: var(--fdr-3); }
+.fdr-4 { background: var(--fdr-4); }
+.fdr-5 { background: var(--fdr-5); }
+
+.btts-dot {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 5px;
+    height: 5px;
+    background: var(--color-warning);
+    border-radius: 50%;
+}
+
+/* Card Footer - Compact */
+.card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.form-section {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-label {
+    font-size: 9px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.form-dots {
+    display: flex;
+    gap: 3px;
+}
+
+.form-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.form-dot.win { background: var(--color-success); }
+.form-dot.draw { background: var(--color-warning); }
+.form-dot.loss { background: var(--color-error); }
+
+.form-letters {
+    display: flex;
+    gap: 3px;
+}
+.form-letter {
+    font-size: 10px;
+    font-weight: 600;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+}
+.form-letter.win { background: rgba(74, 222, 128, 0.15); color: var(--color-success); }
+.form-letter.draw { background: rgba(251, 191, 36, 0.15); color: var(--color-warning); }
+.form-letter.loss { background: rgba(248, 113, 113, 0.15); color: var(--color-error); }
+
+.footer-stats {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+}
+
+.trend.improving {
+    background: rgba(74, 222, 128, 0.15);
+    color: var(--color-success);
+}
+
+.trend.worsening {
+    background: rgba(248, 113, 113, 0.15);
+    color: var(--color-error);
+}
+
+.trend.stable {
+    background: rgba(163, 163, 163, 0.1);
+    color: var(--text-muted);
+}
+
+.xg-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+}
+
+.xg-badge.over {
+    background: rgba(251, 191, 36, 0.15);
+    color: var(--color-warning);
+}
+
+.xg-badge.under {
+    background: rgba(74, 222, 128, 0.15);
+    color: var(--color-success);
+}
+
+.xg-badge.rising {
+    background: rgba(74, 222, 128, 0.15);
+    color: var(--color-success);
+}
+
+.xg-badge.falling {
+    background: rgba(248, 113, 113, 0.15);
+    color: var(--color-error);
+}
+
+/* Team Report Modal */
+.report-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+}
+.report-stat {
+    background: var(--surface-0);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    text-align: center;
+}
+.report-stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.report-stat-value.good { color: var(--color-success); }
+.report-stat-value.bad { color: var(--color-error); }
+.report-stat-value.warn { color: var(--color-warning); }
+.report-stat-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+.report-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.report-bar-label {
+    width: 80px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: right;
+    flex-shrink: 0;
+}
+.report-bar {
+    flex: 1;
+    height: 8px;
+    background: var(--surface-3);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.report-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 400ms ease-out;
+}
+.report-bar-value {
+    width: 32px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: right;
+    flex-shrink: 0;
+}
+.report-venue-split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+}
+.report-venue-card {
+    background: var(--surface-0);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+}
+.report-venue-title {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: var(--space-2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.report-venue-stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    padding: 3px 0;
+    color: var(--text-secondary);
+}
+.report-venue-stat span:last-child { font-weight: 600; color: var(--text-primary); }
+.report-form-strip {
+    display: flex;
+    gap: 6px;
+    margin-bottom: var(--space-3);
+}
+.report-form-item {
+    flex: 1;
+    text-align: center;
+    padding: 8px 4px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-0);
+}
+.report-form-result {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+.report-form-result.w { color: var(--color-success); }
+.report-form-result.d { color: var(--color-warning); }
+.report-form-result.l { color: var(--color-error); }
+.report-form-opp { font-size: 9px; color: var(--text-muted); }
+.report-form-score { font-size: 10px; color: var(--text-secondary); }
+.report-fdr-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: var(--space-3);
+}
+.report-fdr-match {
+    flex: 1;
+    padding: 10px 4px;
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+.report-fdr-opp { font-size: 11px; font-weight: 600; display: block; }
+.report-fdr-venue { font-size: 9px; opacity: 0.7; }
+.report-fdr-cs { font-size: 9px; margin-top: 2px; color: rgba(0,0,0,0.6); }
+.report-verdict {
+    background: var(--surface-0);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    border-left: 3px solid var(--color-info);
+}
+.report-verdict p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Tags Row */
+.tags-row {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-bottom: var(--space-2);
+}
+
+.team-tag {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--text-muted);
+}
+
+.team-tag.home-strong {
+    background: rgba(74, 222, 128, 0.12);
+    color: var(--color-success);
+}
+
+.team-tag.away-strong {
+    background: rgba(96, 165, 250, 0.12);
+    color: var(--color-info);
+}
+
+.team-tag.bully {
+    background: rgba(251, 191, 36, 0.12);
+    color: var(--color-warning);
+}
+
+/* Venue Analysis - Hidden by default, shown on hover/expand */
+.venue-analysis,
+.xg-comparison {
+    display: none;
+}
+
+/* CS Average inline */
+.cs-badge {
+    font-size: 9px;
+    color: var(--color-info);
+    font-weight: 600;
+}
+
+.venue-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.venue-bar-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.venue-bar-label {
+    width: 50px;
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+.venue-bar-container {
+    flex: 1;
+    height: 18px;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.venue-bar {
+    height: 100%;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 6px;
+    transition: width 500ms ease-out;
+    min-width: 30px;
+}
+
+.venue-bar.home {
+    background: linear-gradient(90deg, rgba(74, 222, 128, 0.3), rgba(74, 222, 128, 0.6));
+}
+
+.venue-bar.away {
+    background: linear-gradient(90deg, rgba(96, 165, 250, 0.3), rgba(96, 165, 250, 0.6));
+}
+
+.venue-bar.defense.home {
+    background: linear-gradient(90deg, rgba(52, 211, 153, 0.3), rgba(52, 211, 153, 0.6));
+}
+
+.venue-bar.defense.away {
+    background: linear-gradient(90deg, rgba(139, 92, 246, 0.3), rgba(139, 92, 246, 0.6));
+}
+
+.venue-bar-value {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.venue-bar-marker {
+    width: 16px;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.venue-insight {
+    margin-top: var(--space-2);
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--border-subtle);
+    text-align: center;
+}
+
+.insight-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--text-secondary);
+}
+
+.insight-tag.home {
+    background: rgba(74, 222, 128, 0.15);
+    color: var(--color-success);
+}
+
+.insight-tag.away {
+    background: rgba(96, 165, 250, 0.15);
+    color: var(--color-info);
+}
+
+.insight-tag.balanced {
+    background: var(--surface-2);
+    color: var(--text-muted);
+}
+
+/* Power splits higher indicator */
+.power-splits span.higher {
+    background: rgba(74, 222, 128, 0.2);
+    color: var(--color-success);
+}
+
+/* Card Footer */
+.card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.form-section {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.form-label {
+    font-size: 9px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.footer-stats {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.fdr-avg {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+/* ===== FIXTURE SWINGS SECTION ===== */
+.swing-section {
+    margin-top: var(--space-8);
+}
+
+.swing-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.swing-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.swing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-4);
+}
+
+.swing-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    border-left: 3px solid var(--color-success);
+}
+
+.swing-card.buy-now { border-left-color: var(--color-success); }
+.swing-card.buy-soon { border-left-color: var(--color-info); }
+.swing-card.hold { border-left-color: var(--color-warning); }
+
+.swing-team {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.swing-timing {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+}
+
+.swing-timing.buy-now {
+    background: rgba(74, 222, 128, 0.2);
+    color: var(--color-success);
+}
+
+.swing-timing.buy-soon {
+    background: rgba(96, 165, 250, 0.2);
+    color: var(--color-info);
+}
+
+.swing-signals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.signal-tag {
+    font-size: 10px;
+    padding: var(--space-1) var(--space-2);
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+}
+
+/* ===== LOADING STATE ===== */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 300ms ease-out;
+}
+
+.loading-overlay.show {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.loader {
+    text-align: center;
+}
+
+.loader-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--surface-3);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto var(--space-4);
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loader-text {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+/* ===== SKELETON LOADING ===== */
+.skeleton {
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite ease-in-out;
+    border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .nav-container {
+        padding: 0 var(--space-4);
+        gap: var(--space-4);
+    }
+
+    .nav-link span:not(.icon) {
+        display: none;
+    }
+
+    .nav-link {
+        padding: var(--space-2);
+    }
+
+    .page-title {
+        font-size: 22px;
+    }
+
+    .filter-bar {
+        flex-wrap: wrap;
+    }
+
+    .rankings-toolbar {
+        flex-wrap: wrap;
+    }
+
+    .stats-toolbar-row {
+        flex-wrap: wrap;
+    }
+
+    .stats-group-pills {
+        flex-wrap: wrap;
+    }
+
+    .stats-search-box {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .stats-search-input {
+        width: 100% !important;
+    }
+
+    .stats-search-input:focus {
+        width: 100% !important;
+    }
+}
+
+/* Tooltip */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface-4);
+    color: var(--text-primary);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 10;
+    margin-bottom: var(--space-2);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: var(--space-8);
+    color: var(--text-muted);
+}
+
+/* Progress Bar */
+.progress-bar {
+    height: 6px;
+    background: var(--surface-3);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: var(--space-2);
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 300ms ease-out;
+}
+
+/* ===== FULL SEASON CALENDAR ===== */
+/* The calendar is a box, with everything that belongs to it inside: the title
+   and what the colours currently mean, the five-step index, the view and
+   colour-by controls, and the grid itself. It used to be a bare padded block
+   on the page background with a bordered container around only the table — so
+   the heading and the controls floated outside the one thing they describe,
+   and the border was drawn in the middle of the component rather than around
+   it. Nothing else on the site frames a table that way. */
+.calendar-section {
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    padding: 18px 20px 20px;
+}
+.calendar-section .calendar-header {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 14px;
+}
+/* No box inside the box. */
+.calendar-section .calendar-container {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-6);
+    flex-wrap: wrap;
+    gap: var(--space-4);
+}
+
+/* The calendar's controls used to sit in a labelled band under the title,
+   which is the one place on this site a control is never meant to be. They
+   ride the title row now, at its right end, with the legend under them. */
+.calendar-head-tail {
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.calendar-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: var(--space-2);
+}
+
+.calendar-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.calendar-legend {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.legend-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: var(--radius-sm);
+}
+
+.calendar-controls {
+    display: flex;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.control-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+/* The calendar's own controls, on the brand rather than in --color-info's
+   blue — the only blue buttons on a green site, and the grid they sit over
+   is coloured by a scale where blue means nothing at all. */
+.calendar-control-btn {
+    height: 30px;
+    padding: 0 13px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-emphasis);
+    border-radius: 999px;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.calendar-control-btn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary-text);
+}
+
+.calendar-control-btn.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+}
+
+/* Color classes for different modes */
+.fixture-cell.color-1 { background: var(--fdr-1); color: var(--fdr-1-ink); }
+.fixture-cell.color-2 { background: var(--fdr-2); color: var(--fdr-2-ink); }
+.fixture-cell.color-3 { background: var(--fdr-3); color: var(--fdr-3-ink); }
+.fixture-cell.color-4 { background: var(--fdr-4); color: var(--fdr-4-ink); }
+.fixture-cell.color-5 { background: var(--fdr-5); color: var(--fdr-5-ink); }
+
+/* CS value in fixture cell */
+.cs-value {
+    font-size: 8px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.calendar-container {
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.calendar-scroll {
+    overflow-x: auto;
+    padding-bottom: var(--space-2);
+}
+
+.calendar-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1200px;
+}
+
+.calendar-table th {
+    background: var(--surface-2);
+    padding: 9px 4px;
+    font-family: var(--font-display);
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border-emphasis);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.calendar-table th.gw-header {
+    min-width: 36px;
+    text-align: center;
+}
+
+/* The round being planned, in the brand green — it was --color-info's
+   blue, the only blue on the page. */
+.calendar-table th.gw-current {
+    background: color-mix(in srgb, var(--color-primary) 18%, var(--surface-2));
+    color: var(--color-primary);
+    box-shadow: inset 0 -2px 0 var(--color-primary);
+}
+
+.calendar-table th.team-header {
+    min-width: 140px;
+    text-align: left;
+    padding-left: var(--space-3);
+    position: sticky;
+    left: 0;
+    background: var(--surface-2);
+    z-index: 20;
+}
+
+.calendar-table td {
+    padding: 3px 4px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-subtle);
+    transition: background 150ms ease;
+}
+
+.calendar-table tr:hover td {
+    background: var(--surface-2);
+}
+
+/* The pinned column needs to look pinned. Without an edge the team names
+   slide under the fixtures as you scroll and the table reads as broken
+   rather than as held in place. */
+.calendar-table td.team-cell {
+    position: sticky;
+    left: 0;
+    background: var(--surface-1);
+    z-index: 5;
+    text-align: left;
+    padding-left: var(--space-3);
+    box-shadow: 1px 0 0 var(--border-default), 6px 0 8px -6px rgba(0, 0, 0, .10);
+}
+.calendar-table th.team-header {
+    box-shadow: 1px 0 0 var(--border-emphasis), 6px 0 8px -6px rgba(0, 0, 0, .10);
+}
+
+.calendar-table tr:hover td.team-cell {
+    background: var(--surface-2);
+}
+
+.calendar-team {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.calendar-team-badge {
+    width: 20px;
+    height: 20px;
+}
+
+.calendar-team-name {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.calendar-team-fdr {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-left: auto;
+    padding-right: var(--space-2);
+}
+
+.fixture-cell {
+    width: 40px;
+    height: 34px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 600;
+    margin: 0 auto;
+    cursor: pointer;
+    transition: all 150ms;
+    position: relative;
+}
+
+.fixture-cell:hover {
+    transform: scale(1.15);
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.fixture-cell .opp {
+    line-height: 1.1;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.fixture-cell .venue {
+    font-size: 8px;
+    opacity: 0.85;
+    font-weight: 600;
+}
+
+.fixture-cell.fdr-1 { background: var(--fdr-1); color: var(--fdr-1-ink); }
+.fixture-cell.fdr-2 { background: var(--fdr-2); color: var(--fdr-2-ink); }
+.fixture-cell.fdr-3 { background: var(--fdr-3); color: var(--fdr-3-ink); }
+.fixture-cell.fdr-4 { background: var(--fdr-4); color: var(--fdr-4-ink); }
+/* White on #EF4444 measures 3.76:1 — below the 4.5 needed for body text, and
+   this text is 9px. The same red with dark slate is 4.74:1. Fixing the text
+   colour is the whole accessibility problem here: every other step already
+   passes comfortably against dark text (5.58 to 14.96). */
+.fixture-cell.fdr-5 { background: var(--fdr-5); color: var(--fdr-5-ink); }
+
+.fixture-cell.blank {
+    background: var(--surface-3);
+    color: var(--text-muted);
+}
+
+.fixture-cell.past {
+    opacity: 0.4;
+}
+
+/* Easy run highlight */
+/* A run of easy fixtures is underlined, not boxed.
+
+   It used to draw a three-sided green outline around every cell in the run and
+   lay a green gradient over the top of them. Both fought the thing the cell is
+   for: the wash shifted the difficulty colour towards green, so a grey 3 inside
+   a run read as a soft 2, and the outlines put a border on a grid that has none
+   anywhere else. A bar along the bottom is continuous across the run, says the
+   same thing, and leaves the difficulty colour alone. */
+/* The patch bracket lives at the foot of this file, with the two panel
+   controls it was written alongside. */
+
+/* Dim non-easy-run cells in targetable calendar */
+.targetable-calendar .fixture-cell:not(.easy-run-start):not(.easy-run-middle):not(.easy-run-end) {
+    opacity: 0.3;
+}
+.targetable-calendar .fixture-cell:not(.easy-run-start):not(.easy-run-middle):not(.easy-run-end):hover {
+    opacity: 0.7;
+}
+
+/* BTTS marker in calendar */
+.fixture-cell.btts {
+    box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.5);
+}
+
+.btts-marker {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    font-size: 8px;
+    line-height: 1;
+}
+
+.fixture-cell {
+    position: relative;
+}
+
+/* Analysis Section */
+.calendar-analysis {
+    margin-top: var(--space-6);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-4);
+}
+
+.analysis-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+}
+
+.analysis-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.analysis-card-icon {
+    font-size: 20px;
+}
+
+.analysis-card-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.analysis-team-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.analysis-team-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface-2);
+    border-radius: var(--radius-md);
+}
+
+.analysis-team-badge {
+    width: 24px;
+    height: 24px;
+}
+
+.analysis-team-info {
+    flex: 1;
+}
+
+.analysis-team-name {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.analysis-team-detail {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.analysis-team-stat {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.analysis-team-stat.good { color: var(--color-success); }
+.analysis-team-stat.warning { color: var(--color-warning); }
+.analysis-team-stat.bad { color: var(--color-error); }
+
+.gw-range-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    background: var(--surface-3);
+    border-radius: 10px;
+    color: var(--text-muted);
+}
+
+/* Swing Indicator in Calendar */
+.swing-indicator {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--surface-1);
+}
+
+.swing-indicator.improving { background: var(--color-success); }
+.swing-indicator.worsening { background: var(--color-error); }
+
+/* Double Gameweek indicator */
+.dgw-indicator {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    font-size: 7px;
+    background: var(--color-info);
+    color: #000;
+    border-radius: 2px;
+    padding: 0 2px;
+    font-weight: 600;
+}
+
+/* Blank Gameweek */
+.bgw-cell {
+    background: var(--surface-3) !important;
+    color: var(--text-muted) !important;
+}
+
+.bgw-cell::after {
+    content: '-';
+}
+
+/* ===== STATS TABLE ===== */
+.stats-container {
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+/* The toolbar reads as one bar of controls rather than as a strip of
+   unrelated widgets: the same surface, the same edge radius and the same
+   inset the rest of the site gives a panel. */
+.stats-compact-toolbar {
+    padding: 12px 14px;
+    margin-bottom: var(--v2-title-gap, 20px);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    background: var(--surface-1);
+    box-shadow: var(--v2-card-shadow, none);
+}
+
+.stats-toolbar-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.stats-group-pills {
+    display: flex;
+    gap: 2px;
+    background: var(--surface-2);
+    padding: 3px;
+    border-radius: var(--radius-md);
+    flex-wrap: wrap;
+}
+
+.stats-group-pill {
+    padding: 5px 10px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 150ms ease-out;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.stats-group-pill:hover {
+    color: var(--text-primary);
+    background: var(--surface-3);
+}
+
+.stats-group-pill.active {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.stats-view-pills {
+    display: flex;
+    gap: 2px;
+    background: var(--surface-2);
+    padding: 3px;
+    border-radius: var(--radius-md);
+}
+
+.stats-view-pill {
+    padding: 5px 10px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 150ms ease-out;
+    white-space: nowrap;
+}
+
+.stats-view-pill:hover {
+    color: var(--text-primary);
+}
+
+/* Selected is the brand's own state — a filled pill, not a slightly
+   different grey. It was --surface-3 on --surface-2, which is one step of
+   grey apart and asks you to compare it against its neighbours to know
+   which is on. */
+.stats-view-pill.active {
+    background: var(--color-primary);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+
+/* A window that covers the same matches as Season, because the season is
+   shorter than the window. Dotted, so it reads as "nothing new here" rather
+   than as disabled — it is still a real choice, just not a different one
+   yet, and it becomes one as soon as enough matches have been played. */
+.stats-view-pill.is-same:not(.active) {
+    color: var(--text-muted);
+    text-decoration: underline dotted currentColor 1px;
+    text-underline-offset: 3px;
+}
+
+.stats-window-note {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.stats-toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border-default);
+    flex-shrink: 0;
+}
+
+/* The search used to be pushed to the right because the window and venue
+   pills filled the left of the bar. They are menus at the right-hand end
+   now, like every other filter bar on the site, so the search is what sits
+   on the left. */
+.stats-search-box { margin-right: auto; }
+/* Flush with the left edge of the section's content, not floating in from
+   it — the toolbar has the panel's own padding and the search starts where
+   the table's first column does. */
+.stats-compact-toolbar { padding-left: 0; padding-right: 0; }
+.stats-toolbar-row { padding: 0; }
+
+
+/* Column Selector Dropdown */
+.col-selector-wrap {
+    position: relative;
+}
+
+/* Search and Columns are the same object as every other control on the
+   bar: a 30px pill with a real edge, not a grey rectangle on a grey bar.
+   --border-default resolves to transparent on some pages, which is how a
+   bordered control ends up with no border at all. */
+.col-selector-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 13px;
+    background: var(--surface-1);
+    border: 1px solid var(--border-emphasis);
+    border-radius: 999px;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+    white-space: nowrap;
+}
+.col-selector-btn:hover { border-color: var(--color-primary); color: var(--color-primary-text); }
+
+/* Shape and focus ring come from the shared .v2-search in v2-design.css.
+   Only the Columns button's height needs matching to it here. */
+.col-selector-btn { height: 38px; font-size: 12.5px; }
+
+.col-selector-btn:hover {
+    background: var(--surface-3);
+    color: var(--text-primary);
+    border-color: var(--border-emphasis);
+}
+
+.col-selector-popover {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 50;
+    width: 280px;
+    max-height: 420px;
+    overflow-y: auto;
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    padding: var(--space-2) 0;
+}
+
+.col-selector-popover.open {
+    display: block;
+}
+
+.col-selector-group {
+    padding: var(--space-1) var(--space-3);
+}
+
+.col-selector-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 4px;
+}
+
+.col-selector-group-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.col-selector-toggle-all {
+    font-size: 10px;
+    color: var(--color-info);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0;
+}
+
+.col-selector-toggle-all:hover {
+    text-decoration: underline;
+}
+
+.col-selector-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+}
+
+.col-selector-item input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--color-info);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.col-selector-item label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+}
+
+.col-selector-item label .col-key {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-right: 4px;
+}
+
+.stats-header {
+    padding: var(--space-4) var(--space-6);
+    border-bottom: 1px solid var(--border-default);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+.stats-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.stats-toggle {
+    display: flex;
+    gap: var(--space-1);
+    background: var(--surface-2);
+    padding: var(--space-1);
+    border-radius: var(--radius-md);
+    flex-wrap: wrap;
+}
+
+.stats-toggle-btn {
+    padding: var(--space-2) var(--space-3);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 150ms;
+    white-space: nowrap;
+}
+
+.stats-toggle-btn:hover {
+    color: var(--text-primary);
+}
+
+.stats-toggle-btn.active {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.stats-scroll {
+    overflow-x: auto;
+}
+
+.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px;
+}
+
+.stats-table th {
+    background: var(--surface-2);
+    padding: var(--space-2) var(--space-3);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-default);
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    transition: all 150ms;
+    white-space: nowrap;
+}
+
+.stats-table th:hover {
+    background: var(--surface-3);
+    color: var(--text-primary);
+}
+
+.stats-table th.sorted-asc,
+.stats-table th.sorted-desc {
+    background: rgba(96, 165, 250, 0.15);
+    color: var(--color-info);
+}
+
+.stats-table th.sorted-asc::after {
+    content: ' ↑';
+}
+
+.stats-table th.sorted-desc::after {
+    content: ' ↓';
+}
+
+.stats-table th.team-col {
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    text-align: left;
+    min-width: 160px;
+    cursor: default;
+}
+
+.stats-table th.section-divider {
+    border-left: 2px solid var(--border-emphasis);
+}
+
+.stats-table td {
+    padding: var(--space-2) var(--space-3);
+    text-align: center;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.stats-table td.team-col {
+    position: sticky;
+    left: 0;
+    background: var(--surface-1);
+    z-index: 5;
+    text-align: left;
+}
+
+.stats-table tr:hover td {
+    background: var(--surface-2);
+}
+
+.stats-table tr:hover td.team-col {
+    background: var(--surface-2);
+}
+
+.stats-table td.section-divider {
+    border-left: 2px solid var(--border-emphasis);
+}
+
+.stats-team {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.stats-rank {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    width: 20px;
+}
+
+.stats-badge {
+    width: 24px;
+    height: 24px;
+}
+
+.stats-team-name {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.stats-value {
+    font-weight: 600;
+}
+
+.stats-value.good {
+    color: var(--color-success);
+}
+
+.stats-value.bad {
+    color: var(--color-error);
+}
+
+.stats-value.neutral {
+    color: var(--text-secondary);
+}
+
+.stats-bar {
+    display: inline-block;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--color-info);
+    opacity: 0.7;
+    margin-left: var(--space-2);
+    vertical-align: middle;
+}
+
+.stats-form {
+    display: flex;
+    gap: 2px;
+    justify-content: center;
+}
+
+.stats-form-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.stats-form-dot.W { background: var(--color-success); }
+.stats-form-dot.D { background: var(--text-muted); }
+.stats-form-dot.L { background: var(--color-error); }
+
+.stats-mini {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.stats-section-header {
+    background: var(--surface-3) !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    letter-spacing: 1px;
+    color: var(--text-primary) !important;
+}
+
+/* ===== MODAL ===== */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 14, 20, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 250ms ease-out;
+    padding: var(--space-4);
+}
+
+.modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.modal-container {
+    background: var(--surface-1);
+    border: 1px solid var(--border-emphasis);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 720px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(16px) scale(0.97);
+    transition: transform 250ms ease-out;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+}
+
+.modal-overlay.open .modal-container {
+    transform: translateY(0) scale(1);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-6);
+    border-bottom: 1px solid var(--border-default);
+    flex-shrink: 0;
+}
+
+.modal-header-badge {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.modal-header-info {
+    flex: 1;
+}
+
+.modal-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.modal-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-default);
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 150ms;
+    flex-shrink: 0;
+}
+
+.modal-close:hover {
+    background: var(--surface-3);
+    color: var(--text-primary);
+}
+
+.modal-body {
+    padding: var(--space-4) var(--space-6);
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-section {
+    margin-bottom: var(--space-6);
+}
+
+.modal-section:last-child {
+    margin-bottom: 0;
+}
+
+.modal-section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: var(--space-3);
+}
+
+.modal-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+}
+
+.modal-stat {
+    background: var(--surface-0);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    text-align: center;
+}
+
+.modal-stat-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.modal-stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.modal-stat-value.good { color: var(--color-success); }
+.modal-stat-value.bad { color: var(--color-error); }
+.modal-stat-value.warn { color: var(--color-warning); }
+.modal-stat-value.info { color: var(--color-info); }
+
+.modal-stat-sub {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.modal-fdr-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 8px var(--space-3);
+    background: var(--surface-0);
+    border-radius: var(--radius-sm);
+    margin-bottom: 4px;
+}
+
+.modal-fdr-gw {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    width: 36px;
+    flex-shrink: 0;
+}
+
+.modal-fdr-opp {
+    font-size: 13px;
+    font-weight: 600;
+    flex: 1;
+}
+
+.modal-fdr-venue {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+}
+
+.modal-fdr-venue.home {
+    background: rgba(74, 222, 128, 0.15);
+    color: var(--color-success);
+}
+
+.modal-fdr-venue.away {
+    background: rgba(96, 165, 250, 0.15);
+    color: var(--color-info);
+}
+
+.modal-fdr-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.modal-fdr-bar-container {
+    flex: 1;
+    height: 8px;
+    background: var(--surface-3);
+    border-radius: 4px;
+    overflow: hidden;
+    max-width: 120px;
+}
+
+.modal-fdr-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 300ms ease-out;
+}
+
+/* ===== SWINGS TAB PANELS ===== */
+/* Side by side again, with the lesson from the first attempt kept: two panels
+   at half width once squeezed a seven-gameweek strip into ~300px, so the pair
+   only holds while each column genuinely has room for a strip and a timeline —
+   below 1200px they stack. minmax(0, 1fr) so a long club name cannot widen its
+   column at the other panel's expense; the timelines already wrap on their
+   flex gaps. Swings and patches are one decision seen from two ends — what is
+   turning, and what is worth buying into — which is why they share a row. */
+.swings-layout {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+    align-items: start;
+}
+
+@media (max-width: 1200px) {
+    .swings-layout { grid-template-columns: 1fr; }
+}
+
+.swings-panel {
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.swings-panel-header {
+    padding: var(--space-4) var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.swings-panel-icon {
+    font-size: 20px;
+}
+
+.swings-panel-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    flex: 1;
+}
+
+.swings-panel-count {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: var(--surface-3);
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.swings-panel-body {
+    padding: var(--space-2);
+    max-height: 520px;
+    overflow-y: auto;
+}
+
+.swings-run-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 150ms;
+    border: 1px solid transparent;
+}
+
+.swings-run-item:hover {
+    background: var(--surface-2);
+    border-color: var(--border-default);
+}
+
+.swings-run-rank {
+    font-size: 12px;
+    font-weight: 600;
+    width: 22px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.swings-run-badge {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.swings-run-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.swings-run-name {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.swings-run-detail {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 1px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.swings-run-mini-fdr {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.swings-mini-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 7px;
+    font-weight: 600;
+}
+
+.swings-run-stat {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.swings-run-arrow {
+    color: var(--text-muted);
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.swing-direction-group {
+    padding: var(--space-2) var(--space-3);
+}
+
+.swing-direction-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: var(--space-2) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.swing-direction-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-subtle);
+}
+
+.swing-fdr-change {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.swing-fdr-change .arrow {
+    font-size: 10px;
+}
+
+/* Column group headers */
+.stats-table thead tr.col-groups th {
+    padding: var(--space-1) var(--space-3);
+    font-size: 9px;
+    background: var(--surface-3);
+    border-bottom: none;
+    cursor: default;
+}
+
+.stats-table thead tr.col-groups th.attack-group {
+    color: var(--color-error);
+    background: rgba(248, 113, 113, 0.1);
+}
+
+.stats-table thead tr.col-groups th.defense-group {
+    color: var(--color-info);
+    background: rgba(96, 165, 250, 0.1);
+}
+
+.stats-table thead tr.col-groups th.overall-group {
+    color: var(--color-success);
+    background: rgba(74, 222, 128, 0.1);
+}
+
+/* ===== ACCESSIBILITY: Minimum font sizes & contrast ===== */
+.fdr-badge { font-size: 10px; }
+.fdr-badge .opp { font-size: 11px; }
+.form-label { font-size: 10px; color: var(--text-secondary); }
+.form-letter { font-size: 11px; }
+.xg-badge { font-size: 10px; }
+.report-stat-label { font-size: 11px; color: var(--text-secondary); }
+.report-bar-label { font-size: 12px; }
+.report-venue-stat { font-size: 12px; }
+.report-form-opp { font-size: 10px; color: var(--text-secondary); }
+.report-form-score { font-size: 11px; }
+.report-fdr-cs { font-size: 10px; color: var(--text-secondary); }
+.report-fdr-venue { font-size: 10px; }
+.report-fdr-opp { font-size: 12px; }
+.team-tag { font-size: 10px; }
+.cs-badge { font-size: 10px; }
+.venue-bar-label { font-size: 11px; color: var(--text-secondary); }
+.venue-bar-value { font-size: 11px; }
+.venue-bar-marker { font-size: 10px; }
+.insight-tag { font-size: 11px; }
+.fdr-avg { font-size: 11px; color: var(--text-secondary); }
+.swing-timing { font-size: 11px; }
+.signal-tag { font-size: 11px; }
+.calendar-table th { font-size: 11px; }
+.calendar-team-fdr { font-size: 11px; color: var(--text-secondary); }
+.fixture-cell { font-size: 10px; }
+.stats-group-pill, .stats-view-pill { font-size: 12px; }
+.stats-mini { font-size: 11px; color: var(--text-secondary); }
+.stats-section-header { font-size: 12px !important; }
+
+/* ===== ADVANCED xG TABLE ===== */
+.data-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-4);
+    flex-wrap: wrap;
+}
+
+.data-controls-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    flex-shrink: 0;
+}
+
+.segmented-control {
+    display: flex;
+    background: var(--surface-2);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    gap: 2px;
+}
+
+.segmented-btn {
+    padding: 6px 14px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: calc(var(--radius-md) - 2px);
+    cursor: pointer;
+    transition: all 150ms ease-out;
+    white-space: nowrap;
+}
+
+.segmented-btn:hover {
+    color: var(--text-primary);
+}
+
+.segmented-btn.active {
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Heatmap utility classes */
+.text-green { color: var(--color-success); font-weight: 600; }
+.text-yellow { color: var(--color-warning); font-weight: 600; }
+.text-red { color: var(--color-error); font-weight: 600; }
+
+/* Advanced xG Table — removed; columns merged into main Stats Table */
+
+/* ===== MOMENTUM MATRIX ===== */
+.momentum-matrix-section {
+    background: var(--surface-1);
+    border: 1px solid var(--border-default);
+    border-radius: 16px;
+    padding: var(--space-6);
+    margin-bottom: 48px;
+}
+
+.momentum-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-4);
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+.momentum-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.momentum-title-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(96, 165, 250, 0.15);
+    color: var(--color-info);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.momentum-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
+    gap: var(--space-4);
+}
+
+.momentum-chart-container {
+    position: relative;
+    background: var(--surface-0);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-2);
+    min-height: 400px;
+}
+
+.momentum-chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.momentum-hover-card {
+    position: fixed;
+    z-index: 1000;
+    width: 196px;
+    min-height: 68px;
+    display: block;
+    padding: 11px 12px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--surface-1);
+    box-shadow: var(--shadow-md);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.96);
+    transition: opacity 140ms ease-out, transform 140ms ease-out, visibility 140ms ease-out;
+    overflow: visible;
+}
+
+.momentum-hover-card.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}
+.momentum-hover-card.points-right { transform-origin: left center; }
+.momentum-hover-card.points-left { transform-origin: right center; }
+.momentum-hover-card::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 12px;
+    height: 18px;
+    background: var(--surface-1);
+    transform: translateY(-50%);
+}
+.momentum-hover-card.points-right::before {
+    left: -12px;
+    clip-path: polygon(100% 0, 0 50%, 100% 100%);
+    filter: drop-shadow(-1px 0 0 var(--border-subtle));
+}
+.momentum-hover-card.points-left::before {
+    right: -12px;
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+    filter: drop-shadow(1px 0 0 var(--border-subtle));
+}
+.momentum-hover-name {
+    margin-bottom: 7px;
+}
+.momentum-hover-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+}
+.momentum-hover-meta strong { color: var(--text-muted); font-weight: 600; }
+
+.scout-report-panel {
+    background: var(--surface-0);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+}
+
+.scout-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    text-align: center;
+    gap: var(--space-3);
+    padding: var(--space-6);
+}
+
+.scout-empty-icon {
+    font-size: 32px;
+    opacity: 0.4;
+}
+
+.scout-empty-text {
+    font-size: 13px;
+}
+
+.scout-team-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.scout-badge {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+}
+
+.scout-team-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.scout-team-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.scout-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+}
+
+.scout-stat {
+    background: var(--surface-2);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    text-align: center;
+}
+
+.scout-stat-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+}
+
+.scout-stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.scout-stat-value.good { color: var(--color-success); }
+.scout-stat-value.bad { color: var(--color-error); }
+.scout-stat-value.warn { color: var(--color-warning); }
+.scout-stat-value.info { color: var(--color-info); }
+
+.scout-quadrant-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-3);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.scout-quadrant-tag.target {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--color-success);
+}
+
+.scout-quadrant-tag.monitor {
+    background: rgba(96, 165, 250, 0.15);
+    color: var(--color-info);
+}
+
+.scout-quadrant-tag.speculative {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--color-warning);
+}
+
+.scout-quadrant-tag.avoid {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--color-error);
+}
+
+#scoutReportText {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 1024px) {
+    .momentum-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===== DARK MODE ===== */
+[data-theme="dark"] .loading-overlay { background: rgba(15, 23, 42, 0.85); }
+
+
+/* ======================================================================
+   Tactical timeline — fixture runs, swing pivots, gold-mine cards
+   ====================================================================== */
+
+/* One fixture block, used everywhere a run of fixtures is shown. Sized so the
+   opponent's three-letter code is actually readable; the old version was a
+   14px square carrying a single letter. */
+.fx-run { display: flex; gap: 4px; flex-wrap: wrap; }
+.fx-block {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-width: 46px; padding: 4px 6px;
+    border-radius: 7px;
+    color: #0F172A;
+    line-height: 1.15;
+    text-align: center;
+}
+.fx-block small { font-size: 8px; font-weight: 600; opacity: .7; letter-spacing: .02em; }
+.fx-block b { font-size: 12px; font-weight: 800; }
+.fx-block i { font-size: 8px; font-style: normal; font-weight: 600; opacity: .75; }
+.fx-block.fdr-1 { background: var(--fdr-1); }
+.fx-block.fdr-2 { background: var(--fdr-2); }
+.fx-block.fdr-3 { background: var(--fdr-3); }
+.fx-block.fdr-4 { background: var(--fdr-4); }
+.fx-block.fdr-5 { background: var(--fdr-5); }
+.fx-block.fx-blank { background: var(--surface-3); color: var(--text-muted); }
+/* The "before" side of a swing is context, not the thing being sold. */
+.fx-block.fx-dim { opacity: .5; }
+.patch-run { flex-wrap: nowrap; }
+
+/* ---- Best Next 5 cards ---- */
+.gm-subtitle { margin-left: auto; font-size: 11px; color: var(--text-muted); font-weight: 600; }
+.gm-list { display: flex; flex-direction: column; gap: 8px; }
+.gm-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+}
+.gm-rank { width: 18px; font-size: 12px; font-weight: 800; color: var(--text-muted); text-align: center; }
+.gm-rank.top { color: var(--color-warning); }
+.gm-badge { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; }
+.gm-id { min-width: 116px; }
+.gm-name { font-size: 13.5px; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+.gm-detail { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
+.gm-fixtures { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+.gm-avg {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 17px; font-weight: 800; min-width: 44px; text-align: right;
+}
+.gm-avg small { display: block; font-size: 9px; font-weight: 500; color: var(--text-muted); }
+.gm-avg.good { color: var(--color-success); }
+.gm-avg.mid { color: var(--color-warning); }
+.gm-avg.bad { color: var(--color-error); }
+.gm-assets-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 6px 10px; border-radius: 8px;
+    border: 1px solid var(--border-default);
+    background: var(--surface-1); color: var(--text-secondary);
+    font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.gm-assets-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+/* ---- swing cards: the before/after timeline ---- */
+.swing-card {
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-2);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color .15s ease, transform .15s ease;
+}
+.swing-card:hover { transform: translateY(-1px); }
+.swing-card.improving:hover { border-color: var(--color-success); }
+.swing-card.worsening:hover { border-color: var(--color-error); }
+.swing-card-top { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.swing-delta { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 800; white-space: nowrap; }
+.swing-delta.improving { color: var(--color-success); }
+.swing-delta.worsening { color: var(--color-error); }
+
+/* wrap, or a long before-and-after run clips in the half-width column the
+   side-by-side layout gives it — the sides simply stack when tight. */
+.swing-timeline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.swing-side { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.swing-side-label {
+    font-size: 8.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted);
+}
+.swing-pivot { flex-shrink: 0; display: flex; align-items: center; }
+.swing-pivot-badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 10px; font-weight: 800; white-space: nowrap;
+}
+/* The pivot is the whole point of the panel, so it glows. */
+.swing-pivot-badge.improving {
+    background: color-mix(in srgb, var(--color-success) 22%, transparent);
+    color: var(--color-success);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-success) 35%, transparent);
+}
+.swing-pivot-badge.worsening {
+    background: color-mix(in srgb, var(--color-error) 22%, transparent);
+    color: var(--color-error);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--color-error) 35%, transparent);
+}
+
+/* ---- team assets modal ---- */
+.modal-team-header { display: flex; align-items: center; gap: 12px; }
+.modal-team-badge { width: 40px; height: 40px; object-fit: contain; }
+.assets-run { margin-bottom: 16px; }
+.assets-run-label {
+    display: block; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted); margin-bottom: 5px;
+}
+.assets-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.assets-table th {
+    text-align: left; padding: 7px 9px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text-muted); border-bottom: 1px solid var(--border-default);
+}
+.assets-table td { padding: 8px 9px; border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); }
+.assets-name { color: var(--text-primary); font-weight: 600; }
+.assets-pos { padding: 1px 5px; border-radius: 4px; font-size: 9px; font-weight: 800; color: #0F172A; }
+.assets-pos.pos-GK { background: #FBBF24; }
+.assets-pos.pos-DEF { background: #34D399; }
+.assets-pos.pos-MID { background: #60A5FA; }
+.assets-pos.pos-FWD { background: #F87171; }
+.assets-note { margin-top: 12px; font-size: 11px; color: var(--text-muted); font-style: italic; }
+.assets-empty { padding: 18px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+@media (max-width: 900px) {
+    .gm-row { flex-wrap: wrap; }
+    .gm-fixtures { order: 3; width: 100%; }
+    .swing-timeline { flex-wrap: wrap; }
+}
+
+/* The enlarged fixture blocks need room, so patch rows stack the identity above
+   the run instead of competing with it on one line — the team names were being
+   truncated to "Ma..." and "Chel...". */
+.swings-panel .swings-run-item {
+    display: grid;
+    grid-template-columns: 22px 28px 1fr auto auto;
+    grid-template-areas:
+        "rank badge name  avg arrow"
+        ".    .     run   run run";
+    row-gap: 8px;
+    align-items: center;
+}
+.swings-panel .swings-run-item .swings-run-rank { grid-area: rank; }
+.swings-panel .swings-run-item .swings-run-badge { grid-area: badge; }
+.swings-panel .swings-run-item .swings-run-info { grid-area: name; min-width: 0; }
+.swings-panel .swings-run-item .patch-run { grid-area: run; }
+.swings-panel .swings-run-item .swings-run-stat { grid-area: avg; }
+.swings-panel .swings-run-item .swings-run-arrow { grid-area: arrow; }
+.swings-panel .swings-run-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.swings-panel .swings-run-detail { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 10.5px; }
+.patch-run { overflow-x: auto; padding-bottom: 2px; }
+.patch-run::-webkit-scrollbar { height: 4px; }
+
+/* ======================================================================
+   Team card stat block — concrete numbers instead of 0-100 indices
+   ====================================================================== */
+/* The card is the container these two columns answer to, not the window: how
+   much room they get depends on how many cards the grid fitted in the row,
+   which the viewport width alone does not tell you. */
+.team-card { container-type: inline-size; }
+.team-stat-block {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;
+    margin: var(--space-3) 0;
+}
+@container (max-width: 244px) {
+    .team-stat-block { grid-template-columns: minmax(0, 1fr); }
+}
+.tsb-col {
+    min-width: 0;
+    padding: 9px 11px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    border-left: 2px solid transparent;
+}
+.tsb-col.atk { border-left-color: var(--color-error); }
+.tsb-col.def { border-left-color: var(--color-info); }
+.tsb-col.tsb-hl { background: var(--surface-3); }
+.tsb-title {
+    font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 6px;
+}
+.tsb-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.tsb-row:last-child { margin-bottom: 0; }
+/* Wraps rather than holding the column open. A two-line "Conceded / game" is
+   readable; the number sheared off the right edge, which is what nowrap was
+   producing once four cards shared a 1240px row, is not. */
+.tsb-label { font-size: 10.5px; color: var(--text-muted); min-width: 0; }
+.tsb-value {
+    font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 800;
+    color: var(--text-primary); font-variant-numeric: tabular-nums;
+}
+.tsb-value.good { color: var(--color-success); }
+.tsb-sample { font-size: 9.5px; color: var(--text-muted); text-align: right; margin-top: -4px; margin-bottom: 4px; }
+
+/* ===== EXPECTED AGAINST ACTUAL =====
+   Green where the outcome beat the expectation, amber where it fell short,
+   neutral where the gap is inside the noise. The colour is about the gap, not
+   about the level: a side scoring 1.1 a game from 0.9 xG is green here and
+   still a poor attack, which is the point — this row is asking whether they are
+   converting, and the row above already said how much they create. */
+.tsb-conversion { display: flex; flex-direction: column; gap: 3px; margin: 6px 0 2px; }
+.xgva-row {
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px;
+    padding: 4px 8px; border-radius: var(--radius-sm);
+    background: var(--surface-2);}
+.xgva-label { font-size: 10px; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+.xgva-pair {
+    display: inline-flex; align-items: baseline; gap: 5px; justify-content: center;
+    font-family: 'Space Grotesk', sans-serif; font-variant-numeric: tabular-nums;
+}
+.xgva-exp, .xgva-act { display: inline-flex; align-items: baseline; gap: 3px; font-size: 12.5px; font-weight: 700; }
+.xgva-exp { color: var(--text-muted); }
+.xgva-act { color: var(--text-primary); }
+.xgva-exp em, .xgva-act em { font-style: normal; font-size: 8.5px; font-weight: 600; opacity: .7; }
+.xgva-arrow { color: var(--text-muted); font-size: 10px; }
+.xgva-diff {
+    font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 800;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.xgva-row.over .xgva-diff { color: var(--color-success); }
+.xgva-row.under .xgva-diff { color: var(--color-warning); }
+.xgva-row.level .xgva-diff { color: var(--text-muted); }
+.xgva-row.over { box-shadow: inset 2px 0 0 var(--color-success); }
+.xgva-row.under { box-shadow: inset 2px 0 0 var(--color-warning); }
+
+/* ===== LAST FIVE, EXPECTED AGAINST ACTUAL ===== */
+.l5-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.l5-table th {
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--text-muted); text-align: center; padding: 4px 6px;
+    border-bottom: 1px solid var(--border-default);}
+.l5-table th:first-child, .l5-table th:nth-child(2) { text-align: left; }
+.l5-table td { padding: 5px 6px; border-bottom: 1px solid var(--border-subtle); font-size: 11.5px; }
+.l5-table tfoot td { border-bottom: none; border-top: 1px solid var(--border-default); font-weight: 700; }
+.l5-gw { color: var(--text-muted); font-size: 10.5px; white-space: nowrap; }
+.l5-opp { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+.l5-ha { font-size: 9px; color: var(--text-muted); margin-left: 4px; }
+/* Actual over expected, stacked — the number that happened on top, the number
+   that was deserved underneath it. */
+.l5-cell { text-align: center; }
+.l5-act { display: block; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 800; line-height: 1.1; }
+.l5-exp { display: block; font-size: 9.5px; color: var(--text-muted); line-height: 1.2; }
+.l5-cell.over .l5-act { color: var(--color-success); }
+.l5-cell.under .l5-act { color: var(--color-warning); }
+.l5-cell.level .l5-act { color: var(--text-primary); }
+.l5-res { text-align: center; font-weight: 800; font-size: 11.5px; white-space: nowrap; }
+.l5-res.w { color: var(--color-success); }
+.l5-res.l { color: var(--color-error); }
+.l5-res.d { color: var(--text-muted); }
+.l5-summary { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.l5-note { font-size: 10px; line-height: 1.5; color: var(--text-muted); margin: 8px 0 0; }
+
+/* The unit that turns a bare figure into a quantity. */
+.report-bar-unit { display: block; font-style: normal; font-size: 8.5px; font-weight: 600; color: var(--text-muted); }
+
+/* Rank with a form direction beside it */
+.rank-wrap { display: flex; align-items: center; gap: 5px; }
+.rank-trend { font-size: 11px; font-weight: 800; line-height: 1; }
+.rank-trend.up { color: var(--color-success); }
+.rank-trend.down { color: var(--color-error); }
+.rank-trend.flat { color: var(--text-muted); }
+
+/* Scout panel default state */
+.scout-default-badge {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px; margin-bottom: 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+    color: var(--color-warning);
+    font-size: 10.5px; font-weight: 700;
+}
+
+@media (max-width: 600px) {
+    .team-stat-block { grid-template-columns: 1fr; }
+}
+
+/* ===== SOFT TARGETS (Fixture Swings tab) ===== */
+.soft-section { margin-top: var(--space-6); }
+/* Standalone view: no preceding section to sit under, and room for more clubs. */
+.soft-section.standalone { margin-top: 0; }
+.soft-section.standalone .soft-title { font-size: 20px; }
+.soft-section.standalone .soft-grid { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+.soft-method { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--border-subtle);
+    font-size: 11px; line-height: 1.6; color: var(--text-muted); max-width: 780px; }
+.soft-method em { font-style: italic; }
+.soft-method a { color: var(--color-primary); text-decoration: none; }
+.soft-method a:hover { text-decoration: underline; }
+.soft-header { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+.soft-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.soft-count { font-size: 11px; font-weight: 600; color: var(--text-muted); padding: 2px 8px; border-radius: 999px; background: var(--surface-2); }
+.soft-desc { font-size: 12px; line-height: 1.6; color: var(--text-muted); margin: 0 0 var(--space-4); max-width: 780px; }
+.soft-desc em { font-style: italic; color: var(--text-secondary); }
+.soft-empty { padding: var(--space-5); text-align: center; font-size: 13px; color: var(--text-muted); border: 1px dashed var(--border-default); border-radius: var(--radius-lg); }
+.soft-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-3); }
+.soft-card { padding: var(--space-3) var(--space-4); border: 1px solid var(--border-default); border-left: 3px solid var(--text-muted);
+    border-radius: var(--radius-lg); background: var(--surface-1); cursor: pointer; transition: border-color 150ms, transform 150ms; }
+.soft-card:hover { transform: translateY(-2px); border-color: var(--border-emphasis); }
+/* The list always returns six; the tier says how soft each of them actually is. */
+.soft-card.tier-prime { border-left-color: var(--color-error); }
+.soft-card.tier-fair { border-left-color: var(--color-warning); }
+.soft-card.tier-mild { border-left-color: var(--text-muted); }
+.soft-card-head { display: flex; align-items: center; gap: var(--space-2); }
+.soft-rank { width: 18px; height: 18px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
+    background: var(--surface-3); color: var(--text-secondary); font-size: 10px; font-weight: 700; }
+.soft-badge { width: 22px; height: 22px; flex-shrink: 0; object-fit: contain; }
+.soft-name { font-size: 13px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.soft-score { margin-left: auto; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1;
+    font-size: 18px; font-weight: 700; font-family: "Space Grotesk", sans-serif; color: var(--text-muted); }
+.soft-score em { font-style: normal; font-size: 8px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; margin-top: 2px; }
+.soft-card.tier-prime .soft-score { color: var(--color-error); }
+.soft-card.tier-fair .soft-score { color: var(--color-warning); }
+.soft-metrics { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-3); }
+.soft-metric { display: flex; flex-direction: column; font-size: 9px; color: var(--text-muted); }
+.soft-metric em { font-style: normal; font-size: 13px; font-weight: 700; font-family: "Space Grotesk", sans-serif; color: var(--text-primary); }
+.soft-form { display: flex; gap: 2px; margin-left: auto; }
+.soft-form-dot { width: 15px; height: 15px; display: inline-flex; align-items: center; justify-content: center; border-radius: 3px;
+    font-size: 8px; font-weight: 700; color: #fff; }
+.soft-form-dot.w { background: var(--color-success); }
+.soft-form-dot.d { background: var(--text-muted); }
+.soft-form-dot.l { background: var(--color-error); }
+.soft-note { margin-top: var(--space-2); font-size: 10px; line-height: 1.5; color: var(--color-warning); }
+.soft-facing { margin-top: var(--space-3); padding-top: var(--space-2); border-top: 1px solid var(--border-subtle); }
+.soft-facing-l { font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+.soft-facing-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.soft-face { display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; border-radius: var(--radius-md);
+    border: 1px solid var(--border-default); background: var(--surface-2); font-size: 10px; font-weight: 600; color: var(--text-secondary); }
+.soft-face.home { border-color: color-mix(in srgb, var(--color-success) 45%, transparent); }
+.soft-face-gw { font-size: 8px; color: var(--text-muted); font-family: "Space Grotesk", sans-serif; }
+.soft-face-ha { font-size: 8px; color: var(--text-muted); }
+.soft-face-none { font-size: 10px; color: var(--text-muted); }
+
+/* ===== TEAM REPORT MODAL — ranks, attackability, fixture split ===== */
+.modal-window { font-size: 10px; font-weight: 500; color: var(--text-muted); margin-left: 4px; }
+.report-ranks { display: grid; grid-template-columns: repeat(auto-fit, minmax(74px, 1fr)); gap: var(--space-2); }
+.report-rank { padding: var(--space-2); text-align: center; border-radius: var(--radius-md); background: var(--surface-2);
+    border: 1px solid var(--border-subtle); }
+.report-rank.good { border-color: color-mix(in srgb, var(--color-success) 45%, transparent); }
+.report-rank.bad { border-color: color-mix(in srgb, var(--color-error) 45%, transparent); }
+.report-rank-v { font-size: 16px; font-weight: 700; font-family: "Space Grotesk", sans-serif; color: var(--text-primary); }
+.report-rank.good .report-rank-v { color: var(--color-success); }
+.report-rank.bad .report-rank-v { color: var(--color-error); }
+.report-rank-l { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+.report-soft { display: flex; align-items: flex-start; gap: var(--space-4); }
+.report-soft-score { flex-shrink: 0; font-size: 30px; font-weight: 700; font-family: "Space Grotesk", sans-serif;
+    line-height: 1; color: var(--color-warning); }
+.report-soft-score.bad { color: var(--color-error); }
+.report-soft-score.good { color: var(--color-success); }
+.report-soft-score span { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+.report-soft-text { font-size: 12px; line-height: 1.6; color: var(--text-secondary); }
+.fx-split-table { width: 100%; border-collapse: collapse; margin-top: var(--space-3); font-size: 11px; }
+.fx-split-table th { text-align: left; padding: 4px 6px; font-size: 9px; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-default); }
+.fx-split-table td { padding: 5px 6px; border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); }
+.fx-split-gw { font-family: "Space Grotesk", sans-serif; color: var(--text-muted); font-size: 10px; }
+.fx-split-opp { font-weight: 600; color: var(--text-primary); }
+.fx-split-ha { font-size: 9px; color: var(--text-muted); }
+.fx-split-chip { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
+    border-radius: 4px; font-size: 10px; font-weight: 700; }
+.fx-split-cs { font-family: "Space Grotesk", sans-serif; }
+.fx-split-note { margin: var(--space-2) 0 0; font-size: 10px; color: var(--text-muted); }
+
+/* ----- Fixture Swings: one gap, not three different ones -----
+   The view stacks three panels — the gold mines card, the two swing columns,
+   and the targetable calendar — and each carried its own spacing: the first
+   two had none between them, and the calendar had an inline margin-top of its
+   own. So the same view had a flush join in one place and a wide gap in the
+   next. One column, one gap, set here. */
+.swing-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    margin-top: var(--space-8);
+}
+/* The inline margin that made the calendar's gap the odd one out is gone from
+   the markup; this makes sure nothing reintroduces it. */
+.swing-section > .calendar-section { margin-top: 0; }
+
+/* Soft Targets and the club rankings are in .v2-section now, which draws its
+   own box — so the parts inside stop drawing their own top margins. */
+.v2-section > .soft-section.standalone { margin-top: 0; }
+.v2-section > .rankings-toolbar { margin-top: 0; }
+
+
+/* =====================================================================
+   A club's card, built on the player card's hero
+
+   Same object, same proportions, with the badge where the portrait goes —
+   a club has no face and the crest is the thing you recognise it by. The
+   header was a 32px badge beside a title and a run-on subtitle on a white
+   bar, which looked nothing like the card you get for one of its players.
+   ===================================================================== */
+.modal-header:has(.tm-hero) { padding: 0; border: none; background: none; display: block; }
+
+.tm-hero { min-height: 150px; padding: 0 24px; align-items: center; }
+
+/* The close button's own positioning lives in player-profile.css, which
+   this page does not load — so it is stated here rather than inherited
+   from a stylesheet that is not present. */
+.tm-hero .modal-close {
+    position: absolute; top: 12px; right: 12px; z-index: 3;
+    width: 34px; height: 34px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: none; border-radius: 50%;
+    background: rgba(0, 0, 0, .26);
+    color: var(--club-ink, #fff);
+    font-size: 21px; line-height: 1;
+    cursor: pointer;
+    transition: background 140ms ease;
+}
+.tm-hero .modal-close:hover { background: rgba(0, 0, 0, .42); }
+.tm-hero .pdm-hero-text { padding-bottom: 0; }
+
+/* The badge sits in the portrait's slot, centred rather than standing on
+   the floor of the hero the way a photo does. */
+.tm-hero-badge { height: 150px; width: 128px; align-items: center; }
+.tm-hero-badge img {
+    width: 96px; height: 96px;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, .38));
+}
+
+/* The one number worth leading with, in the difficulty colours the rest of
+   the page already uses for exactly this — each with its own ink, because
+   FDR 3 is a pale grey and white on it is unreadable. */
+.tm-hero-fdr {
+    background: var(--fdr-3);
+    color: var(--fdr-3-ink);
+    font-size: 13px; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.tm-hero-fdr.fdr-1 { background: var(--fdr-1); color: var(--fdr-1-ink); }
+.tm-hero-fdr.fdr-2 { background: var(--fdr-2); color: var(--fdr-2-ink); }
+.tm-hero-fdr.fdr-3 { background: var(--fdr-3); color: var(--fdr-3-ink); }
+.tm-hero-fdr.fdr-4 { background: var(--fdr-4); color: var(--fdr-4-ink); }
+.tm-hero-fdr.fdr-5 { background: var(--fdr-5); color: var(--fdr-5-ink); }
+
+/* .pdm-hero-price is a £15.5m — a big number. Here it is the caption under
+   the chip, so it takes a caption's size. */
+.tm-hero .pdm-hero-price {
+    font-size: 10.5px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase;
+    opacity: .82;
+}
+
+@media (max-width: 640px) {
+    .tm-hero { min-height: 118px; padding: 0 14px; }
+    .tm-hero-badge { height: 118px; width: 84px; }
+    .tm-hero-badge img { width: 66px; height: 66px; }
+}
+
+/* The two local controls -- how many gameweeks Best Next N ranks over, and
+   which gameweek the patch list has to cover -- are v2 menus now, like every
+   other filter on the site. What is left is the shove that keeps them at the
+   right-hand end of their panel's header. */
+.gm-window, .patch-filter,
+.analysis-card-header > .v2-menu,
+.swings-panel-header > .v2-menu {
+    margin-left: auto;
+}
+.gm-window-label, .patch-filter-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.gm-window-select, .patch-filter-select {
+    background: var(--surface-2);
+    color: var(--text-primary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 6px;
+    cursor: pointer;
+}
+.gm-window-select:hover, .patch-filter-select:hover { border-color: var(--border-emphasis); }
+
+/* A targetable patch, bracketed. It was a 3px underline, which on a grid of
+   coloured cells reads as part of the cell rather than as a span across
+   several. A border on all four sides, closed at the ends, says "these
+   gameweeks, together" — and it has to sit above the neighbouring cells'
+   backgrounds, hence the z-index. */
+.fixture-cell.easy-run-start,
+.fixture-cell.easy-run-middle,
+.fixture-cell.easy-run-end {
+    position: relative;
+    z-index: 1;
+    box-shadow: inset 0 2px 0 var(--color-primary), inset 0 -2px 0 var(--color-primary);
+}
+.fixture-cell.easy-run-start {
+    box-shadow: inset 2px 0 0 var(--color-primary), inset 0 2px 0 var(--color-primary), inset 0 -2px 0 var(--color-primary);
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+.fixture-cell.easy-run-end {
+    box-shadow: inset -2px 0 0 var(--color-primary), inset 0 2px 0 var(--color-primary), inset 0 -2px 0 var(--color-primary);
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+/* A single-gameweek patch cannot happen (the minimum window is three), but if
+   the filter ever narrows one to a single visible cell it still closes. */
+.fixture-cell.easy-run-start.easy-run-end {
+    box-shadow: inset 2px 0 0 var(--color-primary), inset -2px 0 0 var(--color-primary),
+                inset 0 2px 0 var(--color-primary), inset 0 -2px 0 var(--color-primary);
+}
+
+/* The two calendar overlays, drawn in the legend the way the grid draws
+   them: a green bracket for a run of easy fixtures, and the flame for a
+   fixture both sides are expected to score in. */
+.legend-run {
+    width: 22px; height: 14px;
+    border-radius: 5px;
+    box-shadow: inset 0 2px 0 var(--color-primary), inset 0 -2px 0 var(--color-primary),
+                inset 2px 0 0 var(--color-primary), inset -2px 0 0 var(--color-primary);
+    background: var(--surface-2);
+    flex: none;
+}
+.legend-flame {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 4px;
+    background: rgba(251, 191, 36, 0.18);
+    color: #D97706;
+    flex: none;
+}
+
+/* ---- the gameweek view ----
+   The Full Calendar opened on a twenty-by-thirty-eight grid of three-letter
+   codes, which is a reference document: correct, complete, and not what
+   anyone arrives wanting. This is the week, as cards — the same shape as the
+   dashboard's matchday panel, so the two read as one idea. The table is a
+   menu away and still there for planning a run. */
+.calw-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+    gap: 12px;
+}
+.calw-card {
+    padding: 13px 14px 14px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: 14px;
+    background: var(--surface-1);
+    box-shadow: var(--v2-card-shadow, none);
+    transition: border-color 140ms ease, transform 140ms ease;
+}
+.calw-card:hover { border-color: var(--color-primary); transform: translateY(-2px); }
+.calw-card.is-live { border-color: rgba(220, 38, 38, .34); }
+.calw-card.is-done .calw-when { color: var(--text-muted); }
+.calw-when {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .02em;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+.calw-card.is-live .calw-when { color: #DC2626; }
+.calw-body { display: flex; align-items: center; gap: 8px; }
+.calw-side {
+    flex: 1 1 0; min-width: 0;
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-display); font-size: 14px; font-weight: 700;
+    color: var(--text-primary);
+}
+.calw-side.a { justify-content: flex-end; }
+.calw-crest { width: 30px; height: 30px; object-fit: contain; flex: none; }
+.calw-crest-blank { width: 30px; height: 30px; border-radius: 50%; background: var(--surface-3); flex: none; }
+.calw-mid {
+    flex: none; min-width: 52px; text-align: center;
+    font-family: var(--font-mono); font-size: 17px; font-weight: 800;
+    color: var(--text-primary);
+}
+.calw-mid i { font-style: normal; opacity: .45; margin: 0 2px; }
+.calw-mid em { font-style: normal; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+/* Each side's own difficulty for this match — the number the grid encoded as
+   a colour and nothing else. */
+.calw-fdr {
+    flex: none;
+    min-width: 17px; height: 17px; padding: 0 4px;
+    display: inline-grid; place-items: center;
+    border-radius: 5px;
+    font-family: var(--font-mono); font-size: 10.5px; font-weight: 800;
+}
+.calw-nav { display: inline-flex; align-items: center; gap: 4px; }
+.calw-arrow {
+    width: 30px; height: 30px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    border: 1.5px solid var(--v2-card-border, var(--border-emphasis));
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    font-size: 17px; line-height: 1;
+    cursor: pointer;
+}
+.calw-arrow:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+.calw-arrow:disabled { opacity: .35; cursor: not-allowed; }
+.calw-nav-l {
+    font-family: var(--font-display); font-size: 12.5px; font-weight: 800;
+    color: var(--text-primary); min-width: 40px; text-align: center;
+}
+.calw-empty { padding: 26px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+/* The average column closes the row, so it is separated like the team column
+   opens it rather than being an inline grey swatch stuck on the end. */
+.calendar-table th.calendar-avg-h {
+    background: var(--surface-2);
+    box-shadow: inset 1px 0 0 var(--border-emphasis);
+}
