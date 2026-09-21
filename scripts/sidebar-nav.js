@@ -28,7 +28,7 @@ function v2HasTeam() {
 function loadSidebarNav() {
     if (!v2HasTeam()) return loadLandingNav();
     document.documentElement.classList.add('v2-shell-app');
-    return fetch('sidebar-nav.html?v=337')
+    return fetch('sidebar-nav.html?v=338')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -144,7 +144,7 @@ async function revealAdminLink() {
 /* The landing shell: a top bar rather than a rail. */
 function loadLandingNav() {
     document.documentElement.classList.add('v2-shell-landing');
-    return fetch('landing-nav.html?v=337')
+    return fetch('landing-nav.html?v=338')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -163,6 +163,7 @@ function loadLandingNav() {
                so nothing else would ever close it. */
             document.querySelectorAll('.v2-landing-links a').forEach(a =>
                 a.addEventListener('click', () => closeLandingNav()));
+            v2InitNavPanels();
             document.addEventListener('keydown', e => {
                 if (e.key === 'Escape') closeLandingNav();
             });
@@ -187,6 +188,75 @@ function v2EnterAppShell() {
     closeLandingNav();
     document.getElementById('v2LandingNav')?.remove();
     return loadSidebarNav();
+}
+
+/* ===== The Features panel =====
+ *
+ * Hover opens it for a pointer, click for everything else. Both have to
+ * work: hover alone puts the six pages behind it out of reach of a keyboard
+ * and a touch screen, and click alone feels broken to a mouse.
+ *
+ * The hover half is wired here rather than in CSS because the two halves
+ * have to agree — a :hover rule cannot know the panel was opened by a click
+ * and would close it the moment the pointer left, mid-keyboard-navigation.
+ */
+function v2ToggleNavPanel(trigger) {
+    const open = trigger.getAttribute('aria-expanded') === 'true';
+    /* Clicking a panel the pointer already opened by hovering must not shut
+       it: to the person doing it that reads as the menu rejecting the click.
+       A keyboard's Enter arrives as a click too, but with the pointer
+       somewhere else entirely, so :hover is what separates the two. */
+    if (open && trigger.closest('.v2-nav-group')?.matches(':hover')) return;
+    v2SetNavPanel(trigger, !open);
+}
+
+function v2SetNavPanel(trigger, open) {
+    const panel = document.getElementById(trigger.getAttribute('aria-controls'));
+    if (!panel) return;
+    trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    panel.hidden = !open;
+}
+
+function v2CloseNavPanels() {
+    document.querySelectorAll('.v2-nav-trigger[aria-expanded="true"]')
+        .forEach(t => v2SetNavPanel(t, false));
+}
+
+/* Called once the injected header is in the document. */
+function v2InitNavPanels() {
+    document.querySelectorAll('.v2-nav-group').forEach(group => {
+        const trigger = group.querySelector('.v2-nav-trigger');
+        if (!trigger) return;
+        /* A small grace period on leaving: the panel sits 14px below the
+           trigger, and without it crossing that gap closes the thing you are
+           reaching for. */
+        let shut;
+        const cancel = () => { clearTimeout(shut); shut = null; };
+        group.addEventListener('pointerenter', e => {
+            if (e.pointerType === 'touch') return;   // touch gets the click instead
+            cancel();
+            v2SetNavPanel(trigger, true);
+        });
+        group.addEventListener('pointerleave', e => {
+            if (e.pointerType === 'touch') return;
+            cancel();
+            shut = setTimeout(() => v2SetNavPanel(trigger, false), 160);
+        });
+        /* Leaving by keyboard closes it too, but only once focus has landed
+           somewhere outside — focusout fires before the new target is known. */
+        group.addEventListener('focusout', () => {
+            setTimeout(() => {
+                if (!group.contains(document.activeElement)) v2SetNavPanel(trigger, false);
+            }, 0);
+        });
+    });
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.v2-nav-group')) v2CloseNavPanels();
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') v2CloseNavPanels();
+    });
 }
 
 function toggleLandingNav() {

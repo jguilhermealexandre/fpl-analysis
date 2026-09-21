@@ -2853,6 +2853,77 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     gap: 18px;
 }
 
+/* ===== The Features panel =====
+
+   A trigger in the bar and a panel under it, rather than six more links on
+   one line. The six pages below are the product, and a visitor who does not
+   already know what "Rivals" or "Scout's Desk" mean cannot choose between
+   them from a flat bar; grouped and described, they can.
+
+   Opens on hover and on click, because both are real: a pointer expects
+   hover, a keyboard and a touch screen only have the click. Hover alone
+   would make it unreachable without a mouse. */
+.v2-nav-group { position: relative; display: flex; align-items: center; }
+.v2-nav-label { display: none; }
+
+.v2-nav-trigger {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 0; border: 0; background: none; cursor: pointer;
+    font: inherit; color: inherit;
+}
+.v2-nav-caret { width: 14px; height: 14px; transition: transform 160ms ease; }
+.v2-nav-trigger[aria-expanded="true"] .v2-nav-caret { transform: rotate(180deg); }
+
+.v2-nav-panel {
+    position: absolute; top: calc(100% + 14px); left: -20px; z-index: 70;
+    display: grid; grid-template-columns: auto auto; gap: 26px;
+    padding: 18px;
+    border: 1px solid var(--border-emphasis);
+    border-radius: 18px;
+    background: var(--surface-1);
+    box-shadow: 0 24px 48px -20px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .10);
+}
+[data-theme="dark"] .v2-nav-panel { box-shadow: 0 26px 60px -18px rgba(0, 0, 0, .8); }
+/* [hidden] is display:none, which the grid above would otherwise win. */
+.v2-nav-panel[hidden] { display: none; }
+
+.v2-nav-cols {
+    display: grid; grid-template-columns: repeat(2, minmax(140px, 1fr));
+    grid-auto-flow: column; grid-template-rows: repeat(3, auto);
+    gap: 2px 8px; align-content: start;
+}
+/* Qualified by .v2-landing-links, which carries its own `a` rule at the same
+   specificity and later in the file — nowrap, 13px, 600 — and was winning
+   every property these two share. That rule is right for the bar; inside the
+   panel the links are a list, not chips on one line. */
+.v2-landing-links .v2-nav-cols a {
+    padding: 9px 12px; border-radius: 9px;
+    font-size: 14px; font-weight: 500; white-space: nowrap;
+    color: var(--text-secondary); text-decoration: none;
+}
+.v2-landing-links .v2-nav-cols a:hover { background: var(--surface-2); color: var(--text-primary); }
+
+.v2-nav-cards { display: grid; grid-template-columns: repeat(2, 182px); gap: 10px; }
+/* Same reason as above: white-space has to be put back, or the description
+   runs off the side of the card instead of wrapping onto its second line. */
+.v2-landing-links .v2-nav-card {
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 12px; border-radius: 13px;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-2);
+    text-decoration: none; white-space: normal;
+    transition: border-color 150ms ease, background 150ms ease;
+}
+.v2-landing-links .v2-nav-card:hover { border-color: var(--color-primary); background: var(--color-primary-muted); }
+.v2-nav-card-art {
+    display: block; height: 62px; margin-bottom: 6px; overflow: hidden;
+    border-radius: 8px; background: var(--surface-1);
+    color: var(--color-primary);
+}
+.v2-nav-card-art svg { width: 100%; height: 100%; display: block; }
+.v2-nav-card-t { font-size: 13.5px; font-weight: 650; color: var(--text-primary); }
+.v2-nav-card-d { font-size: 11.5px; line-height: 1.45; color: var(--text-muted); }
+
 .v2-landing-logo {
     flex-shrink: 0;
     font-family: var(--font-display);
@@ -2977,6 +3048,23 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 /* Below the breakpoint the links drop out of the bar and open under it. */
 @media (max-width: 900px) {
     .v2-landing-inner { gap: 10px; padding-inline: 14px; }
+    /* In the mobile sheet there is nothing to drop down from, so the panel
+       stops floating and becomes the section it always was. */
+    .v2-nav-group { display: block; width: 100%; }
+    .v2-nav-trigger { display: none; }
+    .v2-nav-label {
+        display: block; margin-bottom: 4px;
+        font-size: 11px; font-weight: 700; letter-spacing: .12em;
+        text-transform: uppercase; color: var(--text-muted);
+    }
+    .v2-nav-panel,
+    .v2-nav-panel[hidden] {
+        display: block; position: static; padding: 0;
+        border: 0; background: none; box-shadow: none;
+    }
+    .v2-nav-cols { display: block; }
+    .v2-nav-cols a { display: block; padding: 0; white-space: normal; }
+    .v2-nav-cards { display: none; }
     .v2-landing-burger { display: inline-flex; order: 3; }
     .v2-landing-actions { order: 2; margin-left: auto; }
     .v2-landing-links {
