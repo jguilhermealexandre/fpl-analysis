@@ -239,6 +239,11 @@
 /* A feature row is one row in a run of them, so it takes the smaller gap —
    the larger one separates parts of the page, not items within a part. */
 .lp-section.is-tight { padding-top: var(--lp-gap-sm); }
+/* The last section carries the page's trailing space as padding. As a margin
+   on the closing card it collapsed straight out of .v2-main-content, which
+   ended the page's gradient early and showed a band of bare body colour
+   between the content and the footer. */
+.lp-section.is-last { padding-bottom: var(--lp-gap-sm); }
 .lp-section-head { max-width: 680px; }
 .lp-section-head.is-centred { margin-inline: auto; text-align: center; }
 .lp-section-head .lp-h2 { margin-top: 14px; }
@@ -268,6 +273,35 @@
 }
 .lp-cell-ico svg, .lp-cell-ico .icon { width: 17px; height: 17px; }
 .lp-cell p { margin-top: 7px; font-size: 13.5px; line-height: 1.6; color: var(--text-muted); }
+
+/* ===== How it works =====
+   Numbered, because this genuinely is a sequence: you cannot get insights
+   before the squad is loaded. The number is the marker the eye follows, so it
+   is the only thing here drawn in the accent. */
+.lp-steps {
+    list-style: none; margin: 48px 0 0; padding: 0;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(20px, 2.4vw, 32px);
+    counter-reset: none;
+}
+.lp-step {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 28px 24px 30px;
+    border: 1px solid var(--border-emphasis);
+    border-radius: 16px;
+    background: var(--surface-1);
+}
+.lp-step-n {
+    width: 32px; height: 32px; margin-bottom: 4px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: var(--color-primary-muted);
+    color: var(--color-primary-text, var(--color-primary));
+    font-family: var(--font-display, 'Space Grotesk', sans-serif);
+    font-size: 14px; font-weight: 700;
+}
+.lp-step p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--text-muted); letter-spacing: var(--lp-track-body); }
+@media (max-width: 860px) { .lp-steps { grid-template-columns: 1fr; gap: 16px; } }
 
 /* ===== Feature showcases =====
 
@@ -331,7 +365,7 @@
 .lp-frame.is-pan { overflow: hidden; }
 .lp-frame.is-pan img {
     display: block; width: 100%; height: auto;
-    animation: lp-pan 26s ease-in-out infinite alternate;
+    animation: lp-pan 14s ease-in-out infinite alternate;
     animation-play-state: paused;
 }
 .lp-reveal.is-in .lp-frame.is-pan img,
@@ -341,10 +375,15 @@
     to   { transform: translateY(calc(-1 * var(--lp-pan, 14%))); }
 }
 /* How far each frame can travel is how much taller its shot is than the
-   window, so it is set per shape rather than globally. */
-.lp-feature .lp-frame { height: 340px; --lp-pan: 11%; }
+   window, so it is set per shape rather than globally.
+
+   Only the two big shots move — the hero and the wide block. Five things
+   drifting at once is a page that will not sit still to be read; two is a
+   page with something alive on it. The small frames in the split row and the
+   pair are stills. */
+.lp-feature .lp-frame { height: 340px; }
 .lp-wide .lp-frame { height: clamp(300px, 38vw, 520px); --lp-pan: 26%; }
-.lp-duo-card .lp-frame { height: 260px; --lp-pan: 13%; }
+.lp-duo-card .lp-frame { height: 260px; }
 
 /* A screen you can look at properly: hovering stops the drift rather than
    fighting you for the part you were reading. */
@@ -377,7 +416,7 @@
 
 /* ===== Closing call to action ===== */
 .lp-close {
-    margin: var(--lp-gap) 0 var(--lp-gap-sm);
+    margin: var(--lp-gap) 0 0;
     padding: clamp(48px, 6vw, 76px) var(--lp-gutter);
     text-align: center; position: relative; overflow: hidden;
     border: 1px solid var(--border-emphasis);
@@ -406,7 +445,7 @@
     .lp-feature.is-reverse .lp-feature-text { order: 0; }
     .lp-duo { grid-template-columns: 1fr; gap: 44px; }
     .lp-feature .lp-frame { height: 280px; }
-    .lp-duo-card .lp-frame { height: 300px; --lp-pan: 20%; }
+    .lp-duo-card .lp-frame { height: 300px; }
 }
 @media (max-width: 640px) {
     :root { --lp-gutter: 16px; }

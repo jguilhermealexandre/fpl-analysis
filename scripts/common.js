@@ -3,13 +3,17 @@
    ============================================ */
 
 // ===== THEME =====
+/* Dark is the default, not the OS's preference.
+ *
+ * This site is a dark product — the pitch, the verdict colours and the
+ * fixture scale were all chosen against a dark ground — so somebody arriving
+ * with a light OS was being shown the version we did not design first. The
+ * toggle still works and still persists; the only thing that changed is what
+ * happens before anyone has chosen. */
 (function initTheme() {
     const saved = localStorage.getItem('theme');
-    if (saved === 'dark' || saved === 'light') {
-        document.documentElement.setAttribute('data-theme', saved);
-    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-    }
+    document.documentElement.setAttribute(
+        'data-theme', (saved === 'dark' || saved === 'light') ? saved : 'dark');
 })();
 
 function toggleTheme() {
@@ -2263,7 +2267,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=334')
+    fetch('footer.html?v=335')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

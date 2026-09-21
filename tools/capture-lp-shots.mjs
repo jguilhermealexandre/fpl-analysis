@@ -37,7 +37,10 @@ const SHOTS = [
        this one is served a synthetic league built from the local bootstrap. */
     { file: 'rivals', url: '/fpl-league-rivals.html', wait: 10000, sel: '#tab-insights, .tab-content.active',
       vw: 1500, vh: 1100, max: 900, league: '1', mockLeague: true },
-    { file: 'wizard', url: '/fpl-my-team-analysis.html#transfers', wait: 10000, sel: '.tw-shell, #transferDisplay, .twc-panel',
+    /* .v2-main-content, not the viewport: the fallback clip was taking the
+       app's sidebar with it, and a landing page wants the product, not a
+       picture of the furniture around it. */
+    { file: 'wizard', url: '/fpl-my-team-analysis.html#transfers', wait: 10000, sel: '#transferDisplay, .v2-main-content',
       vw: 1500, vh: 1100, max: 900 }
 ];
 
@@ -111,6 +114,10 @@ async function mockLeague(page) {
     });
 }
 
+/* `node tools/capture-lp-shots.mjs wizard` re-takes one shot; no argument
+   takes them all. */
+const ONLY = process.argv[2] || '';
+
 const browser = await chromium.launch({
     executablePath: process.env.PW_CHROME || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
 });
@@ -119,6 +126,7 @@ fs.mkdirSync(OUT, { recursive: true });
 
 for (const theme of ['dark', 'light']) {
     for (const shot of SHOTS) {
+        if (ONLY && shot.file !== ONLY) continue;
         const page = await browser.newPage({
             viewport: { width: shot.vw, height: shot.vh },
             deviceScaleFactor: 2
