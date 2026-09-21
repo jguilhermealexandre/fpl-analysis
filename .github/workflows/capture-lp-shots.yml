@@ -1,0 +1,95 @@
+name: Capture landing page screenshots
+
+# The landing page shows the product through screenshots of the real screens
+# (tools/capture-lp-shots.mjs). Those screens draw every player's portrait and
+# club crest from resources.premierleague.com at render time, so a capture is
+# only as good as the network it was taken on: taken somewhere that host is
+# unreachable, the faces fall back to initials and the crests to three-letter
+# abbreviations, and that is what gets frozen into the PNG. The live site is
+# unaffected — a browser fetches those images itself — which is exactly why
+# the landing page can look wrong while the dashboard looks right.
+#
+# A runner has open internet, so this is where the captures belong.
+#
+# Run it after any change to the screens themselves, or to the tool.
+
+on:
+  workflow_dispatch:
+    inputs:
+      shot:
+        description: 'One shot by name (squad-status, players, teams, rivals, wizard), or blank for all'
+        type: string
+        default: ''
+
+# Writes assets/lp/ back to main, and nothing else.
+permissions:
+  contents: write
+
+# Shares the data writers' lane so two runs cannot race the branch.
+concurrency:
+  group: fpl-data-write
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # --with-deps shells out to apt and has exited 100 on this image before;
+      # the hosted runner already carries Chromium's shared libraries, so
+      # install the browser alone. Same approach as the news and injury jobs.
+      - name: Install a browser
+        run: npm i --no-save playwright@1 && npx playwright install chromium
+
+      # The tool drives a real page, so it needs the site served. Backgrounded,
+      # then waited on rather than slept past, so a server that fails to come
+      # up fails the step instead of failing the capture confusingly.
+      - name: Serve the site
+        run: |
+          node tools/dev-server.mjs &
+          for i in $(seq 1 30); do
+            if curl -sf -o /dev/null http://localhost:8080/; then echo "up"; exit 0; fi
+            sleep 1
+          done
+          echo "dev server did not start"; exit 1
+
+      # capture-lp-shots.mjs falls back to the Chromium vendored in the dev
+      # sandbox, which is not what `npx playwright install` just put in the
+      # runner's cache — so hand it the path Playwright itself reports.
+      - name: Capture
+        run: |
+          CHROME="$(node -p "require('playwright').chromium.executablePath()")"
+          echo "using $CHROME"
+          PW_CHROME="$CHROME" node tools/capture-lp-shots.mjs ${{ inputs.shot }}
+
+      # A capture that silently produced initials again is worth catching here
+      # rather than on the live page, so report how much of each shot is not
+      # background — a screen full of real portraits is measurably busier than
+      # one full of grey discs. Informational: it prints, it does not fail.
+      - name: Report
+        run: |
+          ls -la assets/lp/
+          node -e "
+            const fs = require('fs');
+            for (const f of fs.readdirSync('assets/lp').sort()) {
+              console.log(f.padEnd(26), (fs.statSync('assets/lp/' + f).size / 1024).toFixed(0) + ' KB');
+            }
+          "
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/lp
+          if git diff --cached --quiet -- assets/lp; then
+            echo "no change"
+            exit 0
+          fi
+          git commit -m "Recapture landing page screenshots - $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git pull --rebase --autostash origin main
+          git push
