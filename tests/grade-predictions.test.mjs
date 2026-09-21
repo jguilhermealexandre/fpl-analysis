@@ -312,3 +312,58 @@ test('gradeAll pools the board by player-round and says the sample is thin', () 
     assert.equal(out.overall.rising.field.meanPoints, 4);   // player 3 alone
     assert.match(out.overall.rising.note, /not significant yet|Nothing here is significant/);
 });
+
+/* ---- sealed rounds and rebuilt ones are different evidence ---------------- */
+
+const sealedSnap = (gw, extra = {}) => ({
+    gw, deadlineTime: '2026-10-10T10:00:00Z', takenAt: '2026-10-10T08:00:00Z',
+    players: [
+        { id: 1, pos: 3, sel: 1, pStart: 0.9, fx: [{ o: 2, h: 1, d: 3 }], xp: 5, ep: 4, ppg: 4, form: 4 },
+        { id: 2, pos: 3, sel: 1, pStart: 0.9, fx: [{ o: 2, h: 1, d: 3 }], xp: 3, ep: 3, ppg: 3, form: 3 }
+    ],
+    ...extra
+});
+const twoRoundBoot = { events: [
+    { id: 6, finished: true, data_checked: true },
+    { id: 7, finished: true, data_checked: true }
+] };
+const twoRoundResults = { players: [
+    { id: 1, history: [{ round: 6, total_points: 8, minutes: 90 }, { round: 7, total_points: 8, minutes: 90 }] },
+    { id: 2, history: [{ round: 6, total_points: 2, minutes: 90 }, { round: 7, total_points: 2, minutes: 90 }] }
+] };
+
+test('a rebuilt round never reaches the sealed figures', () => {
+    /* The page promises nothing is computed from hindsight. A reconstructed
+       round has pre-deadline inputs but a model that has since been edited —
+       and, for Rising Form, rewritten with these results on screen. It is
+       honest to show and dishonest to pool. */
+    const out = gradeAll({
+        boot: twoRoundBoot, playersData: twoRoundResults,
+        snapshots: [sealedSnap(6), sealedSnap(7, { reconstructed: true })]
+    });
+    assert.deepEqual(out.metadata.gameweeksGraded, [6], 'only the sealed round is graded');
+    assert.deepEqual(out.metadata.gameweeksBacktested, [7]);
+    assert.equal(out.rounds.length, 1, 'the published rounds are the sealed ones');
+    assert.equal(out.rounds[0].gw, 6);
+    assert.ok(out.backtest, 'the rebuilt round is published, separately');
+    assert.deepEqual(out.backtest.gameweeks, [7]);
+});
+
+test('with nothing rebuilt there is no backtest section at all', () => {
+    // null, not an empty shell — an empty shell renders as a heading with
+    // nothing under it, which reads as a failure rather than an absence.
+    const out = gradeAll({
+        boot: { events: [{ id: 6, finished: true, data_checked: true }] },
+        playersData: twoRoundResults, snapshots: [sealedSnap(6)]
+    });
+    assert.equal(out.backtest, null);
+});
+
+test('every round says which kind it is, so the page cannot guess wrong', () => {
+    const out = gradeAll({
+        boot: twoRoundBoot, playersData: twoRoundResults,
+        snapshots: [sealedSnap(6), sealedSnap(7, { reconstructed: true })]
+    });
+    assert.equal(out.rounds[0].reconstructed, false);
+    assert.equal(out.backtest.rounds[0].reconstructed, true);
+});

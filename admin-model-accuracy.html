@@ -10,9 +10,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=330">
-    <link rel="stylesheet" href="styles/v2-design.css?v=330">
-    <link rel="stylesheet" href="styles/responsive.css?v=330">
+    <link rel="stylesheet" href="styles/common.css?v=331">
+    <link rel="stylesheet" href="styles/v2-design.css?v=331">
+    <link rel="stylesheet" href="styles/responsive.css?v=331">
     <style>
         /* ===== Chart palette =====
 
@@ -120,6 +120,7 @@
         </header>
 
         <div id="maBanner" class="ma-banner" hidden></div>
+        <div id="maBacktest" class="ma-banner" hidden></div>
         <div id="maTiles" class="ma-tiles"></div>
 
         <div class="ma-section-h">Expected points</div>
@@ -161,6 +162,51 @@
             </figure>
         </div>
 
+        <div class="ma-section-h">Rising Form</div>
+        <div class="ma-figs">
+            <figure class="ma-fig" style="margin:0">
+                <figcaption>
+                    <div class="ma-fig-t">The board against everyone it did not name</div>
+                    <div class="ma-fig-c">Mean points scored by the players Rising Form ranked, against the
+                        mean for every other player with a fixture. The board is tilted towards low ownership,
+                        so read it beside the ownership column in the table rather than on its own.</div>
+                </figcaption>
+                <div class="ma-canvas"><canvas id="maRiseChart"></canvas></div>
+                <div id="maRiseEmpty" class="ma-empty" hidden></div>
+                <details><summary class="ma-table-t">Show the numbers</summary>
+                    <div class="ma-table-w" id="maRiseTable"></div></details>
+            </figure>
+
+            <figure class="ma-fig" style="margin:0">
+                <figcaption>
+                    <div class="ma-fig-t">Did its own order mean anything?</div>
+                    <div class="ma-fig-c">Correlation between where a player was ranked and what he then
+                        scored. Zero is a board in no useful order; above zero means the players nearer the
+                        top did better.</div>
+                </figcaption>
+                <div class="ma-canvas"><canvas id="maRiseCorrChart"></canvas></div>
+                <div id="maRiseCorrEmpty" class="ma-empty" hidden></div>
+                <details><summary class="ma-table-t">Show the numbers</summary>
+                    <div class="ma-table-w" id="maRiseCorrTable"></div></details>
+            </figure>
+        </div>
+
+        <div class="ma-section-h">Captaincy and the top of the board</div>
+        <div class="ma-figs">
+            <figure class="ma-fig" style="margin:0">
+                <figcaption>
+                    <div class="ma-fig-t">How much of the real top twenty we had</div>
+                    <div class="ma-fig-c">Of the twenty players who actually scored most, how many were in our
+                        own top twenty by expected points. Twenty would be perfect; the count matters more than
+                        any single captain pick, which is one draw from the same distribution.</div>
+                </figcaption>
+                <div class="ma-canvas"><canvas id="maCapChart"></canvas></div>
+                <div id="maCapEmpty" class="ma-empty" hidden></div>
+                <details><summary class="ma-table-t">Show the numbers</summary>
+                    <div class="ma-table-w" id="maCapTable"></div></details>
+            </figure>
+        </div>
+
         <div class="ma-section-h">Goals conceded, against the market</div>
         <div class="ma-figs">
             <figure class="ma-fig" style="margin:0">
@@ -190,10 +236,10 @@
         </div>
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=330"></script>
-    <script src="scripts/auth.js?v=330"></script>
-    <script src="scripts/common.js?v=330"></script>
-    <script src="scripts/sidebar-nav.js?v=330"></script>
+    <script src="scripts/error-monitor.js?v=331"></script>
+    <script src="scripts/auth.js?v=331"></script>
+    <script src="scripts/common.js?v=331"></script>
+    <script src="scripts/sidebar-nav.js?v=331"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script>
         /* The quality dashboard.
@@ -490,6 +536,163 @@
                 + (note ? `<div class="ma-maTile-n">${maEsc(note)}</div>` : '') + '</div>';
         }
 
+        // ---- rising form
+
+        /* Why this section can be empty long after expected points is not.
+
+           Rising Form reads a player's last three matches against the two before
+           them, so a board cannot exist until a deadline has five matches behind
+           it — GW6, the first time any player has five rows. The expected-points
+           model needs no such history and is readable from GW1. Saying so beats
+           an empty frame that looks like a failed fetch. */
+        const MA_RISE_FIRST_GW = 6;
+
+        function maRisingRounds(acc) {
+            return ((acc && acc.rounds) || []).filter(r => r.rising && !r.rising.skipped);
+        }
+
+        function maDrawRising(acc) {
+            const usable = maRisingRounds(acc);
+            if (!usable.length) {
+                maEmptyFigure('maRiseChart', 'maRiseEmpty',
+                    `No board has been graded yet. Rising Form compares a player’s last three matches with `
+                    + `the two before them, so the earliest deadline it can read is GW${MA_RISE_FIRST_GW} — `
+                    + 'the first with five matches behind it. Nothing to show until that round is played and checked.');
+                maRenderTable('maRiseTable', [], []);
+                return;
+            }
+            const labels = usable.map(r => `GW${r.gw}`);
+            const board = usable.map(r => r.rising.board.meanPoints);
+            const field = usable.map(r => r.rising.field.meanPoints);
+
+            MA.charts.push(new Chart(document.getElementById('maRiseChart'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        maLine('Ranked by us', board, maCssVar('--viz-1')),
+                        maLine('Everyone else', field, maCssVar('--viz-3'))
+                    ]
+                },
+                options: maBaseOptions({
+                    scales: {
+                        x: { grid: { color: maCssVar('--viz-grid'), drawTicks: false }, border: { display: false },
+                            ticks: { color: maCssVar('--text-secondary'), font: { size: 10.5 } } },
+                        y: { beginAtZero: true, title: { display: true, text: 'Mean points',
+                                color: maCssVar('--text-secondary'), font: { size: 10.5 } },
+                            grid: { color: maCssVar('--viz-grid'), drawTicks: false }, border: { display: false },
+                            ticks: { color: maCssVar('--text-secondary'), font: { size: 10.5 } } }
+                    }
+                })
+            }));
+
+            maRenderTable('maRiseTable',
+                ['Round', 'On the board', 'Mean pts', 'Returned', 'Mean owned', 'Field mean'],
+                usable.map(r => [`GW${r.gw}`, r.rising.counts.graded, maFmt(r.rising.board.meanPoints),
+                    r.rising.board.returnRate == null ? '—' : r.rising.board.returnRate + '%',
+                    maFmt(r.rising.board.meanOwnership, 1) + '%', maFmt(r.rising.field.meanPoints)]));
+        }
+
+        function maDrawRisingCorr(acc) {
+            const usable = maRisingRounds(acc).filter(r => r.rising.rankCorrelation != null);
+            if (!usable.length) {
+                maEmptyFigure('maRiseCorrChart', 'maRiseCorrEmpty',
+                    `Needs a graded board — the first possible one is GW${MA_RISE_FIRST_GW}.`);
+                maRenderTable('maRiseCorrTable', [], []);
+                return;
+            }
+            const vals = usable.map(r => r.rising.rankCorrelation);
+            /* One series, so no legend box — the figure title names it. Bars
+               rather than a line because each round is its own reading and
+               nothing joins them; the zero line is the thing to read against. */
+            MA.charts.push(new Chart(document.getElementById('maRiseCorrChart'), {
+                type: 'bar',
+                data: {
+                    labels: usable.map(r => `GW${r.gw}`),
+                    datasets: [{
+                        label: 'Rank vs points',
+                        data: vals,
+                        backgroundColor: maCssVar('--viz-1'),
+                        borderRadius: 4,
+                        borderSkipped: false
+                    }]
+                },
+                options: maBaseOptions({
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, border: { display: false },
+                            ticks: { color: maCssVar('--text-secondary'), font: { size: 10.5 } } },
+                        y: { suggestedMin: -1, suggestedMax: 1,
+                            grid: { color: maCssVar('--viz-grid'), drawTicks: false }, border: { display: false },
+                            ticks: { color: maCssVar('--text-secondary'), font: { size: 10.5 } } }
+                    }
+                })
+            }));
+            maRenderTable('maRiseCorrTable', ['Round', 'Players', 'Rank correlation'],
+                usable.map(r => [`GW${r.gw}`, r.rising.counts.graded, maFmt(r.rising.rankCorrelation)]));
+        }
+
+        // ---- captaincy
+
+        function maDrawCaptaincy(acc) {
+            const usable = ((acc && acc.rounds) || []).filter(r => r.captaincy && r.captaincy.top20Hits != null);
+            if (!usable.length) {
+                maEmptyFigure('maCapChart', 'maCapEmpty',
+                    'No round has been graded yet. This counts how many of the real top twenty we had in ours.');
+                maRenderTable('maCapTable', [], []);
+                return;
+            }
+            MA.charts.push(new Chart(document.getElementById('maCapChart'), {
+                type: 'bar',
+                data: {
+                    labels: usable.map(r => `GW${r.gw}`),
+                    datasets: [{
+                        label: 'Of the real top 20',
+                        data: usable.map(r => r.captaincy.top20Hits),
+                        backgroundColor: maCssVar('--viz-1'),
+                        borderRadius: 4,
+                        borderSkipped: false
+                    }]
+                },
+                options: maBaseOptions({
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, border: { display: false },
+                            ticks: { color: maCssVar('--text-secondary'), font: { size: 10.5 } } },
+                        y: { beginAtZero: true, suggestedMax: 20,
+                            grid: { color: maCssVar('--viz-grid'), drawTicks: false }, border: { display: false },
+                            ticks: { color: maCssVar('--text-secondary'), font: { size: 10.5 } } }
+                    }
+                })
+            }));
+            maRenderTable('maCapTable', ['Round', 'Top-20 overlap', 'Our captain scored', 'Best available'],
+                usable.map(r => [`GW${r.gw}`, `${r.captaincy.top20Hits} of 20`,
+                    r.captaincy.ourPick ? maFmt(r.captaincy.ourPick.scored, 0) : '—',
+                    r.captaincy.bestAvailable ? maFmt(r.captaincy.bestAvailable.scored, 0) : '—']));
+        }
+
+        /* Rebuilt rounds are not sealed ones, and the page must never let a
+           reader mistake the two. The headline figures above read sealed rounds
+           only — the grader keeps them apart — so this says what else exists. */
+        function maDrawBacktest(acc) {
+            const bt = acc && acc.backtest;
+            const el = document.getElementById('maBacktest');
+            if (!el) return;
+            if (!bt || !bt.gameweeks || !bt.gameweeks.length) { el.hidden = true; return; }
+            const st = bt.populations && bt.populations.starters;
+            const sealed = ((acc.metadata && acc.metadata.gameweeksGraded) || []).length;
+            // "Plus" only reads correctly when there is something to add to.
+            el.innerHTML = `<strong>${sealed ? 'Plus ' : ''}${bt.gameweeks.length} reconstructed round`
+                + `${bt.gameweeks.length === 1 ? '' : 's'} (GW${bt.gameweeks.join(', GW')})`
+                + `${sealed ? ', not counted above' : ', and nothing sealed yet'}.</strong> `
+                + 'These were played before the archive existed. The inputs are the committed data files as '
+                + 'they stood before each deadline, so no result leaked in — but the model is the one running '
+                + 'today, not the one the site served then. '
+                + (st ? `MAE ${maFmt(st.mae)} over ${st.n.toLocaleString()} player-fixtures. ` : '')
+                + 'Read it as a check that the arithmetic is sound, not as evidence the model works.';
+            el.hidden = false;
+        }
+
         function maDrawHeadline(acc, odds) {
             const graded = (acc && acc.metadata && acc.metadata.gameweeksGraded) || [];
             const s = acc && acc.overall && acc.overall.populations && acc.overall.populations.starters;
@@ -540,6 +743,10 @@
             maDrawError(MA.data.acc);
             maDrawCalibration(MA.data.acc);
             maDrawBias(MA.data.acc);
+            maDrawBacktest(MA.data.acc);
+            maDrawRising(MA.data.acc);
+            maDrawRisingCorr(MA.data.acc);
+            maDrawCaptaincy(MA.data.acc);
             maDrawOdds(MA.data.odds);
             maDrawVenue(MA.data.odds);
             if (typeof initIcons === 'function') initIcons();

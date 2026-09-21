@@ -21,6 +21,10 @@ on:
         description: 'Snapshot now even if the deadline is not close (the deadline must still be in the future)'
         type: boolean
         default: false
+      backfill:
+        description: 'Also rebuild finished rounds that were never sealed (reconstructed, not sealed — see tools/backfill-predictions.mjs)'
+        type: boolean
+        default: false
 
 # Writes data/model-log/ and nothing else.
 permissions:
@@ -38,6 +42,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          # The backfill reads the committed data files as they were before past
+          # deadlines, which means it needs the history, not just the tip.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v5
         with:
@@ -53,6 +61,17 @@ jobs:
       # because nothing downstream can tell the difference a season later.
       - name: Record what the model is predicting
         run: node tools/snapshot-predictions.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+
+      # Opt-in, and never automatic. This rebuilds rounds that were played
+      # before the archive existed, from the committed data files as they stood
+      # before each deadline — real inputs, but today's model, so every file it
+      # writes is marked reconstructed and the grader keeps it out of the sealed
+      # figures. It refuses to touch a round that was genuinely sealed.
+      #
+      # It needs history, hence fetch-depth 0 above: the inputs come from git.
+      - name: Rebuild rounds that were never sealed
+        if: github.event.inputs.backfill == 'true'
+        run: node tools/backfill-predictions.mjs
 
       - name: Commit and push if a round was sealed
         run: |

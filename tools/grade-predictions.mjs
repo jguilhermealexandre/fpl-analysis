@@ -323,6 +323,12 @@ export function gradeRound(snapshot, actuals) {
     const starters = rows.filter(r => r.pStart >= 0.5);
     return {
         gw: snapshot.gw,
+        /* Sealed or rebuilt, and never quietly mixed. A sealed round is evidence:
+           the model that wrote it is the model the site was serving. A rebuilt
+           one shares its inputs but not its model — see
+           tools/backfill-predictions.mjs — so it belongs in a different column. */
+        reconstructed: snapshot.reconstructed === true,
+        sources: snapshot.sources || null,
         deadlineTime: snapshot.deadlineTime,
         takenAt: snapshot.takenAt,
         model: snapshot.model || null,
@@ -371,8 +377,14 @@ export function gradeAll({ boot, playersData, snapshots }) {
 
     /* Season to date pools the player-fixtures rather than averaging the
        rounds. Averaging would weight a blank-hit gameweek of 200 players the
-       same as a full one of 600, which is not what "so far this season" means. */
-    const pooled = rounds.flatMap(r => r.rows);
+       same as a full one of 600, which is not what "so far this season" means.
+
+       Only the sealed rounds. The headline on the accuracy page claims nothing
+       is computed from hindsight, and that claim survives only if a rebuilt
+       round — whose model has seen the results — never reaches it. */
+    const sealedRounds = rounds.filter(r => !r.reconstructed);
+    const rebuiltRounds = rounds.filter(r => r.reconstructed);
+    const pooled = sealedRounds.flatMap(r => r.rows);
     const overall = {};
     for (const [name, , test] of POPULATIONS) {
         const subset = pooled.filter(test);
@@ -388,7 +400,7 @@ export function gradeAll({ boot, playersData, snapshots }) {
     /* Rising Form across the rounds that carried a board. Pooled the same way
        the xP figures are — by player-round rather than by averaging rounds — so
        a week with eight names does not count as much as a week with sixty. */
-    const risingRounds = rounds.map(r => r.rising).filter(r => r && !r.skipped);
+    const risingRounds = sealedRounds.map(r => r.rising).filter(r => r && !r.skipped);
     const weighted = (pick, count) => {
         let num = 0, den = 0;
         for (const r of risingRounds) {
@@ -420,7 +432,8 @@ export function gradeAll({ boot, playersData, snapshots }) {
     return {
         metadata: {
             lastUpdated: null,               // stamped by the caller
-            gameweeksGraded: rounds.map(r => r.gw),
+            gameweeksGraded: sealedRounds.map(r => r.gw),
+            gameweeksBacktested: rebuiltRounds.map(r => r.gw),
             playerFixturesGraded: pooled.length,
             skipped,
             populations: Object.fromEntries(POPULATIONS.map(([n, why]) => [n, why])),
@@ -437,7 +450,40 @@ export function gradeAll({ boot, playersData, snapshots }) {
             calibration: calibration(pooledStarters),
             rising: risingOverall
         },
-        rounds: rounds.map(published)
+        /* Rebuilt rounds, scored the same way and kept apart. Everything here
+           used inputs from before its deadline, so no result leaked in — but the
+           model is the current one, which has been edited since those rounds were
+           played. Rising Form was rewritten with this season on screen, so its
+           numbers here are optimistic by construction. Read this as "is the
+           arithmetic sane", never as "the model beats the market". */
+        backtest: rebuiltRounds.length ? {
+            gameweeks: rebuiltRounds.map(r => r.gw),
+            playerFixtures: rebuiltRounds.reduce((t, r) => t + r.rows.length, 0),
+            populations: (() => {
+                const pool = rebuiltRounds.flatMap(r => r.rows);
+                const out = {};
+                for (const [name, , test] of POPULATIONS) {
+                    const subset = pool.filter(test);
+                    if (subset.length) out[name] = scoreOne(subset);
+                }
+                return out;
+            })(),
+            byPosition: (() => {
+                const pool = rebuiltRounds.flatMap(r => r.rows).filter(r => r.pStart >= 0.5);
+                const out = {};
+                for (const [code, label] of Object.entries(POSITIONS)) {
+                    const subset = pool.filter(r => r.pos === Number(code));
+                    if (subset.length) out[label] = scoreOne(subset);
+                }
+                return out;
+            })(),
+            calibration: calibration(rebuiltRounds.flatMap(r => r.rows).filter(r => r.pStart >= 0.5)),
+            rounds: rebuiltRounds.map(published),
+            note: 'Reconstructed, not sealed. Inputs are the committed data files as they stood '
+                + 'before each deadline; the model is the one running today. Not evidence that the '
+                + 'model works — evidence that it is arithmetically sound over real inputs.'
+        } : null,
+        rounds: sealedRounds.map(published)
     };
 }
 

@@ -32,8 +32,8 @@
    was made.
 
    Usage:
-     node tools/snapshot-predictions.mjs [--within-hours 3] [--force] [--dry-run]
-       --within-hours  how close to the deadline to start writing (default 3)
+     node tools/snapshot-predictions.mjs [--within-hours 24] [--force] [--dry-run]
+       --within-hours  how close to the deadline to start writing (default 24)
        --force         ignore that window; the deadline must still be in the future
        --dry-run       compute and report, write nothing
 */
@@ -43,7 +43,15 @@ import { REPO_ROOT, buildProjector, projectOne, PARTS } from './xp-engine-host.m
 import { rankRisingForm } from './rising-form-host.mjs';
 
 const OUT_DIR = 'data/model-log';
-const DEFAULT_WINDOW_H = 3;
+/* How close to a deadline this starts writing.
+
+   Was three hours, which made the archive one bad afternoon away from a
+   permanent hole: the job runs hourly, so three consecutive failed or delayed
+   runs lost a gameweek that nothing can ever rebuild. Twenty-four costs nothing
+   — every run inside the window overwrites the last, so the stored file is
+   still the final look before the deadline — and turns three chances into
+   twenty-four. */
+const DEFAULT_WINDOW_H = 24;
 
 // More than this share of players failing to project means the engine is broken,
 // not that a few players are odd. Write nothing and go red.
