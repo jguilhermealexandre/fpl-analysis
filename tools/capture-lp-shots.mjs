@@ -46,8 +46,13 @@ const SHOTS = [
        for: the news page was showing the Transfer Wizard and the Scout's Desk
        was showing the player board. A feature page that illustrates itself with
        a different screen is a small lie, and an easy one to stop telling. */
+    /* JPEG, alone among these. Every other shot is flat UI — large areas of
+       one colour, crisp type — which is what PNG is good at. The news page is
+       mostly press photography, and PNG stores a photograph at ten times the
+       size of a JPEG nobody can tell apart: 2.3MB against roughly 200KB, for
+       the hero image of a page on a phone. */
     { file: 'news', url: '/fpl-news.html', wait: 10000, sel: '.news-grid, .v2-section, main',
-      vw: 1500, vh: 1100, max: 900 },
+      vw: 1500, vh: 1100, max: 900, jpeg: true },
     { file: 'scouts-desk', url: '/fpl-scouts-desk.html', wait: 10000, sel: '.sd-feed, .sd-page, main',
       vw: 1500, vh: 1100, max: 900 },
 
@@ -165,16 +170,17 @@ for (const theme of ['dark', 'light']) {
                     .forEach(e => { e.style.display = 'none'; });
             });
             const el = await page.$(shot.sel);
-            const name = `${OUT}/${shot.file}-${theme}.png`;
+            const name = `${OUT}/${shot.file}-${theme}.${shot.jpeg ? 'jpg' : 'png'}`;
+            const fmt = shot.jpeg ? { type: 'jpeg', quality: 86 } : {};
             const box = el && await el.boundingBox();
             if (box) {
-                await page.screenshot({ path: name, clip: {
+                await page.screenshot({ path: name, ...fmt, clip: {
                     x: Math.max(0, box.x), y: Math.max(0, box.y),
                     width: Math.min(box.width, shot.vw - Math.max(0, box.x)),
                     height: Math.min(box.height, shot.max || box.height)
                 } });
             } else {
-                await page.screenshot({ path: name, clip: { x: 0, y: 0, width: shot.vw, height: shot.max || 700 } });
+                await page.screenshot({ path: name, ...fmt, clip: { x: 0, y: 0, width: shot.vw, height: shot.max || 700 } });
             }
             console.log(`${box ? 'ok  ' : 'page'} ${name} ${box ? Math.round(box.width) + 'x' + Math.round(Math.min(box.height, shot.max || box.height)) : ''}`);
         } catch (e) {
