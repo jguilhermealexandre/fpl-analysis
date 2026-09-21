@@ -11,9 +11,21 @@
  * toggle still works and still persists; the only thing that changed is what
  * happens before anyone has chosen. */
 (function initTheme() {
-    const saved = localStorage.getItem('theme');
-    document.documentElement.setAttribute(
-        'data-theme', (saved === 'dark' || saved === 'light') ? saved : 'dark');
+    let saved = null, hasTeam = false;
+    try {
+        saved = localStorage.getItem('theme');
+        hasTeam = !!localStorage.getItem('fpl_team_id');
+    } catch (e) { /* private mode — dark is the safe default either way */ }
+
+    /* Without a team this is the marketing shell, and that is dark, full
+       stop: there is no toggle in its header to change it with. The app
+       keeps the choice, because somebody reading a pitch at their desk in
+       daylight is a different case from somebody looking at a landing page.
+       Decided here rather than after the shell loads, so the page does not
+       paint light and then correct itself. */
+    const mode = !hasTeam ? 'dark'
+        : ((saved === 'dark' || saved === 'light') ? saved : 'dark');
+    document.documentElement.setAttribute('data-theme', mode);
 })();
 
 function toggleTheme() {
@@ -2267,7 +2279,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=338')
+    fetch('footer.html?v=339')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

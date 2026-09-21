@@ -41,7 +41,17 @@ const SHOTS = [
        app's sidebar with it, and a landing page wants the product, not a
        picture of the furniture around it. */
     { file: 'wizard', url: '/fpl-my-team-analysis.html#transfers', wait: 10000, sel: '#transferDisplay, .v2-main-content',
-      vw: 1500, vh: 1100, max: 900 }
+      vw: 1500, vh: 1100, max: 900 },
+
+    /* The two nav cards. A detail rather than a whole screen: the art box in
+       a 182px card is about 158x62, so a wide crop of the part that says what
+       the tool is reads, where a shrunk full page would be grey mush. The
+       viewport is narrower on purpose — it makes the panels themselves
+       narrower, so the crop is of content rather than of whitespace. */
+    { file: 'card-transfer', url: '/fpl-my-team-analysis.html#transfer', wait: 11000,
+      sel: '.tw-plans, .twc-panel, #transferDisplay', vw: 1000, vh: 900, max: 300 },
+    { file: 'card-lineup', url: '/fpl-my-team-analysis.html#lineup', wait: 11000,
+      sel: '.lw-cap-grid, .lw-cap-bars, #lineupDisplay', vw: 1000, vh: 900, max: 300 }
 ];
 
 
