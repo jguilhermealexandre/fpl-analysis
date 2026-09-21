@@ -7,11 +7,12 @@
 
 .doc-hero {
     /* Matches .doc-layout below so the display heading and the prose share an
-       edge. The heading itself is the site-wide .v2-page-heading treatment. */
+       edge. Left-aligned: a centred heading over left-aligned prose leaves two
+       different left edges on one page, and the prose is the longer of them. */
     max-width: 1180px;
     margin: 0 auto;
     padding: var(--space-12) 24px var(--space-6);
-    text-align: center;
+    text-align: left;
 }
 .doc-hero-icon {
     display: inline-flex; align-items: center; justify-content: center;
@@ -20,19 +21,25 @@
     margin-bottom: var(--space-4);
 }
 .doc-hero-icon .icon { width: 28px; height: 28px; }
-.doc-hero h1 {
-    font-family: var(--font-display); font-size: 34px; font-weight: 700;
-    color: var(--text-primary); line-height: 1.15;
-    /* These pages carry the site-wide .v2-page-heading treatment, which forces
-       a ~104px display size and line-height 0.95 with !important. At that size
-       the line box is shorter than the glyphs, so the following paragraph sits
-       flush against the descenders. Explicit clearance, and !important to match
-       the idiom of the rule it sits alongside. */
-    margin-bottom: 40px !important;
+/* Two site-wide rules already claim this heading with !important, so winning
+   it is a question of specificity, not of adding another !important:
+   common.css sets `body h1:not(.hero-title):not(.lp-h1)` to 28px (0,2,2) and
+   v2-design.css sets `.v2-theme .v2-page-heading` (0,2,0). Naming the theme,
+   the hero and the heading's own class puts this at (0,3,2), above both. */
+.v2-theme .doc-hero h1.v2-page-heading {
+    font-family: var(--font-display) !important;
+    font-size: clamp(38px, 4.4vw, 56px) !important;
+    letter-spacing: -0.035em !important;
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+    line-height: 1.12 !important;
+    /* The line box at this size is shorter than the glyphs, so without
+       explicit clearance the lead paragraph sits on the descenders. */
+    margin-bottom: 28px !important;
 }
 .doc-hero p {
-    font-size: 15px; color: var(--text-secondary);
-    max-width: 620px; margin: 0 auto; line-height: 1.65;
+    font-size: 17px; color: var(--text-secondary);
+    max-width: 680px; margin: 0; line-height: 1.7;
 }
 .doc-updated {
     display: inline-block; margin-top: var(--space-4); padding: 4px 12px;
@@ -47,7 +54,10 @@
     display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: var(--space-10);
     align-items: start;
 }
-.doc-toc { position: sticky; top: 24px; }
+/* Clear of the fixed header, not of the viewport. At top:24px it stuck 24px
+   from the top of the window — which is 40px underneath a 64px header, so it
+   slid behind the bar instead of stopping below it. */
+.doc-toc { position: sticky; top: calc(64px + 20px); }
 .doc-toc-title {
     font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
     color: var(--text-muted); margin-bottom: var(--space-3);
@@ -173,7 +183,7 @@ a.doc-contact-card:hover { border-color: var(--color-primary); transform: transl
 }
 @media (max-width: 640px) {
     .doc-hero { padding: var(--space-8) 20px var(--space-4); }
-    .doc-hero h1 { font-size: 26px; }
+    .v2-theme .doc-hero h1.v2-page-heading { font-size: 34px !important; }
     .doc-layout { padding: 0 20px var(--space-8); }
     .doc-section > h2 { font-size: 20px; }
 }

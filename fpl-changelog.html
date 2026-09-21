@@ -4,78 +4,87 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="manifest.json">
-    <meta name="description" content="Fixes and features as they ship on EasyFPL, newest first.">
+    <meta name="description" content="Weekly changes to the EasyFPL analysis tools: what is new, and what was fixed. Newest first.">
     <link rel="canonical" href="https://easyfpl.com/fpl-changelog">
     <title>Changelog — What Changed on EasyFPL</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=340">
-    <link rel="stylesheet" href="styles/v2-design.css?v=340">
-    <link rel="stylesheet" href="styles/responsive.css?v=340">
-    <link rel="stylesheet" href="styles/landing.css?v=340">
+    <link rel="stylesheet" href="styles/common.css?v=341">
+    <link rel="stylesheet" href="styles/v2-design.css?v=341">
+    <link rel="stylesheet" href="styles/responsive.css?v=341">
+    <link rel="stylesheet" href="styles/landing.css?v=341">
     <style>
-        .cl-list { margin-top: 44px; max-width: 760px; display: flex; flex-direction: column; gap: 0; }
-        .cl-entry { display: grid; grid-template-columns: 116px minmax(0, 1fr);
-                    gap: 28px; padding: 26px 0; border-top: 1px solid var(--border-subtle); }
-        .cl-entry:first-child { border-top: 0; padding-top: 0; }
-        .cl-when { font-family: var(--font-mono, monospace); font-size: 12.5px;
-                   color: var(--text-muted); padding-top: 3px; }
-        .cl-what h3 { margin: 0; }
-        .cl-what ul { margin: 12px 0 0; padding-left: 18px;
-                      display: flex; flex-direction: column; gap: 7px; }
-        .cl-what li { font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
-        @media (max-width: 620px) { .cl-entry { grid-template-columns: 1fr; gap: 10px; } }
+        .lp-hero + .lp-section { padding-top: 64px; }
+        /* A reading measure, centred in the column rather than flush left in
+           it. Left-aligned at 780px it left the right half of a 1400px page
+           empty while the hero and the closing panel stayed centred, so the
+           page had two different ideas about where its middle was. */
+        .cl-list { max-width: 820px; margin: 8px auto 0; }
+        .cl-week { display: grid; grid-template-columns: 132px minmax(0, 1fr);
+                   gap: 32px; padding: 32px 0; border-top: 1px solid var(--border-subtle); }
+        .cl-week:first-child { border-top: 0; padding-top: 0; }
+        .cl-when { padding-top: 4px; }
+        .cl-when b { display: block; font-family: var(--font-display, 'Space Grotesk', sans-serif);
+                     font-size: 14px; font-weight: 650; color: var(--text-primary); }
+        .cl-when span { display: block; margin-top: 3px; font-size: 12px; color: var(--text-muted); }
+        .cl-what h3 { margin: 0 0 4px; }
+        .cl-item { display: grid; grid-template-columns: 74px minmax(0, 1fr);
+                   gap: 14px; padding: 11px 0; align-items: start; }
+        /* The tag says what kind of change it is, which is the thing a reader
+           is actually scanning for: a fix they were waiting on, or something
+           new to go and look at. */
+        .cl-tag { font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
+                  text-transform: uppercase; padding: 3px 0; color: var(--text-muted); }
+        .cl-tag.is-new { color: var(--color-primary-text, var(--color-primary)); }
+        .cl-tag.is-fix { color: var(--color-warning); }
+        .cl-item p { margin: 0; font-size: 14.5px; line-height: 1.6; color: var(--text-secondary); }
+        .cl-item p b { color: var(--text-primary); font-weight: 600; }
+        @media (max-width: 680px) {
+            .cl-week { grid-template-columns: 1fr; gap: 12px; }
+            .cl-item { grid-template-columns: 1fr; gap: 2px; }
+        }
     </style>
 </head>
 <body>
     <!-- Header is fetch-injected by loadSidebarNav() (scripts/sidebar-nav.js) -->
     <div class="v2-main-content">
     <section class="lp-hero lp-wrap">
-        <span class="lp-badge"><i data-lucide="git-commit" class="icon"></i> Updated continuously</span>
+        <span class="lp-badge"><i data-lucide="git-commit" class="icon"></i> Updated weekly</span>
         <h1 class="lp-h1">What changed, and when</h1>
-        <p class="lp-lead">Fixes and features as they ship. Data refreshes run several times a day and
-            are not listed here — this is what changed about the site itself.</p>
+        <p class="lp-lead">Changes to the analysis tools, a week at a time — what is new, and what was
+            wrong and now is not. Data refreshes run several times a day and are not listed here.</p>
     </section>
 
     <section class="lp-section lp-wrap">
         <div class="cl-list">
-            <article class="cl-entry">
-                <div class="cl-when">21 Sep 2026</div>
+            <article class="cl-week">
+                <div class="cl-when"><b>Week of 15 Sep</b><span>GW5 – GW6</span></div>
                 <div class="cl-what">
-                    <h3 class="lp-h3">A new landing page, and pages that were missing</h3>
-                    <ul>
-                        <li>Rebuilt the landing page around screenshots of the real product rather than drawings of it.</li>
-                        <li>Added a Features menu so the six analysis pages are choosable rather than listed flat.</li>
-                        <li>Added this changelog, a pricing page, an accuracy page and terms.</li>
-                        <li>The marketing pages are dark, and the app keeps its light/dark choice.</li>
-                        <li>Kept the previous site at <a href="/old-website">/old-website</a>.</li>
-                    </ul>
+                    <h3 class="lp-h3">Rivals gets readable, and the Transfer Wizard stops over-promising</h3>
+                    <div class="cl-item"><div class="cl-tag is-fix">fix</div><div><p>The Transfer Wizard’s transfer cap is now the plan’s own: <b>one</b> under Single, five under Multi, fifteen on a chip. Single was letting you stage five, which is the opposite of what it says it does.</p></div></div><div class="cl-item"><div class="cl-tag is-fix">fix</div><div><p>The transfers counter read "5 / 1 free", which parses as <b>five allowed, one free</b>. It now reads as what it is — five staged, one of them free, the rest at −4.</p></div></div><div class="cl-item"><div class="cl-tag is-fix">fix</div><div><p>A second goalkeeper could appear on the wizard’s overview pitch. The arrangement is validated before it draws.</p></div></div><div class="cl-item"><div class="cl-tag is-new">new</div><div><p><b>Squad Strength</b> puts the pitch beside its read-outs instead of above them, and the Captain Race reads in two columns.</p></div></div><div class="cl-item"><div class="cl-tag is-new">new</div><div><p>Players have faces in the rivals tables, and Your Differentials are player cards rather than bare rows.</p></div></div><div class="cl-item"><div class="cl-tag is-fix">fix</div><div><p>Clicking a player in "Needs a look" now <b>scrolls to their row and pulses it</b> rather than opening a card over the page you were sent to.</p></div></div>
                 </div>
             </article>
-            <article class="cl-entry">
-                <div class="cl-when">20 Sep 2026</div>
+            <article class="cl-week">
+                <div class="cl-when"><b>Week of 8 Sep</b><span>GW3 – GW4</span></div>
                 <div class="cl-what">
-                    <h3 class="lp-h3">Rivals, and a link that points rather than covers</h3>
-                    <ul>
-                        <li>Squad Strength puts the pitch beside its read-outs instead of above them.</li>
-                        <li>Captain Race reads in two columns, with portraits in the tables.</li>
-                        <li>A link from the dashboard now scrolls to the player's row and pulses it, rather than opening a card over the page.</li>
-                        <li>Rising Form ranks the player rather than his club's fixture list.</li>
-                    </ul>
+                    <h3 class="lp-h3">The Scout’s Desk learns to rank the player, not the fixture</h3>
+                    <div class="cl-item"><div class="cl-tag is-fix">fix</div><div><p><b>Rising Form</b> was ranking a player by his club’s fixture list rather than by his own underlying numbers turning. It ranks the player now.</p></div></div><div class="cl-item"><div class="cl-tag is-fix">fix</div><div><p>One team-xG model across the site. Two existed, and they disagreed by up to 6% a club because one summed season totals where the other summed per-gameweek rows.</p></div></div><div class="cl-item"><div class="cl-tag is-new">new</div><div><p>The price ticker reads the room — it shows what is close to changing tonight rather than a loop of everything.</p></div></div><div class="cl-item"><div class="cl-tag is-new">new</div><div><p>Signals on the desk name their icon, and the board is archived each week rather than overwritten.</p></div></div>
                 </div>
             </article>
-            <article class="cl-entry">
-                <div class="cl-when">19 Sep 2026</div>
+            <article class="cl-week">
+                <div class="cl-when"><b>Week of 1 Sep</b><span>GW1 – GW2</span></div>
                 <div class="cl-what">
-                    <h3 class="lp-h3">Transfer Wizard: the cap is the plan's</h3>
-                    <ul>
-                        <li>Single caps at one transfer, Multi at five, and a chip at fifteen — the counter used to allow five under every plan.</li>
-                        <li>"5 / 1 free" now reads as what it is: five staged, one of them free, the rest at −4.</li>
-                        <li>Fixed a second goalkeeper appearing on the overview pitch.</li>
-                        <li>The odds calibration had silently been measuring nothing since the xG engine moved file.</li>
-                    </ul>
+                    <h3 class="lp-h3">Marking the homework</h3>
+                    <div class="cl-item"><div class="cl-tag is-new">new</div><div><p>Every projection is now <b>sealed at the deadline</b> and graded against what actually happened once the round is final. The results feed the <a href="fpl-accuracy.html">accuracy page</a>.</p></div></div><div class="cl-item"><div class="cl-tag is-new">new</div><div><p>The model is scored against FPL’s own <code>ep_next</code> and against points-per-game, so the number has something to beat.</p></div></div><div class="cl-item"><div class="cl-tag is-fix">fix</div><div><p>A wildcard week now correctly <b>freezes</b> the free-transfer bank instead of spending from it.</p></div></div><div class="cl-item"><div class="cl-tag is-fix">fix</div><div><p>The deadline card ends at the countdown; the attention grid that repeated the readiness bar underneath it is gone.</p></div></div>
+                </div>
+            </article>
+            <article class="cl-week">
+                <div class="cl-when"><b>Late August</b><span>Pre-season</span></div>
+                <div class="cl-what">
+                    <h3 class="lp-h3">Getting in, and three ways to spend a transfer</h3>
+                    <div class="cl-item"><div class="cl-tag is-new">new</div><div><p>Your <b>Team ID is typed straight into the header bar</b> rather than behind a button that opens a box to type it in.</p></div></div><div class="cl-item"><div class="cl-tag is-new">new</div><div><p>A dedicated page for linking a squad, and three suggested ways to spend a transfer when you open the wizard.</p></div></div><div class="cl-item"><div class="cl-tag is-fix">fix</div><div><p>Lazy images that never loaded until something looked at them — fixed across the player lists.</p></div></div>
                 </div>
             </article>
         </div>
@@ -84,21 +93,22 @@
     <section class="lp-section lp-wrap">
         <div class="lp-close">
             <h2 class="lp-h2">Something look wrong?</h2>
-            <p class="lp-lead">Bugs get fixed faster when somebody says. There is no form to fill in.</p>
+            <p class="lp-lead">Most of the fixes above started as somebody saying so. There is no form to fill in.</p>
             <div class="lp-cta-row">
                 <a class="lp-btn lp-btn-primary" href="fpl-contact.html">Tell us <i data-lucide="arrow-right" class="icon"></i></a>
+                <a class="lp-btn lp-btn-ghost" href="fpl-accuracy.html">See how accurate it is</a>
             </div>
         </div>
     </section>
 
     </div>
 
-    <script src="scripts/error-monitor.js?v=340"></script>
-    <script src="scripts/auth.js?v=340"></script>
-    <script src="scripts/common.js?v=340"></script>
-    <script src="scripts/push-alerts.js?v=340"></script>
-    <script src="scripts/notifications.js?v=340"></script>
-    <script src="scripts/sidebar-nav.js?v=340"></script>
+    <script src="scripts/error-monitor.js?v=341"></script>
+    <script src="scripts/auth.js?v=341"></script>
+    <script src="scripts/common.js?v=341"></script>
+    <script src="scripts/push-alerts.js?v=341"></script>
+    <script src="scripts/notifications.js?v=341"></script>
+    <script src="scripts/sidebar-nav.js?v=341"></script>
     <script>
         loadSidebarNav();
         initIcons();

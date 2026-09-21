@@ -1165,39 +1165,25 @@ html.v2-theme body {
 }
 
 /* ============================================================
-   DASHBOARD FOOTER
+   FOOTER, IN THE APP SHELL
 
-   The four-column footer is a landing-page component: it exists to
-   introduce the site to someone who has just arrived. Inside the dashboard
-   it earns none of that height. The Tools column is a second copy of the
-   sidebar the manager is already looking at, and the brand block introduces
-   a product they are demonstrably already using. Three things survive
-   because they still do work anywhere: where the data comes from, the two
-   link groups that are *not* in the sidebar, and the legal + freshness line.
+   One footer for the whole site. The dashboard used to get its own — a
+   single compressed row on the page ground, with the Tools column and the
+   brand block hidden, on the argument that a manager already inside the
+   product does not need introducing to it.
 
-   It also stops being a dark slab. On a light dashboard #111827 was the
-   heaviest element on the page and it sat under content it had nothing to
-   do with; a hairline and the page ground put it in the same design as
-   everything above it.
-
-   Scoped away from the logged-out landing on index.html by the same
-   hero-banner test used for the page ground above, so that page keeps the
-   full footer it was designed with. Every rule carries the same prefix
-   rather than being undone afterwards, so there is one description of the
-   dashboard footer rather than two that have to agree.
+   That argument was fine and the result was not: a visitor who reads the
+   landing page and then opens the dashboard meets a different footer, and
+   the site stops looking like one site. Consistency wins. The four-column
+   band in common.css is now what every page renders, and the only thing
+   this block still does is the one difference the app shell genuinely
+   forces — clearing the fixed sidebar.
    ============================================================ */
 
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .site-footer {
-    background: transparent;
-    /* No rule across the top. The footer already separates itself by sitting
-       on the page ground below the last panel, and a full-width hairline under
-       a row of cards reads as the start of something rather than the end. */
-    border-top: none;
-    color: var(--text-muted);
-    margin-top: 36px;
-    /* loadFooter() appends to <body>, outside .v2-main-content, so the
-       footer does not inherit the main column's offset and would otherwise
-       run underneath the fixed sidebar. */
+/* loadFooter() appends to <body>, outside .v2-main-content, so the footer
+   does not inherit the main column's offset and would otherwise run
+   underneath the fixed sidebar. */
+html.v2-shell-app .site-footer {
     margin-left: var(--v2-sidebar-w);
 }
 
@@ -1205,163 +1191,9 @@ html.v2-theme body {
     margin-left: var(--v2-sidebar-w-collapsed);
 }
 
-/* One row instead of a grid: badge on the left, link groups trailing right. */
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-top {
-    max-width: 1440px;
-    padding: 16px var(--v2-page-gutter);
-    display: flex;
-    align-items: center;
-    gap: 12px 28px;
-    flex-wrap: wrap;
-}
-
-/* The Learn/Company groups run inline — title, then its links as a row. */
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col {
-    display: flex;
-    align-items: center;
-    gap: 8px 14px;
-    flex-wrap: wrap;
-    margin: 0;
-}
-
-/* After .footer-col, not before: the two carry equal specificity, so the
-   one that hides has to be the one the cascade reaches last. */
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col--tools,
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-brand-name,
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-tagline {
-    display: none;
-}
-
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col--learn {
-    margin-left: auto;
-}
-
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col-title {
-    margin: 0;
-    font-size: 10px;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
-    opacity: 0.75;
-}
-
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-links {
-    display: flex;
-    /* common.css stacks these into a column for the tall landing footer. */
-    flex-direction: row;
-    align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
-    margin: 0;
-    list-style: none;
-}
-
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-links li {
-    margin: 0;
-}
-
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-links a,
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-mail {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin: 0;
-}
-
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-links a:hover,
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-mail:hover {
-    color: var(--color-primary);
-}
-
-/* The API badge keeps its pill, at the size of the row it now sits in. */
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-api-badge {
-    margin: 0;
-    padding: 5px 12px;
-    font-size: 11.5px;
-    color: var(--color-primary-text);
-    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
-    border: 1px solid color-mix(in srgb, var(--color-primary) 20%, transparent);
-}
-
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-bottom {
-    max-width: 1440px;
-    padding: 12px var(--v2-page-gutter) 16px;
-    border-top: 1px solid var(--border-subtle);
-    font-size: 11.5px;
-    color: var(--text-muted);
-}
-
 @media (max-width: 900px) {
-    .v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .site-footer {
+    html.v2-shell-app .site-footer {
         margin-left: var(--v2-sidebar-w-collapsed);
-    }
-
-    .v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col--learn {
-        margin-left: 0;
-    }
-}
-
-/* ----- Footer: telling the categories from the links -----
-   Inline, the group labels scanned as more links: "FAQ COMPANY Contact Us"
-   read as one run. Three things separate them now — the labels are smaller,
-   tracked wider and lower in contrast; the gap inside a group is tighter
-   than the gap between groups; and a rule sits between the two groups so
-   the boundary is drawn rather than implied.
-
-   The email stops being a link with an icon stuck to it and becomes the
-   pill it always was in intent — which also balances the row, since the
-   API badge is the same shape at the other end of it. */
-
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col-title {
-    font-size: 9.5px;
-    font-weight: 700;
-    /* common.css tracks everything matching [class*="title"] to -0.5px with
-       !important. That rule is aimed at headings; a small-caps category label
-       is the one place on the page that needs tracking to open up rather than
-       tighten, and negative tracking is exactly what made these read as links.
-       The original 1.5px in common.css was being overridden the same way. */
-    letter-spacing: 0.12em !important;
-    opacity: 0.55;
-}
-
-/* Tighter within a group than between groups: 12px against the row's 26px. */
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col {
-    gap: 8px 12px;
-}
-
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-links {
-    gap: 12px;
-}
-
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col--company {
-    border-left: 1px solid var(--border-emphasis);
-    padding-left: 26px;
-}
-
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-mail {
-    margin: 0 0 0 6px;
-    padding: 5px 12px;
-    border: 1px solid var(--border-emphasis);
-    border-radius: var(--radius-full);
-    background: var(--surface-1);
-    color: var(--text-secondary);
-    transition: border-color 160ms ease, color 160ms ease;
-}
-
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-mail:hover {
-    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
-    color: var(--color-primary);
-}
-
-.v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-mail .icon {
-    width: 13px;
-    height: 13px;
-    opacity: 0.7;
-}
-
-/* The divider only makes sense while the groups sit side by side. */
-@media (max-width: 900px) {
-    .v2-theme body:not(:has(.hero-banner:not(.hero-logged-in))) .footer-col--company {
-        border-left: none;
-        padding-left: 0;
     }
 }
 
@@ -2880,11 +2712,17 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 .v2-nav-group { display: flex; align-items: center; }
 .v2-nav-label { display: none; }
 
+/* Same box as the links beside it, so the row has one rhythm and the
+   trigger's own hover matches theirs. */
 .v2-nav-trigger {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 0; border: 0; background: none; cursor: pointer;
-    font: inherit; color: inherit;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 15px; border: 0; border-radius: 8px;
+    background: none; cursor: pointer;
+    font: inherit; color: var(--text-secondary);
+    transition: background 130ms ease, color 130ms ease;
 }
+.v2-nav-trigger:hover,
+.v2-nav-trigger[aria-expanded="true"] { background: var(--surface-2); color: var(--text-primary); }
 .v2-nav-caret { width: 14px; height: 14px; transition: transform 160ms ease; }
 .v2-nav-trigger[aria-expanded="true"] .v2-nav-caret { transform: rotate(180deg); }
 
@@ -2957,11 +2795,14 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 .v2-landing-logo b { color: var(--color-primary); font-weight: 700; }
 
 .v2-landing-links {
-    display: flex; align-items: center; gap: 14px;
+    display: flex; align-items: center; gap: 10px;
     margin-left: 12px;
 }
+/* The padding is the hover target as well as the spacing: at 8px 4px the
+   highlight hugged the word so tightly it read as a mistake rather than a
+   state. */
 .v2-landing-links a {
-    padding: 8px 4px;
+    padding: 10px 15px;
     border-radius: 8px;
     font-size: 13px; font-weight: 600;
     color: var(--text-secondary);

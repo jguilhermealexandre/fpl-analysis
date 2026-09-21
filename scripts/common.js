@@ -2279,7 +2279,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=340')
+    fetch('footer.html?v=341')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
@@ -2311,6 +2311,46 @@ const _lucideReady = new Promise(function(resolve) {
     s.onerror = resolve; // degrade gracefully
     document.head.appendChild(s);
 });
+
+/* Scroll reveal, shared.
+ *
+ * This lived as an inline block in index.html, which was fine while index was
+ * the only page using .lp-reveal. The feature pages reuse styles/landing.css,
+ * and that stylesheet parks a .lp-reveal at opacity 0 until something adds
+ * .is-in — so a page with the markup and without this observer showed its
+ * screenshots as empty space, permanently.
+ *
+ * Two class names because the two stylesheets name the state differently:
+ * .lp-reveal/.is-in in landing.css, .reveal-on-scroll/.revealed in index's own
+ * block. One observer drives both.
+ *
+ * A section already on screen when the observer is created — the first one
+ * always is — gets its class on the first callback, which fires immediately,
+ * so nothing above the fold waits for a scroll that may never come. And with
+ * no IntersectionObserver at all, every target is revealed outright: a missing
+ * animation is a far smaller failure than an invisible page.
+ */
+function initScrollReveal(root) {
+    const scope = root || document;
+    const targets = scope.querySelectorAll('.reveal-on-scroll, .lp-reveal');
+    if (!targets.length) return;
+
+    if (typeof IntersectionObserver === 'undefined') {
+        targets.forEach(el => el.classList.add(
+            el.classList.contains('lp-reveal') ? 'is-in' : 'revealed'));
+        return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add(
+                entry.target.classList.contains('lp-reveal') ? 'is-in' : 'revealed');
+            observer.unobserve(entry.target);
+        });
+    }, { threshold: 0.1 });
+    targets.forEach(el => observer.observe(el));
+}
 
 function initIcons() {
     _lucideReady.then(function() {

@@ -4,51 +4,69 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="manifest.json">
-    <meta name="description" content="EasyFPL grades its own projections against what actually happened and against FPL's own forecast. The results, published every gameweek.">
+    <meta name="description" content="How EasyFPL projects points — minutes, expected goals, clean sheets and bonus — and how those projections score against FPL's own forecast, graded every gameweek.">
     <link rel="canonical" href="https://easyfpl.com/fpl-accuracy">
-    <title>How Accurate Is EasyFPL? Model Results, Graded Every Gameweek</title>
+    <title>How Accurate Is EasyFPL? The Model, and Its Results</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=340">
-    <link rel="stylesheet" href="styles/v2-design.css?v=340">
-    <link rel="stylesheet" href="styles/responsive.css?v=340">
-    <link rel="stylesheet" href="styles/landing.css?v=340">
+    <link rel="stylesheet" href="styles/common.css?v=341">
+    <link rel="stylesheet" href="styles/v2-design.css?v=341">
+    <link rel="stylesheet" href="styles/responsive.css?v=341">
+    <link rel="stylesheet" href="styles/landing.css?v=341">
     <style>
-        /* The scoreboard. Four figures, and each one names what it is measured
-           against — a number with no baseline beside it is a claim, not a
-           result. */
+        /* A marketing page's first section follows its own hero, so it does not
+           need the full between-parts gap the landing page uses. */
+        .lp-hero + .lp-section { padding-top: 72px; }
+
         .ac-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px;
                    background: var(--border-subtle); border: 1px solid var(--border-subtle);
                    border-radius: 16px; overflow: hidden; margin-top: 40px; }
         .ac-cell { background: var(--surface-bg); padding: 24px 22px 26px; }
         .ac-n { font-family: var(--font-display, 'Space Grotesk', sans-serif);
                 font-size: 34px; font-weight: 700; line-height: 1;
-                letter-spacing: -0.03em; color: var(--color-primary-text, var(--color-primary)); }
+                letter-spacing: -0.03em !important; color: var(--color-primary-text, var(--color-primary)); }
         .ac-n.is-empty { color: var(--text-muted); font-size: 22px; }
         .ac-k { margin-top: 9px; font-size: 13px; font-weight: 650; color: var(--text-primary); }
         .ac-sub { margin-top: 4px; font-size: 12px; line-height: 1.5; color: var(--text-muted); }
         @media (max-width: 900px) { .ac-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         @media (max-width: 520px) { .ac-grid { grid-template-columns: 1fr; } }
 
-        /* The honest state. Grading starts when the season has rounds to
-           grade, and until then this says so rather than showing zeroes
-           dressed up as results. */
         .ac-pending { display: flex; gap: 12px; align-items: flex-start;
-                      margin-top: 28px; padding: 16px 18px;
+                      margin-top: 24px; padding: 16px 18px;
                       border: 1px solid var(--border-emphasis); border-radius: 12px;
                       background: var(--surface-1); font-size: 13.5px; line-height: 1.6;
                       color: var(--text-secondary); }
         .ac-pending b { color: var(--text-primary); }
 
-        .ac-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-                    gap: 20px; margin-top: 40px; }
-        .ac-step { padding: 24px 22px; border: 1px solid var(--border-emphasis);
-                   border-radius: 16px; background: var(--surface-1); }
-        .ac-step h3 { margin: 12px 0 0; }
-        .ac-step p { margin: 8px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--text-muted); }
-        @media (max-width: 860px) { .ac-steps { grid-template-columns: 1fr; } }
+        /* The model, one term at a time. A number down the side, because this
+           genuinely is an order: minutes gate everything after them. */
+        .ac-terms { margin-top: 44px; display: flex; flex-direction: column; gap: 0; }
+        .ac-term { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 26px;
+                   padding: 30px 0; border-top: 1px solid var(--border-subtle); }
+        .ac-term:first-child { border-top: 0; padding-top: 0; }
+        .ac-term-n { font-family: var(--font-display, 'Space Grotesk', sans-serif);
+                     font-size: 13px; font-weight: 700; letter-spacing: .1em !important;
+                     color: var(--color-primary-text, var(--color-primary)); padding-top: 4px; }
+        .ac-term h3 { margin: 0; font-size: 19px; }
+        .ac-term p { margin: 10px 0 0; font-size: 14.5px; line-height: 1.7; color: var(--text-secondary); }
+        /* The formula, set as one. It is the clearest thing on the page for a
+           reader who wants it and skippable for one who does not. */
+        .ac-math { margin-top: 14px; padding: 14px 16px; border-radius: 10px;
+                   border: 1px solid var(--border-emphasis); background: var(--surface-1);
+                   font-family: var(--font-mono, monospace); font-size: 13px;
+                   color: var(--text-primary); overflow-x: auto; white-space: nowrap;
+                   letter-spacing: 0 !important; }
+        @media (max-width: 620px) { .ac-term { grid-template-columns: minmax(0, 1fr); gap: 8px; } }
+
+        .ac-limits { margin-top: 40px; display: grid;
+                     grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+        .ac-limit { padding: 22px 20px; border-radius: 14px;
+                    border: 1px solid var(--border-emphasis); background: var(--surface-1); }
+        .ac-limit b { display: block; font-size: 14px; color: var(--text-primary); }
+        .ac-limit p { margin: 7px 0 0; font-size: 13px; line-height: 1.6; color: var(--text-muted); }
+        @media (max-width: 860px) { .ac-limits { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -57,8 +75,9 @@
     <section class="lp-hero lp-wrap">
         <span class="lp-badge"><i data-lucide="target" class="icon"></i> Graded every gameweek</span>
         <h1 class="lp-h1">We mark our own homework, in public</h1>
-        <p class="lp-lead">Every projection this site makes is scored against what actually happened, and
-            measured against the Premier League's own forecast. If we are not beating it, this page says so.</p>
+        <p class="lp-lead">Every projection this site makes is written down before kick-off, scored
+            against what actually happened, and measured against the Premier League's own forecast.
+            If we are not beating it, this page says so.</p>
     </section>
 
     <section class="lp-section lp-wrap">
@@ -75,37 +94,156 @@
 
     <section class="lp-section lp-wrap">
         <div class="lp-section-head">
-            <span class="lp-eyebrow"><i data-lucide="scale" class="icon"></i> Why it is worth reading</span>
-            <h2 class="lp-h2">A number is only as good as what it is compared with</h2>
-            <p class="lp-lead">Anyone can publish a projection. The question is whether it beats the
-                thing you already had for free — so that is what we measure against.</p>
+            <span class="lp-eyebrow"><i data-lucide="lightbulb" class="icon"></i> The one idea</span>
+            <h2 class="lp-h2">Almost every fantasy model fails the same way</h2>
+            <p class="lp-lead">It treats a small sample as settled fact. A striker scores twice on the
+                opening day and becomes a two-goal-a-game striker. A keeper makes five saves and is
+                projected for five every week. A £12.0m midfielder has one quiet afternoon and drops
+                below a £5.5m one.</p>
+            <p class="lp-lead" style="margin-top:14px;">EasyFPL refuses that. Every rate it uses is
+                pulled back toward a prior — a sensible expectation for a player of that type, at that
+                price, in that role — and released toward his own numbers only as fast as he earns it.
+                Three good games move a projection a little. Fifteen move it a lot.</p>
         </div>
-        <div class="ac-steps">
-            <div class="ac-step">
+    </section>
+
+    <section class="lp-section lp-wrap">
+        <div class="lp-section-head">
+            <span class="lp-eyebrow"><i data-lucide="layers" class="icon"></i> How a projection is built</span>
+            <h2 class="lp-h2">Five terms, in the order they matter</h2>
+        </div>
+        <div class="ac-terms">
+            <article class="ac-term">
+                <div class="ac-term-n">01</div>
+                <div>
+                    <h3 class="lp-h3">Minutes gate everything else</h3>
+                    <p>A player who does not play scores nothing, so every other term is scaled by how likely he is
+        to start and how long he lasts. Minutes alone cannot tell a starter from a substitute — ninety
+        minutes across one start and ninety across three cameos look identical, and the second player
+        is not a 92% starter. The official data publishes a starts count, so the model uses that rate
+        directly and lets minutes per game refine it.</p>
+                    <div class="ac-math">p_start = w × (starts / games) + (1 − w) × minutes_signal,&nbsp;&nbsp; w = min(1, games / 3)</div>
+                </div>
+            </article>
+            <article class="ac-term">
+                <div class="ac-term-n">02</div>
+                <div>
+                    <h3 class="lp-h3">Attacking returns, regressed</h3>
+                    <p>Goals and assists come from expected goals and expected assists per ninety, not from what has
+        gone in. Finishing is noisy over ten matches and xG is not, so the model leans on the chances a
+        player gets and the quality of them, then pulls that toward the prior for his position and
+        price until the sample is big enough to trust.</p>
+                    
+                </div>
+            </article>
+            <article class="ac-term">
+                <div class="ac-term-n">03</div>
+                <div>
+                    <h3 class="lp-h3">Clean sheets are a distribution, not a guess</h3>
+                    <p>A clean sheet is simply no goals conceded, which makes it the zero bucket of a Poisson
+        distribution at the expected goals against for that specific match. The expected goals against
+        comes from the opponent model — your club's defensive rating at that venue against that
+        opponent's attack at the opposite venue, blended with what has actually been conceded once
+        there is a sample worth blending.</p>
+                    <div class="ac-math">P(clean sheet) = e^(−xGA)</div>
+                </div>
+            </article>
+            <article class="ac-term">
+                <div class="ac-term-n">04</div>
+                <div>
+                    <h3 class="lp-h3">Bonus runs on a slower clock</h3>
+                    <p>Bonus gets a ten-match window where everything else gets five, for two reasons. It is lumpier
+        — a player takes all three or none, where expected goals accrues in fractions. And it is partly
+        double-counted: the bonus system is driven by the clean sheets, saves, goals and assists the
+        model has already projected, so leaning on past bonus pays a good game twice. On the fast clock,
+        one three-bonus night was enough to make a £4.5m goalkeeper the highest-projecting keeper in the
+        game.</p>
+                    
+                </div>
+            </article>
+            <article class="ac-term">
+                <div class="ac-term-n">05</div>
+                <div>
+                    <h3 class="lp-h3">The opponent, at that venue</h3>
+                    <p>Every fixture is rated both ways: what your club creates against what the opponent concedes,
+        home and away kept separate because they are not the same team. That is what turns a
+        five-gameweek fixture run into a number rather than a colour.</p>
+                    
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="lp-section lp-wrap">
+        <div class="lp-section-head">
+            <span class="lp-eyebrow"><i data-lucide="scale" class="icon"></i> How it is scored</span>
+            <h2 class="lp-h2">A number is only as good as what it is compared with</h2>
+            <p class="lp-lead">Anyone can publish a projection. The question is whether it beats what you
+                already had for free — so that is what we measure against.</p>
+        </div>
+        <div class="lp-grid" style="margin-top:40px;">
+            <div class="lp-cell">
                 <span class="lp-cell-ico"><i data-lucide="lock" class="icon"></i></span>
                 <h3 class="lp-h3">Locked before kick-off</h3>
                 <p>Every projection is written down at the deadline and never touched again. Grading a
-                    forecast you were allowed to edit afterwards measures nothing.</p>
+                    forecast you were allowed to edit afterwards measures nothing at all.</p>
             </div>
-            <div class="ac-step">
+            <div class="lp-cell">
                 <span class="lp-cell-ico"><i data-lucide="git-compare" class="icon"></i></span>
-                <h3 class="lp-h3">Against a real baseline</h3>
+                <h3 class="lp-h3">Against two real baselines</h3>
                 <p>Scored beside FPL's own <code>ep_next</code> and beside points-per-game. Beating
                     nothing is easy; beating the number already on the official site is the test.</p>
             </div>
-            <div class="ac-step">
+            <div class="lp-cell">
                 <span class="lp-cell-ico"><i data-lucide="users" class="icon"></i></span>
-                <h3 class="lp-h3">Split by who you would actually pick</h3>
-                <p>Reported for every player, for likely starters, and for the players managers own —
-                    an average flattered by deep-bench nobodies is not the average you play with.</p>
+                <h3 class="lp-h3">Split by who you would pick</h3>
+                <p>Reported for every player, for likely starters, and for players managers actually
+                    own — an average flattered by deep-bench nobodies is not the one you play with.</p>
             </div>
+        </div>
+    </section>
+
+    <section class="lp-section lp-wrap">
+        <div class="lp-section-head">
+            <span class="lp-eyebrow"><i data-lucide="alert-triangle" class="icon"></i> Honestly</span>
+            <h2 class="lp-h2">What it cannot do</h2>
+            <p class="lp-lead">A model that claims no weaknesses is hiding them. These are ours.</p>
+        </div>
+        <div class="ac-limits">
+            <div class="ac-limit">
+                <b>It cannot read a press conference</b>
+                <p>Rotation a manager has decided but not announced is invisible to it. That is what the
+                    news feed and the fitness flags are for.</p>
+            </div>
+            <div class="ac-limit">
+                <b>It cannot price a one-off</b>
+                <p>A penalty taker changing, a new signing's first start, a tactical switch — all are
+                    sample sizes of zero, and a prior is the best it can offer.</p>
+            </div>
+            <div class="ac-limit">
+                <b>It cannot make football predictable</b>
+                <p>A good projection beaten by a bad week is not a broken model. It is one round. The
+                    scoreboard above is measured over a season for that reason.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="lp-section lp-wrap">
+        <div class="lp-section-head">
+            <span class="lp-eyebrow"><i data-lucide="database" class="icon"></i> The inputs</span>
+            <h2 class="lp-h2">Official data, and nothing else</h2>
+            <p class="lp-lead">Everything comes from the official Fantasy Premier League API. No
+                scraping, no private feed, nothing typed in by hand. The core dataset is rebuilt every
+                four hours — timed to catch overnight price changes and Thursday and Friday press
+                conferences — and read live while matches are on, so the pitch and the league tables
+                reflect what is happening now. Every page's footer says how long ago that was.</p>
         </div>
     </section>
 
     <section class="lp-section lp-wrap">
         <div class="lp-close">
             <h2 class="lp-h2">Read the whole method</h2>
-            <p class="lp-lead">Nothing here is a black box. The model, the inputs and the known
+            <p class="lp-lead">Nothing here is a black box. The model, every input and the known
                 weaknesses are written out in full.</p>
             <div class="lp-cta-row">
                 <a class="lp-btn lp-btn-primary" href="fpl-methodology.html">Methodology <i data-lucide="arrow-right" class="icon"></i></a>
@@ -116,22 +254,21 @@
 
     </div>
 
-    <script src="scripts/error-monitor.js?v=340"></script>
-    <script src="scripts/auth.js?v=340"></script>
-    <script src="scripts/common.js?v=340"></script>
-    <script src="scripts/push-alerts.js?v=340"></script>
-    <script src="scripts/notifications.js?v=340"></script>
-    <script src="scripts/sidebar-nav.js?v=340"></script>
+    <script src="scripts/error-monitor.js?v=341"></script>
+    <script src="scripts/auth.js?v=341"></script>
+    <script src="scripts/common.js?v=341"></script>
+    <script src="scripts/push-alerts.js?v=341"></script>
+    <script src="scripts/notifications.js?v=341"></script>
+    <script src="scripts/sidebar-nav.js?v=341"></script>
     <script>
         loadSidebarNav();
         initIcons();
         loadFooter();
 
-        /* The figures come from data/model-accuracy.json, which the grading
-           job rewrites after every round. The page renders whatever is in it,
-           including nothing: a season that has not been graded yet gets a
-           sentence saying so rather than four zeroes pretending to be
-           results. */
+        /* The figures come from data/model-accuracy.json, which the grading job
+           rewrites after every round. The page renders whatever is in it,
+           including nothing: a season with no graded rounds gets a sentence
+           saying so rather than four zeroes pretending to be results. */
         (function renderAccuracy() {
             const grid = document.getElementById('acGrid');
             const pending = document.getElementById('acPending');
