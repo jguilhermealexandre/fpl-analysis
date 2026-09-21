@@ -114,7 +114,10 @@ test('a clean sheet is a return for a defender and not for a midfielder', () => 
         player(2, 1, 2, { position: 3 })       // midfielder
     ];
     const l = tickerLiveSquad(squad, live, round(4, DONE, DONE), 4);
-    assert.deepEqual(l.returns.map(r => r.name), ['P1']);
+    /* Spread into a host array first. The script under test is evaluated in a
+       vm, so anything it maps carries that sandbox's Array.prototype and
+       deepEqual refuses it: "same structure but not reference-equal". */
+    assert.deepEqual([...l.returns.map(r => r.name)], ['P1']);
 });
 
 /* ---- what each mode says ---- */

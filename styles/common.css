@@ -1751,8 +1751,16 @@ body :is(
     letter-spacing: var(--tracking-xl) !important;
 }
 
-/* All tool-page headers match the dashboard greeting. */
-body h1:not(.hero-title),
+/* All tool-page headers match the dashboard greeting.
+
+   The exclusions are the two headings that are not tool-page headers: the
+   old hero's .hero-title, and the landing page's .lp-h1. Every declaration
+   here is !important, so without an exemption this block decides a landing
+   headline's size, weight, family, alignment and display — a 68px centred
+   display face came out as 28px of flex, left-aligned, with the spaces
+   around its <span> collapsed because each text node had become a flex
+   item. */
+body h1:not(.hero-title):not(.lp-h1),
 .page-title,
 .news-page-title {
     display: flex;
@@ -1800,7 +1808,7 @@ body h1:not(.hero-title) > .icon,
         --tracking-md: 0;
     }
 
-    body h1:not(.hero-title),
+    body h1:not(.hero-title):not(.lp-h1),
     .page-title,
     .news-page-title {
         gap: 0;

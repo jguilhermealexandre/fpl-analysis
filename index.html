@@ -23,9 +23,10 @@
     <meta name="twitter:title" content="EasyFPL — Free FPL Analysis Tools">
     <meta name="twitter:description" content="Free Fantasy Premier League analysis tools — player stats, fixture difficulty, transfer planner, team insights, and AI-powered recommendations.">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=331">
-    <link rel="stylesheet" href="styles/v2-design.css?v=331">
-    <link rel="stylesheet" href="styles/responsive.css?v=331">
+    <link rel="stylesheet" href="styles/common.css?v=332">
+    <link rel="stylesheet" href="styles/v2-design.css?v=332">
+    <link rel="stylesheet" href="styles/responsive.css?v=332">
+    <link rel="stylesheet" href="styles/landing.css?v=332">
     <style>
 
         /* ===== HERO BANNER ===== */
@@ -56,6 +57,14 @@
         }
         html.has-team #heroPersonalized {
             display: block !important;
+        }
+
+        /* The shell the personalized hero lives in, and nothing else does: the
+           landing hero sits above it now rather than inside it. Without a team
+           there is nothing in here to draw, and it has a 600px minimum and a
+           gradient of its own. */
+        html:not(.has-team) .hero-banner {
+            display: none;
         }
 
         .hero-banner.hero-logged-in,
@@ -3631,24 +3640,24 @@
          The ?v= here is rewritten by `npm run stamp` along with every other asset
          reference. It has to stay identical to the <script src> below or the file
          is fetched twice; `npm run check:preload` fails the build if it drifts. -->
-    <link rel="preload" as="script" href="scripts/error-monitor.js?v=331">
-    <link rel="preload" as="script" href="scripts/price-watch.js?v=331">
-    <link rel="preload" as="script" href="scripts/xp-engine.js?v=331">
-    <link rel="preload" as="script" href="scripts/odds-panel.js?v=331">
-    <link rel="preload" as="script" href="scripts/live-gw.js?v=331">
-    <link rel="preload" as="script" href="scripts/matchday.js?v=331">
-    <link rel="preload" as="script" href="scripts/market-panel.js?v=331">
-    <link rel="preload" as="script" href="scripts/eo-layer.js?v=331">
-    <link rel="preload" as="script" href="scripts/readiness.js?v=331">
-    <link rel="preload" as="script" href="scripts/push-alerts.js?v=331">
-    <link rel="preload" as="script" href="scripts/notifications.js?v=331">
-    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=331">
-    <link rel="preload" as="script" href="scripts/auth.js?v=331">
-    <link rel="preload" as="script" href="scripts/lineup-store.js?v=331">
-    <link rel="preload" as="script" href="scripts/injury-feed.js?v=331">
-    <link rel="preload" as="script" href="scripts/scouts-art.js?v=331">
-    <link rel="preload" as="script" href="scripts/common.js?v=331">
-    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=331">
+    <link rel="preload" as="script" href="scripts/error-monitor.js?v=332">
+    <link rel="preload" as="script" href="scripts/price-watch.js?v=332">
+    <link rel="preload" as="script" href="scripts/xp-engine.js?v=332">
+    <link rel="preload" as="script" href="scripts/odds-panel.js?v=332">
+    <link rel="preload" as="script" href="scripts/live-gw.js?v=332">
+    <link rel="preload" as="script" href="scripts/matchday.js?v=332">
+    <link rel="preload" as="script" href="scripts/market-panel.js?v=332">
+    <link rel="preload" as="script" href="scripts/eo-layer.js?v=332">
+    <link rel="preload" as="script" href="scripts/readiness.js?v=332">
+    <link rel="preload" as="script" href="scripts/push-alerts.js?v=332">
+    <link rel="preload" as="script" href="scripts/notifications.js?v=332">
+    <link rel="preload" as="script" href="scripts/transfer-engine.js?v=332">
+    <link rel="preload" as="script" href="scripts/auth.js?v=332">
+    <link rel="preload" as="script" href="scripts/lineup-store.js?v=332">
+    <link rel="preload" as="script" href="scripts/injury-feed.js?v=332">
+    <link rel="preload" as="script" href="scripts/scouts-art.js?v=332">
+    <link rel="preload" as="script" href="scripts/common.js?v=332">
+    <link rel="preload" as="script" href="scripts/sidebar-nav.js?v=332">
     <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -3770,126 +3779,52 @@
         <div class="price-ticker-track" id="priceTickerTrack"></div>
     </div>
 
+    <!-- Generic hero content (logged-out state) -->
+    <!-- The IDs are load-bearing: the has-team CSS at the top of this
+         file and activateTeamPage()/onTeamIdCleared() both find these
+         sections by id to swap the page between its two states. -->
+    <div class="lp-hero lp-wrap" id="heroGeneric">
+        <span class="lp-badge">
+            <i data-lucide="zap" class="icon"></i> 2025/26 Season — Live &amp; Free
+        </span>
+        <h1 class="lp-h1">Your unfair <span class="lp-accent">advantage</span> in FPL</h1>
+        <p class="lp-lead">
+            Join thousands of FPL managers using data-driven insights to climb their
+            mini-leagues. Analyze your squad, find hidden gems, and plan transfers with
+            confidence — completely free.
+        </p>
+        <div class="lp-cta-row">
+            <!-- The way in is the Team ID box again. Accounts exist and
+                 their pages still answer, but they are off the furniture
+                 for now: six thousand people a month use this site with
+                 an id alone, and the front door should be the door they
+                 actually use. -->
+            <a class="lp-btn lp-btn-primary" onclick="openLoginModal()" style="cursor:pointer;">
+                Get started — it's free <i data-lucide="arrow-right" class="icon"></i>
+            </a>
+            <a class="lp-btn lp-btn-ghost" onclick="document.getElementById('howItWorks').scrollIntoView({behavior:'smooth'})" style="cursor:pointer;">
+                See how it works <i data-lucide="chevron-down" class="icon"></i>
+            </a>
+        </div>
+        <p class="lp-hero-note">No password, no email — just your public FPL Team ID.</p>
+    </div>
+
+    <!-- The product, rather than a drawing of it. Both themes ship and
+         the stylesheet shows one; see tools/capture-lp-shots.mjs. -->
+    <div class="lp-wrap" id="heroMockup">
+        <div class="lp-shot-hero">
+            <div class="lp-frame is-cropped">
+                <img class="lp-shot-dark" src="assets/lp/wizard-dark.png" width="3000" height="1800"
+                     alt="The EasyFPL squad price watch, showing which of your players are closest to a price change tonight." loading="eager" decoding="async">
+                <img class="lp-shot-light" src="assets/lp/wizard-light.png" width="3000" height="1800"
+                     alt="The EasyFPL squad price watch, showing which of your players are closest to a price change tonight." loading="eager" decoding="async">
+            </div>
+        </div>
+    </div>
+
     <!-- Hero Banner -->
     <section class="hero-banner">
         <div class="hero-inner">
-            <!-- Generic hero content (logged-out state) -->
-            <div class="hero-text" id="heroGeneric">
-                <div class="hero-badge">
-                    <i data-lucide="zap" class="icon"></i> 2025/26 Season — Live &amp; Free
-                </div>
-                <h1 class="hero-title">Your Unfair<br><span class="highlight">Advantage in FPL</span></h1>
-                <p class="hero-subtitle">
-                    Join thousands of FPL managers using data-driven insights to climb their mini-leagues. Analyze your squad, find hidden gems, and plan transfers with confidence — completely free.
-                </p>
-                <div class="hero-cta-row">
-                    <!-- The way in is the Team ID box again. Accounts exist and
-                         their pages still answer, but they are off the furniture
-                         for now: six thousand people a month use this site with
-                         an id alone, and the front door should be the door they
-                         actually use. The register push can come back when
-                         there is a reason to funnel people through it. -->
-                    <a class="hero-cta-primary" onclick="openLoginModal()" style="cursor:pointer;">
-                        Get Started — It's Free <i data-lucide="arrow-right" class="icon"></i>
-                    </a>
-                    <a class="hero-cta-secondary" onclick="document.getElementById('howItWorks').scrollIntoView({behavior:'smooth'})" style="cursor:pointer;">
-                        See How It Works <i data-lucide="chevron-down" class="icon"></i>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Dashboard mockup (logged-out visual anchor) -->
-            <div class="hero-mockup" id="heroMockup">
-                <div class="hero-mockup-frame">
-                    <div class="mockup-browser-bar">
-                        <div class="mockup-dots">
-                            <span style="background:#FF5F56;"></span>
-                            <span style="background:#FFBD2E;"></span>
-                            <span style="background:#27C93F;"></span>
-                        </div>
-                        <div class="mockup-url-bar">
-                            <span class="lock-icon"></span> easyfpl.app/my-team-analysis
-                        </div>
-                    </div>
-                    <div class="mockup-body">
-                        <div class="mockup-dash-header">
-                            <div class="mockup-dash-logo">Easy<span>FPL</span></div>
-                            <div class="mockup-dash-tabs">
-                                <div class="mockup-dash-tab active">My Team</div>
-                                <div class="mockup-dash-tab">Players</div>
-                                <div class="mockup-dash-tab">Teams</div>
-                            </div>
-                        </div>
-                        <div class="mockup-squad-grid">
-                            <div class="mockup-sq-row row-star">
-                                <div class="mockup-sq-pos pos-mid">MID</div>
-                                <div class="mockup-sq-name">Salah</div>
-                                <div class="mockup-sq-verdict v-star">STAR</div>
-                                <div class="mockup-sq-fdr">
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-2);">BHA</div>
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-1);">LEI</div>
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-3);">WOL</div>
-                                </div>
-                            </div>
-                            <div class="mockup-sq-row row-hold">
-                                <div class="mockup-sq-pos pos-mid">MID</div>
-                                <div class="mockup-sq-name">Palmer</div>
-                                <div class="mockup-sq-verdict v-hold">HOLD</div>
-                                <div class="mockup-sq-fdr">
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-4);">ARS</div>
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-3);">NEW</div>
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-2);">BOU</div>
-                                </div>
-                            </div>
-                            <div class="mockup-sq-row row-sell">
-                                <div class="mockup-sq-pos pos-fwd">FWD</div>
-                                <div class="mockup-sq-name">Isak</div>
-                                <div class="mockup-sq-verdict v-sell">SELL</div>
-                                <div class="mockup-sq-fdr">
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-5);">LIV</div>
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-4);">CHE</div>
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-4);">ARS</div>
-                                </div>
-                            </div>
-                            <div class="mockup-sq-row row-star">
-                                <div class="mockup-sq-pos pos-def">DEF</div>
-                                <div class="mockup-sq-name">Alexander-Arnold</div>
-                                <div class="mockup-sq-verdict v-star">STAR</div>
-                                <div class="mockup-sq-fdr">
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-2);">IPS</div>
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-2);">SOU</div>
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-3);">WHU</div>
-                                </div>
-                            </div>
-                            <div class="mockup-sq-row row-monitor">
-                                <div class="mockup-sq-pos pos-gk">GK</div>
-                                <div class="mockup-sq-name">Raya</div>
-                                <div class="mockup-sq-verdict v-monitor">WATCH</div>
-                                <div class="mockup-sq-fdr">
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-3);">WHU</div>
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-2);">EVE</div>
-                                    <div class="mockup-fdr-chip" style="background:var(--fdr-4);">MCI</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mockup-stats-bar">
-                            <div class="mockup-stat-item">
-                                <div class="mockup-stat-label">Squad Value</div>
-                                <div class="mockup-stat-val">£103.2m</div>
-                            </div>
-                            <div class="mockup-stat-item">
-                                <div class="mockup-stat-label">ITB</div>
-                                <div class="mockup-stat-val val-green">£1.8m</div>
-                            </div>
-                            <div class="mockup-stat-item">
-                                <div class="mockup-stat-label">Health</div>
-                                <div class="mockup-stat-val val-blue">82</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Personalized hero (logged-in state) -->
             <div class="hero-personalized hidden" id="heroPersonalized">
                 <div class="hero-greeting">
@@ -4009,97 +3944,93 @@
     </section>
 
     <!-- Trust Bar -->
-    <div class="trust-bar" id="trustBar">
-        <div class="trust-bar-inner">
-            <div class="trust-item">
-                <i data-lucide="users" class="icon"></i>
-                <span>Trusted by <strong>10,000+</strong> managers</span>
-            </div>
-            <div class="trust-item">
-                <i data-lucide="refresh-cw" class="icon"></i>
-                <span>Updated <strong>every Gameweek</strong></span>
-            </div>
-            <div class="trust-item">
-                <i data-lucide="heart" class="icon"></i>
-                <span><strong>100% free</strong> forever</span>
-            </div>
-            <div class="trust-item">
-                <i data-lucide="shield-check" class="icon"></i>
-                <span><strong>Official</strong> FPL data</span>
-            </div>
+    <div class="lp-trust" id="trustBar">
+        <div class="lp-trust-inner lp-wrap">
+            <span>Trusted by <strong>10,000+</strong> managers</span>
+            <span>Updated <strong>every Gameweek</strong></span>
+            <span><strong>100% free</strong> forever</span>
+            <span><strong>Official</strong> FPL data</span>
         </div>
     </div>
 
     <!-- First-Visit Welcome Banner (shown once, dismissible) -->
-    <div class="welcome-banner hidden" id="welcomeBanner">
-        <div class="welcome-banner-inner">
-            <div class="welcome-banner-header">
-                <div>
-                    <h2 class="welcome-banner-title">Welcome to EasyFPL</h2>
-                    <p class="welcome-banner-subtitle">Not sure where to start? Here are three ways in — no account needed.</p>
-                </div>
-                <button class="welcome-banner-close" onclick="dismissWelcomeBanner()" aria-label="Dismiss welcome banner">
-                    <i data-lucide="x" style="width:18px;height:18px;"></i>
-                </button>
-            </div>
-            <div class="welcome-paths">
-                <a href="fpl-players-analysis.html" class="welcome-path-card">
-                    <div class="welcome-path-icon" style="background:var(--color-primary-muted);">
-                        <i data-lucide="bar-chart-3" style="width:24px;height:24px;color:var(--color-primary);"></i>
-                    </div>
-                    <div class="welcome-path-label">Browse Player Stats</div>
-                    <div class="welcome-path-desc">No Team ID needed — compare xG, form, and fixtures for every player.</div>
-                </a>
-                <a href="fpl-teams-analysis.html" class="welcome-path-card">
-                    <div class="welcome-path-icon" style="background:rgba(59,130,246,0.10);">
-                        <i data-lucide="layout-grid" style="width:24px;height:24px;color:#3B82F6;"></i>
-                    </div>
-                    <div class="welcome-path-label">Explore Team Analysis</div>
-                    <div class="welcome-path-desc">See defensive and attacking stats for all 20 Premier League teams.</div>
-                </a>
-                <div class="welcome-path-card welcome-path-cta" onclick="openLoginModal()" style="cursor:pointer;">
-                    <div class="welcome-path-icon" style="background:var(--color-wizard-muted);">
-                        <i data-lucide="wand-2" style="width:24px;height:24px;color:var(--color-wizard);"></i>
-                    </div>
-                    <div class="welcome-path-label">Link Your Team</div>
-                    <div class="welcome-path-desc">Enter your Team ID to unlock personalized squad analysis and the Transfer Wizard.</div>
-                </div>
+    <div class="lp-section lp-wrap hidden" id="welcomeBanner">
+        <div class="lp-section-head">
+            <span class="lp-eyebrow"><i data-lucide="compass" class="icon"></i> Start anywhere</span>
+            <h2 class="lp-h2">Three ways in, no account needed</h2>
+        </div>
+        <div class="lp-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+            <a href="fpl-players-analysis.html" class="lp-cell">
+                <span class="lp-cell-ico"><i data-lucide="bar-chart-3" class="icon"></i></span>
+                <h3 class="lp-h3">Browse player stats</h3>
+                <p>No Team ID needed — compare xG, form, and fixtures for every player.</p>
+            </a>
+            <a href="fpl-teams-analysis.html" class="lp-cell">
+                <span class="lp-cell-ico"><i data-lucide="layout-grid" class="icon"></i></span>
+                <h3 class="lp-h3">Explore team analysis</h3>
+                <p>See defensive and attacking stats for all 20 Premier League teams.</p>
+            </a>
+            <div class="lp-cell" onclick="openLoginModal()" style="cursor:pointer;">
+                <span class="lp-cell-ico"><i data-lucide="wand-2" class="icon"></i></span>
+                <h3 class="lp-h3">Link your team</h3>
+                <p>Enter your Team ID to unlock personalized squad analysis and the Transfer Wizard.</p>
             </div>
         </div>
     </div>
 
-    <!-- How It Works -->
-    <section class="how-it-works" id="howItWorks">
-        <div class="how-it-works-inner">
-            <div class="how-it-works-header">
-                <h2>How It Works</h2>
-                <p>From your current squad to green arrows in three simple steps.</p>
+    <!-- The whole product on one screen, for somebody who is not going to read
+         four feature sections to find out what is in here. -->
+    <section class="lp-section lp-wrap" id="howItWorks">
+        <div class="lp-section-head is-centred lp-reveal">
+            <span class="lp-eyebrow"><i data-lucide="layers" class="icon"></i> What you get</span>
+            <h2 class="lp-h2">Every decision your gameweek asks for</h2>
+            <p class="lp-lead">From your current squad to green arrows — the whole week's work, in one place, updated the moment FPL is.</p>
+        </div>
+        <div class="lp-grid lp-reveal">
+            <div class="lp-cell">
+                <span class="lp-cell-ico"><i data-lucide="user-check" class="icon"></i></span>
+                <h3 class="lp-h3">Paste your Team ID</h3>
+                <p>No passwords, no emails. We pull your live squad, bank balance and mini-league straight from the official FPL servers.</p>
             </div>
-            <div class="steps-grid">
-                <div class="step-card reveal-on-scroll">
-                    <div class="step-icon-circle">
-                        <i data-lucide="user-check" class="icon"></i>
-                    </div>
-                    <span class="step-badge">Step 1</span>
-                    <h3>Paste Your Team ID</h3>
-                    <p>No passwords. No emails. Just your public FPL ID and you're in. We pull your live squad, bank balance, and mini-league data straight from the official FPL servers.</p>
-                </div>
-                <div class="step-card reveal-on-scroll">
-                    <div class="step-icon-circle">
-                        <i data-lucide="bar-chart-3" class="icon"></i>
-                    </div>
-                    <span class="step-badge">Step 2</span>
-                    <h3>Get Instant Insights</h3>
-                    <p>Our engine crunches xG, form, fixtures, and price trends to surface exactly what matters — sell/hold verdicts, captaincy picks, and transfer targets.</p>
-                </div>
-                <div class="step-card reveal-on-scroll">
-                    <div class="step-icon-circle">
-                        <i data-lucide="rocket" class="icon"></i>
-                    </div>
-                    <span class="step-badge">Step 3</span>
-                    <h3>Make Winning Moves</h3>
-                    <p>Use the Transfer Wizard to plan your GW like a pro. Step-by-step flow from injuries to captaincy. Green arrows incoming.</p>
-                </div>
+            <div class="lp-cell">
+                <span class="lp-cell-ico"><i data-lucide="activity" class="icon"></i></span>
+                <h3 class="lp-h3">Squad health</h3>
+                <p>A Star, Hold, Monitor or Sell verdict on all fifteen, with the injury flag and the fixture run behind it.</p>
+            </div>
+            <div class="lp-cell">
+                <span class="lp-cell-ico"><i data-lucide="wand-2" class="icon"></i></span>
+                <h3 class="lp-h3">Transfer Wizard</h3>
+                <p>Plan one move or fifteen. It prices the hit, keeps you inside the budget and shows what the squad becomes.</p>
+            </div>
+            <div class="lp-cell">
+                <span class="lp-cell-ico"><i data-lucide="crown" class="icon"></i></span>
+                <h3 class="lp-h3">Captain and lineup</h3>
+                <p>Who to start, who to bench and where the armband is worth most — scored over the gameweek you are picking for.</p>
+            </div>
+            <div class="lp-cell">
+                <span class="lp-cell-ico"><i data-lucide="user-search" class="icon"></i></span>
+                <h3 class="lp-h3">700+ players</h3>
+                <p>Filter by position, price, form and ownership. xG and xA for everyone, and the differentials before they go mainstream.</p>
+            </div>
+            <div class="lp-cell">
+                <span class="lp-cell-ico"><i data-lucide="bar-chart-3" class="icon"></i></span>
+                <h3 class="lp-h3">Fixture difficulty</h3>
+                <p>Attack power, defensive strength and clean-sheet odds for all 20 clubs, so you buy the run and not the name.</p>
+            </div>
+            <div class="lp-cell">
+                <span class="lp-cell-ico"><i data-lucide="trophy" class="icon"></i></span>
+                <h3 class="lp-h3">Mini-league rivals</h3>
+                <p>Every manager's squad beside yours. Ownership gaps, captain choices and the picks that swing the table.</p>
+            </div>
+            <div class="lp-cell">
+                <span class="lp-cell-ico"><i data-lucide="trending-up" class="icon"></i></span>
+                <h3 class="lp-h3">Price watch</h3>
+                <p>Who rises tonight and who drops, ordered by how close they are — so you never lose value by a few hours.</p>
+            </div>
+            <div class="lp-cell">
+                <span class="lp-cell-ico"><i data-lucide="newspaper" class="icon"></i></span>
+                <h3 class="lp-h3">Team news</h3>
+                <p>Injuries, press conferences and the headlines that matter, read against the players you actually own.</p>
             </div>
         </div>
     </section>
@@ -4133,305 +4064,169 @@
 
     </main>
 
-    <!-- Feature Showcase: Transfer Wizard -->
-    <!-- WIZARD DISABLED: kept in DOM (not commented out) because onTeamIdCleared()/activateTeamPage()
-         toggle this id's class list directly; style override below forces it hidden regardless. -->
-    <section class="feature-showcase reveal-on-scroll" id="featureWizard" style="display:none !important;">
-        <div class="feature-showcase-inner">
-            <div class="feature-text">
-                <div class="feature-showcase-badge feature-showcase-badge--wizard">
-                    <i data-lucide="wand-2" class="icon"></i> Flagship Tool
-                </div>
-                <h2>Your Gameweek Prep, Sorted in 5 Minutes</h2>
-                <p class="feature-showcase-desc">The Transfer Wizard walks you through injuries, fixtures, transfers, lineup, and captaincy — step by step. No more second-guessing on deadline day.</p>
-                <ul class="feature-bullets">
-                    <li><i data-lucide="check" class="icon"></i> Spot injured &amp; benched players before the deadline</li>
-                    <li><i data-lucide="check" class="icon"></i> Compare replacements with xG, form, and fixture data</li>
-                    <li><i data-lucide="check" class="icon"></i> Lock in your captain with confidence</li>
-                </ul>
-                <a href="fpl-my-team-analysis.html#transfers" class="feature-cta feature-cta--wizard">
-                    Open Transfer Wizard <i data-lucide="arrow-right" class="icon"></i>
-                </a>
-            </div>
-            <div class="feature-mockup feature-mockup--wizard">
-                <div class="fm-header">
-                    <div class="fm-header-dot" style="background:#8B5CF6;"></div>
-                    <div class="fm-header-title">Transfer Wizard</div>
-                </div>
-                <div class="fm-steps-row">
-                    <div class="fm-step step-done">Injuries</div>
-                    <div class="fm-step step-done">Fixtures</div>
-                    <div class="fm-step step-active">Transfers</div>
-                    <div class="fm-step step-pending">Lineup</div>
-                    <div class="fm-step step-pending">Captain</div>
-                </div>
-                <div style="margin-top:16px;">
-                    <div class="fm-row">
-                        <span class="fm-label">Isak → Haaland</span>
-                        <span class="fm-value" style="color:#34D399;">+2.4 xG</span>
-                    </div>
-                    <div class="fm-row">
-                        <span class="fm-label">Rashford → Mbeumo</span>
-                        <span class="fm-value" style="color:#34D399;">+1.8 xG</span>
-                    </div>
-                    <div class="fm-row">
-                        <span class="fm-label">Save transfer</span>
-                        <span class="fm-value" style="color:#60A5FA;">Recommended</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+    <!-- WIZARD DISABLED: kept in the DOM (not commented out) because
+         onTeamIdCleared()/activateTeamPage() toggle this id's class list
+         directly; the style override forces it hidden regardless. -->
+    <div id="featureWizard" style="display:none !important;"></div>
 
-    <!-- Feature Showcase: My Team Analysis -->
-    <section class="feature-showcase reverse reveal-on-scroll" id="featureMyTeam">
-        <div class="feature-showcase-inner">
-            <div class="feature-text">
-                <div class="feature-showcase-badge feature-showcase-badge--myteam">
-                    <i data-lucide="users" class="icon"></i> Squad Intel
-                </div>
-                <h2>Know Exactly Who to Sell, Hold, or Buy</h2>
-                <p class="feature-showcase-desc">Get a full health check for every player in your squad. See sell/hold/star verdicts, injury flags, fixture runs, and rotation risk at a glance.</p>
-                <ul class="feature-bullets">
+    <section class="lp-section is-tight lp-wrap" id="featureMyTeam">
+        <div class="lp-feature lp-reveal">
+            <div class="lp-feature-text">
+                <span class="lp-eyebrow"><i data-lucide="users" class="icon"></i> Squad Intel</span>
+                <h2 class="lp-h2">Know exactly who to sell, hold, or buy</h2>
+                <p class="lp-body">Get a full health check for every player in your squad. See sell/hold/star verdicts, injury flags, fixture runs, and rotation risk at a glance.</p>
+                <ul class="lp-bullets">
                     <li><i data-lucide="check" class="icon"></i> Star / Hold / Sell verdicts for your entire XV</li>
-                    <li><i data-lucide="check" class="icon"></i> Fixture difficulty color-coded for the next 5 GWs</li>
+                    <li><i data-lucide="check" class="icon"></i> Fixture difficulty colour-coded for the next 5 GWs</li>
                     <li><i data-lucide="check" class="icon"></i> Price change alerts so you never lose value</li>
                 </ul>
-                <a href="fpl-my-team-analysis.html" class="feature-cta feature-cta--myteam">
-                    Analyze My Team <i data-lucide="arrow-right" class="icon"></i>
+                <a href="fpl-my-team-analysis.html" class="lp-btn lp-btn-ghost">
+                    Analyze my team <i data-lucide="arrow-right" class="icon"></i>
                 </a>
             </div>
-            <div class="feature-mockup feature-mockup--myteam">
-                <div class="fm-header">
-                    <div class="fm-header-dot" style="background:var(--color-myteam);"></div>
-                    <div class="fm-header-title">Squad Health</div>
+            <div class="lp-frame">
+                    <img class="lp-shot-dark" src="assets/lp/squad-status-dark.png" alt="The EasyFPL pitch with a verdict on every player, beside the squad status panel." loading="lazy" decoding="async">
+                    <img class="lp-shot-light" src="assets/lp/squad-status-light.png" alt="The EasyFPL pitch with a verdict on every player, beside the squad status panel." loading="lazy" decoding="async">
                 </div>
-                <div class="fm-row">
-                    <span class="fm-label">Salah</span>
-                    <div class="fm-bar-track"><div class="fm-bar-fill" style="width:92%;background:#10B981;"></div></div>
-                    <span class="fm-value" style="color:#34D399;">Star</span>
-                </div>
-                <div class="fm-row">
-                    <span class="fm-label">Palmer</span>
-                    <div class="fm-bar-track"><div class="fm-bar-fill" style="width:70%;background:#3B82F6;"></div></div>
-                    <span class="fm-value" style="color:#60A5FA;">Hold</span>
-                </div>
-                <div class="fm-row">
-                    <span class="fm-label">Isak</span>
-                    <div class="fm-bar-track"><div class="fm-bar-fill" style="width:35%;background:#EF4444;"></div></div>
-                    <span class="fm-value" style="color:#F87171;">Sell</span>
-                </div>
-                <div class="fm-row">
-                    <span class="fm-label">Saka</span>
-                    <div class="fm-bar-track"><div class="fm-bar-fill" style="width:82%;background:#10B981;"></div></div>
-                    <span class="fm-value" style="color:#34D399;">Star</span>
-                </div>
-            </div>
         </div>
     </section>
 
-    <!-- Feature Showcase: Player Explorer -->
-    <section class="feature-showcase reveal-on-scroll" id="featurePlayers">
-        <div class="feature-showcase-inner">
-            <div class="feature-text">
-                <div class="feature-showcase-badge feature-showcase-badge--players">
-                    <i data-lucide="user-search" class="icon"></i> Player Intel
-                </div>
-                <h2>Scout 700+ Players Like a Pro</h2>
-                <p class="feature-showcase-desc">Deep-dive any Premier League player. Compare form, expected goals, bonus points, and value side-by-side to find your next differential.</p>
-                <ul class="feature-bullets">
+    <section class="lp-section is-tight lp-wrap" id="featurePlayers">
+        <div class="lp-feature is-reverse lp-reveal">
+            <div class="lp-feature-text">
+                <span class="lp-eyebrow"><i data-lucide="user-search" class="icon"></i> Player Intel</span>
+                <h2 class="lp-h2">Scout 700+ players like a pro</h2>
+                <p class="lp-body">Deep-dive any Premier League player. Compare form, expected goals, bonus points, and value side-by-side to find your next differential.</p>
+                <ul class="lp-bullets">
                     <li><i data-lucide="check" class="icon"></i> Filter by position, price, form, and ownership</li>
                     <li><i data-lucide="check" class="icon"></i> xG and xA charts for every player</li>
                     <li><i data-lucide="check" class="icon"></i> Spot rising differentials before they go mainstream</li>
                 </ul>
-                <a href="fpl-players-analysis.html" class="feature-cta feature-cta--players">
-                    Explore Players <i data-lucide="arrow-right" class="icon"></i>
+                <a href="fpl-players-analysis.html" class="lp-btn lp-btn-ghost">
+                    Explore players <i data-lucide="arrow-right" class="icon"></i>
                 </a>
             </div>
-            <div class="feature-mockup feature-mockup--players">
-                <div class="fm-header">
-                    <div class="fm-header-dot" style="background:var(--color-players);"></div>
-                    <div class="fm-header-title">Player Comparison</div>
+            <div class="lp-frame">
+                    <img class="lp-shot-dark" src="assets/lp/players-dark.png" alt="The EasyFPL recommendations board, ranking players with a scout's verdict on each." loading="lazy" decoding="async">
+                    <img class="lp-shot-light" src="assets/lp/players-light.png" alt="The EasyFPL recommendations board, ranking players with a scout's verdict on each." loading="lazy" decoding="async">
                 </div>
-                <div class="fm-row">
-                    <span class="fm-label">Mbeumo</span>
-                    <span class="fm-value" style="color:#60A5FA;">xG 0.48</span>
-                </div>
-                <div class="fm-row">
-                    <span class="fm-label">Saka</span>
-                    <span class="fm-value" style="color:#60A5FA;">xG 0.41</span>
-                </div>
-                <div class="fm-row" style="margin-top:8px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px;">
-                    <span class="fm-label">Form (5 GWs)</span>
-                    <span class="fm-value" style="color:#FBBF24;">8.2 vs 6.4</span>
-                </div>
-                <div class="fm-row">
-                    <span class="fm-label">Ownership</span>
-                    <span class="fm-value" style="color:#A78BFA;">12% vs 38%</span>
-                </div>
-            </div>
         </div>
     </section>
 
-    <!-- Feature Showcase: Team Ratings -->
-    <section class="feature-showcase reverse reveal-on-scroll" id="featureTeams">
-        <div class="feature-showcase-inner">
-            <div class="feature-text">
-                <div class="feature-showcase-badge feature-showcase-badge--teams">
-                    <i data-lucide="bar-chart-3" class="icon"></i> Fixture Intel
-                </div>
-                <h2>See Which Clubs Have the Easiest Run</h2>
-                <p class="feature-showcase-desc">Fixture difficulty ratings, attack power, defense strength, and clean sheet odds for all 20 clubs. Plan your transfers around the schedule.</p>
-                <a href="fpl-teams-analysis.html" class="feature-cta feature-cta--teams">
-                    View Team Ratings <i data-lucide="arrow-right" class="icon"></i>
+    <section class="lp-section is-tight lp-wrap" id="featureTeams">
+        <div class="lp-feature lp-reveal">
+            <div class="lp-feature-text">
+                <span class="lp-eyebrow"><i data-lucide="bar-chart-3" class="icon"></i> Fixture Intel</span>
+                <h2 class="lp-h2">See which clubs have the easiest run</h2>
+                <p class="lp-body">Fixture difficulty ratings, attack power, defense strength, and clean sheet odds for all 20 clubs. Plan your transfers around the schedule.</p>
+                <a href="fpl-teams-analysis.html" class="lp-btn lp-btn-ghost">
+                    View team ratings <i data-lucide="arrow-right" class="icon"></i>
                 </a>
             </div>
-            <div class="feature-mockup feature-mockup--teams">
-                <div class="fm-header">
-                    <div class="fm-header-dot" style="background:var(--color-teams);"></div>
-                    <div class="fm-header-title">Fixture Difficulty</div>
+            <div class="lp-frame">
+                    <img class="lp-shot-dark" src="assets/lp/rivals-dark.png" alt="The EasyFPL rivals board, comparing every manager in a mini-league." loading="lazy" decoding="async">
+                    <img class="lp-shot-light" src="assets/lp/rivals-light.png" alt="The EasyFPL rivals board, comparing every manager in a mini-league." loading="lazy" decoding="async">
                 </div>
-                <div class="fm-row">
-                    <span class="fm-label">Brighton</span>
-                    <div class="fm-bar-track"><div class="fm-bar-fill" style="width:25%;background:var(--fdr-1);"></div></div>
-                    <span class="fm-value" style="color:#34D399;">1.8</span>
-                </div>
-                <div class="fm-row">
-                    <span class="fm-label">Bournemouth</span>
-                    <div class="fm-bar-track"><div class="fm-bar-fill" style="width:40%;background:var(--fdr-2);"></div></div>
-                    <span class="fm-value" style="color:#34D399;">2.2</span>
-                </div>
-                <div class="fm-row">
-                    <span class="fm-label">Man City</span>
-                    <div class="fm-bar-track"><div class="fm-bar-fill" style="width:80%;background:var(--fdr-4);"></div></div>
-                    <span class="fm-value" style="color:#F87171;">4.1</span>
-                </div>
-                <div class="fm-row">
-                    <span class="fm-label">Liverpool</span>
-                    <div class="fm-bar-track"><div class="fm-bar-fill" style="width:90%;background:var(--fdr-5);"></div></div>
-                    <span class="fm-value" style="color:#F87171;">4.6</span>
-                </div>
-            </div>
         </div>
     </section>
 
-    <!-- Feature Showcase: League Rivals -->
-    <section class="feature-showcase reveal-on-scroll" id="featureRivals">
-        <div class="feature-showcase-inner">
-            <div class="feature-text">
-                <div class="feature-showcase-badge feature-showcase-badge--rivals">
-                    <i data-lucide="trophy" class="icon"></i> Competitive Edge
-                </div>
-                <h2>Stay One Step Ahead of Your Rivals</h2>
-                <p class="feature-showcase-desc">Compare your squad against every manager in your mini-league. Find ownership gaps, track captain choices, and discover the picks that'll swing the table.</p>
-                <a href="fpl-league-rivals.html" class="feature-cta feature-cta--rivals">
-                    Scout Your Rivals <i data-lucide="arrow-right" class="icon"></i>
+    <section class="lp-section is-tight lp-wrap" id="featureRivals">
+        <div class="lp-feature is-reverse lp-reveal">
+            <div class="lp-feature-text">
+                <span class="lp-eyebrow"><i data-lucide="trophy" class="icon"></i> Competitive Edge</span>
+                <h2 class="lp-h2">Stay one step ahead of your rivals</h2>
+                <p class="lp-body">Compare your squad against every manager in your mini-league. Find ownership gaps, track captain choices, and discover the picks that'll swing the table.</p>
+                <a href="fpl-league-rivals.html" class="lp-btn lp-btn-ghost">
+                    Scout your rivals <i data-lucide="arrow-right" class="icon"></i>
                 </a>
             </div>
-            <div class="feature-mockup feature-mockup--rivals">
-                <div class="fm-header">
-                    <div class="fm-header-dot" style="background:var(--color-rivals);"></div>
-                    <div class="fm-header-title">Mini-League Gaps</div>
+            <div class="lp-frame">
+                    <img class="lp-shot-dark" src="assets/lp/wizard-dark.png" alt="The EasyFPL price watch, ordered by how close each player is to a price change." loading="lazy" decoding="async">
+                    <img class="lp-shot-light" src="assets/lp/wizard-light.png" alt="The EasyFPL price watch, ordered by how close each player is to a price change." loading="lazy" decoding="async">
                 </div>
-                <div class="fm-row">
-                    <span class="fm-label">You own Mbeumo</span>
-                    <span class="fm-value" style="color:#34D399;">2/8 rivals have him</span>
-                </div>
-                <div class="fm-row">
-                    <span class="fm-label">You don't own Watkins</span>
-                    <span class="fm-value" style="color:#F87171;">6/8 rivals own him</span>
-                </div>
-                <div class="fm-row">
-                    <span class="fm-label">Captain pick</span>
-                    <span class="fm-value" style="color:#FBBF24;">Salah (5/8 rivals)</span>
-                </div>
-            </div>
         </div>
     </section>
 
-    <!-- Testimonials -->
-    <section class="testimonials-section reveal-on-scroll" id="testimonials">
-        <div class="testimonials-inner">
-            <div class="testimonials-header">
-                <h2>What Managers Are Saying</h2>
-                <p>Join thousands of FPL managers already gaining an edge.</p>
-            </div>
-            <div class="testimonials-grid">
-                <div class="testimonial-card">
-                    <div class="testimonial-stars">
-                        <i data-lucide="star" class="icon"></i>
-                        <i data-lucide="star" class="icon"></i>
-                        <i data-lucide="star" class="icon"></i>
-                        <i data-lucide="star" class="icon"></i>
-                        <i data-lucide="star" class="icon"></i>
-                    </div>
-                    <p class="testimonial-quote">"I was stuck around 2 million overall for three seasons. Started using EasyFPL's Transfer Wizard midway through last season and finished at 180K. The fixture-based recommendations are genuinely better than most paid sites."</p>
-                    <div class="testimonial-author">
-                        <div class="testimonial-avatar testimonial-avatar--1">T</div>
-                        <div>
-                            <div class="testimonial-name">Tom H.</div>
-                            <div class="testimonial-detail">Top 200K · 4th season playing FPL</div>
-                        </div>
-                    </div>
+    <section class="lp-section lp-wrap" id="testimonials">
+        <div class="lp-section-head is-centred lp-reveal">
+            <span class="lp-eyebrow"><i data-lucide="message-square" class="icon"></i> Managers</span>
+            <h2 class="lp-h2">What managers are saying</h2>
+            <p class="lp-lead">Join thousands of FPL managers already gaining an edge.</p>
+        </div>
+        <div class="lp-quotes lp-reveal">
+            <figure class="lp-quote">
+                <div class="lp-stars" aria-label="Five out of five">
+                    <i data-lucide="star" class="icon"></i><i data-lucide="star" class="icon"></i><i data-lucide="star" class="icon"></i><i data-lucide="star" class="icon"></i><i data-lucide="star" class="icon"></i>
                 </div>
-                <div class="testimonial-card">
-                    <div class="testimonial-stars">
-                        <i data-lucide="star" class="icon"></i>
-                        <i data-lucide="star" class="icon"></i>
-                        <i data-lucide="star" class="icon"></i>
-                        <i data-lucide="star" class="icon"></i>
-                        <i data-lucide="star" class="icon"></i>
-                    </div>
-                    <p class="testimonial-quote">"The Sell/Hold/Star verdicts are what I needed — I used to hold onto players way too long out of loyalty. EasyFPL told me to ditch Haaland in GW14 when everyone else was keeping him. Won my work league by 60 points."</p>
-                    <div class="testimonial-author">
-                        <div class="testimonial-avatar testimonial-avatar--2">P</div>
-                        <div>
-                            <div class="testimonial-name">Priya S.</div>
-                            <div class="testimonial-detail">Mini-league champion · 2nd year on EasyFPL</div>
-                        </div>
-                    </div>
+                <blockquote class="lp-quote-text">"I was stuck around 2 million overall for three seasons. Started using EasyFPL's Transfer Wizard midway through last season and finished at 180K. The fixture-based recommendations are genuinely better than most paid sites."</blockquote>
+                <figcaption class="lp-quote-who">
+                    <span class="lp-avatar">T</span>
+                    <span>
+                        <span class="lp-quote-name">Tom H.</span>
+                        <span class="lp-quote-meta">Top 200K · 4th season playing FPL</span>
+                    </span>
+                </figcaption>
+            </figure>
+            <figure class="lp-quote">
+                <div class="lp-stars" aria-label="Five out of five">
+                    <i data-lucide="star" class="icon"></i><i data-lucide="star" class="icon"></i><i data-lucide="star" class="icon"></i><i data-lucide="star" class="icon"></i><i data-lucide="star" class="icon"></i>
                 </div>
-                <div class="testimonial-card">
-                    <div class="testimonial-stars">
-                        <i data-lucide="star" class="icon"></i>
-                        <i data-lucide="star" class="icon"></i>
-                        <i data-lucide="star" class="icon"></i>
-                        <i data-lucide="star" class="icon"></i>
-                        <i data-lucide="star" class="icon"></i>
-                    </div>
-                    <p class="testimonial-quote">"I'm not a stats person at all, but EasyFPL makes it dead simple. I just check the squad health screen on Friday, make my transfer, and I'm done. Somehow I'm now top of my mates' league."</p>
-                    <div class="testimonial-author">
-                        <div class="testimonial-avatar testimonial-avatar--3">J</div>
-                        <div>
-                            <div class="testimonial-name">Jake R.</div>
-                            <div class="testimonial-detail">Top 500K · Self-described 'casual'</div>
-                        </div>
-                    </div>
+                <blockquote class="lp-quote-text">"The Sell/Hold/Star verdicts are what I needed — I used to hold onto players way too long out of loyalty. EasyFPL told me to ditch Haaland in GW14 when everyone else was keeping him. Won my work league by 60 points."</blockquote>
+                <figcaption class="lp-quote-who">
+                    <span class="lp-avatar is-2">P</span>
+                    <span>
+                        <span class="lp-quote-name">Priya S.</span>
+                        <span class="lp-quote-meta">Mini-league champion · 2nd year on EasyFPL</span>
+                    </span>
+                </figcaption>
+            </figure>
+            <figure class="lp-quote">
+                <div class="lp-stars" aria-label="Five out of five">
+                    <i data-lucide="star" class="icon"></i><i data-lucide="star" class="icon"></i><i data-lucide="star" class="icon"></i><i data-lucide="star" class="icon"></i><i data-lucide="star" class="icon"></i>
                 </div>
+                <blockquote class="lp-quote-text">"I'm not a stats person at all, but EasyFPL makes it dead simple. I just check the squad health screen on Friday, make my transfer, and I'm done. Somehow I'm now top of my mates' league."</blockquote>
+                <figcaption class="lp-quote-who">
+                    <span class="lp-avatar is-3">J</span>
+                    <span>
+                        <span class="lp-quote-name">Jake R.</span>
+                        <span class="lp-quote-meta">Top 500K · Self-described 'casual'</span>
+                    </span>
+                </figcaption>
+            </figure>
+        </div>
+
+        <div class="lp-close lp-reveal">
+            <h2 class="lp-h2">Your next green arrow starts here</h2>
+            <p class="lp-lead">Paste your Team ID and the whole gameweek is on one screen. Free, forever, and nothing to sign up for.</p>
+            <div class="lp-cta-row">
+                <a class="lp-btn lp-btn-primary" onclick="openLoginModal()" style="cursor:pointer;">
+                    Get started — it's free <i data-lucide="arrow-right" class="icon"></i>
+                </a>
+                <a class="lp-btn lp-btn-ghost" href="fpl-how-it-works.html">How EasyFPL works</a>
             </div>
         </div>
     </section>
 
     </div><!-- /.v2-main-content -->
 
-    <script src="scripts/error-monitor.js?v=331"></script>
-    <script src="scripts/price-watch.js?v=331"></script>
-    <script src="scripts/xp-engine.js?v=331"></script>
-    <script src="scripts/odds-panel.js?v=331"></script>
-    <script src="scripts/live-gw.js?v=331"></script>
-    <script src="scripts/matchday.js?v=331"></script>
-    <script src="scripts/market-panel.js?v=331"></script>
-    <script src="scripts/eo-layer.js?v=331"></script>
-    <script src="scripts/lineup-store.js?v=331"></script>
-    <script src="scripts/readiness.js?v=331"></script>
-    <script src="scripts/push-alerts.js?v=331"></script>
-    <script src="scripts/notifications.js?v=331"></script>
-    <script src="scripts/transfer-engine.js?v=331"></script>
-    <script src="scripts/auth.js?v=331"></script>
-    <script src="scripts/injury-feed.js?v=331"></script>
-    <script src="scripts/scouts-art.js?v=331"></script>
-    <script src="scripts/common.js?v=331"></script>
-    <script src="scripts/sidebar-nav.js?v=331"></script>
+    <script src="scripts/error-monitor.js?v=332"></script>
+    <script src="scripts/price-watch.js?v=332"></script>
+    <script src="scripts/xp-engine.js?v=332"></script>
+    <script src="scripts/odds-panel.js?v=332"></script>
+    <script src="scripts/live-gw.js?v=332"></script>
+    <script src="scripts/matchday.js?v=332"></script>
+    <script src="scripts/market-panel.js?v=332"></script>
+    <script src="scripts/eo-layer.js?v=332"></script>
+    <script src="scripts/lineup-store.js?v=332"></script>
+    <script src="scripts/readiness.js?v=332"></script>
+    <script src="scripts/push-alerts.js?v=332"></script>
+    <script src="scripts/notifications.js?v=332"></script>
+    <script src="scripts/transfer-engine.js?v=332"></script>
+    <script src="scripts/auth.js?v=332"></script>
+    <script src="scripts/injury-feed.js?v=332"></script>
+    <script src="scripts/scouts-art.js?v=332"></script>
+    <script src="scripts/common.js?v=332"></script>
+    <script src="scripts/sidebar-nav.js?v=332"></script>
     <script>
         initIcons();
         loadFooter();
@@ -6586,15 +6381,24 @@
         }
 
         // ===== SCROLL REVEAL =====
+        /* Two class names because the landing page and the rest of this file
+           are on different stylesheets: .lp-reveal/.is-in belongs to
+           styles/landing.css, .reveal-on-scroll/.revealed to the block above.
+           One observer drives both.
+
+           A landing section that is already on screen when the observer is
+           created — the first one always is — gets its class on the first
+           callback, which fires immediately, so nothing above the fold waits
+           for a scroll that may never come. */
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('revealed');
-                    observer.unobserve(entry.target);
-                }
+                if (!entry.isIntersecting) return;
+                entry.target.classList.add(
+                    entry.target.classList.contains('lp-reveal') ? 'is-in' : 'revealed');
+                observer.unobserve(entry.target);
             });
         }, { threshold: 0.1 });
-        document.querySelectorAll('.reveal-on-scroll').forEach(el => observer.observe(el));
+        document.querySelectorAll('.reveal-on-scroll, .lp-reveal').forEach(el => observer.observe(el));
 
         // Enter key handlers
         document.getElementById('onboardingInput').addEventListener('keypress', e => {

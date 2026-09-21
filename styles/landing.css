@@ -1,0 +1,326 @@
+/* ============================================
+   EasyFPL — Landing page
+   ============================================
+
+   The page a visitor without a Team ID sees. It shares index.html with the
+   dashboard, which is why everything here is namespaced .lp-*: the dashboard
+   half of that file keeps its own classes and this stylesheet cannot reach
+   them.
+
+   Three things decide how it reads.
+
+   One surface. The old page changed background colour at every section —
+   navy, then a green wash, then a purple one — so it scanned as five pages
+   stapled together rather than one. Sections are separated by space and, at
+   most, a hairline; the only colour that moves is the product in the
+   screenshots and the accent on what you can click.
+
+   One column width. --lp-w is the measure for the header, every section and
+   the footer, so nothing on the page starts at a different left edge.
+
+   Real screens. The product miniatures used to be hand-written markup — a
+   fake "Salah / STAR / three fixture chips" kept in step with a screen it
+   only resembled. They are screenshots now; tools/capture-lp-shots.mjs takes
+   them, and a light and a dark one of each ship so the page does not show a
+   dark app to somebody reading in daylight.
+*/
+
+:root {
+    --lp-w: 1120px;
+    --lp-gutter: 24px;
+    /* The vertical rhythm. Sections are one of these apart, never an
+       arbitrary number, so the page has a beat rather than a list of
+       margins. */
+    --lp-gap: 120px;
+    --lp-gap-sm: 80px;
+}
+
+.lp-wrap { max-width: var(--lp-w); margin: 0 auto; padding-inline: var(--lp-gutter); }
+
+/* ===== Type =====
+   Display face for anything that is a heading, body face for prose, and the
+   headline sizes clamp rather than switching at a breakpoint — a 72px title
+   has to survive a 380px phone, and stepping it down in three jumps leaves
+   the in-between widths looking wrong. */
+.lp-h1 {
+    font-family: var(--font-display, 'Space Grotesk', sans-serif);
+    font-size: clamp(40px, 6.2vw, 68px);
+    line-height: 1.04;
+    letter-spacing: -0.035em;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+.lp-h2 {
+    font-family: var(--font-display, 'Space Grotesk', sans-serif);
+    font-size: clamp(30px, 3.6vw, 44px);
+    line-height: 1.1;
+    letter-spacing: -0.028em;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+.lp-h3 {
+    font-family: var(--font-display, 'Space Grotesk', sans-serif);
+    font-size: 17px; line-height: 1.3; letter-spacing: -0.012em;
+    font-weight: 650; color: var(--text-primary); margin: 0;
+}
+.lp-lead {
+    font-size: clamp(16px, 1.5vw, 19px);
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin: 0;
+}
+.lp-body { font-size: 15px; line-height: 1.65; color: var(--text-secondary); margin: 0; }
+.lp-accent { color: var(--color-primary-text, var(--color-primary)); }
+
+/* The label over a section heading. Uppercase, tracked out, in the accent —
+   it says which part of the product the next three paragraphs are about, in
+   the space a second heading would otherwise occupy. */
+.lp-eyebrow {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-display, 'Space Grotesk', sans-serif);
+    font-size: 11.5px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--color-primary-text, var(--color-primary));
+}
+.lp-eyebrow svg, .lp-eyebrow .icon { width: 14px; height: 14px; }
+
+/* ===== Buttons ===== */
+.lp-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 46px; padding: 0 22px;
+    border-radius: var(--radius-full, 999px);
+    font-family: var(--font-display, 'Space Grotesk', sans-serif);
+    font-size: 15px; font-weight: 650; white-space: nowrap;
+    cursor: pointer; text-decoration: none;
+    border: 1px solid transparent;
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+.lp-btn:hover { transform: translateY(-1px); }
+.lp-btn:active { transform: none; }
+.lp-btn svg, .lp-btn .icon { width: 17px; height: 17px; }
+.lp-btn-primary { background: var(--color-primary); border-color: var(--color-primary); color: #06281A; }
+.lp-btn-primary:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); }
+.lp-btn-ghost {
+    background: var(--surface-1); border-color: var(--border-emphasis); color: var(--text-primary);
+}
+.lp-btn-ghost:hover { border-color: var(--color-primary); color: var(--color-primary-text, var(--color-primary)); }
+
+/* ===== Hero ===== */
+.lp-hero { padding: clamp(64px, 9vw, 116px) 0 0; text-align: center; position: relative; overflow: hidden; }
+/* A single wash behind the headline, in the brand colour, rather than the
+   four overlapping gradients and the pulsing blob the old hero had. It is
+   behind the text and it does not move. */
+.lp-hero::before {
+    content: ''; position: absolute; inset: -20% 0 auto; height: 620px;
+    background: radial-gradient(56% 58% at 50% 34%,
+        color-mix(in srgb, var(--color-primary) 16%, transparent) 0%, transparent 72%);
+    pointer-events: none; z-index: 0;
+}
+.lp-hero > * { position: relative; z-index: 1; }
+
+.lp-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 32px; padding: 0 14px; margin-bottom: 26px;
+    border-radius: var(--radius-full, 999px);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+    background: var(--color-primary-muted);
+    color: var(--color-primary-text, var(--color-primary));
+    font-size: 12.5px; font-weight: 650;
+}
+.lp-badge svg, .lp-badge .icon { width: 14px; height: 14px; }
+
+/* Explicit, because a heading elsewhere in the cascade is left-aligned and
+   inheriting text-align from .lp-hero is not enough to beat it.
+   The measure is in px, not ch: ch is a fraction of the element's own font
+   size, so 15ch on a 68px display face is 233px — three words a line. */
+/* display:block as well as the alignment. Something in the cascade on this
+   page resolves the heading to a flex box, which makes each text node a flex
+   item — so "Your unfair <span>advantage</span> in FPL" lost both spaces and
+   ignored text-align, and the line ran off the left of the page. */
+.lp-hero .lp-h1 { display: block; max-width: 820px; margin-inline: auto; text-align: center; }
+.lp-hero .lp-lead { max-width: 620px; margin: 22px auto 0; text-align: center; }
+.lp-cta-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 32px; }
+.lp-hero-note { margin-top: 16px; font-size: 13px; color: var(--text-muted); }
+
+/* The product shot under the hero.
+   Held in a frame with a lit top edge and a glow under it, and deliberately
+   cut off at the bottom — the screen continues past the fold, which is the
+   point it is making. */
+.lp-shot-hero { margin-top: clamp(44px, 6vw, 72px); position: relative; }
+.lp-shot-hero::after {
+    content: ''; position: absolute; left: 6%; right: 6%; bottom: -10px; height: 120px;
+    background: radial-gradient(50% 100% at 50% 0%,
+        color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 70%);
+    filter: blur(28px); z-index: -1;
+}
+.lp-frame {
+    position: relative; overflow: hidden;
+    border: 1px solid var(--border-emphasis);
+    border-radius: 16px;
+    background: var(--surface-1);
+    box-shadow: 0 30px 60px -24px rgba(8, 12, 20, .45), 0 2px 8px rgba(8, 12, 20, .10);
+}
+[data-theme="dark"] .lp-frame { box-shadow: 0 30px 70px -20px rgba(0, 0, 0, .7); }
+/* The highlight along the top edge that makes the frame read as glass rather
+   than as a box with a border. */
+.lp-frame::before {
+    content: ''; position: absolute; inset: 0 0 auto; height: 1px; z-index: 2;
+    background: linear-gradient(90deg, transparent,
+        color-mix(in srgb, var(--color-primary) 55%, transparent), transparent);
+}
+.lp-frame img { display: block; width: 100%; height: auto; }
+/* The hero shot only — cropped so the app runs past the bottom of the frame. */
+.lp-frame.is-cropped { max-height: 540px; }
+.lp-frame.is-cropped img { object-fit: cover; object-position: top center; }
+
+/* A light and a dark capture of every screen; the theme picks one. Both are
+   in the markup because swapping a src on theme change means a visible
+   reload of a 500KB image.
+   Qualified by .lp-frame img rather than written as bare classes: the rule
+   that makes a shot fill its frame is `.lp-frame img`, which outranks a
+   single class — so `.lp-shot-dark { display: none }` lost, both images
+   rendered stacked, and whichever came first in the markup was the one you
+   saw whatever the theme said. */
+.lp-frame img.lp-shot-dark { display: none; }
+.lp-frame img.lp-shot-light { display: block; }
+[data-theme="dark"] .lp-frame img.lp-shot-light { display: none; }
+[data-theme="dark"] .lp-frame img.lp-shot-dark { display: block; }
+
+/* ===== Trust strip ===== */
+.lp-trust {
+    margin-top: clamp(48px, 6vw, 72px);
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+}
+.lp-trust-inner {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 32px;
+    padding: 20px 0;
+    font-size: 13px; color: var(--text-muted);
+}
+.lp-trust-inner strong { color: var(--text-secondary); font-weight: 650; }
+
+/* ===== Section scaffolding ===== */
+.lp-section { padding: var(--lp-gap) 0 0; }
+/* A feature row is one row in a run of them, so it takes the smaller gap —
+   the larger one separates parts of the page, not items within a part. */
+.lp-section.is-tight { padding-top: var(--lp-gap-sm); }
+.lp-section-head { max-width: 680px; }
+.lp-section-head.is-centred { margin-inline: auto; text-align: center; }
+.lp-section-head .lp-h2 { margin-top: 14px; }
+.lp-section-head .lp-lead { margin-top: 16px; }
+
+/* ===== The capability grid =====
+   Nine things the site does, one line each. It is the answer to "what is in
+   here" for somebody who is not going to read four feature sections, and it
+   is the one place on the page where the whole product is visible at once. */
+.lp-grid {
+    margin-top: 48px;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px;
+    background: var(--border-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px; overflow: hidden;
+}
+/* Hairlines, not twelve floating cards. The grid gap is the border: cells sit
+   1px apart over a background the colour of a rule, so the block reads as one
+   table of contents rather than nine separate boxes. */
+.lp-cell { background: var(--surface-bg); padding: 26px 24px 28px; }
+.lp-cell-ico {
+    width: 34px; height: 34px; margin-bottom: 16px;
+    display: grid; place-items: center;
+    border-radius: 10px;
+    background: var(--color-primary-muted);
+    color: var(--color-primary-text, var(--color-primary));
+}
+.lp-cell-ico svg, .lp-cell-ico .icon { width: 17px; height: 17px; }
+.lp-cell p { margin-top: 7px; font-size: 13.5px; line-height: 1.6; color: var(--text-muted); }
+
+/* ===== Feature showcases ===== */
+.lp-feature { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); gap: clamp(32px, 5vw, 72px); align-items: center; }
+.lp-feature.is-reverse .lp-feature-text { order: 2; }
+.lp-feature-text .lp-h2 { margin-top: 14px; font-size: clamp(26px, 2.9vw, 36px); }
+.lp-feature-text .lp-body { margin-top: 14px; }
+.lp-bullets { list-style: none; margin: 22px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.lp-bullets li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--text-secondary); }
+.lp-bullets svg, .lp-bullets .icon {
+    width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px;
+    color: var(--color-primary-text, var(--color-primary));
+}
+.lp-feature .lp-btn { margin-top: 26px; }
+/* The screenshot in a feature row is capped: these are 1700px-tall captures
+   and the row should stay a row. */
+.lp-feature .lp-frame { max-height: 420px; }
+.lp-feature .lp-frame img { object-fit: cover; object-position: top left; }
+
+/* ===== Testimonials ===== */
+.lp-quotes { margin-top: 48px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.lp-quote {
+    display: flex; flex-direction: column; gap: 16px;
+    padding: 26px 24px;
+    border: 1px solid var(--border-emphasis);
+    border-radius: 16px;
+    background: var(--surface-1);
+}
+.lp-stars { display: flex; gap: 3px; color: var(--color-warning); }
+.lp-stars svg, .lp-stars .icon { width: 14px; height: 14px; fill: currentColor; }
+.lp-quote-text { font-size: 14.5px; line-height: 1.65; color: var(--text-primary); margin: 0; flex: 1; }
+.lp-quote-who { display: flex; align-items: center; gap: 11px; }
+.lp-avatar {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    display: grid; place-items: center;
+    font-family: var(--font-display, 'Space Grotesk', sans-serif);
+    font-weight: 700; font-size: 14px; color: #06281A;
+    background: var(--color-primary);
+}
+.lp-avatar.is-2 { background: #A78BFA; color: #1B1035; }
+.lp-avatar.is-3 { background: var(--color-warning); color: #2A1B00; }
+.lp-quote-name { font-size: 13.5px; font-weight: 650; color: var(--text-primary); }
+.lp-quote-meta { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+/* ===== Closing call to action ===== */
+.lp-close {
+    margin: var(--lp-gap) 0 var(--lp-gap-sm);
+    padding: clamp(48px, 6vw, 76px) var(--lp-gutter);
+    text-align: center; position: relative; overflow: hidden;
+    border: 1px solid var(--border-emphasis);
+    border-radius: 24px;
+    background: var(--surface-1);
+}
+.lp-close::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(70% 120% at 50% 0%,
+        color-mix(in srgb, var(--color-primary) 15%, transparent), transparent 68%);
+    pointer-events: none;
+}
+.lp-close > * { position: relative; }
+.lp-close .lp-lead { max-width: 560px; margin: 16px auto 0; }
+.lp-close .lp-cta-row { margin-top: 28px; }
+
+/* ===== Narrower ===== */
+@media (max-width: 960px) {
+    :root { --lp-gap: 84px; --lp-gap-sm: 60px; }
+    .lp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lp-quotes { grid-template-columns: 1fr; }
+    .lp-feature { grid-template-columns: 1fr; gap: 32px; }
+    /* Text first on every row once they stack — alternating the order is what
+       keeps a two-column page from marching, and in one column it just means
+       half the sections open with a picture of something not yet named. */
+    .lp-feature.is-reverse .lp-feature-text { order: 0; }
+    .lp-feature .lp-frame { max-height: 340px; }
+}
+@media (max-width: 640px) {
+    :root { --lp-gutter: 16px; }
+    .lp-grid { grid-template-columns: 1fr; }
+    .lp-trust-inner { justify-content: flex-start; gap: 10px 24px; }
+    .lp-cta-row .lp-btn { flex: 1 1 auto; }
+    .lp-frame.is-cropped { max-height: 300px; }
+}
+
+/* Motion is decoration here; the page has to read the same without it. */
+.lp-reveal { opacity: 0; transform: translateY(14px); transition: opacity 600ms ease, transform 600ms ease; }
+.lp-reveal.is-in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+    .lp-reveal { opacity: 1; transform: none; transition: none; }
+    .lp-btn:hover { transform: none; }
+}

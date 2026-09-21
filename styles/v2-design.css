@@ -2827,7 +2827,13 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     display: flex;
     align-items: center;
     gap: 18px;
-    padding: 0 24px;
+    /* The bar spans the window; its contents line up with the page's own
+       column, so the logo starts where the headline under it starts. A
+       padding rather than an inner wrapper, because the header is the flex
+       container itself and everything in it is already a direct child.
+       max() keeps the 24px gutter once the window is narrower than the
+       column. */
+    padding-inline: max(24px, calc((100vw - 1120px) / 2));
     background: color-mix(in srgb, var(--surface-0) 88%, transparent);
     backdrop-filter: saturate(1.4) blur(10px);
     -webkit-backdrop-filter: saturate(1.4) blur(10px);

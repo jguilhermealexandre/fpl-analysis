@@ -1878,14 +1878,15 @@ export default [
         languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node } },
         rules: { 'no-undef': 'error' }
     },
-    /* The scrapers are Node scripts that carry page code inside
-       page.evaluate() — that body is serialised and run in the browser, so it
-       legitimately reaches for document while the file around it is Node. */
+    /* The scrapers and the screenshot tool are Node scripts that carry page
+       code inside page.evaluate()/addInitScript() — that body is serialised
+       and run in the browser, so it legitimately reaches for document and
+       localStorage while the file around it is Node. */
     {
-        files: ['tools/pl-news-browser.mjs', 'tools/fetch-pl-injuries.mjs'],
+        files: ['tools/pl-news-browser.mjs', 'tools/fetch-pl-injuries.mjs', 'tools/capture-lp-shots.mjs'],
         languageOptions: {
             ecmaVersion: 2022, sourceType: 'module',
-            globals: { ...globals.node, document: 'readonly', window: 'readonly' }
+            globals: { ...globals.node, document: 'readonly', window: 'readonly', localStorage: 'readonly' }
         }
     },
     /* Cloudflare Pages Functions — the paywall's edge middleware and the pure
