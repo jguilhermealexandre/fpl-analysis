@@ -1907,3 +1907,51 @@ body h1:not(.hero-title) > .icon,
         width: 100%; height: 44px; min-width: 44px;
     }
 }
+
+/* ===== Arriving at a section, from its link in the rail =====
+ *
+ * initAnchorScroll() in common.js scrolls the page rather than jumping it,
+ * and sets .is-arrived on whatever the link named. This is the answer the
+ * scroll cannot give on its own: at the end of it a heading sits at the top
+ * of a screen that looks like every other screen, so the section marks
+ * itself once, briefly, and lets go.
+ *
+ * Drawn on a ::before that is always there and always transparent, so the
+ * mark costs no layout and nothing shifts by a pixel when it runs — the same
+ * trick .doc-toc a.is-current uses for the rail's own highlight. Inset
+ * rather than in the flow so it works on a heading, a <section>, or the FAQ's
+ * category block without any of them needing a position of their own.
+ */
+.is-arrived {
+    position: relative;
+}
+
+.is-arrived::before {
+    content: '';
+    position: absolute;
+    left: -14px;
+    top: -6px;
+    bottom: -6px;
+    width: 3px;
+    border-radius: 3px;
+    background: var(--color-primary);
+    animation: arrive-mark 1.3s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes arrive-mark {
+    0%   { opacity: 0; transform: scaleY(0.2); }
+    18%  { opacity: 1; transform: scaleY(1); }
+    70%  { opacity: 1; transform: scaleY(1); }
+    100% { opacity: 0; transform: scaleY(1); }
+}
+
+/* No scroll to follow, so the mark holds still and simply states where the
+   page went. */
+@media (prefers-reduced-motion: reduce) {
+    .is-arrived::before {
+        animation: none;
+        opacity: 1;
+        transition: opacity 200ms linear;
+    }
+}

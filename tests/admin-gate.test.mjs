@@ -117,7 +117,11 @@ test('and hidden actually hides it, despite the flex on every nav item', () => {
        display:flex — an author rule, which wins. That combination put the
        Admin link in every visitor's sidebar on launch day. The stylesheet has
        to say [hidden] means hidden, explicitly, and keep saying it. */
-    const css = read('styles/v2-design.css');
+    /* v2-app.css since the design layer was split: the sidebar is the
+       signed-in half of it, and so is the rule that keeps this link out of
+       it. Both are behind the same saved-Team-ID question, so the rule is
+       still on the page whenever the link it hides is. */
+    const css = read('styles/v2-app.css');
     assert.match(css, /\.v2-nav-item\[hidden\]\s*\{\s*display:\s*none\s*!important/,
         'without this rule, display:flex overrides the hidden attribute for everyone');
 });

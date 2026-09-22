@@ -2782,6 +2782,87 @@ function favClubsSort(list, teamIdOf) {
         .map(x => x.item);
 }
 
+/* ===== Going to a section of a long document =====
+ *
+ * A table of contents on a page this tall is a navigation control, and a
+ * plain #fragment link answers it by teleporting: the whole document is
+ * replaced between two frames and the reader has to work out, from the text
+ * alone, whether they went up or down and how far. Nothing says the page
+ * moved, so nothing says which of the twelve links they pressed.
+ *
+ * So the page scrolls there instead, and the section says it has arrived.
+ * Two separate jobs, and the second is the one that matters: a smooth scroll
+ * still ends with a heading at the top of a screen that looks like every
+ * other screen. The arrival mark is one pass of the accent down the
+ * section's left edge, on the element the link actually names.
+ *
+ * The hash is still written, with replaceState rather than by letting the
+ * browser jump: the address stays copyable and the Back button still leaves
+ * the page rather than walking back through its own headings.
+ *
+ * prefers-reduced-motion turns the scroll back into a jump — the CSS drops
+ * the arrival mark to a plain hold, so the destination is still marked.
+ * Wired up on the pages with a rail of their own: the FAQ, methodology,
+ * privacy and contact.
+ */
+function initAnchorScroll(selector) {
+    if (typeof document === 'undefined') return;
+    const links = document.querySelectorAll(selector || 'a[href^="#"]');
+    if (!links.length) return;
+
+    const calm = typeof matchMedia === 'function'
+        && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    links.forEach(a => {
+        const href = a.getAttribute('href');
+        if (!href || href === '#' || href.length < 2) return;
+        a.addEventListener('click', e => {
+            let target = null;
+            try { target = document.getElementById(decodeURIComponent(href.slice(1))); } catch (err) { return; }
+            if (!target) return;             // a link to nothing stays a link to nothing
+            e.preventDefault();
+            const top = target.getBoundingClientRect().top + window.pageYOffset - stickyOffset();
+            window.scrollTo({ top: Math.max(0, top), behavior: calm ? 'auto' : 'smooth' });
+            try { history.replaceState(null, '', href); } catch (err) { /* file://, or history blocked */ }
+            markArrival(target);
+        });
+    });
+}
+
+/* How far down the window the top of the page actually is.
+ *
+ * scroll-margin-top would do this in CSS, and it is set — at 24px, chosen
+ * before there was a fixed header. Under a 64px bar that lands the heading
+ * you asked for behind the navigation, which is the one thing this cannot
+ * get wrong. Measuring the bar rather than naming its height means the
+ * landing shell, the app shell and the narrow layouts each get their own
+ * answer without any of them being written down twice.
+ */
+function stickyOffset() {
+    let h = 0;
+    for (const el of document.querySelectorAll('header, .v2-landing-nav, .v2-mobile-bar')) {
+        const cs = getComputedStyle(el);
+        if (cs.position !== 'fixed' && cs.position !== 'sticky') continue;
+        const box = el.getBoundingClientRect();
+        if (box.top > 4 || box.height === 0) continue;   // not parked at the top of the window
+        h = Math.max(h, box.height);
+    }
+    return h + 24;
+}
+
+/* The mark itself. Restarting it on a second click of the same link is the
+   whole point — the reader is already there and pressed it again, which is
+   the one moment they most need the page to answer — and a class that is
+   already set does not restart an animation. Removing it, forcing a reflow
+   and setting it again does. */
+function markArrival(el) {
+    if (!el) return;
+    el.classList.remove('is-arrived');
+    void el.offsetWidth;
+    el.classList.add('is-arrived');
+    setTimeout(() => el.classList.remove('is-arrived'), 1400);
+}
+
 /* Which section of a long page you are actually reading.
  *
  * The Methodology page has a contents rail beside six thousand words, and

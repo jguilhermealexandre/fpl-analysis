@@ -28,7 +28,11 @@ const targets = [
     { file: 'scripts/sidebar-nav.js', rx: /(sidebar-nav\.html\?v=)\d+/g, keep: 1 },
     { file: 'scripts/sidebar-nav.js', rx: /(landing-nav\.html\?v=)\d+/g, keep: 1 },
     { file: 'scripts/common.js', rx: /(nav\.html\?v=)\d+/g, keep: 1 },
-    { file: 'scripts/common.js', rx: /(footer\.html\?v=)\d+/g, keep: 1 }
+    { file: 'scripts/common.js', rx: /(footer\.html\?v=)\d+/g, keep: 1 },
+    /* The template check:appcss compares every page's inline v2-app.css loader
+       against. It is not markup, so the .html sweep above never sees it, and a
+       stale copy here fails the build on all 31 pages at once. */
+    { file: 'tools/app-css-snippet.txt', rx: /\?v=\d+/g }
 ];
 
 let stale = [];

@@ -30,6 +30,11 @@
     <script src="/scripts/dashboard-gate.min.js?v=351"></script>
     <link rel="stylesheet" href="/styles/common.min.css?v=351">
     <link rel="stylesheet" href="/styles/v2-design.min.css?v=351">
+    <!-- v2-app.css is the signed-in half of v2-design.css. Asked for here, so
+         that the cascade reads the same as it did when the two were one file,
+         and only when there is a saved Team ID — see the note at the top of
+         v2-design.css. Kept identical on every page by check:appcss. -->
+    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=351';document.head.appendChild(l)})();</script>
     <link rel="stylesheet" href="/styles/responsive.min.css?v=351">
     <link rel="stylesheet" href="/styles/landing.min.css?v=351">
     <!-- The dashboard half of this page, listed rather than linked.
@@ -62,7 +67,10 @@
          along with every other asset reference. -->
     <script type="application/json" id="v2DashboardScripts">
     {
-        "styles": ["/styles/index-dashboard.min.css?v=351"],
+        "styles": [
+            "/styles/v2-app.min.css?v=351",
+            "/styles/index-dashboard.min.css?v=351"
+        ],
         "scripts": [
             "/scripts/price-watch.min.js?v=351",
             "/scripts/xp-engine.min.js?v=351",
@@ -94,7 +102,14 @@
                 if (el) manifest = JSON.parse(el.textContent);
             } catch (e) { /* the list is part of the document; if it is gone, so is the page */ }
 
+            /* v2-app.css is on this list because signing in from the landing
+               page has to pull it too, and the snippet in <head> that normally
+               asks for it has already answered "no" by then. On a load that
+               began signed in that snippet has already added it, so skip
+               anything the document is holding. */
             (manifest.styles || []).forEach(function (href) {
+                var base = href.split('?')[0];
+                if (document.querySelector('link[rel="stylesheet"][href^="' + base + '"]')) return;
                 var l = document.createElement('link');
                 l.rel = 'stylesheet';
                 l.href = href;
