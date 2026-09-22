@@ -11,9 +11,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles/common.css?v=343">
-    <link rel="stylesheet" href="/styles/v2-design.css?v=343">
-    <link rel="stylesheet" href="/styles/auth.css?v=343">
+    <link rel="stylesheet" href="/styles/common.css?v=345">
+    <link rel="stylesheet" href="/styles/v2-design.css?v=345">
+    <link rel="stylesheet" href="/styles/auth.css?v=345">
     <style>
         /* The one thing this page is for. Bigger than a form field has any
            business being, because it is the only field on the page and the
@@ -104,8 +104,8 @@
     </main>
 </div>
 
-<script src="/scripts/auth.js?v=343"></script>
-<script src="/scripts/common.js?v=343"></script>
+<script src="/scripts/auth.js?v=345"></script>
+<script src="/scripts/common.js?v=345"></script>
 <script>
     /* The door to /dashboard/.
      *
@@ -152,7 +152,18 @@
 
         wlShow('wlAsk');
         const input = document.getElementById('wlInput');
-        if (input) input.focus();
+        if (!input) return;
+
+        /* Carried from the Team ID field in the landing bar when what was
+           typed there was not an id. Retyping it here would be a punishment
+           for a typo. */
+        const typed = new URLSearchParams(location.search).get('id');
+        if (typed) {
+            input.value = typed.slice(0, 9);
+            wlError.textContent = 'A Team ID is just digits — no spaces, letters or dashes.';
+            wlError.classList.add('is-on');
+        }
+        input.focus();
     })();
 
     document.getElementById('wlInput').addEventListener('input', function () {

@@ -16,15 +16,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles/common.css?v=343">
-    <link rel="stylesheet" href="/styles/v2-design.css?v=343">
-    <link rel="stylesheet" href="/styles/responsive.css?v=343">
+    <link rel="stylesheet" href="/styles/common.css?v=345">
+    <link rel="stylesheet" href="/styles/v2-design.css?v=345">
+    <link rel="stylesheet" href="/styles/responsive.css?v=345">
     <style>
         /* ===== HERO ===== */
         .hiw-hero {
             max-width: 1400px;
             margin: 0 auto;
-            padding: var(--space-12) 24px var(--space-8);
+            padding: clamp(64px, 8vw, 104px) 24px var(--space-10);
             text-align: center;
         }
         .hiw-hero-icon {
@@ -39,19 +39,33 @@
             margin-bottom: var(--space-4);
         }
         .hiw-hero-icon .icon { width: 28px; height: 28px; }
-        .hiw-hero h1 {
-            font-family: var(--font-display);
-            font-size: 32px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-2);
+        /* common.css claims every h1 at (0,2,2) with !important — 28px, left
+           aligned, display:flex — and v2-design.css claims .v2-page-heading
+           at (0,2,0). Naming html as well puts this at (0,3,2), which is what
+           it takes to win rather than another !important. Same shape as the
+           feature pages: no icon, one big centred line. */
+        html[data-theme] .hiw-hero h1.v2-page-heading,
+        .v2-theme .hiw-hero h1.v2-page-heading {
+            display: block !important;
+            font-family: var(--font-display) !important;
+            font-size: clamp(40px, 5.2vw, 68px) !important;
+            line-height: 1.02 !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.042em !important;
+            text-align: center !important;
+            color: var(--text-primary) !important;
+            margin: 0 auto 20px !important;
+            max-width: 15ch;
+            text-wrap: balance;
         }
         .hiw-hero p {
-            font-size: 15px;
+            font-size: clamp(15px, 1.3vw, 17.5px);
+            line-height: 1.6;
             color: var(--text-secondary);
-            max-width: 560px;
+            max-width: 620px;
             margin: 0 auto;
         }
+        .hiw-hero-icon { display: none; }
 
         /* ===== STEPS SECTION ===== */
         .steps-section {
@@ -289,11 +303,19 @@
             padding: 0 24px var(--space-12);
             text-align: center;
         }
+        /* Three literal near-whites, written for a light theme this page has
+           not had for a while: on the dark shell it was a white slab with
+           white text on it, and the heading was simply not there. The other
+           closing banners on the site are a dark panel with a green wash, so
+           this is that. */
         .cta-card {
-            background: linear-gradient(135deg, #ECFDF5, #F0FDF4, #EFF6FF);
-            border: 1px solid var(--color-primary-glow);
+            background:
+                radial-gradient(120% 140% at 50% 0%,
+                    color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 62%),
+                var(--surface-1);
+            border: 1px solid var(--border-emphasis);
             border-radius: var(--radius-xl);
-            padding: 48px 40px;
+            padding: 56px 40px;
         }
         .cta-card h2 {
             font-family: var(--font-display);
@@ -351,7 +373,6 @@
 
     <!-- Hero Header -->
     <div class="hiw-hero">
-        <div class="hiw-hero-icon"><i data-lucide="rocket" class="icon"></i></div>
         <h1 class="v2-page-heading">How It Works</h1>
         <p>From your current squad to green arrows in three simple steps. No sign-ups, no passwords &mdash; just data-driven FPL insights.</p>
     </div>
@@ -544,21 +565,21 @@
         <div class="cta-card">
             <h2>Ready to climb the rankings?</h2>
             <p>Enter your FPL Team ID and start making smarter decisions today.</p>
-            <a href="index.html" class="cta-btn"><i data-lucide="zap" class="icon"></i> Get Started</a>
+            <a href="/dashboard/" class="cta-btn"><i data-lucide="zap" class="icon"></i> Get Started</a>
         </div>
     </div>
 
     </div><!-- /.v2-main-content -->
 
-    <script src="/scripts/error-monitor.js?v=343"></script>
-    <script src="/scripts/auth.js?v=343"></script>
-    <script src="/scripts/common.js?v=343"></script>
+    <script src="/scripts/error-monitor.js?v=345"></script>
+    <script src="/scripts/auth.js?v=345"></script>
+    <script src="/scripts/common.js?v=345"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="/scripts/push-alerts.js?v=343"></script>
-    <script src="/scripts/notifications.js?v=343"></script>
-    <script src="/scripts/sidebar-nav.js?v=343"></script>
-    <script>loadSidebarNav(); initIcons();
+    <script src="/scripts/push-alerts.js?v=345"></script>
+    <script src="/scripts/notifications.js?v=345"></script>
+    <script src="/scripts/sidebar-nav.js?v=345"></script>
+    <script>loadSidebarNav(); initIcons(); initScrollReveal();
         loadFooter();</script>
     <!-- Marketing footer: legal, methodology and contact links on every page -->
 </body>

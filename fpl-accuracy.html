@@ -11,10 +11,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/styles/common.css?v=343">
-    <link rel="stylesheet" href="/styles/v2-design.css?v=343">
-    <link rel="stylesheet" href="/styles/responsive.css?v=343">
-    <link rel="stylesheet" href="/styles/landing.css?v=343">
+    <link rel="stylesheet" href="/styles/common.css?v=345">
+    <link rel="stylesheet" href="/styles/v2-design.css?v=345">
+    <link rel="stylesheet" href="/styles/responsive.css?v=345">
+    <link rel="stylesheet" href="/styles/landing.css?v=345">
     <style>
         /* A marketing page's first section follows its own hero, so it does not
            need the full between-parts gap the landing page uses. */
@@ -59,6 +59,41 @@
                    color: var(--text-primary); overflow-x: auto; white-space: nowrap;
                    letter-spacing: 0 !important; }
         @media (max-width: 620px) { .ac-term { grid-template-columns: minmax(0, 1fr); gap: 8px; } }
+        /* ---- the pipeline diagram ----
+           Drawn rather than photographed because there is no screen that shows
+           this: it is the shape of the calculation, not a view of the product.
+           Inline SVG so it takes the page's own colours through currentColor
+           and the tokens below, and so it stays sharp at any size. */
+        .ac-flow { margin-top: 40px; }
+        .ac-flow svg { width: 100%; height: auto; display: block; }
+        .ac-flow .fl-box { fill: var(--surface-1); stroke: var(--border-emphasis); }
+        .ac-flow .fl-box-out {
+            fill: color-mix(in srgb, var(--color-primary) 12%, var(--surface-1));
+            stroke: color-mix(in srgb, var(--color-primary) 55%, transparent);
+        }
+        .ac-flow .fl-t {
+            fill: var(--text-primary);
+            font-family: var(--font-display, 'Space Grotesk', sans-serif);
+            font-size: 13px; font-weight: 700;
+        }
+        .ac-flow .fl-s { fill: var(--text-muted); font-size: 11px; }
+        .ac-flow .fl-arrow { stroke: var(--border-emphasis); stroke-width: 1.5; fill: none; }
+        .ac-flow .fl-loop { stroke: color-mix(in srgb, var(--color-primary) 60%, transparent);
+                            stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; }
+        .ac-flow .fl-loop-t { fill: var(--color-primary-text, var(--color-primary));
+                              font-size: 11px; font-weight: 700; }
+        .ac-flow-note {
+            margin: 14px auto 0; max-width: 680px; text-align: center;
+            font-size: 13px; line-height: 1.6; color: var(--text-muted);
+        }
+        /* ---- a real screen, where there is one ---- */
+        .ac-shot { margin-top: 40px; }
+        .ac-shot .lp-frame { height: clamp(260px, 36vw, 480px); --lp-pan: 24%; }
+        .ac-shot-cap {
+            margin: 14px auto 0; max-width: 680px; text-align: center;
+            font-size: 13px; line-height: 1.6; color: var(--text-muted);
+        }
+
 
         .ac-limits { margin-top: 40px; display: grid;
                      grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
@@ -176,6 +211,91 @@
 
     <section class="lp-section lp-wrap">
         <div class="lp-section-head">
+            <span class="lp-eyebrow"><i data-lucide="workflow" class="icon"></i> End to end</span>
+            <h2 class="lp-h2">Where a projection comes from, and where it goes</h2>
+            <p class="lp-lead">Four inputs, one number, and a loop back through reality. The dashed
+                return is the part most models leave out.</p>
+        </div>
+        <div class="ac-flow lp-reveal">
+            <svg viewBox="0 0 900 292" role="img"
+                 aria-label="Official FPL data feeds four model terms — minutes, attacking returns, clean sheets and bonus — which combine into a projected points figure. That figure is locked at the deadline, then graded against what actually happened, and the result feeds back into the model.">
+                <!-- inputs -->
+                <rect class="fl-box" x="4" y="74" width="150" height="58" rx="11"/>
+                <text class="fl-t" x="79" y="99" text-anchor="middle">Official FPL data</text>
+                <text class="fl-s" x="79" y="117" text-anchor="middle">rebuilt every 4 hours</text>
+
+                <path class="fl-arrow" d="M154 103 h36" marker-end="url(#acArrow)"/>
+
+                <!-- the four terms -->
+                <rect class="fl-box" x="196" y="14" width="164" height="44" rx="10"/>
+                <text class="fl-t" x="278" y="34" text-anchor="middle">Minutes</text>
+                <text class="fl-s" x="278" y="49" text-anchor="middle">will he play, how long</text>
+
+                <rect class="fl-box" x="196" y="66" width="164" height="44" rx="10"/>
+                <text class="fl-t" x="278" y="86" text-anchor="middle">Attacking returns</text>
+                <text class="fl-s" x="278" y="101" text-anchor="middle">regressed to a prior</text>
+
+                <rect class="fl-box" x="196" y="118" width="164" height="44" rx="10"/>
+                <text class="fl-t" x="278" y="138" text-anchor="middle">Clean sheets</text>
+                <text class="fl-s" x="278" y="153" text-anchor="middle">a distribution, not a guess</text>
+
+                <rect class="fl-box" x="196" y="170" width="164" height="44" rx="10"/>
+                <text class="fl-t" x="278" y="190" text-anchor="middle">Bonus &amp; the opponent</text>
+                <text class="fl-s" x="278" y="205" text-anchor="middle">venue kept separate</text>
+
+                <!-- Four stubs onto one vertical bus, then a single arrow into
+                     the box. Four separate elbows each ended in mid-air short
+                     of the box, with the arrowheads pointing at nothing. -->
+                <path class="fl-arrow" d="M360 36 H398"/>
+                <path class="fl-arrow" d="M360 88 H398"/>
+                <path class="fl-arrow" d="M360 140 H398"/>
+                <path class="fl-arrow" d="M360 192 H398"/>
+                <path class="fl-arrow" d="M398 36 V192"/>
+                <path class="fl-arrow" d="M398 103 H424" marker-end="url(#acArrow)"/>
+
+                <!-- the number -->
+                <rect class="fl-box-out" x="430" y="74" width="160" height="58" rx="11"/>
+                <text class="fl-t" x="510" y="99" text-anchor="middle">Projected points</text>
+                <text class="fl-s" x="510" y="117" text-anchor="middle">per player, five weeks out</text>
+
+                <path class="fl-arrow" d="M590 103 h36" marker-end="url(#acArrow)"/>
+
+                <rect class="fl-box" x="626" y="74" width="130" height="58" rx="11"/>
+                <text class="fl-t" x="691" y="99" text-anchor="middle">Locked</text>
+                <text class="fl-s" x="691" y="117" text-anchor="middle">at the deadline</text>
+
+                <path class="fl-arrow" d="M756 103 h34" marker-end="url(#acArrow)"/>
+
+                <rect class="fl-box" x="790" y="74" width="106" height="58" rx="11"/>
+                <text class="fl-t" x="843" y="99" text-anchor="middle">Graded</text>
+                <text class="fl-s" x="843" y="117" text-anchor="middle">against reality</text>
+
+                <!-- and back -->
+                <!-- Back to the bus, not into a box: the grading corrects the
+                     terms as a set. Routed below everything so the head does
+                     not land on the last box's own caption. -->
+                <path class="fl-loop" d="M843 132 V248 q0 12 -12 12 H410 q-12 0 -12 -12 V200"
+                      marker-end="url(#acArrowG)"/>
+                <text class="fl-loop-t" x="620" y="278" text-anchor="middle">what was wrong goes back into the model</text>
+
+                <defs>
+                    <marker id="acArrow" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M0 1 L9 5 L0 9 z" fill="currentColor" opacity=".45"/>
+                    </marker>
+                    <marker id="acArrowG" viewBox="0 0 10 10" refX="9" refY="5"
+                            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M0 1 L9 5 L0 9 z" fill="currentColor" opacity=".8"/>
+                    </marker>
+                </defs>
+            </svg>
+            <p class="ac-flow-note">Nothing in the chain is hand-adjusted after the fact. That is the
+                only thing that makes the last box worth reading.</p>
+        </div>
+    </section>
+
+    <section class="lp-section lp-wrap">
+        <div class="lp-section-head">
             <span class="lp-eyebrow"><i data-lucide="scale" class="icon"></i> How it is scored</span>
             <h2 class="lp-h2">A number is only as good as what it is compared with</h2>
             <p class="lp-lead">Anyone can publish a projection. The question is whether it beats what you
@@ -200,6 +320,16 @@
                 <p>Reported for every player, for likely starters, and for players managers actually
                     own — an average flattered by deep-bench nobodies is not the one you play with.</p>
             </div>
+        </div>
+        <div class="ac-shot lp-reveal">
+            <div class="lp-frame is-pan">
+                <img class="lp-shot-dark" src="/assets/lp/lineup-wizard-dark.png?v=345"
+                     alt="The Lineup Wizard, with a projected points figure for the eleven and a breakdown of which part of the game each point came from."
+                     loading="lazy" decoding="async">
+            </div>
+            <p class="ac-shot-cap">The same numbers, in the product. Every projection on this screen
+                opens into the terms above — and <em>where the points come from</em> is that breakdown,
+                summed across your eleven.</p>
         </div>
     </section>
 
@@ -246,7 +376,7 @@
             <p class="lp-lead">Nothing here is a black box. The model, every input and the known
                 weaknesses are written out in full.</p>
             <div class="lp-cta-row">
-                <a class="lp-btn lp-btn-primary" href="fpl-methodology.html">Methodology <i data-lucide="arrow-right" class="icon"></i></a>
+                <a class="lp-btn lp-btn-primary" href="/fpl-methodology.html">Methodology <i data-lucide="arrow-right" class="icon"></i></a>
                 <a class="lp-btn lp-btn-ghost" href="index.html">Try it on your squad</a>
             </div>
         </div>
@@ -254,15 +384,16 @@
 
     </div>
 
-    <script src="/scripts/error-monitor.js?v=343"></script>
-    <script src="/scripts/auth.js?v=343"></script>
-    <script src="/scripts/common.js?v=343"></script>
-    <script src="/scripts/push-alerts.js?v=343"></script>
-    <script src="/scripts/notifications.js?v=343"></script>
-    <script src="/scripts/sidebar-nav.js?v=343"></script>
+    <script src="/scripts/error-monitor.js?v=345"></script>
+    <script src="/scripts/auth.js?v=345"></script>
+    <script src="/scripts/common.js?v=345"></script>
+    <script src="/scripts/push-alerts.js?v=345"></script>
+    <script src="/scripts/notifications.js?v=345"></script>
+    <script src="/scripts/sidebar-nav.js?v=345"></script>
     <script>
         loadSidebarNav();
         initIcons();
+        initScrollReveal();
         loadFooter();
 
         /* The figures come from data/model-accuracy.json, which the grading job
@@ -281,7 +412,7 @@
                     <div class="ac-sub">${escHTML(sub)}</div>
                 </div>`;
 
-            fetch('data/model-accuracy.json?v=' + (typeof CACHE_BUSTER !== 'undefined' ? CACHE_BUSTER : Date.now()))
+            fetch('/data/model-accuracy.json?v=' + (typeof CACHE_BUSTER !== 'undefined' ? CACHE_BUSTER : Date.now()))
                 .then(r => r.ok ? r.json() : Promise.reject(new Error('unavailable')))
                 .then(d => {
                     const meta = d.metadata || {};

@@ -764,3 +764,77 @@
 @media (max-width: 680px) {
     .fw-step { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 }
+
+/* ===== Arriving =====
+
+   Two different jobs, deliberately not the same mechanism.
+
+   The hero runs on load, because it is already on screen: an observer has
+   nothing to wait for above the fold, which is why the page looked static the
+   moment it opened. It is a CSS animation rather than a transition toggled by
+   script, so there is no state to get stuck in — with animations unsupported
+   or disabled the element is simply where it ends up, visible. Nothing here
+   waits on JavaScript to become readable.
+
+   Everything below the fold keeps the observer in initScrollReveal(), which
+   fires once and unobserves.
+
+   Short and small on purpose: 14px and half a second. A landing page that
+   makes you wait for its own text is a worse landing page. */
+@keyframes lp-rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+}
+
+.lp-hero > *,
+.fw-hero > * {
+    animation: lp-rise 560ms cubic-bezier(.22, 1, .36, 1) both;
+}
+/* The stagger is what makes it read as one movement rather than six. Capped
+   at the sixth child: past that the delay is longer than the animation and
+   the last item looks like it arrived separately. */
+.lp-hero > *:nth-child(1), .fw-hero > *:nth-child(1) { animation-delay: 0ms; }
+.lp-hero > *:nth-child(2), .fw-hero > *:nth-child(2) { animation-delay: 70ms; }
+.lp-hero > *:nth-child(3), .fw-hero > *:nth-child(3) { animation-delay: 140ms; }
+.lp-hero > *:nth-child(4), .fw-hero > *:nth-child(4) { animation-delay: 210ms; }
+.lp-hero > *:nth-child(5), .fw-hero > *:nth-child(5) { animation-delay: 280ms; }
+.lp-hero > *:nth-child(n+6), .fw-hero > *:nth-child(n+6) { animation-delay: 340ms; }
+
+/* The hero's own screenshot gets a touch longer and a touch further, because
+   it is the biggest thing moving and matching the text exactly makes it look
+   like it is being dragged along. */
+.fw-stage {
+    animation: lp-rise 760ms cubic-bezier(.22, 1, .36, 1) 340ms both;
+}
+
+/* Inside a revealed block, the parts arrive in order too. Same idea as the
+   hero, driven by .is-in rather than by load. */
+.lp-reveal.is-in > .lp-feature-text > *,
+.lp-reveal.is-in > .lp-section-head > * {
+    animation: lp-rise 520ms cubic-bezier(.22, 1, .36, 1) both;
+}
+.lp-reveal.is-in > .lp-feature-text > *:nth-child(2),
+.lp-reveal.is-in > .lp-section-head > *:nth-child(2) { animation-delay: 60ms; }
+.lp-reveal.is-in > .lp-feature-text > *:nth-child(3),
+.lp-reveal.is-in > .lp-section-head > *:nth-child(3) { animation-delay: 120ms; }
+.lp-reveal.is-in > .lp-feature-text > *:nth-child(n+4),
+.lp-reveal.is-in > .lp-section-head > *:nth-child(n+4) { animation-delay: 180ms; }
+
+/* A card grid arrives as a grid, left to right, one beat apart. Only the
+   first row is staggered — by the time the second is on screen the reader is
+   scrolling, and a delayed card under the pointer reads as lag. */
+.lp-reveal.is-in .lp-cell:nth-child(1),
+.lp-reveal.is-in .lp-duo-card:nth-child(1) { animation: lp-rise 520ms cubic-bezier(.22,1,.36,1) 0ms both; }
+.lp-reveal.is-in .lp-cell:nth-child(2),
+.lp-reveal.is-in .lp-duo-card:nth-child(2) { animation: lp-rise 520ms cubic-bezier(.22,1,.36,1) 80ms both; }
+.lp-reveal.is-in .lp-cell:nth-child(3) { animation: lp-rise 520ms cubic-bezier(.22,1,.36,1) 160ms both; }
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-hero > *, .fw-hero > *, .fw-stage,
+    .lp-reveal.is-in > .lp-feature-text > *,
+    .lp-reveal.is-in > .lp-section-head > *,
+    .lp-reveal.is-in .lp-cell,
+    .lp-reveal.is-in .lp-duo-card {
+        animation: none;
+    }
+}

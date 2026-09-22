@@ -856,20 +856,48 @@ function v2AccountName() {
     return 'Your team';
 }
 
-/* The login modal, the landing bar's ID field and v2EnterWithTeam() used to
- * live here — about 120 lines that asked for a Team ID in a dialog over the
- * landing page, plus the bar field that opened it.
+/* Signing in from the landing bar.
  *
- * All of it is gone because the way in moved. /dashboard/ is the door now:
- * scripts/dashboard-gate.js sends anybody without a saved id to the ID page,
- * which asks the same question on a page of its own with room to answer it.
- * A second place to type the same number, on the marketing page, was one
- * place too many — and calling it "Log in" advertised an account the product
- * deliberately does not have.
+ * A good id goes straight through — that is the whole point of putting the
+ * field in the bar rather than behind a button that opens a box containing a
+ * field.
  *
- * The demo squad went with it and came back on the ID page, which is where
- * somebody deciding whether to hand over a number is actually standing.
+ * Anything else hands over to /dashboard/login, which is the page the gate
+ * sends people to anyway: it has room for where-to-find-your-id and for the
+ * demo squad, neither of which fits in a 64px bar. What was typed goes with
+ * it so the reader corrects what they wrote rather than retyping it, and the
+ * field is marked so the reason they were moved is visible in the thing that
+ * caused it.
+ *
+ * This used to open a modal over the landing page instead. The modal was a
+ * second copy of that page, and the two drifted.
  */
+function v2SubmitLandingId(event) {
+    if (event && typeof event.preventDefault === 'function') event.preventDefault();
+
+    const input = document.getElementById('v2LandingIdInput');
+    const id = input ? input.value.trim() : '';
+
+    if (!/^\d+$/.test(id)) {
+        if (input && id) input.classList.add('is-bad');
+        location.href = '/dashboard/login' + (id ? '?id=' + encodeURIComponent(id) : '');
+        return false;
+    }
+
+    v2EnterWithTeam(id);
+    return false;
+}
+
+/* Save it and go. Straight to /dashboard/ rather than to the page we are on:
+   half of this page is written for a visitor with no squad, and the dashboard
+   is what the id was for. */
+function v2EnterWithTeam(teamId) {
+    try {
+        saveTeamId(teamId);
+    } catch (e) { /* private mode: nothing to save into, so nowhere to go */ }
+    location.href = '/dashboard/';
+}
+
 
 /* The theme row says which mode is on, so it has to be told when that
    changes — including by the fallback switch below it, and by another tab.
@@ -2171,7 +2199,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=343')
+    fetch('/footer.html?v=345')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
@@ -2734,4 +2762,82 @@ function favClubsSort(list, teamIdOf) {
         .map((item, i) => ({ item, i, fav: fav.includes(Number(teamIdOf(item))) }))
         .sort((a, b) => (a.fav === b.fav ? a.i - b.i : (a.fav ? -1 : 1)))
         .map(x => x.item);
+}
+
+/* Which section of a long page you are actually reading.
+ *
+ * The Methodology page has a contents rail beside six thousand words, and
+ * until now it was a list of links that never changed — so the rail told you
+ * where you could go and nothing about where you were.
+ *
+ * An IntersectionObserver with a band rather than a line: the root margin
+ * clips the viewport to a strip just under the fixed header, and the current
+ * section is the topmost heading inside that strip. A plain "is it visible"
+ * test lights up three sections at once on a tall screen, and a scroll
+ * handler comparing offsets runs on every frame to answer a question that
+ * changes a few times a page.
+ *
+ * `targets` are the headings; the links are found from their ids, so a
+ * heading with no link in the rail is simply not tracked rather than an
+ * error. Falls back to doing nothing at all, which leaves the rail exactly as
+ * it was before this existed.
+ */
+function initTocSpy(opts) {
+    const o = opts || {};
+    const rail = document.querySelector(o.rail || '.doc-toc');
+    if (!rail || typeof IntersectionObserver === 'undefined') return;
+
+    const links = new Map();
+    rail.querySelectorAll('a[href^="#"]').forEach(a => {
+        const id = decodeURIComponent(a.getAttribute('href').slice(1));
+        if (id) links.set(id, a);
+    });
+    if (!links.size) return;
+
+    const heads = [...links.keys()]
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+    if (!heads.length) return;
+
+    /* Everything currently inside the band, in document order, so "topmost"
+       is a lookup rather than a sort on every callback. */
+    const order = new Map(heads.map((el, i) => [el.id, i]));
+    const inBand = new Set();
+    let current = null;
+
+    function paint() {
+        let best = null;
+        for (const id of inBand) {
+            if (best === null || order.get(id) < order.get(best)) best = id;
+        }
+        /* Nothing in the band happens between two sections and while scrolling
+           up past the first one. Keeping the last choice is what makes the
+           highlight stay put rather than blink off. */
+        if (best === null || best === current) return;
+        links.get(current)?.classList.remove('is-current');
+        links.get(best).classList.add('is-current');
+        current = best;
+    }
+
+    const io = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+            if (e.isIntersecting) inBand.add(e.target.id);
+            else inBand.delete(e.target.id);
+        }
+        paint();
+    }, {
+        /* A band starting just below the header and 45% of the way down.
+           Negative bottom margin is what turns the viewport into a strip. */
+        rootMargin: `-${o.top || 84}px 0px -55% 0px`,
+        threshold: 0
+    });
+    heads.forEach(el => io.observe(el));
+
+    /* Landing on a #fragment should light the rail immediately rather than
+       waiting for the first scroll. */
+    const hash = decodeURIComponent(location.hash.slice(1));
+    if (hash && links.has(hash)) {
+        links.get(hash).classList.add('is-current');
+        current = hash;
+    }
 }
