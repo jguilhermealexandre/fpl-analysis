@@ -44,8 +44,10 @@ const SHOTS = [
       vw: 1500, vh: 1100, max: 900 },
     /* The two wizards get feature pages of their own, so they need whole
        screens rather than the tight card crops below. */
+    /* 760, not 1000: step 1 is a short screen and the rest of the panel is
+       empty page, which a slow pan then drifts across. */
     { file: 'transfer-wizard', url: '/fpl-my-team-analysis.html#transfer', wait: 12000,
-      sel: '#transferDisplay, .v2-main-content', vw: 1500, vh: 1200, max: 1000 },
+      sel: '#transferDisplay, .v2-main-content', vw: 1500, vh: 1200, max: 760 },
     { file: 'lineup-wizard', url: '/fpl-my-team-analysis.html#lineup', wait: 12000,
       sel: '#lineupDisplay, .v2-main-content', vw: 1500, vh: 1200, max: 1000 },
     /* The two screens the feature pages were borrowing someone else's picture
