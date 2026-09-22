@@ -21,10 +21,10 @@
          waiting for the stylesheet to name them: same-origin now, so a
          preload here costs nothing and starts them with the CSS. -->
     <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-3100e775e8.woff2" crossorigin>
-    <link rel="stylesheet" href="/styles/fonts.min.css?v=352">
-    <link rel="stylesheet" href="/styles/common.min.css?v=352">
-    <link rel="stylesheet" href="/styles/v2-design.min.css?v=352">
-    <link rel="stylesheet" href="/styles/auth.min.css?v=352">
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=353">
+    <link rel="stylesheet" href="/styles/common.min.css?v=353">
+    <link rel="stylesheet" href="/styles/v2-design.min.css?v=353">
+    <link rel="stylesheet" href="/styles/auth.min.css?v=353">
     <style>
         /* The one thing this page is for. Bigger than a form field has any
            business being, because it is the only field on the page and the
@@ -121,8 +121,8 @@
     </main>
 </div>
 
-<script src="/scripts/auth.min.js?v=352"></script>
-<script src="/scripts/common.min.js?v=352"></script>
+<script src="/scripts/auth.min.js?v=353"></script>
+<script src="/scripts/common.min.js?v=353"></script>
 <script>
     /* The door to /dashboard/.
      *
@@ -138,10 +138,16 @@
 
     /* Only a path on this site, and only inside the app. Read back off a query
        string, so without this check anybody could hand out an easyfpl.com link
-       that lands on their own domain. */
+       that lands on their own domain.
+
+       Both spellings of the app, matching the list in dashboard-gate.js — it
+       is the gate that writes this parameter, and until /squad-analysis was
+       gated it never sent one from there. Now that it does, a guard that only
+       knew /dashboard would have accepted the visitor and then dropped them on
+       the home screen instead of the squad page they had asked for. */
     function wlNext() {
         const raw = new URLSearchParams(location.search).get('next') || '';
-        return /^\/dashboard(\/|$)/.test(raw) && !raw.startsWith('//')
+        return /^\/(dashboard|squad-analysis)(\/|$)/.test(raw) && !raw.startsWith('//')
             ? raw
             : '/dashboard/';
     }

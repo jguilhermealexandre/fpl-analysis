@@ -15,14 +15,28 @@
  *
  * Not a security boundary, and not pretending to be one. Every byte this site
  * serves is public and a Team ID is a public number; this is about landing
- * somebody in the right place, not about keeping anybody out.
+ * somebody in the right place, not about keeping anybody out. What does keep
+ * these pages out of search is the noindex on each of them, which
+ * tests/dashboard-gate.test.mjs holds to the same list as this file.
  */
 (function () {
-    var path = location.pathname;
+    var path = location.pathname.replace(/\/+$/, '') || '/';
 
-    /* index.html answers both / and /dashboard. At / it is the landing page
-       and there is nothing to gate. */
-    if (path.indexOf('/dashboard') !== 0) return;
+    /* Where the app is.
+     *
+     * /dashboard is the obvious half. /squad-analysis is the other one and it
+     * was missed: _redirects serves it from fpl-my-team-analysis.html at 200,
+     * so the deepest page in the product — the whole squad, the wizards, the
+     * draft planner — opened for anyone who typed that URL, with no Team ID
+     * and no gate, because this file only ever looked at the first character
+     * of the path. Both spellings are the app; the list says so rather than a
+     * prefix test that only knew about one of them. */
+    var APP = ['/dashboard', '/squad-analysis'];
+    var inApp = false;
+    for (var i = 0; i < APP.length; i++) {
+        if (path === APP[i] || path.indexOf(APP[i] + '/') === 0) { inApp = true; break; }
+    }
+    if (!inApp) return;
 
     /* Pages that belong in the app but do not need a squad.
      *
@@ -33,7 +47,7 @@
      * live under /dashboard/ because that is where they belong in the
      * product, not because they are behind anything. */
     var OPEN = ['/dashboard/login', '/dashboard/scouts-desk', '/dashboard/news'];
-    if (OPEN.indexOf(path.replace(/\/+$/, '')) !== -1) return;
+    if (OPEN.indexOf(path) !== -1) return;
 
     var id = null;
     try { id = localStorage.getItem('fpl_team_id'); } catch (e) {
