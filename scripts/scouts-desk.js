@@ -1963,7 +1963,13 @@ async function sdOpenArticle(id) {
     // Index entries carry no body — fetch it the first time one is opened.
     if (!a.body && a.slug) {
         try {
-            const full = await DataCache.fetchJSON(`data/articles/${a.slug}.json?v=${CACHE_BUSTER}`);
+            /* Root-absolute. This page is served at /dashboard/scouts-desk, so
+               a relative "data/..." resolves against /dashboard/ and asks for
+               a file that is not there — which used to be answered by the
+               /dashboard/* catch-all with 200 and a page of HTML, so the JSON
+               parse failed and the archive silently fell back to generating
+               live. The catch-all is gone and it is a plain 404 now. */
+            const full = await DataCache.fetchJSON(`/data/articles/${a.slug}.json?v=${CACHE_BUSTER}`);
             a.body = full.body;
         } catch (e) {
             a.body = '_This article could not be loaded._';
@@ -2051,7 +2057,7 @@ async function initScoutsDesk() {
         // debrief stays exactly as it was published.
         let archive = null;
         try {
-            archive = await DataCache.fetchJSON(`data/articles/index.json?v=${CACHE_BUSTER}`);
+            archive = await DataCache.fetchJSON(`/data/articles/index.json?v=${CACHE_BUSTER}`);
         } catch (e) { /* no archive yet — fall through to generating live */ }
 
         if (archive && archive.length) {

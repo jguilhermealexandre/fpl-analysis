@@ -6,7 +6,17 @@
     <link rel="manifest" href="manifest.json">
     <title>EasyFPL — League Rivals</title>
     <meta name="description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head performance analysis.">
-    <link rel="canonical" href="https://easyfpl.com/fpl-league-rivals">
+    <link rel="canonical" href="https://easyfpl.com/dashboard/rivals">
+    <!-- Signed out there is nothing on this page but a prompt for a Team ID,
+         and the gate in dashboard-gate.js sends anyone without one to the ID
+         page before it paints — so a crawler is never shown the screen this
+         URL names. The page that describes this feature to someone who has
+         not signed in is /feature-squad-analysis and friends, and those are
+         the ones in the sitemap. follow, not nofollow: the links out of here
+         are the rest of the product.
+         Deliberately paired with the canonical above rather than replacing
+         it: the URL is still the one this page is served at. -->
+    <meta name="robots" content="noindex, follow">
     <meta name="theme-color" content="#0a0f1a">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <!-- The data URI stays as the fallback for anything that will not take an
@@ -18,15 +28,25 @@
     <meta property="og:site_name" content="EasyFPL">
     <meta property="og:title" content="EasyFPL — League Rivals">
     <meta property="og:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
-    <meta property="og:url" content="https://easyfpl.com/fpl-league-rivals.html">
+    <meta property="og:url" content="https://easyfpl.com/dashboard/rivals">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="EasyFPL — League Rivals">
     <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
-    <!-- Fetched without blocking the first paint: media="print" takes it off
-         the critical path, onload puts it back. Every one of these URLs
-         carries display=swap, so text paints in a fallback face meanwhile. -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" media="print" onload="this.media='all';this.onload=null">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"></noscript>
+    <!-- The site's typefaces, from our own origin rather than Google's.
+         Two cross-origin connections used to stand in front of the first
+         glyph: one to fonts.googleapis.com for a stylesheet that names files
+         on fonts.gstatic.com, then one to that. Both are gone — see the note
+         at the top of tools/fetch-fonts.mjs — and with them every
+         third-party request a signed-out visitor made.
+
+         Still off the critical path via media="print", and still
+         font-display: swap inside, so text paints in the fallback face and
+         reflows once. Preloading the two faces above the fold instead of
+         waiting for the stylesheet to name them: same-origin now, so a
+         preload here costs nothing and starts them with the CSS. -->
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-3100e775e8.woff2" crossorigin>
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=351" media="print" onload="this.media='all';this.onload=null">
+    <noscript><link rel="stylesheet" href="/styles/fonts.min.css?v=351"></noscript>
     <script src="/scripts/dashboard-gate.min.js?v=351"></script>
     <link rel="stylesheet" href="/styles/common.min.css?v=351">
     <link rel="stylesheet" href="/styles/v2-design.min.css?v=351">

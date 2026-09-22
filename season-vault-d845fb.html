@@ -11,13 +11,21 @@
          whole origin, so it is cached once and cannot resolve differently from
          one page to the next the way a per-page data URI can. -->
     <link rel="alternate icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='20'%20fill='%2310B981'/%3E%3Ctext%20x='50'%20y='72'%20font-size='65'%20font-family='Arial,sans-serif'%20font-weight='bold'%20fill='%230a0f1a'%20text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Fetched without blocking the first paint: media="print" takes it off
-         the critical path, onload puts it back. Every one of these URLs
-         carries display=swap, so text paints in a fallback face meanwhile. -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" media="print" onload="this.media='all';this.onload=null">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"></noscript>
+    <!-- The site's typefaces, from our own origin rather than Google's.
+         Two cross-origin connections used to stand in front of the first
+         glyph: one to fonts.googleapis.com for a stylesheet that names files
+         on fonts.gstatic.com, then one to that. Both are gone — see the note
+         at the top of tools/fetch-fonts.mjs — and with them every
+         third-party request a signed-out visitor made.
+
+         Still off the critical path via media="print", and still
+         font-display: swap inside, so text paints in the fallback face and
+         reflows once. Preloading the two faces above the fold instead of
+         waiting for the stylesheet to name them: same-origin now, so a
+         preload here costs nothing and starts them with the CSS. -->
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-3100e775e8.woff2" crossorigin>
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=351" media="print" onload="this.media='all';this.onload=null">
+    <noscript><link rel="stylesheet" href="/styles/fonts.min.css?v=351"></noscript>
     <link rel="stylesheet" href="/styles/common.min.css?v=351">
     <link rel="stylesheet" href="/styles/season-vault.min.css?v=351">
     <link rel="stylesheet" href="/styles/responsive.min.css?v=351">

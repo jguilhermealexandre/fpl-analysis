@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" class="v2-theme">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <meta name="description" content="That page is not here. Links to the parts of EasyFPL that are.">
+    <!-- No canonical. A 404 is not a page that exists somewhere else under a
+         tidier name, and pointing one at the home page is how a missing URL
+         gets indexed as a copy of the home page instead of disappearing. -->
+    <meta name="robots" content="noindex, follow">
+    <title>Page not found | EasyFPL</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <!-- The site's typefaces, from our own origin rather than Google's.
+         Two cross-origin connections used to stand in front of the first
+         glyph: one to fonts.googleapis.com for a stylesheet that names files
+         on fonts.gstatic.com, then one to that. Both are gone — see the note
+         at the top of tools/fetch-fonts.mjs — and with them every
+         third-party request a signed-out visitor made.
+
+         Still off the critical path via media="print", and still
+         font-display: swap inside, so text paints in the fallback face and
+         reflows once. Preloading the two faces above the fold instead of
+         waiting for the stylesheet to name them: same-origin now, so a
+         preload here costs nothing and starts them with the CSS. -->
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-3100e775e8.woff2" crossorigin>
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=351" media="print" onload="this.media='all';this.onload=null">
+    <noscript><link rel="stylesheet" href="/styles/fonts.min.css?v=351"></noscript>
+    <link rel="stylesheet" href="/styles/common.min.css?v=351">
+    <link rel="stylesheet" href="/styles/v2-design.min.css?v=351">
+    <!-- v2-app.css is the signed-in half of v2-design.css. Asked for here, so
+         that the cascade reads the same as it did when the two were one file,
+         and only when there is a saved Team ID — see the note at the top of
+         v2-design.css. Kept identical on every page by check:appcss. -->
+    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=351';document.head.appendChild(l)})();</script>
+    <link rel="stylesheet" href="/styles/responsive.min.css?v=351">
+    <link rel="stylesheet" href="/styles/landing.min.css?v=351">
+    <style>
+        /* Tall enough that the footer is below the fold on a laptop, so the
+           page reads as a destination rather than an error strip. */
+        .nf { min-height: 52vh; display: flex; flex-direction: column; justify-content: center; }
+        .nf-code {
+            font-family: var(--font-display, 'Space Grotesk', sans-serif);
+            font-size: clamp(64px, 11vw, 132px); font-weight: 700; line-height: 1;
+            color: var(--color-primary); opacity: 0.22; margin-bottom: -8px;
+        }
+        .nf-links { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 30px; }
+        .nf-links a {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 16px; border-radius: 999px; text-decoration: none;
+            font-size: 14px; font-weight: 600; color: var(--text-primary);
+            background: var(--surface-2); border: 1px solid var(--border-subtle);
+            transition: background 160ms ease, border-color 160ms ease;
+        }
+        .nf-links a:hover { background: var(--surface-3); border-color: var(--border-emphasis); }
+        .nf-links a .icon { width: 16px; height: 16px; color: var(--color-primary); }
+    </style>
+</head>
+<body>
+    <!-- Header is fetch-injected by loadSidebarNav() (scripts/sidebar-nav.js) -->
+    <main class="v2-main-content" id="main">
+    <section class="lp-hero lp-wrap nf">
+        <div class="nf-code">404</div>
+        <h1 class="lp-h1">That page is not here</h1>
+        <p class="lp-lead">
+            It may have moved, or the link may have been mistyped. Everything EasyFPL
+            does is one of these.
+        </p>
+        <div class="nf-links">
+            <a href="/"><i data-lucide="home" class="icon"></i> Home</a>
+            <a href="/dashboard/"><i data-lucide="layout-dashboard" class="icon"></i> Dashboard</a>
+            <a href="/dashboard/scouts-desk"><i data-lucide="newspaper" class="icon"></i> Scout's Desk</a>
+            <a href="/dashboard/news"><i data-lucide="radio" class="icon"></i> Team News</a>
+            <a href="/fpl-faq"><i data-lucide="help-circle" class="icon"></i> FAQ</a>
+            <a href="/fpl-contact"><i data-lucide="mail" class="icon"></i> Contact</a>
+        </div>
+    </section>
+    </main>
+    <!-- Marketing footer: legal, methodology and contact links on every page -->
+    <script src="/scripts/error-monitor.min.js?v=351"></script>
+    <script src="/scripts/auth.min.js?v=351"></script>
+    <script src="/scripts/common.min.js?v=351"></script>
+    <script src="/scripts/push-alerts.min.js?v=351"></script>
+    <script src="/scripts/notifications.min.js?v=351"></script>
+    <script src="/scripts/sidebar-nav.min.js?v=351"></script>
+    <script>
+        loadSidebarNav();
+        initIcons();
+        loadFooter();
+    </script>
+</body>
+</html>

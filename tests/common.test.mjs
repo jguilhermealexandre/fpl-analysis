@@ -184,11 +184,21 @@ test('nothing fetches a relative path', () => {
      *
      * Every app screen is served from /dashboard/, so a relative
      * fetch('data/bootstrap-static.json') resolves to
-     * /dashboard/data/bootstrap-static.json. That does not 404 — the
-     * /dashboard/* catch-all in _redirects answers it with index.html, 200 —
-     * so r.ok is true and r.json() throws on the HTML. The dashboard read
-     * that as "your team could not be loaded" and put the landing page back,
-     * inside the signed-in sidebar, for every Team ID.
+     * /dashboard/data/bootstrap-static.json. While the /dashboard/* catch-all
+     * existed that did not even 404 — it was answered with index.html at 200,
+     * so r.ok was true and r.json() threw on the HTML. The dashboard read that
+     * as "your team could not be loaded" and put the landing page back, inside
+     * the signed-in sidebar, for every Team ID. The catch-all is gone and the
+     * same mistake is a plain 404 now, which is louder but still a feature
+     * that quietly does nothing.
+     *
+     * The first version of this test looked only for `fetch(` and stopped
+     * reading a path at the first `$`, so it saw neither of the two the
+     * Scout's Desk had: DataCache.fetchJSON(`data/articles/index.json?v=...`),
+     * which is the same bug through a wrapper and inside a template literal.
+     * Both are covered now — the name, and the literal prefix in front of the
+     * first interpolation, which is the part that decides what the URL
+     * resolves against.
      *
      * The cost of the mistake is entirely out of proportion to how easy it is
      * to make, which is what a test is for. */
@@ -199,10 +209,14 @@ test('nothing fetches a relative path', () => {
     const offenders = [];
     for (const f of files) {
         const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
-        for (const m of src.matchAll(/fetch\(\s*['"`]([^'"`$)]+)/g)) {
-            const url = m[1];
+        for (const m of src.matchAll(/(?:^|[^\w$.])(?:fetch|fetchJSON)\(\s*(['"`])([^'"`]*)/g)) {
+            /* Only the text before the first ${...}: everything after it is
+               computed, and cannot change what the start of the URL is
+               relative to. */
+            const url = m[2].split('${')[0];
+            if (!url) continue;                       // fully computed, nothing to judge
             if (/^(https?:|\/|\.\.\/)/.test(url)) continue;
-            offenders.push(`${f}: fetch('${url}')`);
+            offenders.push(`${f}: ${m[1]}${url}…`);
         }
     }
     assert.deepEqual(offenders, [],

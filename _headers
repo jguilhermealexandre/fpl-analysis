@@ -26,7 +26,10 @@
 #                original policy, so enabling the file as written would have
 #                broken jersey numbers on two pages.
 #   img-src      https: covers the Premier League badge CDN.
-#   font-src     Google Fonts, plus 'self' for anything served locally later.
+#   font-src     'self' alone. The typefaces moved to /assets/fonts and are
+#                served from this origin, so both Google hosts came out of the
+#                policy with them — see tools/fetch-fonts.mjs. A signed-out
+#                visitor now makes no third-party request at all.
 #
 # No iframes and no <form> elements exist on the site, so frame-ancestors,
 # form-action and object-src are locked down rather than left to default-src.
@@ -50,7 +53,21 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://qlipcnedxchcsbpihscp.supabase.co https://fpl-proxy.jguilhermealexandre.workers.dev https://api.rss2json.com https://docs.google.com https://sdp-prem-prod.premier-league-prod.pulselive.com https://cloudflareinsights.com https://cdn.jsdelivr.net https://unpkg.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https: data:; connect-src 'self' https://qlipcnedxchcsbpihscp.supabase.co https://fpl-proxy.jguilhermealexandre.workers.dev https://api.rss2json.com https://docs.google.com https://sdp-prem-prod.premier-league-prod.pulselive.com https://cloudflareinsights.com https://cdn.jsdelivr.net https://unpkg.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
+# The previous design, kept at /old-website so the old page is there to look at
+# while the new one is being built. Cloudflare Pages deploys the repository, so
+# "kept in the tree" and "published on the domain" are the same thing: twenty-two
+# pages of it are live, crawlable, and near-duplicates of the pages that replaced
+# them — the FAQ down there carries the same <title> as the real one.
+#
+# They canonicalise to their live counterparts, which is the right hint, but a
+# canonical is a hint. This is the directive. noindex takes them out of the index
+# and nofollow stops the crawl walking the whole old site from any one of them;
+# they are deliberately still crawlable, because a page blocked in robots.txt is
+# a page whose noindex header is never read.
+/old-website/*
+  X-Robots-Tag: noindex, nofollow
 
 # The data feed is rewritten every 15 minutes during match windows, so 300s at
 # the edge is roughly one refresh behind at worst and takes the repeated reads
@@ -93,3 +110,12 @@
 # old one went on serving it.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# The social cards, which are the one thing under /assets that is not
+# addressed by ?v=. A scraper asks for the URL in the page's og:image and
+# there is nowhere to put a version, so the year above would pin a card to a
+# title the page no longer has. A day is long enough that the same card is not
+# re-fetched for every share of the same link, and short enough that a
+# corrected title reaches the preview the same week.
+/assets/og/*
+  Cache-Control: public, max-age=86400

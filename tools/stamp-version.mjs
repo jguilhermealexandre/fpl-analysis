@@ -32,7 +32,11 @@ const targets = [
     /* The template check:appcss compares every page's inline v2-app.css loader
        against. It is not markup, so the .html sweep above never sees it, and a
        stale copy here fails the build on all 31 pages at once. */
-    { file: 'tools/app-css-snippet.txt', rx: /\?v=\d+/g }
+    { file: 'tools/app-css-snippet.txt', rx: /\?v=\d+/g },
+    /* The archive pages are written by a script, so their stylesheet links
+       are a template rather than markup and the .html sweep cannot reach
+       them. Articles/*.html themselves are ordinary files and are swept. */
+    { file: 'scripts/build-articles.js', rx: /\?v=\d+/g }
 ];
 
 let stale = [];

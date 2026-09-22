@@ -57,12 +57,30 @@ http.createServer((req, res) => {
     }
     if (pathname.endsWith('/')) pathname += 'index.html';
 
+    /* Clean URLs, as Pages serves them. Every canonical on the site and every
+       entry in sitemap.xml names the extensionless form — /fpl-faq, not
+       /fpl-faq.html — so a server that only answers the second one disagrees
+       with the site's own account of where its pages live, and a link written
+       the canonical way 404s here while working in production. */
+    if (!path.extname(pathname)) {
+        const asPage = path.join(ROOT, pathname + '.html');
+        if (asPage.startsWith(ROOT) && fs.existsSync(asPage)) pathname += '.html';
+    }
+
     // Stay inside the repo.
     const file = path.join(ROOT, pathname);
     if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end('Forbidden'); }
 
     fs.readFile(file, (err, body) => {
         if (err) {
+            /* The site's own 404 page, at a 404, which is what Pages does with
+               a root 404.html. A plain text body here meant the one page a
+               broken link actually reaches was the one page never looked at. */
+            const notFound = path.join(ROOT, '404.html');
+            if (pathname !== '/404.html' && fs.existsSync(notFound)) {
+                res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+                return res.end(fs.readFileSync(notFound));
+            }
             res.writeHead(404, { 'Content-Type': 'text/plain' });
             return res.end(`404  ${pathname}`);
         }

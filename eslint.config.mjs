@@ -1894,7 +1894,8 @@ export default [
        and run in the browser, so it legitimately reaches for document and
        localStorage while the file around it is Node. */
     {
-        files: ['tools/pl-news-browser.mjs', 'tools/fetch-pl-injuries.mjs', 'tools/capture-lp-shots.mjs'],
+        files: ['tools/pl-news-browser.mjs', 'tools/fetch-pl-injuries.mjs', 'tools/capture-lp-shots.mjs',
+            'tools/make-og-cards.mjs'],
         languageOptions: {
             ecmaVersion: 2022, sourceType: 'module',
             globals: { ...globals.node, document: 'readonly', window: 'readonly', localStorage: 'readonly' }

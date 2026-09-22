@@ -8,13 +8,21 @@
     <meta name="description" content="Sign in to EasyFPL.">
     <meta name="robots" content="noindex, follow">
     <link rel="canonical" href="https://easyfpl.com/login">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Fetched without blocking the first paint: media="print" takes it off
-         the critical path, onload puts it back. Every one of these URLs
-         carries display=swap, so text paints in a fallback face meanwhile. -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" media="print" onload="this.media='all';this.onload=null">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"></noscript>
+    <!-- The site's typefaces, from our own origin rather than Google's.
+         Two cross-origin connections used to stand in front of the first
+         glyph: one to fonts.googleapis.com for a stylesheet that names files
+         on fonts.gstatic.com, then one to that. Both are gone — see the note
+         at the top of tools/fetch-fonts.mjs — and with them every
+         third-party request a signed-out visitor made.
+
+         Still off the critical path via media="print", and still
+         font-display: swap inside, so text paints in the fallback face and
+         reflows once. Preloading the two faces above the fold instead of
+         waiting for the stylesheet to name them: same-origin now, so a
+         preload here costs nothing and starts them with the CSS. -->
+    <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-3100e775e8.woff2" crossorigin>
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=351" media="print" onload="this.media='all';this.onload=null">
+    <noscript><link rel="stylesheet" href="/styles/fonts.min.css?v=351"></noscript>
     <link rel="stylesheet" href="/styles/common.min.css?v=351">
     <link rel="stylesheet" href="/styles/v2-design.min.css?v=351">
     <!-- v2-app.css is the signed-in half of v2-design.css. Asked for here, so

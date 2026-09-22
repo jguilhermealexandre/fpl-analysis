@@ -46,7 +46,13 @@ function esc(s) {
 // A standalone page carrying the article text in the markup. No JavaScript is
 // needed to read it, which is the entire point.
 function articlePage(a) {
-    const url = `${SITE}/articles/${a.slug}.html`;
+    /* Extensionless, like every other canonical on the site and like the
+       sitemap entry below — Cloudflare Pages 308s /articles/x.html to
+       /articles/x, so the .html spelling named a URL that redirects. The
+       sitemap has always listed the bare form, so for twenty-six articles the
+       sitemap and the canonical tag disagreed about where the page lives. */
+    const url = `${SITE}/articles/${a.slug}`;
+    const card = `${SITE}/assets/og/articles/${a.slug}.png`;
     const published = new Date(a.date).toISOString();
     const bodyHtml = sd.sdMarkdown(a.body);
 
@@ -87,13 +93,25 @@ function articlePage(a) {
 <meta property="og:url" content="${url}">
 <meta property="article:published_time" content="${published}">
 <meta property="article:section" content="${esc(a.category)}">
-<meta name="twitter:card" content="summary">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../styles/common.css">
-<link rel="stylesheet" href="../styles/v2-design.css">
-<link rel="stylesheet" href="../styles/scouts-desk.css">
+<meta property="og:image" content="${card}">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="${esc(a.title)} — EasyFPL">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(a.title)}">
+<meta name="twitter:description" content="${esc(a.dek)}">
+<meta name="twitter:image" content="${card}">
+<!-- The site's own typefaces, not Google's — see tools/fetch-fonts.mjs. -->
+<link rel="stylesheet" href="/styles/fonts.min.css?v=351" media="print" onload="this.media='all';this.onload=null">
+<noscript><link rel="stylesheet" href="/styles/fonts.min.css?v=351"></noscript>
+<!-- Root-absolute, minified and versioned, like every other page. These were
+     ../styles/*.css: relative, unminified and uncacheable, so an archive page
+     shipped 161KB of raw v2-design.css and revalidated it on every visit. -->
+<link rel="stylesheet" href="/styles/common.min.css?v=351">
+<link rel="stylesheet" href="/styles/v2-design.min.css?v=351">
+<script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=351';document.head.appendChild(l)})();</script>
+<link rel="stylesheet" href="/styles/scouts-desk.min.css?v=351">
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
 </head>
 <body>

@@ -66,4 +66,30 @@
 # the gate in common.js; the rewrite here only decides which file answers.
 /dashboard      /index.html   200
 /dashboard/     /index.html   200
-/dashboard/*    /index.html   200
+
+# And nothing else under it exists. There used to be a /dashboard/* catch-all
+# here, which answered every unknown path with index.html at 200 and so made
+# /dashboard/ a generator of pages that are not missing: /dashboard/anything
+# returned the home screen, and the relative fetches on it resolved to
+# /dashboard/data/*.json and got 200 and a page of HTML where the code
+# expected JSON — the bug that showed the landing page with a sidebar over it.
+# A crawler that finds one of these sees a soft 404: a real page, with real
+# content, at a URL that means nothing.
+#
+# Deleted rather than replaced with a rule pointing at 404.html. With no rule
+# matching, an unknown path under /dashboard/ finds no file and Pages serves
+# the site's own 404.html with a 404 — the behaviour we want, out of the
+# default path, with nothing here that has to be right for it to happen.
+
+# The .html forms of the pages that moved under /dashboard are 301'd above.
+# Cloudflare Pages also serves each of them at its extensionless URL, which is
+# a third address for the same page and the one the .html redirect does not
+# cover — so the canonical on each of those pages pointed at a URL that was
+# neither redirected nor listed in the sitemap. Sent to the same place.
+/fpl-my-team-analysis   /dashboard/my-team       301
+/fpl-players-analysis   /dashboard/players       301
+/fpl-teams-analysis     /dashboard/teams         301
+/fpl-league-rivals      /dashboard/rivals        301
+/fpl-scouts-desk        /dashboard/scouts-desk   301
+/fpl-news               /dashboard/news          301
+/welcome                /dashboard/login         301
