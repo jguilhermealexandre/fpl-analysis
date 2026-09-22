@@ -24,6 +24,8 @@ const MIME = {
     '.ico': 'image/x-icon', '.xml': 'application/xml', '.txt': 'text/plain; charset=utf-8'
 };
 
+const CACHE_LIKE_PROD = process.env.DEV_CACHE === '1';
+
 // Parsed once at boot; restart to pick up changes to _redirects.
 const redirects = (() => {
     try {
@@ -86,8 +88,20 @@ http.createServer((req, res) => {
         }
         res.writeHead(200, {
             'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
-            // Never cache locally: the whole point is seeing the edit you just made.
-            'Cache-Control': 'no-store'
+            /* Never cache locally: the whole point is seeing the edit you just
+               made.
+
+               Except when measuring. _headers serves /assets, /scripts and
+               /styles immutable for a year, and no-store changes what the
+               page does rather than only how fast it is: a preloaded response
+               marked no-store is discarded and fetched again, so every
+               preload on the page happened twice and the second copy was what
+               gated the largest paint. Numbers taken here described this
+               server, not the site. DEV_CACHE=1 puts production's headers
+               back for exactly those three directories. */
+            'Cache-Control': CACHE_LIKE_PROD && /^\/(assets|scripts|styles)\//.test(pathname)
+                ? 'public, max-age=31536000, immutable'
+                : 'no-store'
         });
         res.end(body);
     });
@@ -95,5 +109,6 @@ http.createServer((req, res) => {
     console.log(`\n  easyfpl → http://localhost:${PORT}\n`);
     console.log(`  ${redirects.length} redirect rule(s) loaded from _redirects`);
     console.log('  Data is served from the committed data/*.json, so the site works offline.');
+    if (CACHE_LIKE_PROD) console.log('  DEV_CACHE=1: /assets, /scripts and /styles carry production cache headers.');
     console.log('  Ctrl-C to stop.\n');
 });

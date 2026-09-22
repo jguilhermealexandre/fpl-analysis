@@ -1698,18 +1698,45 @@ body {
        needs. #9CA3AF is the grey the links beside it already use. */
     color: #9CA3AF;
 }
+/* The ring on this dot used to be an animated box-shadow, which is the one
+   property here that cannot be handed to the compositor: every frame of it,
+   forever, on every page of the site, was laid out and painted on the main
+   thread. Lighthouse reports it as the page's one non-composited animation,
+   and it is also the reason a phone's battery notices a footer.
+
+   Same ring, same timing, drawn on a ::after that scales and fades instead.
+   transform and opacity are both composited, so the whole thing runs off the
+   main thread and the dot looks identical. */
 .footer-status-dot {
+    position: relative;
     width: 8px;
     height: 8px;
     background: #10B981;
     border-radius: 50%;
+}
+.footer-status-dot::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px currentColor;
+    color: rgba(16, 185, 129, 0.4);
     animation: footerPulse 2s ease-in-out infinite;
+    pointer-events: none;
 }
 .footer-status-dot.stale { background: #F59E0B; }
+.footer-status-dot.stale::after { color: rgba(245, 158, 11, 0.4); }
 .footer-status-dot.outdated { background: #EF4444; }
+.footer-status-dot.outdated::after { color: rgba(239, 68, 68, 0.4); }
 @keyframes footerPulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-    50% { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0); }
+    0%, 100% { transform: scale(0.35); opacity: 1; }
+    50%      { transform: scale(1);    opacity: 0; }
+}
+
+/* A dot that pulses for as long as the tab is open is decoration, and this is
+   the one animation on the site that never stops on its own. */
+@media (prefers-reduced-motion: reduce) {
+    .footer-status-dot::after { animation: none; opacity: 0; }
 }
 @media (max-width: 768px) {
     .footer-top {

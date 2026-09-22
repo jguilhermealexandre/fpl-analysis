@@ -177,6 +177,10 @@ initIcons();
            feature pages needed the same observer. */
         initScrollReveal();
 
+        /* The hero's second button is a fragment link now, so it scrolls the
+           page rather than jumping it and stops clear of the fixed bar. */
+        initAnchorScroll('.lp-cta-row a[href^="#"]');
+
         // Enter key handlers
         document.getElementById('onboardingInput').addEventListener('keypress', e => {
             if (e.key === 'Enter') submitFromOnboarding();

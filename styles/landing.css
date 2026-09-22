@@ -806,9 +806,32 @@
     to   { opacity: 1; transform: none; }
 }
 
+/* The same movement without the fade, for the hero and nothing else.
+ *
+ * An element at opacity 0 is not a candidate for the largest contentful
+ * paint, so a hero whose children start there tells the browser its biggest
+ * text is not on screen yet — and the metric waits out the stagger and the
+ * fade before it agrees the page has rendered. Measured on a throttled
+ * phone: first paint 1.18s, largest paint 1.74s, and the entire 556ms gap
+ * was this animation. Nothing was loading; the text was already there,
+ * painted transparent.
+ *
+ * Dropping the fade takes the hero off that path completely — largest paint
+ * lands on first paint — and 14px of travel on its own still reads as the
+ * page arriving. Shortening the fade instead was measured too and barely
+ * moved it: the opacity:0 start is the cost, not the duration.
+ *
+ * Only here. The scroll-reveal sections further down keep lp-rise and its
+ * fade, because a section fading in as you reach it is the nicer effect and
+ * nothing below the fold is the largest paint. */
+@keyframes lp-hero-rise {
+    from { transform: translateY(14px); }
+    to   { transform: none; }
+}
+
 .lp-hero > *,
 .fw-hero > * {
-    animation: lp-rise 560ms cubic-bezier(.22, 1, .36, 1) both;
+    animation: lp-hero-rise 560ms cubic-bezier(.22, 1, .36, 1) both;
 }
 /* The stagger is what makes it read as one movement rather than six. Capped
    at the sixth child: past that the delay is longer than the animation and
@@ -824,7 +847,7 @@
    it is the biggest thing moving and matching the text exactly makes it look
    like it is being dragged along. */
 .fw-stage {
-    animation: lp-rise 760ms cubic-bezier(.22, 1, .36, 1) 340ms both;
+    animation: lp-hero-rise 760ms cubic-bezier(.22, 1, .36, 1) 340ms both;
 }
 
 /* Inside a revealed block, the parts arrive in order too. Same idea as the
