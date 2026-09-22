@@ -55,20 +55,6 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https: data:; connect-src 'self' https://qlipcnedxchcsbpihscp.supabase.co https://fpl-proxy.jguilhermealexandre.workers.dev https://api.rss2json.com https://docs.google.com https://sdp-prem-prod.premier-league-prod.pulselive.com https://cloudflareinsights.com https://cdn.jsdelivr.net https://unpkg.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 
-# The previous design, kept at /old-website so the old page is there to look at
-# while the new one is being built. Cloudflare Pages deploys the repository, so
-# "kept in the tree" and "published on the domain" are the same thing: twenty-two
-# pages of it are live, crawlable, and near-duplicates of the pages that replaced
-# them — the FAQ down there carries the same <title> as the real one.
-#
-# They canonicalise to their live counterparts, which is the right hint, but a
-# canonical is a hint. This is the directive. noindex takes them out of the index
-# and nofollow stops the crawl walking the whole old site from any one of them;
-# they are deliberately still crawlable, because a page blocked in robots.txt is
-# a page whose noindex header is never read.
-/old-website/*
-  X-Robots-Tag: noindex, nofollow
-
 # The data feed is rewritten every 15 minutes during match windows, so 300s at
 # the edge is roughly one refresh behind at worst and takes the repeated reads
 # off the origin entirely. Without this rule these were cf-cache-status: DYNAMIC
