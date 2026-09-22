@@ -2195,15 +2195,66 @@ function showNavTeamInput() {
 }
 
 // ===== FOOTER LOADING =====
+/* The footer link for the page you are on.
+ *
+ * The footer is the site map on every page, and a map that never says "you are
+ * here" is half a map. The sidebar has done this for a while; this is the same
+ * idea in the one other place that lists the whole site.
+ *
+ * Comparing pathnames needs a normaliser because one page answers to several
+ * spellings. Cloudflare Pages serves /fpl-pricing.html at /fpl-pricing, the
+ * app's screens are rewrites (/dashboard/players is fpl-players-analysis.html),
+ * and the dashboard home is / and /dashboard and /dashboard/. Matching on the
+ * raw string marks nothing on most of the site.
+ *
+ * aria-current as well as the class: the colour says it to someone looking and
+ * the attribute says it to someone listening.
+ */
+function footerPathKey(pathname) {
+    let p = (pathname || '/').toLowerCase();
+    p = p.replace(/\/index\.html$/, '/').replace(/\.html$/, '');
+    if (p.length > 1) p = p.replace(/\/+$/, '');
+    // The dashboard home, however it was reached.
+    if (p === '' || p === '/' || p === '/dashboard') return '/dashboard';
+    return p;
+}
+
+function markCurrentFooterLink() {
+    const footer = document.querySelector('.site-footer');
+    if (!footer) return;
+
+    const here = footerPathKey(location.pathname);
+    for (const a of footer.querySelectorAll('a[href]')) {
+        const href = a.getAttribute('href');
+        if (!href || href.startsWith('mailto:') || href.startsWith('#')) continue;
+
+        let dest;
+        try { dest = footerPathKey(new URL(href, location.href).pathname); }
+        catch (e) { continue; }
+
+        /* The landing page is not the dashboard even though / normalises to it
+           for a signed-in reader: the footer's own home link is the marketing
+           page, and marking it current on every app screen would be wrong. */
+        if (dest === '/dashboard' && here === '/dashboard'
+            && !location.pathname.startsWith('/dashboard')) continue;
+
+        if (dest === here) {
+            a.classList.add('is-current');
+            a.setAttribute('aria-current', 'page');
+        }
+    }
+}
+
 function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=345')
+    fetch('/footer.html?v=346')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
             if (window.lucide) lucide.createIcons();
+            markCurrentFooterLink();
             // Always fetch data freshness
             fetch(DATA_URLS.lastUpdated)
                 .then(r => r.ok ? r.json() : null)

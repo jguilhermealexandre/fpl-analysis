@@ -721,7 +721,7 @@ function swapFromTable(playerId) {
     // Was a dead handoff: it stashed fpl_swap_target, which nothing has ever
     // read, and navigated to a wizard page that never looked at its query
     // string. Goes to the working planner instead.
-    window.location.href = 'fpl-my-team-analysis.html#transfers';
+    window.location.href = '/dashboard/my-team#transfers';
 }
 
 function renderCell(p, colKey, position, isSelected) {

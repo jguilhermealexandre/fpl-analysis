@@ -1945,7 +1945,7 @@ function renderArticlesPage() {
 // Archived articles have a real page of their own. Live-generated ones do not,
 // so they fall back to the desk itself.
 function sdPermalink(a) {
-    return a.slug ? `articles/${a.slug}.html` : 'fpl-scouts-desk.html';
+    return a.slug ? `articles/${a.slug}.html` : '/dashboard/scouts-desk';
 }
 
 // Plain click opens the reader; modified clicks and middle-click keep the

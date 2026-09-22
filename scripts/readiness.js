@@ -165,7 +165,7 @@
                         name: first.name,
                         reason: `First on your bench but ${first.status !== 'a' ? 'flagged' : `only ${fp}% likely to play`} — an auto-sub cannot use a player who did not feature`,
                         severity: 'monitor',
-                        href: 'fpl-my-team-analysis.html#lineup'
+                        href: '/dashboard/my-team#lineup'
                     });
                 }
                 const startDef = xi.filter(p => p.position === 2).length;
@@ -175,7 +175,7 @@
                         name: 'No defensive cover',
                         reason: `You start ${startDef} defenders with none on the bench — if one blanks, no auto-sub can legally replace him`,
                         severity: 'monitor',
-                        href: 'fpl-my-team-analysis.html#lineup'
+                        href: '/dashboard/my-team#lineup'
                     });
                 }
             }
@@ -219,7 +219,7 @@
                     name: moves.map(m => `${m.out.name} → ${m.in.name}`).join(', '),
                     reason: `+${b.net.toFixed(1)} xP across ${span}${b.cost > 0 ? `, after a −${b.cost} hit` : ' on a free transfer'}`,
                     severity: 'move',
-                    href: 'fpl-my-team-analysis.html#transfers?' + moves.map(m => `out=${m.out.id}&in=${m.in.id}`).join('&')
+                    href: '/dashboard/my-team#transfers?' + moves.map(m => `out=${m.out.id}&in=${m.in.id}`).join('&')
                 });
             }
 
@@ -257,7 +257,7 @@
                     name: `${c.freeTransfers} free transfers`,
                     reason: `You are at the maximum, so next week you will still have ${maxFT} — one made now costs nothing and banks nothing if skipped`,
                     severity: 'monitor',
-                    href: 'fpl-my-team-analysis.html#transfers'
+                    href: '/dashboard/my-team#transfers'
                 });
             }
 
@@ -276,7 +276,7 @@
                         name: `${unused.length} chip${unused.length === 1 ? '' : 's'} expiring`,
                         reason: `Your first-half ${unused.map(rdChipLabel).join(', ')} expire${unused.length === 1 ? 's' : ''} in ${daysLeft} day${daysLeft === 1 ? '' : 's'} — unused chips do not carry into the second set`,
                         severity: daysLeft <= 14 ? 'sell' : 'monitor',
-                        href: 'fpl-my-team-analysis.html#draft'
+                        href: '/dashboard/my-team#draft'
                     });
                 }
             }

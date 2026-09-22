@@ -207,7 +207,14 @@ function main() {
      * page that refuses to be indexed. They come back the day they serve a
      * public preview instead. */
     const pages = ['', 'fpl-scouts-desk', 'fpl-news', 'fpl-how-it-works', 'fpl-faq',
-        'fpl-methodology', 'fpl-privacy', 'fpl-contact'];
+        'fpl-methodology', 'fpl-privacy', 'fpl-contact',
+        /* The marketing pages built since this list was written. They are
+           public, they are the pages a search for "fpl transfer planner" should
+           find, and none of them was being submitted. */
+        'fpl-pricing', 'fpl-accuracy', 'fpl-changelog', 'fpl-terms',
+        'feature-squad-analysis', 'feature-transfer-wizard', 'feature-lineup-wizard',
+        'feature-player-explorer', 'feature-fixture-ratings', 'feature-league-rivals',
+        'feature-scouts-desk', 'feature-team-news'];
     const today = new Date().toISOString().slice(0, 10);
     const urls = pages.map(p => `  <url><loc>${SITE}/${p}</loc><lastmod>${today}</lastmod></url>`)
         .concat(index.map(a => `  <url><loc>${SITE}/articles/${a.slug}</loc><lastmod>${a.date.slice(0, 10)}</lastmod></url>`));

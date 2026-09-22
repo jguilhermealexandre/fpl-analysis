@@ -604,7 +604,7 @@
                 ${rotationHtml}
                 ${compareHtml}
                 <div class="detail-section">
-                    <button class="btn btn-secondary" style="width:100%;" onclick="window.location.href='fpl-teams-analysis.html#calendar'">Open the full league calendar →</button>
+                    <button class="btn btn-secondary" style="width:100%;" onclick="window.location.href='/dashboard/teams#calendar'">Open the full league calendar →</button>
                 </div>`;
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
@@ -1000,8 +1000,8 @@
                     const maxPrice = Math.ceil(item.player.price + 0.5);
                     return { label: 'View Replacements', href: `fpl-players-analysis.html#all?pos=${posShort}&max=${maxPrice}` };
                 }
-                if (item.category === 'price') return { label: 'Price Trends', href: 'fpl-players-analysis.html#all?sort=price' };
-                if (item.category === 'transfer') return { label: 'Transfer Trends', href: 'fpl-players-analysis.html#all?sort=transfers' };
+                if (item.category === 'price') return { label: 'Price Trends', href: '/dashboard/players#all?sort=price' };
+                if (item.category === 'transfer') return { label: 'Transfer Trends', href: '/dashboard/players#all?sort=transfers' };
                 return null;
             }
 
