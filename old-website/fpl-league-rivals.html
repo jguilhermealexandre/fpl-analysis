@@ -1,0 +1,2993 @@
+<!DOCTYPE html>
+<html lang="en" class="v2-theme">
+<head>
+    <meta charset="UTF-8">
+    <meta name="robots" content="noindex, nofollow">
+    <!-- ===== Signed-in only =====
+
+         This page is entirely about one manager's squad, and without a Team ID
+         there is no squad to be about — so a shared link used to open the whole
+         tool on somebody else's empty state. It now sends them to the landing
+         page instead, before anything paints, so there is no flash of a page
+         they are not entitled to.
+
+         Inline and first in <head> deliberately: a guard that waits for a
+         script file has already let the page render. localStorage is the only
+         thing the site has to go on — this is a client-side app with no server
+         session, so the gate is a redirect for the benefit of the person
+         sharing the link, not a security boundary, and nothing behind it is
+         secret. What it protects is the experience: a stranger should meet the
+         product, not an empty dashboard.
+
+         Where they were going is carried in ?next= so that entering an ID on
+         the landing page takes them there rather than dropping them at the
+         dashboard, which is the whole point of someone sharing the link. -->
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('fpl_team_id')) return;
+            } catch (e) { /* storage unreadable — treat that as signed out */ }
+            var next = location.pathname + location.search + location.hash;
+            location.replace('/?next=' + encodeURIComponent(next));
+        })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
+    <title>EasyFPL — League Rivals</title>
+    <meta name="description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head performance analysis.">
+    <link rel="canonical" href="https://easyfpl.com/fpl-league-rivals">
+    <meta name="theme-color" content="#0a0f1a">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <!-- The data URI stays as the fallback for anything that will not take an
+         SVG icon. The file is what every current browser uses: one URL for the
+         whole origin, so it is cached once and cannot resolve differently from
+         one page to the next the way a per-page data URI can. -->
+    <link rel="alternate icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Crect%20width='100'%20height='100'%20rx='20'%20fill='%2310B981'/%3E%3Ctext%20x='50'%20y='72'%20font-size='65'%20font-family='Arial,sans-serif'%20font-weight='bold'%20fill='%230a0f1a'%20text-anchor='middle'%3Ee%3C/text%3E%3C/svg%3E">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="EasyFPL">
+    <meta property="og:title" content="EasyFPL — League Rivals">
+    <meta property="og:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
+    <meta property="og:url" content="https://easyfpl.com/fpl-league-rivals.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="EasyFPL — League Rivals">
+    <meta name="twitter:description" content="Compare your FPL squad against mini-league rivals — ownership differentials, captain choices, transfer history, and head-to-head analysis.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/common.css?v=331">
+    <link rel="stylesheet" href="styles/v2-design.css?v=331">
+    <link rel="stylesheet" href="styles/responsive.css?v=331">
+    <script src="scripts/error-monitor.js?v=331"></script>
+    <script src="scripts/auth.js?v=331"></script>
+    <script src="scripts/common.js?v=331"></script>
+    <!-- The bell in the sidebar. The dashboard writes the feed; every
+         page reads it, so the record is visible wherever you are. -->
+    <script src="scripts/push-alerts.js?v=331"></script>
+    <script src="scripts/notifications.js?v=331"></script>
+    <script src="scripts/sidebar-nav.js?v=331"></script>
+    <style>
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--space-6);
+        }
+
+        /* ===== PAGE HEADER ===== */
+        .page-header {
+            margin-bottom: var(--space-6);
+        }
+
+        .page-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* ===== INPUT SECTION ===== */
+        .input-section {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            margin-bottom: var(--space-6);
+        }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: var(--space-4);
+            align-items: end;
+        }
+
+        @media (max-width: 768px) {
+            .input-grid { grid-template-columns: 1fr; }
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-2);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* The same green-edged field the squad search uses. It was a grey
+           hairline that turned blue on focus — the only blue focus ring on the
+           site, and on a page whose one job is to take these two numbers, the
+           field you are meant to type in did not look like one. */
+        .input-group input {
+            width: 100%;
+            background: var(--surface-1);
+            border: 1px solid color-mix(in srgb, var(--color-primary) 45%, transparent);
+            color: var(--text-primary);
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-full);
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 140ms ease, box-shadow 140ms ease;
+        }
+
+        .input-group input:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px var(--color-primary-muted);
+        }
+
+        .input-group input::placeholder { color: var(--text-muted); }
+
+        .input-help {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: var(--space-1);
+        }
+
+        .primary-btn {
+            padding: var(--space-3) var(--space-6);
+            background: var(--color-primary);
+            color: #fff;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 150ms;
+            white-space: nowrap;
+        }
+
+        .primary-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--color-primary-glow);
+        }
+
+        .primary-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* ===== STATUS BAR ===== */
+        .status-bar {
+            padding: var(--space-3) var(--space-4);
+            background: var(--surface-1);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-6);
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            font-size: 13px;
+        }
+
+        .status-bar.loading { border-left: 3px solid var(--color-warning); }
+        .status-bar.success { border-left: 3px solid var(--color-success); }
+        .status-bar.error { border-left: 3px solid var(--color-error); }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border-default);
+            border-top-color: var(--color-info);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== SUMMARY CARDS ===== */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-4);
+            margin-bottom: var(--space-6);
+        }
+
+        @media (max-width: 900px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 500px) { .summary-grid { grid-template-columns: 1fr; } }
+
+        .summary-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            text-align: center;
+            transition: all 150ms;
+        }
+
+        .summary-card:hover {
+            border-color: var(--border-emphasis);
+            transform: translateY(-2px);
+        }
+
+        .summary-card.danger { border-color: var(--color-error); background: rgba(248, 113, 113, 0.05); }
+        .summary-card.opportunity { border-color: var(--color-success); background: rgba(74, 222, 128, 0.05); }
+        .summary-card.info { border-color: var(--color-info); background: rgba(96, 165, 250, 0.05); }
+        .summary-card.warning { border-color: var(--color-warning); background: rgba(251, 191, 36, 0.05); }
+
+        .summary-icon { font-size: 28px; margin-bottom: var(--space-2); }
+
+        .summary-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: var(--space-1);
+        }
+
+        .summary-card.danger .summary-value { color: var(--color-error); }
+        .summary-card.opportunity .summary-value { color: var(--color-success); }
+        .summary-card.info .summary-value { color: var(--color-info); }
+        .summary-card.warning .summary-value { color: var(--color-warning); }
+
+        .summary-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ===== SECTION HEADER ===== */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            margin-bottom: var(--space-4);
+            padding-bottom: var(--space-3);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .section-header h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .section-header .count {
+            background: var(--surface-2);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .section-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: var(--space-4);
+        }
+
+        /* ===== PLAYER CARDS ===== */
+        .players-section { margin-bottom: var(--space-8); }
+
+        .player-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: var(--space-4);
+        }
+
+        .player-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: border-color 150ms, transform 150ms, box-shadow 150ms;
+        }
+
+        .player-card:hover {
+            border-color: var(--color-info);
+            transform: translateY(-2px);
+            box-shadow: var(--v2-card-shadow, 0 6px 18px rgba(15, 23, 42, .08));
+        }
+
+        .player-card.danger { border-left: 3px solid var(--color-error); }
+        .player-card.opportunity { border-left: 3px solid var(--color-success); }
+
+        /* The club's colour behind the face, the way the player modal and the
+           captain hero do it. The shape is a soft wash rather than a solid
+           block so the name stays legible against every kit in the league. */
+        .pc-hero {
+            position: relative;
+            display: flex; align-items: center; gap: var(--space-3);
+            padding: var(--space-4);
+            overflow: hidden;
+        }
+        .pc-hero-shape {
+            position: absolute; inset: 0;
+            background: linear-gradient(115deg,
+                color-mix(in srgb, var(--club, #37003C) 24%, transparent) 0%,
+                color-mix(in srgb, var(--club, #37003C) 7%, transparent) 58%,
+                transparent 100%);
+            pointer-events: none;
+        }
+        /* Everything but the wash stacks above it. This must exclude the shape:
+           a bare `.pc-hero > *` matches it too, at the same specificity and
+           later in the file, which turned the absolutely-positioned wash into
+           a zero-height inline element and the club colour never appeared. */
+        .pc-hero > :not(.pc-hero-shape) { position: relative; }
+        .pc-hero .v2-pid-portrait { --v2-pid-face: 48px; --v2-pid-crest: 20px; flex-shrink: 0; }
+        .pc-hero-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+        .pc-hero-name {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 17px; font-weight: 700; color: var(--text-primary);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .pc-hero-meta { font-size: 12px; color: var(--text-muted); }
+        .pc-hero-side { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); flex-shrink: 0; }
+        .pc-flags { display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap; justify-content: flex-end; }
+
+        .player-price {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .ownership-bar-container { padding: 0 var(--space-4); margin-bottom: var(--space-3); }
+
+        .ownership-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            margin-bottom: var(--space-1);
+            color: var(--text-muted);
+        }
+
+        .ownership-bar {
+            height: 6px;
+            background: var(--surface-3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .ownership-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+
+        .ownership-bar-fill.high { background: var(--color-error); }
+        .ownership-bar-fill.medium { background: var(--color-warning); }
+        .ownership-bar-fill.low { background: var(--color-success); }
+
+        /* Three read-outs on one strip at the foot of the card, each a label
+           over its number, instead of three "Form: 4.2" run-ons. */
+        .player-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            border-top: 1px solid var(--border-subtle);
+            background: var(--surface-2);
+        }
+
+        .player-stat {
+            display: flex; flex-direction: column; align-items: center; gap: 1px;
+            padding: var(--space-2) var(--space-1);
+        }
+        .player-stat + .player-stat { border-left: 1px solid var(--border-subtle); }
+        .player-stat-k { font-size: 10px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; color: var(--text-muted); }
+        .player-stat-k abbr { text-decoration: none; border-bottom: 1px dotted var(--border-default); }
+        .player-stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: var(--text-primary); font-weight: 700; }
+
+        .you-badge, .missing-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .you-badge { background: var(--color-success); color: #000; }
+        .missing-badge { background: var(--color-error); color: #fff; }
+
+        .ownership-pct { font-family: 'Space Grotesk', sans-serif; font-weight: 600; }
+        .ownership-pct.high { color: var(--color-error); }
+        .ownership-pct.medium { color: var(--color-warning); }
+        .ownership-pct.low { color: var(--color-success); }
+
+        /* ===== MATRIX ===== */
+        .matrix-section { margin-bottom: var(--space-8); }
+
+        .matrix-controls {
+            display: flex;
+            gap: var(--space-4);
+            margin-bottom: var(--space-4);
+            flex-wrap: wrap;
+        }
+
+        .matrix-filter {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .matrix-filter label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* The pill every other control on the site is, with its own caret.
+           A bare <select> at 12px on a white page is the least visible thing
+           in a section whose whole content depends on it — on Head-to-Head
+           nothing renders at all until it has been used, and it did not look
+           like something to use. */
+        .matrix-filter select {
+            appearance: none; -webkit-appearance: none;
+            background: var(--surface-1);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center; background-size: 12px;
+            border: 1px solid var(--v2-card-border, var(--border-emphasis));
+            color: var(--text-primary);
+            padding: 8px 34px 8px 14px;
+            border-radius: var(--radius-full);
+            font-family: var(--font-display, inherit);
+            font-size: 12.5px; font-weight: 600;
+            cursor: pointer;
+            transition: border-color 140ms ease, box-shadow 140ms ease;
+        }
+        .matrix-filter select:hover { border-color: var(--color-primary); }
+        .matrix-filter select:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
+        }
+        .matrix-filter label {
+            font-family: var(--font-display, inherit);
+            font-weight: 700; letter-spacing: .03em; text-transform: uppercase; font-size: 10px;
+        }
+        /* Head-to-Head opens on nothing but this control, so it is the page's
+           call to action until a rival is chosen rather than a filter beside
+           a table that is already full. */
+        #tab-h2h .matrix-controls { justify-content: center; margin-bottom: var(--space-5); }
+        #tab-h2h .matrix-filter select { font-size: 13.5px; padding: 10px 38px 10px 18px; }
+        #tab-h2h .matrix-filter select:not(:valid),
+        #tab-h2h .matrix-filter select.is-empty {
+            border-color: var(--color-primary);
+            background-color: var(--color-primary-muted);
+            color: var(--color-primary-text, var(--color-primary));
+        }
+
+        .matrix-container {
+            overflow-x: auto;
+            background: var(--surface-1);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-default);
+        }
+
+        .matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .matrix-table th,
+        .matrix-table td {
+            padding: var(--space-3) var(--space-2);
+            text-align: center;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .matrix-table th {
+            background: var(--surface-2);
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+        }
+
+        .matrix-table th.player-col {
+            text-align: left;
+            min-width: 150px;
+            padding-left: var(--space-4);
+        }
+
+        .matrix-table th.rotate {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            transform: rotate(180deg);
+            height: 80px;
+            padding: var(--space-2);
+            font-size: 9px;
+            max-width: 36px;
+        }
+
+        .matrix-table td.player-cell {
+            text-align: left;
+            font-weight: 500;
+            padding-left: var(--space-4);
+        }
+
+        .matrix-table td.player-cell .mx-p { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+        .matrix-table td.player-cell .mx-p .v2-pid { --v2-pid-face: 24px; --v2-pid-crest: 14px; flex-shrink: 0; }
+        .matrix-table td.player-cell .mx-p-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .matrix-table td.player-cell .pos {
+            font-size: 10px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .matrix-table tr:hover td { background: var(--surface-2); }
+
+        .matrix-cell {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+        }
+
+        .matrix-cell.owned { background: var(--color-success); color: #000; }
+        .matrix-cell.not-owned { background: var(--surface-3); color: var(--text-muted); }
+        .matrix-cell.you-owned { background: var(--color-info); color: #000; font-weight: 700; }
+        .matrix-cell.you-missing { background: var(--color-error); color: #fff; }
+
+        /* ===== ACTION BOX ===== */
+        .action-box {
+            background: rgba(248, 113, 113, 0.05);
+            border: 1px solid var(--color-error);
+            border-radius: var(--radius-lg);
+            padding: var(--space-6);
+            margin-bottom: var(--space-6);
+        }
+
+        .action-box h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            color: var(--color-error);
+            margin-bottom: var(--space-4);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .action-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            padding: var(--space-3) 0;
+            border-bottom: 1px solid rgba(248, 113, 113, 0.2);
+        }
+
+        .action-item:last-child { border-bottom: none; }
+
+        .action-priority {
+            width: 28px;
+            height: 28px;
+            background: var(--color-error);
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .action-text { flex: 1; }
+        .action-text strong { color: var(--text-primary); }
+        .action-text span { font-size: 12px; color: var(--text-muted); }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            text-align: center;
+            padding: 80px var(--space-6);
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon { font-size: 64px; margin-bottom: var(--space-4); }
+
+        .empty-state h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
+        }
+
+        .empty-state p { font-size: 14px; line-height: 1.6; }
+
+        /* ===== LOADING OVERLAY ===== */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 300ms;
+        }
+        [data-theme="dark"] .loading-overlay { background: rgba(15, 23, 42, 0.85); }
+
+        .loading-overlay.show { opacity: 1; pointer-events: all; }
+
+        .loader {
+            text-align: center;
+        }
+
+        .loader-spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--border-default);
+            border-top-color: var(--color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto var(--space-4);
+        }
+
+        .loader-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* ===== CAPTAIN RACE ===== */
+        /* The hero inside is the card now — its own colour, its own edge —
+           so this is only the space around it. It used to draw a white card
+           with 24px of padding and centre everything in it. */
+        .captain-hero { margin-bottom: var(--space-6); }
+
+        /* ----- Differentials, as player rows -----
+           Two columns, each a list of cards with a face on them: yours in
+           the brand green, the rival's in the warning amber, so which side
+           a player is on is the first thing the colour tells you. */
+        /* The two armbands face each other across a VS, because that is the one
+           pick in this comparison worth double and the two sides of it are
+           the point. Each gets the face and the club rather than a name on a
+           grey box. The strip is capped and centred — at full width two names
+           sat alone in half a screen each. */
+        .rv-cap-row {
+            display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch;
+            gap: var(--space-3); margin: var(--space-4) auto 0; max-width: 620px;
+        }
+        .rv-cap-box {
+            display: flex; flex-direction: column; gap: var(--space-2); align-items: center;
+            background: var(--surface-1); border: 1px solid var(--border-default);
+            border-top: 3px solid var(--border-default);
+            border-radius: var(--radius-lg); padding: var(--space-4) var(--space-3);
+        }
+        .rv-cap-box.mine { border-top-color: var(--color-primary); }
+        .rv-cap-box.theirs { border-top-color: var(--color-warning); }
+        .rv-cap-vs {
+            align-self: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 11px; font-weight: 800; letter-spacing: .1em;
+            color: var(--text-muted);
+        }
+        .rv-cap-label { font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--text-muted); text-align: center; }
+        .rv-cap-who { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; max-width: 100%; }
+        .rv-cap-who .v2-pid-portrait { --v2-pid-face: 52px; --v2-pid-crest: 22px; margin-bottom: 2px; }
+        .rv-cap-name { font-size: 16px; font-weight: 700; color: var(--text-primary); text-align: center; }
+        .rv-cap-sub { font-size: 11px; color: var(--text-muted); text-align: center; }
+        @media (max-width: 560px) {
+            .rv-cap-row { grid-template-columns: 1fr; }
+            .rv-cap-vs { padding: 2px 0; }
+        }
+
+        .rv-diff-cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin-top: var(--space-6); }
+        .rv-diff-head {
+            display: flex; align-items: center; gap: 8px;
+            font-family: var(--font-display); font-size: 13px; font-weight: 700;
+            letter-spacing: .02em;
+            margin-bottom: 10px;
+        }
+        .rv-diff-col.mine .rv-diff-head { color: var(--color-primary-text, var(--color-primary)); }
+        .rv-diff-col.theirs .rv-diff-head { color: var(--color-warning); }
+        .rv-diff-n {
+            padding: 1px 7px; border-radius: 999px;
+            background: var(--surface-2); color: var(--text-muted);
+            font-size: 10.5px; font-weight: 700;
+        }
+        .rv-diff-card {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 11px;
+            margin-bottom: 6px;
+            background: var(--surface-1);
+            border: 1px solid var(--v2-card-border, var(--border-emphasis));
+            border-left: 3px solid var(--border-emphasis);
+            border-radius: 12px;
+            box-shadow: var(--v2-card-shadow, none);
+        }
+        .rv-diff-col.mine .rv-diff-card { border-left-color: var(--color-primary); }
+        .rv-diff-col.theirs .rv-diff-card { border-left-color: var(--color-warning); }
+        .rv-diff-card .v2-pid { --v2-pid-face: 30px; --v2-pid-crest: 17px; flex-shrink: 0; }
+        .rv-diff-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+        .rv-diff-name { font-size: 13px; font-weight: 650; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rv-diff-sub { font-size: 11px; color: var(--text-muted); }
+        .rv-diff-price { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--text-primary); flex-shrink: 0; }
+        .rv-diff-card.is-benched { opacity: .72; }
+        .rv-diff-empty { padding: 18px; text-align: center; font-size: 12px; color: var(--text-muted); }
+
+        @media (max-width: 768px) {
+            .rv-diff-cols { grid-template-columns: 1fr; gap: var(--space-4); }
+        }
+        .captain-hero-name { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2); }
+        .captain-hero-meta { font-size: 13px; color: var(--text-muted); margin-bottom: var(--space-4); }
+        .captain-badge { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 9px; font-weight: 700; text-transform: uppercase; background: #F59E0B; color: #000; }
+        .captain-badge.vc { background: var(--surface-3); color: var(--text-secondary); }
+        .bench-badge { display: inline-block; padding: 2px 6px; border-radius: var(--radius-sm); font-size: 9px; font-weight: 600; background: var(--surface-3); color: var(--text-muted); }
+        /* Two columns: the consensus — one hero, one bar, one slider — is a
+           fixed-width read, and the roll call of every manager's armband is
+           the thing that actually needs the room. They were stacked, which
+           left the table starting a screen and a half down. */
+        .cap-layout { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+        .cap-layout .cap-col { min-width: 0; }
+        .cap-layout .section-header { margin-top: 0; }
+        .cap-table-wrap { overflow-x: auto; }
+        @media (max-width: 1080px) { .cap-layout { grid-template-columns: 1fr; gap: var(--space-5); } }
+
+        /* The hero is built for a full-width card and this column is 420px, so
+           it takes the same treatment .pdm-hero.is-compact gives it elsewhere:
+           a narrower portrait, and the percentage lifted out of the right-hand
+           column into the corner so the name has the width to itself. Without
+           it the club, position and price ran under the two figures on the
+           right. */
+        .cap-col-consensus .cap-hero { min-height: 132px; padding: 0 16px; gap: 0 12px; }
+        .cap-col-consensus .cap-hero .pdm-hero-photo { height: 132px; width: 104px; }
+        .cap-col-consensus .cap-hero .pdm-hero-face { height: 132px; max-width: 104px; }
+        .cap-col-consensus .cap-hero .pdm-hero-text { padding: 16px 0 14px; }
+        .cap-col-consensus .cap-hero .pdm-hero-last { font-size: 25px; }
+        .cap-col-consensus .cap-hero .pdm-hero-meta { font-size: 11px; gap: 6px; margin-top: 6px; }
+        .cap-col-consensus .cap-hero .pdm-hero-crest { width: 16px; height: 16px; }
+        .cap-col-consensus .cap-hero { grid-template-columns: auto minmax(0, 1fr); }
+        .cap-col-consensus .cap-hero .pdm-hero-text { padding-right: 76px; }
+        .cap-col-consensus .cap-hero .pdm-hero-side {
+            position: absolute; top: 10px; right: 14px; z-index: 2;
+            align-items: flex-end; gap: 2px; padding: 0;
+        }
+        .cap-col-consensus .cap-hero .pdm-hero-price { font-size: 12px; font-weight: 700; opacity: .85; }
+        .cap-col-consensus .cap-hero .cap-hero-pct { margin-bottom: 0; font-size: 12px; padding: 2px 9px; }
+
+        /* A captain is a player, so he gets a face here too — the same
+           identity pair the squad table and the transfer lists use. */
+        .cap-p { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+        .cap-p .v2-pid { --v2-pid-face: 26px; --v2-pid-crest: 15px; flex-shrink: 0; }
+        .cap-p-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+        .cap-p-name { font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cap-p-sub { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+        .cap-p.is-vc .cap-p-name { font-weight: 500; }
+        .captain-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface-1); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border-default); }
+        .captain-table th, .captain-table td { padding: var(--space-3) var(--space-4); text-align: left; border-bottom: 1px solid var(--border-subtle); }
+        .captain-table th { background: var(--surface-2); font-weight: 600; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .captain-table tr:hover td { background: var(--surface-0); }
+        .captain-table tr.you-row { background: rgba(59, 130, 246, 0.05); }
+        .eo-bar-row { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); font-size: 11px; }
+        .eo-bar-label { width: 80px; color: var(--text-muted); flex-shrink: 0; }
+        .eo-bar-track { flex: 1; height: 6px; background: var(--surface-3); border-radius: 3px; overflow: hidden; }
+        .eo-bar-fill { height: 100%; border-radius: 3px; }
+        .eo-bar-value { width: 40px; text-align: right; font-weight: 600; font-family: 'Space Grotesk', sans-serif; font-size: 12px; }
+
+        /* ===== LEAGUE RACE ===== */
+        .chart-container { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-6); margin-bottom: var(--space-6); position: relative; height: 380px; }
+        .chart-toggle { position: absolute; top: var(--space-4); right: var(--space-4); display: flex; gap: 2px; background: var(--surface-2); border-radius: var(--radius-md); padding: 2px; z-index: 2; }
+        .chart-toggle button { padding: 4px 12px; border: none; background: transparent; border-radius: var(--radius-sm); font-family: inherit; font-size: 11px; color: var(--text-muted); cursor: pointer; transition: all 150ms; }
+        .chart-toggle button.active { background: var(--surface-1); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .chart-visibility { position: absolute; top: var(--space-4); left: var(--space-4); display: flex; gap: 2px; background: var(--surface-2); border-radius: var(--radius-md); padding: 2px; z-index: 2; }
+        .chart-visibility button { padding: 4px 10px; border: none; background: transparent; border-radius: var(--radius-sm); font-family: inherit; font-size: 11px; color: var(--text-muted); cursor: pointer; transition: all 150ms; }
+        .chart-visibility button:hover { background: var(--surface-1); color: var(--text-primary); }
+        .chart-visibility button.active { background: var(--surface-1); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .momentum-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6); }
+        .momentum-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-4); }
+        .momentum-card .mc-title { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--space-2); }
+        .momentum-card .mc-value { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; }
+        .momentum-card .mc-desc { font-size: 12px; color: var(--text-muted); margin-top: var(--space-1); }
+        .league-mini-table { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--surface-1); border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--border-default); }
+        .league-mini-table th, .league-mini-table td { padding: var(--space-2) var(--space-3); text-align: left; border-bottom: 1px solid var(--border-subtle); }
+        .league-mini-table th { background: var(--surface-2); font-weight: 600; font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .league-mini-table tr:hover td { background: var(--surface-0); }
+        .league-mini-table tr.you-row { background: rgba(59, 130, 246, 0.05); }
+        .sparkline-container { display: inline-flex; align-items: flex-end; gap: 1px; height: 20px; vertical-align: middle; }
+        .sparkline-bar { width: 4px; border-radius: 1px; background: var(--color-primary); min-height: 2px; }
+
+        /* ===== SQUAD STRENGTH ===== */
+        /* The pitch beside its two read-outs rather than above them. It is the
+           one thing on this tab you look at rather than read, and stacked it
+           pushed the fixture run a screen and a half down. v2WrapSections()
+           boxes each .section-header run inside its own column, so the left
+           column is one panel and the right is two stacked ones. */
+        .sq-col .pitch-container, .sq-col .pos-comparison, .sq-col .strength-grid { margin-bottom: 0; }
+        /* Stated as a min-width so that below the breakpoint none of it
+           applies and the single-column rules further down — which are less
+           specific than a .sq-col-side selector and would lose to it — govern
+           the stacked layout unopposed. */
+        @media (min-width: 1081px) {
+            .sq-layout { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+            .sq-layout .sq-col { min-width: 0; }
+            .sq-layout .v2-section:last-child { margin-bottom: 0; }
+            /* Four positions across a half-width column is 120px a card, and
+               six managers one per row is a column twice the pitch's height.
+               Both halve. */
+            .sq-col-side .pos-comparison { grid-template-columns: repeat(2, 1fr); }
+            .sq-col-side .strength-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+        }
+
+        .strength-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6); }
+        .strength-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-4); transition: all 150ms; }
+        .strength-card:hover { transform: translateY(-2px); }
+        .strength-card.you-card { border: 2px solid var(--color-info); }
+        .strength-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); }
+        .strength-card-name { font-weight: 600; font-size: 14px; }
+        .strength-card-fdr { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; }
+        .fdr-chip { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 22px; border-radius: 4px; font-size: 10px; font-weight: 600; color: #fff; }
+        .fdr-chip.fdr-1 { background: var(--fdr-1); color: #000; }
+        .fdr-chip.fdr-2 { background: var(--fdr-2); color: #000; }
+        .fdr-chip.fdr-3 { background: var(--fdr-3); }
+        .fdr-chip.fdr-4 { background: var(--fdr-4); }
+        .fdr-chip.fdr-5 { background: var(--fdr-5); }
+        .fdr-strip { display: flex; gap: 3px; }
+        .chip-played-badge { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); font-size: 9px; font-weight: 700; text-transform: uppercase; background: #A78BFA; color: #fff; }
+        /* The pitch itself is .dp-pitch-card now — the same grass and the same
+           player cards every other page draws. This wrapper used to paint its
+           own green gradient with a halfway line and a centre circle on top
+           of it, so the real pitch sat on a second, differently-coloured one;
+           all it owes the page now is the gap underneath. The .pitch-player*
+           rules that dressed the old bespoke faces went with it. */
+        .pitch-container { margin-bottom: var(--space-6); }
+        .pitch-label { text-align: center; color: var(--text-muted); font-size: 11px; font-weight: 600; margin-bottom: var(--space-3); text-transform: uppercase; letter-spacing: 1px; }
+        .pos-comparison { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
+        @media (max-width: 600px) { .pos-comparison { grid-template-columns: repeat(2, 1fr); } }
+        .pos-compare-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: var(--space-4); text-align: center; }
+        .pos-compare-card .pos-icon { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; margin-bottom: var(--space-2); }
+        .pos-compare-bar { height: 8px; background: var(--surface-3); border-radius: 4px; overflow: hidden; margin-top: var(--space-2); }
+        .pos-compare-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+        .matrix-cell.captain { background: #F59E0B; color: #000; font-weight: 700; }
+        .matrix-cell.benched { background: var(--surface-3); color: var(--text-muted); font-style: italic; }
+
+        /* ===== INSIGHTS HUB ===== */
+        .league-command {
+            display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap;
+            padding: var(--space-4) var(--space-5); margin-bottom: var(--space-4);
+            background: var(--surface-1); border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+        }
+        .lc-title { font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 700; color: var(--text-primary); }
+        .lc-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+        .lc-stats { display: flex; gap: var(--space-5); margin-left: auto; flex-wrap: wrap; }
+        .lc-stat { display: flex; flex-direction: column; gap: 2px; }
+        .lc-stat span { font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); font-weight: 700; }
+        .lc-stat b { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 800; color: var(--text-primary); }
+        .lc-stat b small { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+        .lc-stat b.lc-live { color: var(--color-success); }
+        .lc-change {
+            padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer;
+            border: 1px solid var(--border-default); background: var(--surface-2);
+            color: var(--text-secondary); font-size: 11px; font-weight: 600; font-family: inherit;
+        }
+        .lc-change:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+        .summary-ctx { margin-top: 6px; font-size: 11px; line-height: 1.4; color: var(--text-muted); }
+
+        /* ---- threat & damage control ---- */
+        /* ===== Deeper league analysis (Insights tab) ===== */
+        .ins-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-4); }
+        .ins-chart-card { padding: var(--space-4); border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--surface-1); }
+        .ins-chart-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+        .ins-chart-sub { font-size: 11px; line-height: 1.5; color: var(--text-muted); margin: 2px 0 var(--space-3); }
+        .ins-canvas-wrap { position: relative; height: 210px; }
+        .ins-canvas-wrap.tall { height: 300px; }
+        .ins-read { margin-top: var(--space-3); font-size: 12px; line-height: 1.6; color: var(--text-secondary); }
+        .ins-read strong { color: var(--text-primary); }
+        .ins-div-grid { display: flex; flex-direction: column; gap: var(--space-2); }
+        .ins-div-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3);
+            border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--surface-1); }
+        .ins-div-pos { width: 100px; flex-shrink: 0; font-size: 12px; font-weight: 600; color: var(--text-primary); }
+        .ins-div-bars { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 80px; }
+        .ins-div-bar { height: 7px; border-radius: 4px; background: var(--surface-3); overflow: hidden; }
+        .ins-div-fill { display: block; height: 100%; border-radius: 4px; }
+        .ins-div-fill.you { background: var(--color-info); }
+        .ins-div-fill.field { background: var(--text-muted); opacity: .55; }
+        .ins-div-n { flex-shrink: 0; font-size: 12px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; color: var(--text-primary); }
+        .ins-div-n em { font-style: normal; font-size: 10px; font-weight: 500; color: var(--text-muted); }
+        .ins-div-tag { flex-shrink: 0; width: 108px; text-align: right; font-size: 10px; font-weight: 700; color: var(--text-muted); }
+        .ins-div-tag.bold { color: var(--color-success); }
+        .ins-div-tag.safe { color: var(--color-warning); }
+        .ins-div-none { font-size: 11px; color: var(--text-muted); }
+        @media (max-width: 640px) {
+            .ins-div-row { flex-wrap: wrap; }
+            .ins-div-pos { width: 100%; }
+            .ins-div-tag { width: auto; }
+        }
+        .threat-panel {
+            padding: var(--space-4) var(--space-5); margin-bottom: var(--space-5);
+            background: var(--surface-1); border: 1px solid var(--border-default);
+            border-left: 3px solid var(--color-error); border-radius: var(--radius-lg);
+        }
+        .threat-panel.safe { border-left-color: var(--color-success); }
+        .threat-head {
+            display: flex; align-items: center; gap: 7px;
+            font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700;
+            color: var(--text-primary); margin-bottom: var(--space-3);
+        }
+        .threat-sub { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+        .threat-rows { display: flex; flex-direction: column; gap: 8px; }
+        .threat-row {
+            display: grid; grid-template-columns: minmax(130px,1.3fr) minmax(120px,1.2fr) 96px auto;
+            gap: var(--space-3); align-items: center;
+            padding: 9px 11px; border-radius: var(--radius-md); background: var(--surface-2);
+        }
+        .threat-name { font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
+        .threat-meta { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
+        .threat-own-bar { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+        .threat-own-bar span { display: block; height: 100%; background: var(--color-error); border-radius: 3px; }
+        .threat-own-label { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+        .threat-damage { text-align: center; }
+        .threat-damage b { display: block; font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 800; }
+        .threat-damage small { display: block; font-size: 9.5px; color: var(--text-muted); }
+        .threat-damage.bad b { color: var(--color-error); }
+        .threat-damage.ok b { color: var(--color-success); }
+        .threat-cta {
+            padding: 6px 11px; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap;
+            border: 1px solid var(--color-warning); background: rgba(251,191,36,.12);
+            color: var(--color-warning); font-size: 11px; font-weight: 700; font-family: inherit;
+        }
+        .threat-cta:hover { background: rgba(251,191,36,.22); }
+        .threat-note { margin-top: var(--space-3); font-size: 11.5px; line-height: 1.5; color: var(--text-muted); }
+
+        /* ---- captaincy distribution + swing ---- */
+        .cap-dist, .cap-swing {
+            padding: var(--space-4) var(--space-5); margin-top: var(--space-4);
+            background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+        }
+        .cap-dist-head, .swing-head {
+            font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700;
+            color: var(--text-primary); margin-bottom: var(--space-3);
+        }
+        .cap-dist-bar { display: flex; height: 26px; border-radius: 7px; overflow: hidden; background: var(--surface-3); }
+        .cap-seg {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10.5px; font-weight: 800; color: #0F172A;
+            box-shadow: inset -2px 0 0 var(--surface-1);
+        }
+        .cap-seg:last-child { box-shadow: none; }
+        .cap-dist-key { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-top: 10px; }
+        .cap-key { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); }
+        .cap-key-dot { width: 8px; height: 8px; border-radius: 2px; }
+        .cap-key em { color: var(--color-primary); font-style: normal; font-weight: 700; }
+        .swing-intro { font-size: 12.5px; color: var(--text-secondary); margin-bottom: var(--space-3); }
+        .swing-controls { display: flex; align-items: center; gap: var(--space-3); }
+        .swing-controls input[type="range"] { flex: 1; max-width: 320px; accent-color: var(--color-primary); cursor: pointer; }
+        .swing-delta { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 800; color: var(--color-primary); min-width: 62px; }
+        .swing-result { margin-top: var(--space-3); display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+        .swing-figure { display: flex; align-items: baseline; gap: 6px; }
+        .swing-figure b { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 800; color: var(--text-muted); }
+        .swing-figure.good b { color: var(--color-success); }
+        .swing-figure.bad b { color: var(--color-error); }
+        .swing-figure span { font-size: 11px; color: var(--text-muted); }
+        .swing-explain { font-size: 12px; line-height: 1.5; color: var(--text-secondary); flex: 1; min-width: 240px; }
+        .swing-na { font-size: 12px; color: var(--text-muted); }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .nav-container { padding: 0 var(--space-4); }
+            .main-content { padding: var(--space-4); }
+            .player-grid { grid-template-columns: 1fr; }
+            .matrix-table th.rotate { writing-mode: horizontal-tb; transform: none; height: auto; font-size: 8px; }
+            .chart-container { height: 280px; }
+            .pos-comparison { grid-template-columns: repeat(2, 1fr); }
+            .strength-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
+    <div class="v2-main-content">
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loader">
+            <div class="loader-spinner"></div>
+            <div class="loader-text">Loading league data...</div>
+        </div>
+    </div>
+
+    <!-- Sub-Nav Tabs (disabled until data loads) -->
+    <div class="tabs-container" id="rivalsTabsContainer">
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('insights')" disabled>Insights</button>
+            <button class="tab" onclick="showTab('captain')" disabled>Captain Race</button>
+            <button class="tab" onclick="showTab('race')" disabled>League Race</button>
+            <button class="tab" onclick="showTab('strength')" disabled>Squad Strength</button>
+            <button class="tab" onclick="showTab('matrix')" disabled>Matrix</button>
+            <button class="tab" onclick="showTab('h2h')" disabled>Head-to-Head</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Page Header -->
+        <header class="page-header" id="pageHeader">
+            <h1 class="page-title v2-page-heading">
+                <i data-lucide="trophy" style="width:28px;height:28px;color:var(--color-primary);"></i> League Rivals Analysis
+            </h1>
+        </header>
+
+        <!-- League command header. Lives out here rather than inside the Insights
+             tab so one bar serves every tab: it used to sit below a second,
+             thinner bar that repeated the same league and team with none of the
+             standings, which read as the page saying everything twice. -->
+        <div class="league-command" id="leagueCommand" style="display:none;"></div>
+
+        <!-- Input Section -->
+        <div class="input-section" id="inputSection">
+            <div class="input-grid">
+                <div class="input-group">
+                    <label>League ID</label>
+                    <div style="display:flex;gap:6px;">
+                        <input type="text" id="leagueIdInput" placeholder="e.g. 12345" style="flex:1;">
+                        <button class="secondary-btn" id="clearLeagueBtn" onclick="clearCachedLeagueId()" style="display:none;padding:8px 12px;font-size:11px;background:var(--surface-2);border:1px solid var(--border-default);border-radius:8px;cursor:pointer;color:var(--text-secondary);white-space:nowrap;" title="Clear saved league ID" aria-label="Clear saved league ID">✕</button>
+                    </div>
+                    <div class="input-help">Find it in your league URL: /leagues/12345/standings</div>
+                </div>
+                <div class="input-group">
+                    <label>Your Team ID</label>
+                    <input type="text" id="yourTeamIdInput" inputmode="numeric" placeholder="Your Team ID">
+                    <div class="input-help">Filled in from the Team ID you use across the site.</div>
+                </div>
+                <button class="primary-btn" id="loadBtn" onclick="loadLeague()">Analyze League →</button>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div id="statusBar" class="status-bar loading" style="display: none;">
+            <div class="spinner"></div>
+            <span id="statusText">Loading...</span>
+        </div>
+
+        <!-- Results Container -->
+        <div id="resultsContainer" style="display: none;">
+            <!-- Tab: Insights -->
+            <div class="tab-content active" id="tab-insights">
+                <!-- Summary Cards -->
+                <div class="summary-grid" id="summaryGrid">
+                    <div class="summary-card danger">
+                        <div class="summary-icon"><i data-lucide="alert-triangle" style="width:24px;height:24px;"></i></div>
+                        <div class="summary-value" id="missingCount">0</div>
+                        <div class="summary-label">Template Risk</div>
+                        <div class="summary-ctx" id="missingCtx"></div>
+                    </div>
+                    <div class="summary-card opportunity">
+                        <div class="summary-icon"><i data-lucide="swords" style="width:24px;height:24px;"></i></div>
+                        <div class="summary-value" id="diffCount">0</div>
+                        <div class="summary-label">Differential Edge</div>
+                        <div class="summary-ctx" id="diffCtx"></div>
+                    </div>
+                    <div class="summary-card info">
+                        <div class="summary-icon"><i data-lucide="bar-chart-3" style="width:24px;height:24px;"></i></div>
+                        <div class="summary-value" id="similarityPct">0%</div>
+                        <div class="summary-label">Captaincy Concentration</div>
+                        <div class="summary-ctx" id="similarityCtx"></div>
+                    </div>
+                    <div class="summary-card warning">
+                        <div class="summary-icon"><i data-lucide="crosshair" style="width:24px;height:24px;"></i></div>
+                        <div class="summary-value" id="uniqueCount">0</div>
+                        <div class="summary-label">Live Rank Projection</div>
+                        <div class="summary-ctx" id="uniqueCtx"></div>
+                    </div>
+                </div>
+
+                <!-- Threat & damage control -->
+                <div id="threatMatrix"></div>
+
+                <!-- Action Required Box -->
+                <div class="action-box" id="actionBox" style="display: none;">
+                    <h3><i data-lucide="alert-triangle" style="width:18px;height:18px;display:inline;"></i> Priority Transfers</h3>
+                    <div id="actionItems"></div>
+                </div>
+
+                <!-- Missing Templates -->
+                <div class="players-section" id="missingSection">
+                    <div class="section-header">
+                        <h2 style="color: var(--color-error);"><i data-lucide="alert-triangle" style="width:20px;height:20px;display:inline;"></i> Missing Templates</h2>
+                        <span class="count" id="missingCountLabel">0 players</span>
+                    </div>
+                    <p class="section-desc">Players that 50%+ of your rivals own that you DON'T have. High risk if they haul.</p>
+                    <div class="player-grid" id="missingGrid"></div>
+                </div>
+                
+                <!-- Your Differentials -->
+                <div class="players-section" id="diffSection">
+                    <div class="section-header">
+                        <h2 style="color: var(--color-success);"><i data-lucide="swords" style="width:20px;height:20px;display:inline;"></i> Your Differentials</h2>
+                        <span class="count" id="diffCountLabel">0 players</span>
+                    </div>
+                    <p class="section-desc">Players YOU own that less than 30% of rivals have. Your edge if they haul.</p>
+                    <div class="player-grid" id="diffGrid"></div>
+                </div>
+
+                <!-- Deeper league analysis -->
+                <div class="players-section">
+                    <div class="section-header">
+                        <h2><i data-lucide="pie-chart" style="width:20px;height:20px;display:inline;"></i> How This League Picks</h2>
+                    </div>
+                    <p class="section-desc">Whether you are in a template monoculture or a league of gamblers changes what a differential is worth. Every bar below is this league's own ownership, not the global game's.</p>
+                    <div class="ins-charts">
+                        <div class="ins-chart-card">
+                            <div class="ins-chart-title">Ownership landscape</div>
+                            <div class="ins-chart-sub">Every player owned by at least one rival, grouped by how much of the league holds them — and how much of each band you cover.</div>
+                            <div class="ins-canvas-wrap"><canvas id="ownershipChart"></canvas></div>
+                        </div>
+                        <div class="ins-chart-card">
+                            <div class="ins-chart-title">Your squad against the field</div>
+                            <div class="ins-chart-sub">Where your fifteen sit on this league's ownership scale.</div>
+                            <div class="ins-canvas-wrap"><canvas id="compositionChart"></canvas></div>
+                            <div id="compositionRead" class="ins-read"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="players-section">
+                    <div class="section-header">
+                        <h2><i data-lucide="git-compare-arrows" style="width:20px;height:20px;display:inline;"></i> Where You Diverge</h2>
+                    </div>
+                    <p class="section-desc">Average league ownership of your players in each position, against the league's own average. Lower means you are taking the unconventional route in that area.</p>
+                    <div id="posDivergence" class="ins-div-grid"></div>
+                </div>
+
+                <div class="players-section">
+                    <div class="section-header">
+                        <h2><i data-lucide="activity" style="width:20px;height:20px;display:inline;"></i> Gameweek Divergence</h2>
+                    </div>
+                    <p class="section-desc">Your score each gameweek minus the league average. Bars above the line are weeks you gained ground; the running line is your cumulative lead or deficit against the average manager.</p>
+                    <div class="ins-canvas-wrap tall"><canvas id="divergenceChart"></canvas></div>
+                    <div id="divergenceRead" class="ins-read"></div>
+                </div>
+            </div>
+
+            <!-- Tab: Captain Race -->
+            <div class="tab-content" id="tab-captain">
+                <div class="cap-layout">
+                    <div class="cap-col cap-col-consensus">
+                        <div class="section-header">
+                            <h2 style="color: var(--color-warning);"><i data-lucide="crown" style="width:20px;height:20px;display:inline;"></i> Captain Consensus</h2>
+                        </div>
+                        <div class="captain-hero" id="captainHero"></div>
+                        <div class="cap-dist" id="capDistribution"></div>
+                        <div class="cap-swing" id="capSwing"></div>
+                    </div>
+                    <div class="cap-col cap-col-table">
+                        <div class="section-header">
+                            <h2><i data-lucide="users" style="width:20px;height:20px;display:inline;"></i> Captain Choices</h2>
+                        </div>
+                        <div class="cap-table-wrap">
+                            <table class="captain-table">
+                                <thead><tr><th>Manager</th><th>Captain</th><th>Vice Captain</th><th style="text-align:center;" title="Average points per match over the last 4 gameweeks">Form</th><th style="text-align:center;" title="Total FPL points scored this season">Total Pts</th></tr></thead>
+                                <tbody id="captainTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: League Race -->
+            <div class="tab-content" id="tab-race">
+                <div class="section-header">
+                    <h2><i data-lucide="trending-up" style="width:20px;height:20px;display:inline;"></i> Momentum</h2>
+                </div>
+                <div class="momentum-grid" id="momentumGrid"></div>
+
+                <div class="section-header">
+                    <h2><i data-lucide="line-chart" style="width:20px;height:20px;display:inline;"></i> Points Progression</h2>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-visibility">
+                        <button class="active" onclick="chartShowAll(this)">All</button>
+                        <button onclick="chartShowOnlyMe(this)">Only Me</button>
+                    </div>
+                    <div class="chart-toggle">
+                        <button class="active" data-mode="absolute" onclick="toggleChartMode('absolute')">Total Points</button>
+                        <button data-mode="gap" onclick="toggleChartMode('gap')">Gap to Leader</button>
+                    </div>
+                    <canvas id="raceChart"></canvas>
+                </div>
+
+                <div class="section-header">
+                    <h2><i data-lucide="table" style="width:20px;height:20px;display:inline;"></i> League Table</h2>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="league-mini-table">
+                        <thead><tr><th>#</th><th>Manager</th><th style="text-align:center;" title="Points scored in the most recent gameweek">GW</th><th style="text-align:center;" title="Total FPL points scored this season">Total</th><th style="text-align:center;">Transfers</th><th style="text-align:center;" title="Transfer penalty points — each extra transfer beyond free transfers costs -4 pts">Hits</th><th style="text-align:center;">Value</th><th style="text-align:center;" title="Points trend over the last 6 gameweeks (sparkline)">Last 6</th><th title="Special one-time abilities used this season (Wildcard, Free Hit, Bench Boost, Triple Captain)">Chips</th></tr></thead>
+                        <tbody id="leagueTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Squad Strength -->
+            <div class="tab-content" id="tab-strength">
+                <div class="sq-layout">
+                    <div class="sq-col sq-col-pitch">
+                        <div class="section-header">
+                            <h2 style="color:var(--color-success);"><i data-lucide="target" style="width:20px;height:20px;display:inline;"></i> Most Popular XI</h2>
+                        </div>
+                        <p class="section-desc">The template team built from the most-started players across all managers.</p>
+                        <div class="pitch-container" id="templatePitch"></div>
+                    </div>
+                    <div class="sq-col sq-col-side">
+                        <div class="section-header">
+                            <h2><i data-lucide="shield" style="width:20px;height:20px;display:inline;"></i> Position Comparison</h2>
+                        </div>
+                        <p class="section-desc">Your starting XI total points per position vs rival average.</p>
+                        <div class="pos-comparison" id="posComparison"></div>
+
+                        <div class="section-header">
+                            <h2><i data-lucide="calendar" style="width:20px;height:20px;display:inline;"></i> Fixture Difficulty Ranking</h2>
+                        </div>
+                        <p class="section-desc">Average <abbr title="Fixture Difficulty Rating — 1 (easiest) to 5 (hardest) based on opponent strength">FDR</abbr> of each manager's starting XI for the next 3 gameweeks. Lower = easier run.</p>
+                        <div class="strength-grid" id="strengthGrid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Matrix -->
+            <div class="tab-content" id="tab-matrix">
+                <div class="matrix-section">
+                    <div class="section-header">
+                        <h2><i data-lucide="grid-3x3" style="width:20px;height:20px;display:inline;"></i> Full Ownership Matrix</h2>
+                    </div>
+                    <p class="section-desc">✓ = starts, C = captains, B = benched. Your column: blue = own, red = missing.</p>
+
+                    <div class="matrix-controls">
+                        <div class="matrix-filter">
+                            <label>Position:</label>
+                            <select id="matrixPosFilter" onchange="renderMatrix()">
+                                <option value="all">All</option>
+                                <option value="1">Goalkeepers</option>
+                                <option value="2">Defenders</option>
+                                <option value="3">Midfielders</option>
+                                <option value="4">Forwards</option>
+                            </select>
+                        </div>
+                        <div class="matrix-filter">
+                            <label>Show:</label>
+                            <select id="matrixShowFilter" onchange="renderMatrix()">
+                                <option value="all">All Players</option>
+                                <option value="owned">Any Rival Owns</option>
+                                <option value="popular">50%+ Ownership</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="matrix-container">
+                        <table class="matrix-table" id="matrixTable">
+                            <thead id="matrixHead"></thead>
+                            <tbody id="matrixBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Tab: Head-to-Head -->
+            <div class="tab-content" id="tab-h2h">
+                <div class="section-header">
+                    <h2><i data-lucide="swords" style="width:20px;height:20px;display:inline;"></i> Head-to-Head Comparison</h2>
+                </div>
+                <div class="matrix-controls">
+                    <div class="matrix-filter">
+                        <label>Compare with:</label>
+                        <select id="rivalSelect" onchange="renderRivalComparison()">
+                            <option value="">-- Select a rival --</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="rivalComparison"></div>
+            </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state">
+            <div class="empty-state-icon"><i data-lucide="trophy" style="width:48px;height:48px;color:var(--color-primary);"></i></div>
+            <h3>Compare Your Team vs League Rivals</h3>
+            <p>Enter your league ID above to analyze ownership patterns,<br>find missing templates, and discover your differentials.</p>
+            <button class="btn btn-primary" onclick="document.getElementById('leagueIdInput').focus();document.getElementById('inputSection').scrollIntoView({behavior:'smooth',block:'center'});" style="margin-top:16px;padding:10px 24px;">Enter League ID</button>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">You'll need both a <strong>League ID</strong> and <strong>Team ID</strong>.<br>Find them in your FPL URLs under Leagues and Pick Team.</p>
+        </div>
+    </main>
+
+    </div><!-- /.v2-main-content -->
+
+    <script>
+        // ===== STATE =====
+        let allPlayers = [];
+        let allPlayersById = {};
+        let teams = {};
+        let leagueData = null;
+        let managers = [];
+        let managerPicks = {};
+        let managerHistory = {};
+        let myTeamId = null;
+        let myPicks = new Set();
+        let myStarters = new Set();
+        let currentGW = 1;
+        let fixtures = [];
+        let teamFixtures = {};
+        let raceChart = null;
+        
+        // ===== CONFIGURATION =====
+
+        const BOOTSTRAP_URL = DATA_URLS.bootstrap;
+        const FIXTURES_URL = DATA_URLS.fixtures;
+        
+        const POS = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+        const POS_COLORS = { 1: '#D97706', 2: '#059669', 3: '#2563EB', 4: '#DC2626' };
+        const POS_CLASS = { 1: 'gk', 2: 'def', 3: 'mid', 4: 'fwd' };
+        const MAX_MANAGERS = 15;
+        const CHART_COLORS = [
+            '#3B82F6','#EF4444','#10B981','#F59E0B','#8B5CF6',
+            '#EC4899','#14B8A6','#F97316','#6366F1','#84CC16',
+            '#06B6D4','#E11D48','#A3E635','#FB923C','#C084FC'
+        ];
+        
+        // ===== INIT =====
+        async function init() {
+            try {
+                const [data, fixturesData] = await Promise.all([
+                    DataCache.fetchJSON(BOOTSTRAP_URL),
+                    DataCache.fetchJSON(FIXTURES_URL).catch(() => null)
+                ]);
+                
+                // normalisePlayerShape keeps `position` and `pos` in step; this page
+                // names it `pos`, three others name it `position`, and code that
+                // reads the wrong one fails silently rather than throwing.
+                allPlayers = data.elements.map(p => normalisePlayerShape({
+                    id: p.id,
+                    // The photo code and the club's badge code, so this page's
+                    // pitch can draw the same portraits every other pitch does.
+                    code: p.code,
+                    teamId: p.team,
+                    teamCode: data.teams.find(t => t.id === p.team)?.code,
+                    name: p.web_name,
+                    team: p.team,
+                    teamName: data.teams.find(t => t.id === p.team)?.short_name || '???',
+                    pos: p.element_type,
+                    posName: POS[p.element_type],
+                    price: p.now_cost / 10,
+                    pts: p.total_points,
+                    form: parseFloat(p.form) || 0,
+                    own: p.selected_by_percent
+                }));
+                
+                allPlayersById = {};
+                allPlayers.forEach(p => allPlayersById[p.id] = p);
+                
+                data.teams.forEach(t => teams[t.id] = t);
+                currentGW = data.events.find(e => e.is_current)?.id || 1;
+                
+                if (fixturesData) {
+                    fixtures = fixturesData;
+                    buildTeamFixtures();
+                }
+                
+                console.log(`Loaded ${allPlayers.length} players, current GW: ${currentGW}`);
+            } catch (err) {
+                console.error('Init error:', err);
+                showStatus('Failed to load player data. Please refresh the page.', 'error');
+            }
+        }
+        
+        function buildTeamFixtures() {
+            teamFixtures = {};
+            const upcoming = fixtures.filter(f => !fixturePlayed(f) && f.event > 0);
+            upcoming.forEach(f => {
+                if (!teamFixtures[f.team_h]) teamFixtures[f.team_h] = [];
+                if (!teamFixtures[f.team_a]) teamFixtures[f.team_a] = [];
+                teamFixtures[f.team_h].push({ opponent: f.team_a, opponentName: teams[f.team_a]?.short_name || '???', fdr: f.team_h_difficulty, home: true, gw: f.event });
+                teamFixtures[f.team_a].push({ opponent: f.team_h, opponentName: teams[f.team_h]?.short_name || '???', fdr: f.team_a_difficulty, home: false, gw: f.event });
+            });
+            Object.values(teamFixtures).forEach(arr => arr.sort((a, b) => a.gw - b.gw));
+        }
+        
+        // ===== LIVE GAMEWEEK =====
+        // The proxy passes any FPL path through, so the live endpoint is reachable.
+        // It carries per-player points, bonus and bps as the gameweek unfolds,
+        // which is what makes a projected league rank a real figure rather than a
+        // guess — every rival's picks and multipliers are known.
+        let liveStats = null;
+        let liveLoadedGW = null;
+
+        async function loadLiveData() {
+            if (liveLoadedGW === currentGW && liveStats) return liveStats;
+            try {
+                const res = await fetch(`${WORKER_URL}/api/event/${currentGW}/live/`);
+                if (!res.ok) throw new Error('live unavailable');
+                const data = await res.json();
+                liveStats = {};
+                (data.elements || []).forEach(e => { liveStats[e.id] = e.stats; });
+                liveLoadedGW = currentGW;
+            } catch (e) {
+                console.warn('Live data unavailable:', e.message);
+                liveStats = null;
+            }
+            return liveStats;
+        }
+
+        // A manager's score as it stands. The picks carry their own multiplier, so
+        // captain and triple captain are handled without special-casing.
+        function liveScoreFor(entryId) {
+            const mp = managerPicks[entryId];
+            if (!mp || !liveStats) return null;
+            const benchBoost = mp.activeChip === 'bboost';
+            let pts = 0, toPlay = 0, inPlay = 0;
+            (mp.fullPicks || []).forEach(pick => {
+                const counts = pick.position <= 11 || benchBoost;
+                if (!counts) return;
+                const st = liveStats[pick.element];
+                if (!st) { toPlay++; return; }
+                pts += (st.total_points || 0) * (pick.multiplier || 1);
+                if (!st.played) toPlay++;
+                else if ((st.minutes || 0) > 0) inPlay++;
+            });
+            return { pts, toPlay, inPlay };
+        }
+
+        // Standings totals already include this gameweek once it starts scoring, so
+        // the pre-gameweek total is what the projection has to build on.
+        function preGwTotal(entryId) {
+            const m = managerPicks[entryId]?.manager;
+            if (!m) return 0;
+            return (m.total || 0) - (m.event_total || 0);
+        }
+
+        // Projected standings: everyone's pre-gameweek total plus what they have
+        // scored so far this gameweek. `adjust` lets callers ask what-if questions.
+        function projectedTable(adjust) {
+            const ids = Object.keys(managerPicks);
+            const rows = ids.map(id => {
+                const live = liveScoreFor(id);
+                const gwPts = live ? live.pts : (managerPicks[id].manager.event_total || 0);
+                const extra = adjust ? (adjust(id) || 0) : 0;
+                return {
+                    id,
+                    manager: managerPicks[id].manager,
+                    gwPts: gwPts + extra,
+                    toPlay: live ? live.toPlay : null,
+                    total: preGwTotal(id) + gwPts + extra
+                };
+            });
+            rows.sort((a, b) => b.total - a.total || b.gwPts - a.gwPts);
+            rows.forEach((r, i) => { r.projRank = i + 1; });
+            return rows;
+        }
+
+        function myProjectedRank(adjust) {
+            const row = projectedTable(adjust).find(r => r.id == myTeamId);
+            return row ? row.projRank : null;
+        }
+
+        // ===== LOAD LEAGUE =====
+        async function loadLeague() {
+            const leagueId = document.getElementById('leagueIdInput').value.trim();
+            if (!leagueId || isNaN(leagueId) || !Number.isInteger(Number(leagueId)) || Number(leagueId) <= 0) {
+                showStatus('Please enter a valid league ID', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('loadBtn');
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+            showStatus('Fetching league data...', 'loading');
+            
+            try {
+                // Cache league ID
+                localStorage.setItem('fpl_league_id', leagueId);
+                updateClearLeagueBtn();
+                
+                // Fetch league standings via Cloudflare Worker
+                const res = await fetch(`${WORKER_URL}/api/leagues-classic/${leagueId}/standings/`);
+                if (!res.ok) throw new Error('League not found');
+                
+                leagueData = await res.json();
+                managers = leagueData.standings.results.slice(0, MAX_MANAGERS);
+
+                /* One step, not three. There used to be a second card here —
+                   league name, a manager count, and a picker to find yourself
+                   in a list you are already in — because the Team ID was
+                   optional. It is not optional any more: the page always has
+                   the id the site runs on, so the league loads and the
+                   analysis starts. The one honest failure is an id outside the
+                   loaded slice of the standings, which is named rather than
+                   silently dropped into a picker that no longer exists. */
+                const teamId = document.getElementById('yourTeamIdInput').value.trim();
+                if (!/^\d+$/.test(teamId)) {
+                    showStatus('Enter your Team ID — it is the number the rest of the site already uses.', 'error');
+                    return false;
+                }
+                if (!managers.some(m => String(m.entry) === teamId)) {
+                    showStatus(`Team ${teamId} is not in the top ${MAX_MANAGERS} of "${leagueData.league.name}" — `
+                        + 'this page reads the loaded slice of the standings.', 'error');
+                    return false;
+                }
+
+                showStatus(`Loaded ${managers.length} managers from "${leagueData.league.name}"`, 'success');
+                await analyzeRivals(teamId);
+                return true;
+
+            } catch (err) {
+                showStatus('Failed to load league: ' + err.message, 'error');
+                return false;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Analyze League →';
+            }
+        }
+        
+        // ===== ANALYZE RIVALS =====
+        async function analyzeRivals(teamId) {
+            myTeamId = teamId != null ? String(teamId)
+                : document.getElementById('yourTeamIdInput').value.trim();
+            if (!myTeamId) {
+                showStatus('Enter your Team ID above', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('loadBtn');
+            btn.disabled = true;
+            btn.textContent = 'Analyzing...';
+            showStatus('Fetching picks & history...', 'loading');
+            
+            try {
+                managerPicks = {};
+                managerHistory = {};
+                let loaded = 0;
+                
+                // Fetch picks and history in parallel batches
+                const batchSize = 5;
+                for (let i = 0; i < managers.length; i += batchSize) {
+                    const batch = managers.slice(i, i + batchSize);
+                    await Promise.all(batch.map(async (m) => {
+                        try {
+                            const res = await fetch(`${WORKER_URL}/api/entry/${m.entry}/event/${currentGW}/picks/`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                managerPicks[m.entry] = {
+                                    manager: m,
+                                    picks: data.picks.map(p => p.element),
+                                    fullPicks: data.picks,
+                                    captain: data.picks.find(p => p.is_captain)?.element,
+                                    viceCaptain: data.picks.find(p => p.is_vice_captain)?.element,
+                                    starters: data.picks.filter(p => p.position <= 11).map(p => p.element),
+                                    bench: data.picks.filter(p => p.position > 11).map(p => p.element),
+                                    activeChip: data.active_chip
+                                };
+                            }
+                        } catch (e) { console.warn(`Failed picks for ${m.entry}`); }
+                        
+                        try {
+                            const res = await fetch(`${WORKER_URL}/api/entry/${m.entry}/history/`);
+                            if (res.ok) { managerHistory[m.entry] = await res.json(); }
+                        } catch (e) { console.warn(`Failed history for ${m.entry}`); }
+                        
+                        loaded++;
+                        showStatus(`Loading data... ${loaded}/${managers.length}`, 'loading');
+                    }));
+                }
+                
+                await loadLiveData();
+
+                myPicks = new Set(managerPicks[myTeamId]?.picks || []);
+                myStarters = new Set(managerPicks[myTeamId]?.starters || []);
+                
+                const rivalIds = Object.keys(managerPicks).filter(id => id != myTeamId);
+                const rivalCount = rivalIds.length;
+                const allIds = Object.keys(managerPicks);
+                
+                // Build ownership map with captain/bench/EO data
+                const playerOwnership = allPlayers.map(p => {
+                    let count = 0, starterCount = 0, captainCount = 0;
+                    rivalIds.forEach(id => {
+                        const mp = managerPicks[id];
+                        if (mp.picks.includes(p.id)) {
+                            count++;
+                            if (mp.starters.includes(p.id)) starterCount++;
+                            if (mp.captain === p.id) captainCount++;
+                        }
+                    });
+                    const youCaptain = managerPicks[myTeamId]?.captain === p.id;
+                    
+                    // Effective ownership
+                    let eoSum = 0;
+                    allIds.forEach(id => {
+                        const mp = managerPicks[id];
+                        if (mp.captain === p.id) {
+                            eoSum += (mp.activeChip === '3xc' ? 3 : 2);
+                        } else if (mp.starters.includes(p.id)) {
+                            eoSum += 1;
+                        }
+                    });
+                    
+                    let yourEo = 0;
+                    if (managerPicks[myTeamId]?.captain === p.id) {
+                        yourEo = managerPicks[myTeamId]?.activeChip === '3xc' ? 300 : 200;
+                    } else if (myStarters.has(p.id)) {
+                        yourEo = 100;
+                    }
+                    
+                    return {
+                        player: p,
+                        count, starterCount, captainCount,
+                        pct: rivalCount > 0 ? Math.round((count / rivalCount) * 100) : 0,
+                        starterPct: rivalCount > 0 ? Math.round((starterCount / rivalCount) * 100) : 0,
+                        youOwn: myPicks.has(p.id),
+                        youStart: myStarters.has(p.id),
+                        youCaptain,
+                        eo: Math.round((eoSum / allIds.length) * 100),
+                        yourEo
+                    };
+                }).filter(p => p.pct > 0 || p.youOwn);
+                
+                // Find insights
+                const missingTemplates = playerOwnership.filter(p => p.pct >= 50 && !p.youOwn).sort((a, b) => b.pct - a.pct);
+                const yourDifferentials = playerOwnership.filter(p => p.youOwn && p.pct < 30).sort((a, b) => a.pct - b.pct);
+                const onlyYouOwn = playerOwnership.filter(p => p.youOwn && p.pct === 0);
+                const templatePlayers = playerOwnership.filter(p => p.pct >= 50);
+                const yourTemplateCount = templatePlayers.filter(p => p.youOwn).length;
+                const similarityPct = templatePlayers.length > 0 ? Math.round((yourTemplateCount / templatePlayers.length) * 100) : 0;
+                
+                // Update summary cards
+                renderCommandHeader();
+                renderKpiTiles(missingTemplates, yourDifferentials, onlyYouOwn, similarityPct, playerOwnership);
+                
+                // Render insights tab
+                renderInsights(missingTemplates, yourDifferentials);
+                renderThreatMatrix(missingTemplates);
+                renderPositionDivergence(playerOwnership);
+                renderLeagueInsightCharts(playerOwnership);
+                
+                // Populate rival select
+                const rivalSelect = document.getElementById('rivalSelect');
+                rivalSelect.innerHTML = '<option value="">-- Select a rival --</option>';
+                rivalIds.forEach(id => {
+                    const m = managerPicks[id].manager;
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = `${m.player_name} (${m.entry_name})`;
+                    rivalSelect.appendChild(opt);
+                });
+                
+                // Store data for other tabs
+                window.playerOwnership = playerOwnership;
+                window.rivalIds = rivalIds;
+                window.missingTemplates = missingTemplates;
+                
+                // Show results and render all tabs
+                document.getElementById('emptyState').style.display = 'none';
+                document.getElementById('resultsContainer').style.display = 'block';
+                enableTabs();
+                
+                renderMatrix();
+                renderCaptainRace();
+                renderLeagueRace();
+                renderSquadStrength();
+                
+                // Collapse the setup form — renderCommandHeader() above has already
+                // put the league, your team and the standings in the bar that
+                // replaces it.
+                document.getElementById('inputSection').style.display = 'none';
+                document.getElementById('pageHeader').style.display = 'none';
+                document.getElementById('statusBar').style.display = 'none';
+
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                
+            } catch (err) {
+                showStatus('Analysis failed: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Analyze League →';
+            }
+        }
+        
+        // The league's macro context. Prize pots are not exposed by the FPL API and
+        // are not invented here — everything below is read from the standings.
+        function renderCommandHeader() {
+            const el = document.getElementById('leagueCommand');
+            if (!el || !leagueData) return;
+            const me = managerPicks[myTeamId]?.manager;
+            const totals = managers.map(m => m.total || 0);
+            const avgTotal = totals.length ? Math.round(totals.reduce((s, v) => s + v, 0) / totals.length) : 0;
+
+            const table = liveStats ? projectedTable() : null;
+            const liveAvg = table ? Math.round(table.reduce((s, r) => s + r.gwPts, 0) / table.length) : null;
+            const myRow = table ? table.find(r => r.id == myTeamId) : null;
+
+            el.innerHTML = `
+                <div class="lc-main">
+                    <div class="lc-title">${escHTML(leagueData.league.name)}</div>
+                    <div class="lc-sub">${escHTML(me?.player_name || '')} · ${escHTML(me?.entry_name || '')}</div>
+                </div>
+                <div class="lc-stats">
+                    <div class="lc-stat"><span>Your rank</span><b>${me?.rank ?? '—'}<small>/${managers.length}</small></b></div>
+                    <div class="lc-stat"><span>League average</span><b>${avgTotal.toLocaleString()}</b></div>
+                    ${liveAvg !== null ? `<div class="lc-stat"><span>Live GW average</span><b>${liveAvg}</b></div>` : ''}
+                    ${myRow ? `<div class="lc-stat"><span>Your live GW</span><b class="lc-live">${myRow.gwPts}</b></div>` : ''}
+                </div>
+                <button class="lc-change" onclick="showInputSection()">Change league</button>`;
+            el.style.display = 'flex';
+        }
+
+        // Pin a rival to compare against without leaving the tab.
+        function renderKpiTiles(missingTemplates, yourDifferentials, onlyYouOwn, similarityPct, playerOwnership) {
+            const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
+            const cls = (sel, name) => { const e = document.querySelector(sel); if (e) e.className = 'summary-card ' + name; };
+
+            // 1. Template risk — weighted by how widely the missing players are owned.
+            const heavy = missingTemplates.filter(p => p.pct >= 70).length;
+            set('missingCount', missingTemplates.length);
+            set('missingCtx', missingTemplates.length === 0
+                ? 'You own every template pick'
+                : `${heavy} owned by 70%+ · worst is ${missingTemplates[0].player.name} at ${missingTemplates[0].pct}%`);
+            cls('#summaryGrid .summary-card:nth-child(1)', heavy >= 2 ? 'danger' : missingTemplates.length ? 'warning' : 'opportunity');
+
+            // 2. Differential edge — only the genuinely rare ones count.
+            const rare = yourDifferentials.filter(p => p.pct < 10).length;
+            set('diffCount', yourDifferentials.length);
+            set('diffCtx', yourDifferentials.length
+                ? `${rare} under 10% owned in this league · ${onlyYouOwn.length} owned by nobody else`
+                : 'No differentials — you are the template');
+            cls('#summaryGrid .summary-card:nth-child(2)', rare >= 3 ? 'opportunity' : 'info');
+
+            // 3. Captaincy concentration — the real armband distribution.
+            const ids = Object.keys(managerPicks);
+            const capCounts = {};
+            ids.forEach(id => { const cp = managerPicks[id].captain; if (cp) capCounts[cp] = (capCounts[cp] || 0) + 1; });
+            const topCap = Object.entries(capCounts).sort((a, b) => b[1] - a[1])[0];
+            const capPct = topCap ? Math.round((topCap[1] / ids.length) * 100) : 0;
+            const capName = topCap ? (allPlayersById[topCap[0]]?.name || '?') : '—';
+            const myCap = managerPicks[myTeamId]?.captain;
+            const iMatch = topCap && myCap == topCap[0];
+            set('similarityPct', capPct + '%');
+            set('similarityCtx', topCap
+                ? `${capPct}% captained ${capName} — ${iMatch ? 'you match the field' : 'you went differential'}`
+                : 'No captains recorded');
+            cls('#summaryGrid .summary-card:nth-child(3)', iMatch ? 'info' : capPct >= 60 ? 'warning' : 'opportunity');
+
+            // 4. Live rank projection.
+            const me = managerPicks[myTeamId]?.manager;
+            if (liveStats) {
+                const row = projectedTable().find(r => r.id == myTeamId);
+                const now = me?.rank ?? null;
+                const proj = row ? row.projRank : null;
+                const move = (now !== null && proj !== null) ? now - proj : 0;
+                set('uniqueCount', proj !== null ? proj : '—');
+                set('uniqueCtx', proj === null ? 'Live data unavailable'
+                    : move > 0 ? `Climbing ${move} place${move === 1 ? '' : 's'} from ${now} · ${row.toPlay} still to play`
+                    : move < 0 ? `Slipping ${-move} place${move === -1 ? '' : 's'} from ${now} · ${row.toPlay} still to play`
+                    : `Holding ${now} · ${row.toPlay} of your XI still to play`);
+                cls('#summaryGrid .summary-card:nth-child(4)', move > 0 ? 'opportunity' : move < 0 ? 'danger' : 'info');
+            } else {
+                set('uniqueCount', me?.rank ?? '—');
+                set('uniqueCtx', 'Live gameweek data unavailable right now');
+                cls('#summaryGrid .summary-card:nth-child(4)', 'info');
+            }
+        }
+
+        function renderInsights(missingTemplates, yourDifferentials) {
+            document.getElementById('missingCountLabel').textContent = `${missingTemplates.length} players`;
+            document.getElementById('missingGrid').innerHTML = missingTemplates.map(p => renderPlayerCard(p, 'danger')).join('');
+            document.getElementById('diffCountLabel').textContent = `${yourDifferentials.length} players`;
+            document.getElementById('diffGrid').innerHTML = yourDifferentials.map(p => renderPlayerCard(p, 'opportunity')).join('');
+            
+            if (missingTemplates.length > 0) {
+                document.getElementById('actionBox').style.display = 'block';
+                document.getElementById('actionItems').innerHTML = missingTemplates.slice(0, 3).map((p, i) => `
+                    <div class="action-item">
+                        <div class="action-priority">${i + 1}</div>
+                        <div class="action-text">
+                            <strong>Consider ${escHTML(p.player.name)}</strong><br>
+                            <span>${p.pct}% of rivals own this ${escHTML(p.player.posName)} (£${p.player.price.toFixed(1)}m)${p.captainCount > 0 ? ' · ⓒ captained by ' + p.captainCount : ''}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('actionBox').style.display = 'none';
+            }
+        }
+        
+        /* ===== Deeper league analysis =====
+           These read this league's own ownership rather than the global game's.
+           A 55%-owned player is a template pick in one league and a differential
+           in another, and only the local number tells you which. */
+        let ownershipChart = null, compositionChart = null, divergenceChart = null;
+
+        const OWN_BANDS = [
+            { label: '0%', lo: 0, hi: 0 },
+            { label: '1-20%', lo: 1, hi: 20 },
+            { label: '21-40%', lo: 21, hi: 40 },
+            { label: '41-60%', lo: 41, hi: 60 },
+            { label: '61-80%', lo: 61, hi: 80 },
+            { label: '81-100%', lo: 81, hi: 100 }
+        ];
+
+        function bandFor(pct) {
+            return OWN_BANDS.findIndex(b => pct >= b.lo && pct <= b.hi);
+        }
+
+        function renderLeagueInsightCharts(playerOwnership) {
+            if (typeof Chart === 'undefined') return;
+            const grid = 'rgba(148,163,184,0.15)';
+            const tick = '#94A3B8';
+
+            // ---- 1. Ownership landscape: the league's shape, and your coverage ----
+            const owned = new Array(OWN_BANDS.length).fill(0);
+            const notOwned = new Array(OWN_BANDS.length).fill(0);
+            playerOwnership.forEach(p => {
+                const b = bandFor(p.pct);
+                if (b < 0) return;
+                if (p.youOwn) owned[b]++; else notOwned[b]++;
+            });
+
+            const ownCanvas = document.getElementById('ownershipChart');
+            if (ownCanvas) {
+                if (ownershipChart) ownershipChart.destroy();
+                ownershipChart = new Chart(ownCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: OWN_BANDS.map(b => b.label),
+                        datasets: [
+                            { label: 'You own', data: owned, backgroundColor: '#3B82F6', borderRadius: 3 },
+                            { label: 'You do not', data: notOwned, backgroundColor: 'rgba(148,163,184,0.35)', borderRadius: 3 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {
+                            legend: { labels: { color: tick, boxWidth: 10, font: { size: 10 } } },
+                            tooltip: { callbacks: { title: items => `Owned by ${items[0].label} of your rivals` } }
+                        },
+                        scales: {
+                            x: { stacked: true, grid: { display: false }, ticks: { color: tick, font: { size: 10 } } },
+                            y: { stacked: true, grid: { color: grid }, ticks: { color: tick, precision: 0, font: { size: 10 } },
+                                 title: { display: true, text: 'players', color: tick, font: { size: 10 } } }
+                        }
+                    }
+                });
+            }
+
+            // ---- 2. Your fifteen, placed on that same scale ----
+            const mine = playerOwnership.filter(p => p.youOwn);
+            const tiers = [
+                { key: 'Unique', test: p => p.pct === 0, color: '#A78BFA' },
+                { key: 'Differential', test: p => p.pct > 0 && p.pct < 30, color: '#34D399' },
+                { key: 'Popular', test: p => p.pct >= 30 && p.pct < 50, color: '#60A5FA' },
+                { key: 'Template', test: p => p.pct >= 50, color: '#FBBF24' }
+            ];
+            const tierCounts = tiers.map(t => mine.filter(t.test).length);
+
+            const compCanvas = document.getElementById('compositionChart');
+            if (compCanvas) {
+                if (compositionChart) compositionChart.destroy();
+                compositionChart = new Chart(compCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: tiers.map(t => t.key),
+                        datasets: [{ data: tierCounts, backgroundColor: tiers.map(t => t.color), borderWidth: 0 }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, cutout: '58%',
+                        plugins: {
+                            legend: { position: 'right', labels: { color: tick, boxWidth: 10, font: { size: 10 } } },
+                            tooltip: { callbacks: { label: c => `${c.label}: ${c.raw} of ${mine.length}` } }
+                        }
+                    }
+                });
+            }
+
+            const readEl = document.getElementById('compositionRead');
+            if (readEl) {
+                const template = tierCounts[3], diff = tierCounts[1] + tierCounts[0];
+                readEl.innerHTML = mine.length === 0 ? '' : template > diff
+                    ? `You are running with the field: <strong>${template}</strong> of your ${mine.length} are owned by at least half this league, against <strong>${diff}</strong> genuine differentials. That protects your rank when the template hauls and does nothing to close a gap.`
+                    : `You are playing for ground: <strong>${diff}</strong> of your ${mine.length} are differentials against <strong>${template}</strong> template picks. That closes gaps quickly and loses ground just as fast when the template returns.`;
+            }
+
+            // ---- 3. Divergence per gameweek against the league average ----
+            const ids = Object.keys(managerHistory);
+            const maxGW = ids.length ? Math.max(...ids.map(id => (managerHistory[id]?.current || []).length)) : 0;
+            const mineHist = managerHistory[myTeamId]?.current || [];
+            const diffs = [], cumulative = [];
+            let running = 0;
+            for (let i = 0; i < maxGW; i++) {
+                const scores = ids.map(id => managerHistory[id]?.current?.[i]?.points).filter(v => v != null);
+                const avg = scores.length ? scores.reduce((s, v) => s + v, 0) / scores.length : 0;
+                const minePts = mineHist[i]?.points;
+                const d = minePts == null ? 0 : minePts - avg;
+                diffs.push(Math.round(d * 10) / 10);
+                running += d;
+                cumulative.push(Math.round(running * 10) / 10);
+            }
+
+            const divCanvas = document.getElementById('divergenceChart');
+            if (divCanvas && maxGW) {
+                if (divergenceChart) divergenceChart.destroy();
+                divergenceChart = new Chart(divCanvas, {
+                    data: {
+                        labels: Array.from({ length: maxGW }, (_, i) => `GW${i + 1}`),
+                        datasets: [
+                            { type: 'bar', label: 'Vs league average', data: diffs, borderRadius: 3,
+                              backgroundColor: diffs.map(v => v >= 0 ? 'rgba(52,211,153,0.65)' : 'rgba(248,113,113,0.65)') },
+                            { type: 'line', label: 'Cumulative', data: cumulative, borderColor: '#3B82F6',
+                              backgroundColor: 'rgba(59,130,246,0.12)', borderWidth: 2, tension: 0.3,
+                              pointRadius: 0, pointHoverRadius: 4, fill: true, yAxisID: 'y1' }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: tick, boxWidth: 10, font: { size: 10 } } } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: tick, font: { size: 9 }, maxRotation: 0, autoSkip: true } },
+                            y: { grid: { color: grid }, ticks: { color: tick, font: { size: 10 } },
+                                 title: { display: true, text: 'points vs average', color: tick, font: { size: 10 } } },
+                            y1: { position: 'right', grid: { display: false }, ticks: { color: '#3B82F6', font: { size: 10 } },
+                                  title: { display: true, text: 'cumulative', color: '#3B82F6', font: { size: 10 } } }
+                        }
+                    }
+                });
+            }
+
+            const divRead = document.getElementById('divergenceRead');
+            if (divRead) {
+                const total = cumulative.length ? cumulative[cumulative.length - 1] : 0;
+                const wins = diffs.filter(v => v > 0).length;
+                divRead.innerHTML = !maxGW ? '' :
+                    `You have beaten this league's average in <strong>${wins}</strong> of ${maxGW} gameweeks, for a net <strong>${total > 0 ? '+' : ''}${total.toFixed(1)}</strong> points against the average manager.`;
+            }
+        }
+
+        // Average league ownership of your picks per position, against the league's
+        // own average for that position — where you are conventional and where you
+        // are not. Distinct from Squad Strength, which compares points, not risk.
+        function renderPositionDivergence(playerOwnership) {
+            const el = document.getElementById('posDivergence');
+            if (!el) return;
+            const POS = [{ id: 1, label: 'Goalkeepers' }, { id: 2, label: 'Defenders' },
+                         { id: 3, label: 'Midfielders' }, { id: 4, label: 'Forwards' }];
+
+            el.innerHTML = POS.map(pos => {
+                // `pos`, not `position` — this page builds its own lighter player
+                // objects from bootstrap and names the field differently to the
+                // squad pages.
+                const inPos = playerOwnership.filter(p => p.player.pos === pos.id);
+                const mine = inPos.filter(p => p.youOwn);
+                if (!mine.length || !inPos.length) {
+                    return `<div class="ins-div-row"><span class="ins-div-pos">${pos.label}</span>
+                        <span class="ins-div-none">No players to compare</span></div>`;
+                }
+                const myAvg = mine.reduce((s, p) => s + p.pct, 0) / mine.length;
+                const fieldAvg = inPos.reduce((s, p) => s + p.pct, 0) / inPos.length;
+                const gap = myAvg - fieldAvg;
+                const cls = gap < -8 ? 'bold' : gap > 8 ? 'safe' : '';
+                const word = gap < -8 ? 'Unconventional' : gap > 8 ? 'With the field' : 'Balanced';
+                return `<div class="ins-div-row">
+                    <span class="ins-div-pos">${pos.label}</span>
+                    <div class="ins-div-bars">
+                        <div class="ins-div-bar" data-tooltip="Your ${pos.label.toLowerCase()} are owned by an average of ${myAvg.toFixed(0)}% of this league.">
+                            <span class="ins-div-fill you" style="width:${Math.min(100, myAvg)}%"></span></div>
+                        <div class="ins-div-bar" data-tooltip="Across every ${pos.label.toLowerCase().replace(/s$/, '')} anyone in this league owns, the average is ${fieldAvg.toFixed(0)}%.">
+                            <span class="ins-div-fill field" style="width:${Math.min(100, fieldAvg)}%"></span></div>
+                    </div>
+                    <span class="ins-div-n">${myAvg.toFixed(0)}% <em>vs ${fieldAvg.toFixed(0)}%</em></span>
+                    <span class="ins-div-tag ${cls}">${word}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // What a missing template actually costs. Rather than asserting a rank
+        // drop, this re-ranks the whole league with the hypothetical applied — the
+        // same projection used everywhere else, asked a what-if question.
+        const THREAT_HAUL = 10;   // a goal and an assist, roughly
+
+        function renderThreatMatrix(missingTemplates) {
+            const el = document.getElementById('threatMatrix');
+            if (!el) return;
+            const threats = missingTemplates.filter(p => p.pct >= 50).slice(0, 5);
+            if (!threats.length) {
+                el.innerHTML = `<div class="threat-panel safe">
+                    <div class="threat-head"><i data-lucide="shield-check" style="width:16px;height:16px;"></i> No template gaps</div>
+                    <p>You own every player more than half this league owns. There is no template haul that moves the field past you.</p>
+                </div>`;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
+            const baseRank = myProjectedRank();
+            const rows = threats.map(t => {
+                const pid = t.player.id;
+                // Everyone who starts him gains; those captaining him gain double.
+                const damaged = myProjectedRank(id => {
+                    const mp = managerPicks[id];
+                    if (!mp) return 0;
+                    if (mp.captain === pid) return THREAT_HAUL * (mp.activeChip === '3xc' ? 3 : 2);
+                    if (mp.starters.includes(pid)) return THREAT_HAUL;
+                    return 0;
+                });
+                const drop = (damaged !== null && baseRank !== null) ? damaged - baseRank : null;
+                return { t, drop, damaged };
+            }).sort((a, b) => (b.drop || 0) - (a.drop || 0));
+
+            const worst = rows[0];
+            el.innerHTML = `
+                <div class="threat-panel">
+                    <div class="threat-head">
+                        <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
+                        Threat &amp; damage control
+                        <span class="threat-sub">If each returns ${THREAT_HAUL} points this gameweek</span>
+                    </div>
+                    <div class="threat-rows">
+                        ${rows.map(({ t, drop, damaged }) => `
+                            <div class="threat-row">
+                                <div class="threat-player">
+                                    <div class="threat-name">${escHTML(t.player.name)}</div>
+                                    <div class="threat-meta">${escHTML(t.player.teamName)} · ${escHTML(t.player.posName)} · £${t.player.price.toFixed(1)}m</div>
+                                </div>
+                                <div class="threat-own">
+                                    <div class="threat-own-bar"><span style="width:${t.pct}%"></span></div>
+                                    <div class="threat-own-label">${t.pct}% own · ${t.captainCount} captain</div>
+                                </div>
+                                <div class="threat-damage ${drop > 0 ? 'bad' : 'ok'}">
+                                    ${drop === null ? '—' : drop > 0
+                                        ? `<b>−${drop}</b><small>place${drop === 1 ? '' : 's'} → ${damaged}${ordinalSuffix(damaged)}</small>`
+                                        : `<b>0</b><small>no rank change</small>`}
+                                </div>
+                                <button class="threat-cta" onclick="targetInWizard(${t.player.id})">Target</button>
+                            </div>`).join('')}
+                    </div>
+                    <p class="threat-note">
+                        ${worst && worst.drop > 0
+                            ? `<strong>${escHTML(worst.t.player.name)}</strong> is the one that hurts: a ${THREAT_HAUL}-point return drops you ${worst.drop} place${worst.drop === 1 ? '' : 's'}. `
+                            : 'None of these would move you on their own — the ownership is spread too evenly. '}
+                        Ranks are recomputed against every rival's actual picks and multipliers, not estimated.
+                    </p>
+                </div>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function ordinalSuffix(n) {
+            const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+            return s[(v - 20) % 10] || s[v] || s[0];
+        }
+
+        function targetInWizard(playerId) {
+            // Same dead handoff as players-tables.js — fpl_swap_target was never
+            // read by anything, and the wizard page ignored ?target= entirely.
+            window.location.href = 'fpl-my-team-analysis.html#transfers';
+        }
+
+        /* A differential is a player, so the card leads with the player: his
+           club's colour behind him, his face on it, his name large and the
+           one number the section exists to give you — league ownership — out
+           on the right. It was a name in bold, a grey run-on line and three
+           colon-separated stats on a bare box, which was the only place on
+           this page a player appeared without a face. */
+        function renderPlayerCard(p, type) {
+            const pl = p.player;
+            const barClass = p.pct >= 70 ? 'high' : p.pct >= 40 ? 'medium' : 'low';
+            const captainInfo = p.captainCount > 0
+                ? `<span class="captain-badge" data-tooltip="Captained by ${p.captainCount} manager${p.captainCount === 1 ? '' : 's'} in this league.">Ⓒ ${p.captainCount}</span>` : '';
+            const starterInfo = p.starterPct < p.pct
+                ? `<div class="eo-bar-row"><span class="eo-bar-label">Started by</span><div class="eo-bar-track"><div class="eo-bar-fill" style="width:${p.starterPct}%;background:var(--color-info);"></div></div><span class="eo-bar-value" style="color:var(--color-info);">${p.starterPct}%</span></div>` : '';
+
+            const code = typeof v2TeamCode === 'function' ? v2TeamCode(pl.teamId, pl.teamCode) : pl.teamCode;
+            const cols = (typeof CLUB_COLOURS !== 'undefined' && CLUB_COLOURS[code])
+                || (typeof CLUB_COLOURS_FALLBACK !== 'undefined' ? CLUB_COLOURS_FALLBACK : ['#37003C', '#FFFFFF']);
+            const ident = { name: pl.name, code: pl.code, teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName };
+
+            return `
+                <div class="player-card ${type}">
+                    <div class="pc-hero" style="--club:${cols[0]};--club-ink:${cols[1]};">
+                        <span class="pc-hero-shape" aria-hidden="true"></span>
+                        ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident, 'v2-pid-portrait') : ''}
+                        <span class="pc-hero-text">
+                            <span class="pc-hero-name">${escHTML(pl.name)}</span>
+                            <span class="pc-hero-meta">${escHTML(pl.teamName)} · ${escHTML(pl.posName)}</span>
+                        </span>
+                        <span class="pc-hero-side">
+                            <span class="player-price">£${pl.price.toFixed(1)}m</span>
+                            <span class="pc-flags">
+                                ${p.youOwn ? '<span class="you-badge">You own</span>' : '<span class="missing-badge">Missing</span>'}
+                                ${captainInfo}
+                            </span>
+                        </span>
+                    </div>
+                    <div class="ownership-bar-container">
+                        <div class="ownership-bar-label">
+                            <span>League ownership</span>
+                            <span class="ownership-pct ${barClass}">${p.pct}%</span>
+                        </div>
+                        <div class="ownership-bar">
+                            <div class="ownership-bar-fill ${barClass}" style="width: ${p.pct}%;"></div>
+                        </div>
+                        ${starterInfo}
+                    </div>
+                    <div class="player-stats">
+                        <div class="player-stat"><span class="player-stat-k"><abbr title="Average points per match over the last 4 gameweeks">Form</abbr></span><span class="player-stat-value">${pl.form}</span></div>
+                        <div class="player-stat"><span class="player-stat-k"><abbr title="Total FPL points scored this season">Points</abbr></span><span class="player-stat-value">${pl.pts}</span></div>
+                        <div class="player-stat"><span class="player-stat-k">Global</span><span class="player-stat-value">${pl.own}%</span></div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // ===== MATRIX (enhanced with captain/bench indicators) =====
+        function renderMatrix() {
+            if (!window.playerOwnership) return;
+            
+            const posFilter = document.getElementById('matrixPosFilter').value;
+            const showFilter = document.getElementById('matrixShowFilter').value;
+            
+            let players = window.playerOwnership;
+            
+            if (posFilter !== 'all') {
+                players = players.filter(p => p.player.pos === parseInt(posFilter));
+            }
+            if (showFilter === 'owned') {
+                players = players.filter(p => p.count > 0 || p.youOwn);
+            } else if (showFilter === 'popular') {
+                players = players.filter(p => p.pct >= 50 || p.youOwn);
+            }
+            
+            players.sort((a, b) => b.pct - a.pct);
+            players = players.slice(0, 50);
+            
+            const rivals = window.rivalIds.map(id => managerPicks[id].manager);
+            
+            let headHtml = '<tr><th class="player-col">Player</th><th>You</th><th>%</th>';
+            rivals.forEach(r => {
+                const shortName = r.player_name.split(' ').map(n => n[0]).join('');
+                // player_name is set by the manager in their own FPL account, so it
+                // is attacker-controlled for everyone else viewing the league.
+                headHtml += `<th class="rotate" title="${escHTML(r.player_name)}">${escHTML(shortName)}</th>`;
+            });
+            headHtml += '</tr>';
+            document.getElementById('matrixHead').innerHTML = headHtml;
+            
+            let bodyHtml = '';
+            players.forEach(p => {
+                const pctClass = p.pct >= 70 ? 'high' : p.pct >= 40 ? 'medium' : 'low';
+                
+                // Your cell with captain/bench distinction
+                let youCell;
+                if (p.youCaptain) {
+                    youCell = '<span class="matrix-cell captain">C</span>';
+                } else if (p.youOwn && myStarters.has(p.player.id)) {
+                    youCell = '<span class="matrix-cell you-owned">✓</span>';
+                } else if (p.youOwn) {
+                    youCell = '<span class="matrix-cell benched">B</span>';
+                } else {
+                    youCell = '<span class="matrix-cell you-missing">✗</span>';
+                }
+                
+                bodyHtml += '<tr>';
+                /* player.name reaches here straight from the bootstrap and was
+                   being interpolated raw; it is escaped now, along with the
+                   face the rest of the site gives a player. */
+                const mxIdent = { name: p.player.name, code: p.player.code, teamId: p.player.teamId, teamCode: p.player.teamCode, team: p.player.teamName };
+                bodyHtml += `<td class="player-cell"><span class="mx-p">`
+                    + (typeof v2IdentityHTML === 'function' ? v2IdentityHTML(mxIdent) : '')
+                    + `<span class="mx-p-name">${escHTML(p.player.name)}</span>`
+                    + `<span class="pos">${escHTML(p.player.posName)}</span></span></td>`;
+                bodyHtml += `<td>${youCell}</td>`;
+                bodyHtml += `<td><span class="ownership-pct ${pctClass}">${p.pct}%</span></td>`;
+                
+                rivals.forEach(r => {
+                    const mp = managerPicks[r.entry];
+                    const isCaptain = mp.captain === p.player.id;
+                    const isStarter = mp.starters?.includes(p.player.id);
+                    const isBenched = mp.bench?.includes(p.player.id);
+                    
+                    let cellClass, cellText;
+                    if (isCaptain) { cellClass = 'captain'; cellText = 'C'; }
+                    else if (isStarter) { cellClass = 'owned'; cellText = '✓'; }
+                    else if (isBenched) { cellClass = 'benched'; cellText = 'B'; }
+                    else { cellClass = 'not-owned'; cellText = ''; }
+                    
+                    bodyHtml += `<td><span class="matrix-cell ${cellClass}">${cellText}</span></td>`;
+                });
+                
+                bodyHtml += '</tr>';
+            });
+            
+            document.getElementById('matrixBody').innerHTML = bodyHtml;
+        }
+        
+        // ===== RIVAL H2H COMPARISON =====
+        function renderRivalComparison() {
+            const rivalId = document.getElementById('rivalSelect').value;
+            const container = document.getElementById('rivalComparison');
+            
+            if (!rivalId) {
+                container.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 40px;">Select a rival to compare head-to-head</p>';
+                return;
+            }
+            
+            const rivalMp = managerPicks[rivalId];
+            const rivalPicks = new Set(rivalMp.picks);
+            const rivalStarters = new Set(rivalMp.starters || []);
+            const rivalManager = rivalMp.manager;
+            
+            const onlyYou = [...myPicks].filter(id => !rivalPicks.has(id)).map(id => allPlayersById[id]).filter(p => p);
+            const onlyRival = [...rivalPicks].filter(id => !myPicks.has(id)).map(id => allPlayersById[id]).filter(p => p);
+            const shared = [...myPicks].filter(id => rivalPicks.has(id)).map(id => allPlayersById[id]).filter(p => p);
+            
+            const myCap = allPlayersById[managerPicks[myTeamId]?.captain];
+            const rivalCap = allPlayersById[rivalMp.captain];
+            const rivalFirst = escHTML(rivalManager.player_name.split(' ')[0]);
+
+            /* The armband is the one pick in this comparison that is worth
+               double, so it gets the face and the club rather than a name on
+               a grey box — the same identity pair as the differential rows
+               directly underneath it. */
+            const capBox = (label, pl, side) => {
+                const ident = pl && { name: pl.name, code: pl.code, teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName };
+                return `<div class="rv-cap-box ${side}">
+                    <span class="rv-cap-label">${label}</span>
+                    <span class="rv-cap-who">
+                        ${ident && typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident, 'v2-pid-portrait') : ''}
+                        <span class="rv-cap-name">${escHTML(pl?.name || 'None')}</span>
+                        <span class="rv-cap-sub">${pl ? escHTML(pl.teamName || '') + ' · ' + escHTML(pl.posName || '') : 'No captain recorded'}</span>
+                    </span>
+                </div>`;
+            };
+            
+            let html = `
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin-top: var(--space-4);">
+                    <div class="summary-card opportunity">
+                        <div class="summary-value">${onlyYou.length}</div>
+                        <div class="summary-label">Only You Own</div>
+                    </div>
+                    <div class="summary-card info">
+                        <div class="summary-value">${shared.length}</div>
+                        <div class="summary-label">Shared Players</div>
+                    </div>
+                    <div class="summary-card danger">
+                        <div class="summary-value">${onlyRival.length}</div>
+                        <div class="summary-label">Only ${rivalFirst} Owns</div>
+                    </div>
+                </div>
+                
+                ${myCap || rivalCap ? `
+                <div class="rv-cap-row">
+                    ${capBox('Your captain', myCap, 'mine')}
+                    <span class="rv-cap-vs">VS</span>
+                    ${capBox(`${rivalFirst}'s captain`, rivalCap, 'theirs')}
+                </div>` : ''}
+                
+                <div class="rv-diff-cols">
+                    ${diffColumn('Your differentials', 'mine', onlyYou, myStarters)}
+                    ${diffColumn(`${escHTML(rivalManager.player_name.split(' ')[0])}'s differentials`, 'theirs', onlyRival, rivalStarters)}
+                </div>
+            `;
+            
+            container.innerHTML = html;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        
+        /* A differential is a player, so it gets a player's row: his face,
+           his club's badge, his position and his price — the same identity
+           pair the squad table and the transfer lists use. It was a name and
+           a price on a bare bordered box, which is the one place on the site
+           a player appeared without a face. */
+        function diffColumn(title, side, players, starters) {
+            const rows = players.length
+                ? players.map(p => {
+                    const benched = !starters.has(p.id);
+                    const ident = { name: p.name, code: p.code, teamId: p.teamId, teamCode: p.teamCode, team: p.teamName };
+                    return `<div class="rv-diff-card${benched ? ' is-benched' : ''}">
+                        ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident) : ''}
+                        <span class="rv-diff-main">
+                            <span class="rv-diff-name">${escHTML(p.name)}</span>
+                            <span class="rv-diff-sub">${escHTML(p.teamName || '')} · ${escHTML(p.posName)}${benched ? ' · benched' : ''}</span>
+                        </span>
+                        <span class="rv-diff-price">£${p.price.toFixed(1)}m</span>
+                    </div>`;
+                }).join('')
+                : `<div class="rv-diff-empty">No players on this side alone.</div>`;
+
+            return `<div class="rv-diff-col ${side}">
+                <div class="rv-diff-head">${escHTML(title)}<span class="rv-diff-n">${players.length}</span></div>
+                ${rows}
+            </div>`;
+        }
+
+        function clearCachedLeagueId() {
+            localStorage.removeItem('fpl_league_id');
+            document.getElementById('leagueIdInput').value = '';
+            document.getElementById('clearLeagueBtn').style.display = 'none';
+        }
+
+        function showInputSection() {
+            document.getElementById('inputSection').style.display = '';
+            document.getElementById('pageHeader').style.display = '';
+            document.getElementById('leagueCommand').style.display = 'none';
+        }
+
+        function autoSelectLeader() {
+            const rivalSelect = document.getElementById('rivalSelect');
+            if (rivalSelect.value) return; // already selected
+            let leaderId = null, leaderPts = -1;
+            Object.keys(managerHistory).forEach(id => {
+                if (String(id) === String(myTeamId)) return;
+                const hist = managerHistory[id]?.current || [];
+                const total = hist.length > 0 ? hist[hist.length - 1].total_points : 0;
+                if (total > leaderPts) { leaderPts = total; leaderId = id; }
+            });
+            if (!leaderId && window.rivalIds?.length > 0) leaderId = window.rivalIds[0];
+            if (leaderId) {
+                rivalSelect.value = leaderId;
+                renderRivalComparison();
+            }
+        }
+
+        function updateClearLeagueBtn() {
+            const btn = document.getElementById('clearLeagueBtn');
+            if (localStorage.getItem('fpl_league_id')) {
+                btn.style.display = '';
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+
+        // ===== TABS =====
+        function showTab(tabName) {
+            document.querySelectorAll('.tabs-container .tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            
+            document.querySelector(`.tabs-container .tab[onclick="showTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            history.replaceState(null, '', '#' + tabName);
+            if (tabName === 'matrix') renderMatrix();
+            if (tabName === 'h2h') autoSelectLeader();
+            if (tabName === 'race' && raceChart) raceChart.resize();
+        }
+
+        function enableTabs() {
+            document.querySelectorAll('.tabs-container .tab').forEach(t => t.disabled = false);
+            const hash = window.location.hash.replace('#', '');
+            if (['insights', 'captain', 'race', 'strength', 'matrix', 'h2h'].includes(hash)) {
+                showTab(hash);
+            }
+        }
+        
+        // ===== CAPTAIN RACE =====
+        function renderCaptainRace() {
+            const allIds = Object.keys(managerPicks);
+            
+            // Captain consensus
+            const captainCounts = {};
+            allIds.forEach(id => {
+                const cap = managerPicks[id].captain;
+                if (cap) captainCounts[cap] = (captainCounts[cap] || 0) + 1;
+            });
+            
+            const topCaptain = Object.entries(captainCounts).sort((a, b) => b[1] - a[1])[0];
+            const topCapPlayer = topCaptain ? allPlayersById[topCaptain[0]] : null;
+            const topCapCount = topCaptain ? topCaptain[1] : 0;
+            const myCaptain = managerPicks[myTeamId]?.captain;
+            const myCaptainPlayer = myCaptain ? allPlayersById[myCaptain] : null;
+            const youMatchedPopular = myCaptain == topCaptain?.[0];
+            
+            // Armband distribution across the league. These are real captains read
+            // from each rival's picks, not an estimate — within a mini-league the
+            // API tells you exactly who captained whom.
+            const dist = Object.entries(captainCounts)
+                .map(([pid, n]) => ({ pid, n, pct: Math.round((n / allIds.length) * 100), player: allPlayersById[pid] }))
+                .sort((a, b) => b.n - a.n);
+            const CAP_HUES = ['#4ADE80', '#60A5FA', '#FBBF24', '#A78BFA', '#F472B6', '#FB923C', '#94A3B8'];
+            const distEl = document.getElementById('capDistribution');
+            if (distEl) {
+                distEl.innerHTML = `
+                    <div class="cap-dist-head">Armband distribution · ${allIds.length} managers</div>
+                    <div class="cap-dist-bar">
+                        ${dist.map((d, i) => `<span class="cap-seg" style="width:${d.pct}%;background:${CAP_HUES[i % CAP_HUES.length]}"
+                            title="${escHTML(d.player?.name || '?')}: ${d.n} of ${allIds.length} (${d.pct}%)">${d.pct >= 12 ? d.pct + '%' : ''}</span>`).join('')}
+                    </div>
+                    <div class="cap-dist-key">
+                        ${dist.map((d, i) => `<span class="cap-key">
+                            <span class="cap-key-dot" style="background:${CAP_HUES[i % CAP_HUES.length]}"></span>
+                            ${escHTML(d.player?.name || '?')} <b>${d.pct}%</b>${myCaptain == d.pid ? ' <em>(you)</em>' : ''}</span>`).join('')}
+                    </div>`;
+            }
+
+            // Swing calculator: re-rank the league with your captain scoring more.
+            const swingEl = document.getElementById('capSwing');
+            if (swingEl && myCaptainPlayer) {
+                swingEl.innerHTML = `
+                    <div class="swing-head">Captain swing calculator</div>
+                    <p class="swing-intro">If <strong>${escHTML(myCaptainPlayer.name)}</strong> outscores the field's pick by:</p>
+                    <div class="swing-controls">
+                        <input type="range" id="capSwingDelta" min="-10" max="20" value="6" step="1" oninput="updateCaptainSwing()">
+                        <span class="swing-delta" id="capSwingDeltaLabel">+6 pts</span>
+                    </div>
+                    <div class="swing-result" id="capSwingResult"></div>`;
+                updateCaptainSwing();
+            } else if (swingEl) {
+                swingEl.innerHTML = '<p class="swing-intro">No captain recorded for your team this gameweek.</p>';
+            }
+
+            const heroEl = document.getElementById('captainHero');
+            if (topCapPlayer) {
+                /* The card a player gets everywhere else on the site: his
+                   club's colour behind him, his face on it, his name large,
+                   and the one number this section exists to give you out on
+                   the right. It was a name, a run-on line of meta and an
+                   empty 32px box where an emoji used to be. */
+                const capCode = typeof v2TeamCode === 'function'
+                    ? v2TeamCode(topCapPlayer.teamId, topCapPlayer.teamCode) : topCapPlayer.teamCode;
+                const capCols = (typeof CLUB_COLOURS !== 'undefined' && CLUB_COLOURS[capCode])
+                    || (typeof CLUB_COLOURS_FALLBACK !== 'undefined' ? CLUB_COLOURS_FALLBACK : ['#37003C', '#FFFFFF']);
+                const capPct = allIds.length ? Math.round((topCapCount / allIds.length) * 100) : 0;
+                heroEl.innerHTML = `
+                    <div class="pdm-hero cap-hero" style="--club:${capCols[0]};--club-ink:${capCols[1]};">
+                        <div class="pdm-hero-shape" aria-hidden="true"></div>
+                        <div class="pdm-hero-photo">${typeof playerPhotoLargeHTML === 'function' ? playerPhotoLargeHTML(topCapPlayer.code, 'pdm-hero-face') : ''}</div>
+                        <div class="pdm-hero-text">
+                            <span class="pdm-hero-last">${escHTML(topCapPlayer.name)}</span>
+                            <span class="pdm-hero-meta">
+                                ${capCode != null ? `<img class="pdm-hero-crest" src="https://resources.premierleague.com/premierleague/badges/50/t${capCode}.png" alt="" draggable="false" onerror="this.remove()">` : ''}
+                                <span>${escHTML(topCapPlayer.teamName)}</span>
+                                <em>•</em>
+                                <span>${escHTML(topCapPlayer.posName)}</span>
+                                <em>•</em>
+                                <span>£${topCapPlayer.price.toFixed(1)}m</span>
+                            </span>
+                        </div>
+                        <div class="pdm-hero-side">
+                            <span class="pdm-hero-chip cap-hero-pct">${capPct}%</span>
+                            <span class="pdm-hero-price">${topCapCount} of ${allIds.length}</span>
+                        </div>
+                    </div>
+                    <div class="cap-hero-verdict${youMatchedPopular ? ' is-match' : ''}">
+                        ${youMatchedPopular
+                            ? 'You matched the consensus.'
+                            : myCaptainPlayer
+                                ? `You went differential with <strong>${escHTML(myCaptainPlayer.name)}</strong>.`
+                                : 'No captain recorded for your team this gameweek.'}
+                    </div>`;
+            }
+            
+            /* The armband cell: a face, the name, and the club and position
+               under it. It was a bold name with a run-on grey tail, which is
+               the one place in this table a player had no face. */
+            const capCell = (pl, bits, cls) => {
+                if (!pl) return '<span class="cap-p-sub">?</span>';
+                const ident = { name: pl.name, code: pl.code, teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName };
+                const sub = bits.filter(Boolean).map(escHTML).join(' · ');
+                return `<span class="cap-p${cls ? ' ' + cls : ''}">
+                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident) : ''}
+                    <span class="cap-p-text">
+                        <span class="cap-p-name">${escHTML(pl.name)}</span>
+                        ${sub ? `<span class="cap-p-sub">${sub}</span>` : ''}
+                    </span>
+                </span>`;
+            };
+
+            // Captain table
+            const tableBody = document.getElementById('captainTableBody');
+            let rows = '';
+            allIds.forEach(id => {
+                const mp = managerPicks[id];
+                const capPlayer = allPlayersById[mp.captain];
+                const vcPlayer = allPlayersById[mp.viceCaptain];
+                const isYou = id == myTeamId;
+                const chipLabel = mp.activeChip ? `<span class="chip-played-badge">${mp.activeChip}</span>` : '';
+                
+                rows += `<tr class="${isYou ? 'you-row' : ''}">
+                    <td>${isYou ? '<strong>' + escHTML(mp.manager.player_name) + '</strong>' : escHTML(mp.manager.player_name)} ${chipLabel}</td>
+                    <td>${capCell(capPlayer, [capPlayer?.teamName, capPlayer?.posName])}</td>
+                    <td>${capCell(vcPlayer, [vcPlayer?.posName], 'is-vc')}</td>
+                    <td style="text-align:center;">${capPlayer?.form || '-'}</td>
+                    <td style="text-align:center;">${capPlayer?.pts || '-'}</td>
+                </tr>`;
+            });
+            tableBody.innerHTML = rows;
+            
+        }
+        
+        // ===== LEAGUE RACE =====
+        // The armband is worth double, so a delta on your captain is worth 2x that
+        // on your total. Rather than quoting a rule of thumb, this applies the
+        // swing and re-ranks the actual league.
+        function updateCaptainSwing() {
+            const slider = document.getElementById('capSwingDelta');
+            const label = document.getElementById('capSwingDeltaLabel');
+            const out = document.getElementById('capSwingResult');
+            if (!slider || !out) return;
+            const delta = parseInt(slider.value, 10);
+            if (label) label.textContent = (delta >= 0 ? '+' : '') + delta + ' pts';
+
+            const myMult = managerPicks[myTeamId]?.activeChip === '3xc' ? 3 : 2;
+            const before = myProjectedRank();
+            const after = myProjectedRank(id => (id == myTeamId ? delta * myMult : 0));
+            if (before === null || after === null) {
+                out.innerHTML = '<span class="swing-na">Live gameweek data unavailable, so the rank effect cannot be computed right now.</span>';
+                return;
+            }
+            const move = before - after;
+            out.innerHTML = `
+                <div class="swing-figure ${move > 0 ? 'good' : move < 0 ? 'bad' : ''}">
+                    <b>${move > 0 ? '▲ ' + move : move < 0 ? '▼ ' + (-move) : '—'}</b>
+                    <span>${move === 0 ? 'no change in rank' : `place${Math.abs(move) === 1 ? '' : 's'}`}</span>
+                </div>
+                <p class="swing-explain">
+                    ${delta >= 0 ? 'Beating' : 'Losing to'} the field's captain by ${Math.abs(delta)} is worth
+                    <strong>${Math.abs(delta * myMult)} points</strong> on your total, moving you from
+                    ${before}${ordinalSuffix(before)} to <strong>${after}${ordinalSuffix(after)}</strong> of ${Object.keys(managerPicks).length}.
+                </p>`;
+        }
+
+        function renderLeagueRace() {
+            renderMomentum();
+            renderPointsChart('absolute');
+            renderLeagueTable();
+        }
+        
+        function renderMomentum() {
+            const myHistory = managerHistory[myTeamId]?.current || [];
+            if (myHistory.length === 0) {
+                document.getElementById('momentumGrid').innerHTML = '<p style="color:var(--text-muted);">No history data available.</p>';
+                return;
+            }
+            
+            let leaderId = myTeamId, leaderTotal = 0;
+            Object.keys(managerHistory).forEach(id => {
+                const hist = managerHistory[id]?.current || [];
+                const last = hist[hist.length - 1];
+                if (last && last.total_points > leaderTotal) { leaderTotal = last.total_points; leaderId = id; }
+            });
+            
+            const myLast = myHistory[myHistory.length - 1];
+            const myTotal = myLast?.total_points || 0;
+            const gapToLeader = leaderTotal - myTotal;
+            const leaderName = managerPicks[leaderId]?.manager?.player_name || 'Leader';
+            
+            const last3 = myHistory.slice(-3);
+            const myAvg3 = last3.length > 0 ? Math.round(last3.reduce((s, g) => s + g.points, 0) / last3.length) : 0;
+            
+            let best3 = { name: '', avg: 0, id: '' };
+            Object.keys(managerHistory).forEach(id => {
+                const hist = managerHistory[id]?.current || [];
+                const l3 = hist.slice(-3);
+                if (l3.length > 0) {
+                    const avg = Math.round(l3.reduce((s, g) => s + g.points, 0) / l3.length);
+                    const name = managerPicks[id]?.manager?.player_name || '?';
+                    if (avg > best3.avg) best3 = { name, avg, id };
+                }
+            });
+            
+            const myLast3Pts = last3.reduce((s, g) => s + g.points, 0);
+            const leaderLast3 = (managerHistory[leaderId]?.current || []).slice(-3);
+            const leaderLast3Pts = leaderLast3.reduce((s, g) => s + g.points, 0);
+            const delta3 = myLast3Pts - leaderLast3Pts;
+            
+            const myChips = managerHistory[myTeamId]?.chips || [];
+            
+            document.getElementById('momentumGrid').innerHTML = `
+                <div class="momentum-card">
+                    <div class="mc-title">Gap to Leader</div>
+                    <div class="mc-value" style="color:${gapToLeader === 0 ? 'var(--color-success)' : gapToLeader <= 20 ? 'var(--color-warning)' : 'var(--color-error)'};">${gapToLeader === 0 ? 'You lead!' : gapToLeader + ' pts behind'}</div>
+                    <div class="mc-desc">${gapToLeader > 0 ? leaderName + ' leads with ' + leaderTotal + ' pts' : 'You have ' + myTotal + ' pts'}</div>
+                </div>
+                <div class="momentum-card">
+                    <div class="mc-title">Last 3 <abbr title="Gameweek — a weekly period in the FPL season">GW</abbr> Trend</div>
+                    <div class="mc-value" style="color:${delta3 >= 0 ? 'var(--color-success)' : 'var(--color-error)'};">${delta3 >= 0 ? '+' : ''}${delta3} pts</div>
+                    <div class="mc-desc">${delta3 >= 0 ? 'Gaining on' : 'Losing to'} ${leaderId == myTeamId ? 'the pack' : leaderName} (your avg: ${myAvg3}/gw)</div>
+                </div>
+                <div class="momentum-card">
+                    <div class="mc-title">Hottest Manager (<abbr title="Last 3 gameweeks">L3</abbr>)</div>
+                    <div class="mc-value" style="color:var(--color-warning);">${best3.name.split(' ')[0]}</div>
+                    <div class="mc-desc">${best3.avg} pts/gw over last 3 GWs${best3.id == myTeamId ? ' — That\'s you! ' : ''}</div>
+                </div>
+                <div class="momentum-card">
+                    <div class="mc-title">Your Chips Used</div>
+                    <div class="mc-value" style="color:var(--color-info);">${myChips.length}/4</div>
+                    <div class="mc-desc">${myChips.map(c => c.name).join(', ') || 'No chips played yet'}</div>
+                </div>`;
+        }
+        
+        function renderPointsChart(mode) {
+            const canvas = document.getElementById('raceChart');
+            if (!canvas) return;
+            
+            const allIds = Object.keys(managerHistory);
+            if (allIds.length === 0) return;
+            
+            const maxGW = Math.max(...allIds.map(id => (managerHistory[id]?.current || []).length));
+            const labels = Array.from({length: maxGW}, (_, i) => `GW${i + 1}`);
+            
+            let leaderByGW = [];
+            if (mode === 'gap') {
+                for (let gw = 0; gw < maxGW; gw++) {
+                    let maxPts = 0;
+                    allIds.forEach(id => {
+                        const pts = managerHistory[id]?.current?.[gw]?.total_points || 0;
+                        if (pts > maxPts) maxPts = pts;
+                    });
+                    leaderByGW.push(maxPts);
+                }
+            }
+            
+            const datasets = [];
+            allIds.forEach((id, idx) => {
+                const hist = managerHistory[id]?.current || [];
+                const name = managerPicks[id]?.manager?.player_name || 'Manager';
+                const isYou = id == myTeamId;
+                const color = isYou ? '#3B82F6' : CHART_COLORS[idx % CHART_COLORS.length];
+                
+                const data = hist.map((gw, i) => mode === 'gap' ? leaderByGW[i] - gw.total_points : gw.total_points);
+                
+                datasets.push({
+                    label: isYou ? `${v2Icon('star')} ` + name : name,
+                    data,
+                    borderColor: color,
+                    backgroundColor: color + '20',
+                    borderWidth: isYou ? 3 : 1.5,
+                    pointRadius: isYou ? 3 : 0,
+                    pointHoverRadius: 5,
+                    tension: 0.3,
+                    order: isYou ? 0 : 1
+                });
+            });
+            
+            if (raceChart) raceChart.destroy();
+            
+            const ct = getChartTheme();
+            raceChart = new Chart(canvas, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: true, position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 10 }, color: ct.text } },
+                        tooltip: { backgroundColor: ct.tooltipBg, titleFont: { size: 12 }, bodyFont: { size: 11 }, padding: 8, cornerRadius: 6 }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: ct.text } },
+                        y: { reverse: mode === 'gap', grid: { color: ct.grid }, ticks: { font: { size: 10 }, color: ct.text }, title: { display: true, text: mode === 'gap' ? 'Points Behind Leader' : 'Total Points', font: { size: 11 }, color: ct.text } }
+                    }
+                }
+            });
+        }
+        
+        function toggleChartMode(mode) {
+            document.querySelectorAll('.chart-toggle button').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.chart-toggle button[data-mode="${mode}"]`).classList.add('active');
+            renderPointsChart(mode);
+            // Reset visibility to All on mode switch
+            document.querySelectorAll('.chart-visibility button').forEach(b => b.classList.remove('active'));
+            document.querySelector('.chart-visibility button:first-child')?.classList.add('active');
+        }
+
+        function chartShowOnlyMe(btn) {
+            if (!raceChart) return;
+            raceChart.data.datasets.forEach((ds, i) => {
+                raceChart.setDatasetVisibility(i, ds.label.startsWith(v2Icon('star')));
+            });
+            raceChart.update();
+            document.querySelectorAll('.chart-visibility button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        function chartShowAll(btn) {
+            if (!raceChart) return;
+            raceChart.data.datasets.forEach((ds, i) => {
+                raceChart.setDatasetVisibility(i, true);
+            });
+            raceChart.update();
+            document.querySelectorAll('.chart-visibility button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+        
+        function renderLeagueTable() {
+            const tbody = document.getElementById('leagueTableBody');
+            if (!tbody) return;
+            
+            const rows = [];
+            Object.keys(managerPicks).forEach(id => {
+                const mp = managerPicks[id];
+                const hist = managerHistory[id]?.current || [];
+                const chips = managerHistory[id]?.chips || [];
+                const last = hist[hist.length - 1];
+                const lastGwPts = last?.points || 0;
+                const totalPts = last?.total_points || mp.manager.total;
+                const totalTransfers = hist.reduce((s, g) => s + (g.event_transfers || 0), 0);
+                const totalHits = hist.reduce((s, g) => s + (g.event_transfers_cost || 0), 0);
+                const teamValue = last ? (last.value + last.bank) / 10 : 0;
+                const last6 = hist.slice(-6).map(g => g.points);
+                
+                rows.push({ id, name: mp.manager.player_name, teamName: mp.manager.entry_name, rank: mp.manager.rank, lastGwPts, totalPts, totalTransfers, totalHits, teamValue, last6, chips });
+            });
+            
+            rows.sort((a, b) => b.totalPts - a.totalPts);
+            
+            tbody.innerHTML = rows.map((r, i) => {
+                const isYou = r.id == myTeamId;
+                const maxPts = Math.max(...r.last6, 1);
+                const sparkline = r.last6.map(pts => 
+                    `<div class="sparkline-bar" style="height:${Math.max(2, (pts/maxPts)*20)}px;${pts >= 60 ? 'background:var(--color-success);' : pts <= 30 ? 'background:var(--color-error);' : ''}"></div>`
+                ).join('');
+                const chipBadges = r.chips.map(c => `<span class="chip-played-badge" title="GW${c.event}">${c.name}</span>`).join(' ');
+                
+                return `<tr class="${isYou ? 'you-row' : ''}">
+                    <td style="font-weight:600;">${i + 1}</td>
+                    <td>${isYou ? '' : ''}${escHTML(r.name)}<br><span style="font-size:10px;color:var(--text-muted);">${escHTML(r.teamName)}</span></td>
+                    <td style="text-align:center;font-weight:600;">${r.lastGwPts}</td>
+                    <td style="text-align:center;font-weight:700;font-family:'Space Grotesk',sans-serif;">${r.totalPts}</td>
+                    <td style="text-align:center;">${r.totalTransfers}</td>
+                    <td style="text-align:center;color:${r.totalHits > 0 ? 'var(--color-error)' : 'var(--text-muted)'};">${r.totalHits > 0 ? '-' + r.totalHits : '0'}</td>
+                    <td style="text-align:center;">${r.teamValue > 0 ? '£' + r.teamValue.toFixed(1) + 'm' : '-'}</td>
+                    <td style="text-align:center;"><div class="sparkline-container">${sparkline}</div></td>
+                    <td>${chipBadges}</td>
+                </tr>`;
+            }).join('');
+        }
+        
+        // ===== SQUAD STRENGTH =====
+        function renderSquadStrength() {
+            renderPositionComparison();
+            renderTemplateXI();
+            renderFixtureDifficulty();
+        }
+        
+        function renderFixtureDifficulty() {
+            const container = document.getElementById('strengthGrid');
+            if (!container) return;
+            
+            const allIds = Object.keys(managerPicks);
+            const cards = [];
+            
+            allIds.forEach(id => {
+                const mp = managerPicks[id];
+                const starters = mp.starters || [];
+                let totalFdr = 0, fdrCount = 0;
+                
+                starters.forEach(pid => {
+                    const player = allPlayersById[pid];
+                    if (!player) return;
+                    const tfix = teamFixtures[player.team] || [];
+                    tfix.slice(0, 3).forEach(f => { totalFdr += f.fdr; fdrCount++; });
+                });
+                
+                const avgFdr = fdrCount > 0 ? (totalFdr / fdrCount).toFixed(2) : '?';
+                const avgFdrNum = parseFloat(avgFdr) || 3;
+                
+                cards.push({ id, name: mp.manager.player_name, teamName: mp.manager.entry_name, avgFdr: avgFdrNum, avgFdrDisplay: avgFdr, isYou: id == myTeamId });
+            });
+            
+            cards.sort((a, b) => a.avgFdr - b.avgFdr);
+            
+            container.innerHTML = cards.map((c, i) => {
+                const fdrColor = c.avgFdr <= 2.5 ? 'var(--color-success)' : c.avgFdr <= 3.2 ? 'var(--color-warning)' : 'var(--color-error)';
+                return `
+                    <div class="strength-card ${c.isYou ? 'you-card' : ''}">
+                        <div class="strength-card-header">
+                            <div>
+                                <div class="strength-card-name">${c.isYou ? '' : ''}${escHTML(c.name)}</div>
+                                <div style="font-size:11px;color:var(--text-muted);">${escHTML(c.teamName)} · Rank #${i + 1} easiest</div>
+                            </div>
+                            <div class="strength-card-fdr" style="color:${fdrColor};">${c.avgFdrDisplay}</div>
+                        </div>
+                        <div style="font-size:10px;color:var(--text-muted);margin-bottom:var(--space-2);">Avg FDR next 3 GWs</div>
+                        <div class="ownership-bar"><div class="ownership-bar-fill" style="width:${((5 - c.avgFdr) / 4) * 100}%;background:${fdrColor};"></div></div>
+                    </div>`;
+            }).join('');
+        }
+        
+        function renderTemplateXI() {
+            const container = document.getElementById('templatePitch');
+            if (!container) return;
+            
+            const ownership = window.playerOwnership || [];
+            const allManagerIds = Object.keys(managerPicks);
+            
+            const byPos = { 1: [], 2: [], 3: [], 4: [] };
+            ownership.forEach(p => {
+                let startCount = 0;
+                allManagerIds.forEach(id => { if (managerPicks[id]?.starters?.includes(p.player.id)) startCount++; });
+                byPos[p.player.pos].push({ ...p, startCount });
+            });
+            Object.values(byPos).forEach(arr => arr.sort((a, b) => b.startCount - a.startCount));
+            
+            const formations = [[3,4,3],[3,5,2],[4,4,2],[4,3,3],[4,5,1],[5,3,2],[5,4,1]];
+            let bestFormation = [3,4,3], bestScore = 0;
+            formations.forEach(([d, m, f]) => {
+                const score = byPos[2].slice(0, d).reduce((s, p) => s + p.startCount, 0) +
+                    byPos[3].slice(0, m).reduce((s, p) => s + p.startCount, 0) +
+                    byPos[4].slice(0, f).reduce((s, p) => s + p.startCount, 0);
+                if (score > bestScore) { bestScore = score; bestFormation = [d, m, f]; }
+            });
+            
+            const [numDef, numMid, numFwd] = bestFormation;
+            const templateGK = byPos[1].slice(0, 1);
+            const templateDEF = byPos[2].slice(0, numDef);
+            const templateMID = byPos[3].slice(0, numMid);
+            const templateFWD = byPos[4].slice(0, numFwd);
+            const templateAll = [...templateGK, ...templateDEF, ...templateMID, ...templateFWD];
+            const youHaveCount = templateAll.filter(p => p.youOwn).length;
+            
+            /* The same portrait every other pitch on the site draws — a face
+               with the club crest on its corner — instead of a coloured disc
+               with "MID" written in it. The position was the only thing the
+               disc said, and on a pitch the row a player stands in says it
+               already; what the disc could not say was who he is.
+
+               The own/missing ring stays, because on this pitch that is the
+               whole question: which of the template you already have. */
+            /* The pitch every other page draws — the same grass, the same
+               player cards — with the league's ownership where a card
+               normally carries projected points. It was a bespoke row of
+               faces on a flat background, the only pitch on the site not
+               built from this markup.
+
+               The own/missing ring stays on the card, because on this pitch
+               that is the whole question: which of the template you have. */
+            function renderRow(players) {
+                return `<div class="dp-row">${players.map(p => {
+                    const pl = p.player;
+                    const ident = { name: pl.name, code: pl.code, teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName };
+                    const pct = allManagerIds.length ? Math.round((p.startCount / allManagerIds.length) * 100) : 0;
+                    return `<div class="dp-card rv-card ${p.youOwn ? 'you-have' : 'you-missing'}"
+                        data-tooltip="${escHTML(pl.name)} — ${escHTML(pl.teamName)}, ${escHTML(pl.posName)}. ${p.youOwn ? 'In your squad.' : 'Not in your squad.'}">
+                        <span class="rv-own-flag">${p.youOwn ? 'OWNED' : 'MISSING'}</span>
+                        ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident, 'v2-pid-pitch') : ''}
+                        <div class="dp-name">${escHTML(pl.name)}</div>
+                        <div class="dp-score" data-tooltip="Started by ${p.startCount} of ${allManagerIds.length} managers in this league."><b>${pct}</b><span class="u">%</span></div>
+                        <div class="dp-xp-run">${p.startCount}<span class="dp-xp-run-u">of ${allManagerIds.length} start</span></div>
+                    </div>`;
+                }).join('')}</div>`;
+            }
+
+            container.innerHTML = `
+                <div class="pitch-label">Most Popular XI (${bestFormation.join('-')}) · You have ${youHaveCount}/11</div>
+                <div class="dp-pitch-card"><div class="dp-pitch">
+                    ${renderRow(templateFWD)}
+                    ${renderRow(templateMID)}
+                    ${renderRow(templateDEF)}
+                    ${renderRow(templateGK)}
+                </div></div>
+            `;
+        }
+        
+        function renderPositionComparison() {
+            const container = document.getElementById('posComparison');
+            if (!container) return;
+            
+            const allManagerIds = Object.keys(managerPicks);
+            const posData = { 1: { label: 'GK', color: POS_COLORS[1] }, 2: { label: 'DEF', color: POS_COLORS[2] }, 3: { label: 'MID', color: POS_COLORS[3] }, 4: { label: 'FWD', color: POS_COLORS[4] } };
+            
+            [1, 2, 3, 4].forEach(pos => {
+                let myTotal = 0, rivalTotal = 0, rivalCount = 0;
+                allManagerIds.forEach(id => {
+                    const starters = managerPicks[id]?.starters || [];
+                    const posPts = starters.map(pid => allPlayersById[pid]).filter(p => p && p.pos === pos).reduce((s, p) => s + p.pts, 0);
+                    if (id == myTeamId) { myTotal = posPts; } else { rivalTotal += posPts; rivalCount++; }
+                });
+                const rivalAvg = rivalCount > 0 ? Math.round(rivalTotal / rivalCount) : 0;
+                posData[pos].myPts = myTotal;
+                posData[pos].rivalAvg = rivalAvg;
+                posData[pos].diff = myTotal - rivalAvg;
+            });
+            
+            const maxPts = Math.max(...Object.values(posData).map(d => Math.max(d.myPts, d.rivalAvg)), 1);
+            
+            container.innerHTML = [1, 2, 3, 4].map(pos => {
+                const d = posData[pos];
+                const better = d.diff >= 0;
+                return `
+                    <div class="pos-compare-card">
+                        <div class="pos-icon" style="background:${d.color};">${d.label}</div>
+                        <div style="font-size:12px;color:var(--text-muted);margin-bottom:var(--space-2);">Your starters: <strong style="color:var(--text-primary);">${d.myPts} pts</strong></div>
+                        <div style="font-size:11px;color:var(--text-muted);">Rival avg: ${d.rivalAvg} pts</div>
+                        <div class="pos-compare-bar"><div class="pos-compare-fill" style="width:${(d.myPts/maxPts)*100}%;background:${d.color};"></div></div>
+                        <div style="font-size:11px;margin-top:var(--space-2);color:${better ? 'var(--color-success)' : 'var(--color-error)'};">${better ? '+' : ''}${d.diff} vs avg</div>
+                    </div>`;
+            }).join('');
+        }
+        
+        // ===== HELPERS =====
+        function showStatus(msg, type) {
+            const bar = document.getElementById('statusBar');
+            bar.style.display = 'flex';
+            bar.className = `status-bar ${type}`;
+            bar.innerHTML = type === 'loading' 
+                ? `<div class="spinner"></div><span>${msg}</span>`
+                : `<span>${type === 'success' ? '✓' : ''} ${msg}</span>`;
+        }
+        
+        // Enter key handlers
+        document.getElementById('leagueIdInput').addEventListener('keypress', e => { if (e.key === 'Enter') loadLeague(); });
+        
+        window.addEventListener('load', async () => {
+            await init();
+            
+            // Auto-fill team ID from cached navbar value
+            const savedTeamId = localStorage.getItem('fpl_team_id');
+            if (savedTeamId) {
+                document.getElementById('yourTeamIdInput').value = savedTeamId;
+            }
+            
+            // Auto-fill league ID from cache
+            const savedLeagueId = localStorage.getItem('fpl_league_id');
+            if (savedLeagueId) {
+                document.getElementById('leagueIdInput').value = savedLeagueId;
+            }
+            updateClearLeagueBtn();
+
+            // Both ids are already known, and loadLeague() analyses as soon as
+            // the league answers — so arriving here with a saved league is
+            // arriving at the results. A failed load or an id outside the
+            // loaded slice shows its error and leaves the setup card to edit.
+            if (savedLeagueId && savedTeamId) {
+                await loadLeague();
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>loadSidebarNav(); initIcons();
+        v2MountPageHelp(
+            'This page compares your squad against a mini-league. Load a league — your Team ID is already filled in — and every section below reads your team against theirs.',
+            [
+                { title: 'The tabs', steps: [
+                    { title: 'Insights', text: 'Where you differ from the field: the template players you are missing, your own differentials, how the league picks, and where your gameweek diverged from theirs.' },
+                    { title: 'Matrix', text: 'Every player against every manager. A tick is a start, C a captain, B a bench. Your own column is marked so you can read what you have and have not down one line.' },
+                    { title: 'Head to Head', text: 'You against one rival, player by player.' }
+                ] },
+                { title: 'What to look for', steps: [
+                    { title: 'Missing templates', text: 'Players most of your league owns and you do not. Their hauls cost you rank even though you never bought them, which is why not owning a widely-owned player is itself a risk.' },
+                    { title: 'Your differentials', text: 'The opposite bet. Points these players score are points most of the field does not have — and their blanks cost you nothing, because nobody else had them either.' },
+                    { title: 'Effective ownership', text: 'Ownership weighted by captaincy. A player on 30% ownership captained by half of them is effectively owned far more than 30%, and that is the number that decides what a haul does to your rank.' }
+                ] }
+            ]
+        );
+        loadFooter();
+        /* Every heading-plus-content run on this page becomes one box. The
+           groups are all in the markup already — only the content inside them
+           is rendered later — so this runs once here rather than after each
+           analysis, and is idempotent if it ever needs to run again. */
+        v2WrapSections();</script>
+    <!-- Marketing footer: legal, methodology and contact links on every page -->
+</body>
+</html>

@@ -1,0 +1,548 @@
+/* ============================================
+   EasyFPL — what happened while you were away
+
+   A notification centre is not push. Push is a transport for when the site is
+   closed; this is the record, and it is the more useful half — it works with no
+   permission granted, no server deployed, and no browser support required.
+   Anything the Worker eventually sends is one of these events taking a second
+   route to the same person.
+
+   Everything here is a diff. The site already ships the state: player status
+   and news in bootstrap, live minutes and goals in event-live, prices in
+   price-watch. What it never did was remember what any of that looked like the
+   last time you were on the page, so "your captain picked up a knock on
+   Thursday" was information the site held and could not tell you. A compact
+   snapshot in localStorage, compared on load, is the whole mechanism.
+
+   WHAT GOES HERE AND WHAT GOES TO PUSH. The two are not the same list, and
+   treating them as one is how a notification channel gets turned off:
+
+     The feed answers "what happened while I was away". It is pull — it costs
+     the reader nothing to have twenty items in it, because they chose to look.
+
+     Push answers "something needs you now". It is interrupt, and the budget is
+     roughly one a day before it becomes a thing to be silenced.
+
+   So live scoring belongs here in volume and almost never there. A goal in the
+   62nd minute is interesting; it is not actionable, because there is nothing
+   you can do about your team until the next deadline. The things that reach
+   push are the ones that change what you should do: a starter flagged before a
+   deadline, the deadline itself with something outstanding.
+
+   RESOLUTION. Live data is refreshed every fifteen minutes during the match
+   window by .github/workflows/refresh-live-data.yml. Events are therefore
+   accurate but not instant, and the wording avoids implying otherwise — "has
+   scored", never "just scored".
+
+   Prefix nt*. No DOM reads; render functions return strings.
+   ============================================ */
+
+        const NT_STORE = 'easyfpl_feed';
+
+        // Enough to cover a fortnight of gameweeks without turning localStorage
+        // into a season archive. The Season Vault is where history lives.
+        const NT_MAX_EVENTS = 60;
+        const NT_MAX_AGE_DAYS = 14;
+
+        /* A player's contribution, as one line rather than a stream.
+
+           The alternative — an event per goal, per assist, per bonus change —
+           produces a dozen entries for one good afternoon from one player, and
+           bonus in particular is provisional and moves repeatedly. One event
+           per player per gameweek, rewritten as the numbers change, says the
+           same thing and stays readable. */
+        function ntLiveSummary(st) {
+            const bits = [];
+            if (st.g) bits.push(`${st.g} goal${st.g > 1 ? 's' : ''}`);
+            if (st.a) bits.push(`${st.a} assist${st.a > 1 ? 's' : ''}`);
+            if (st.cs) bits.push('clean sheet');
+            if (st.sv >= 3) bits.push(`${st.sv} saves`);
+            if (st.b) bits.push(`${st.b} bonus`);
+            if (st.rc) bits.push('red card');
+            else if (st.yc) bits.push('booked');
+            // "yet" is a promise, and at full time there is nothing left to
+            // promise. A player on 90 minutes with nothing to show is done.
+            if (!bits.length) {
+                bits.push(!st.min ? 'yet to feature' : st.min >= 90 ? 'no returns' : 'no returns yet');
+            }
+            return bits.join(', ');
+        }
+
+        // Only the fields a diff can turn into a sentence. Keeping the snapshot
+        // narrow is what lets it live in localStorage next to everything else.
+        /* Every injury article this browser has already been shown, so "new"
+           means new to the reader rather than new to the table. Stored as a plain
+           list of URLs: the table holds forty-odd articles at a time, which is
+           smaller than the live stats already kept beside it.
+
+           This is also what makes a first visit quiet. ntCollect returns early
+           with no previous snapshot, so nothing is emitted — but the snapshot is
+           written on the way out regardless, so the second visit compares against
+           everything that was standing on the first and reports only what
+           genuinely arrived since. */
+        function ntInjuryUrls(injuries) {
+            const urls = [];
+            (injuries || []).forEach(r => {
+                // Same rejection the diff applies, so the two sets agree. Record a
+                // rejected article anyway and it would sit in the snapshot as
+                // "seen" — harmless — but leave it out of both and a later
+                // re-classification still behaves.
+                if (r && r.url && r.injuryArticle !== false && urls.indexOf(r.url) < 0) urls.push(r.url);
+            });
+            return urls;
+        }
+
+        function ntSnapshot(squad, live, phase, gw, injuries) {
+            const status = {}, stats = {};
+            (squad || []).forEach(p => {
+                status[p.id] = p.status || 'a';
+                const st = live && live[p.id];
+                if (st) {
+                    stats[p.id] = {
+                        pts: st.pts || 0, min: st.min || 0, g: st.g || 0, a: st.a || 0,
+                        b: st.b || 0, cs: st.cs || 0, yc: st.yc || 0, rc: st.rc || 0, sv: st.sv || 0
+                    };
+                }
+            });
+            return { status, stats, phase: phase || null, gw: gw || null, inj: ntInjuryUrls(injuries) };
+        }
+
+        const NT_STATUS_WORD = {
+            i: 'is injured', s: 'is suspended', u: 'is unavailable', d: 'is a doubt', a: 'is fit again'
+        };
+
+        /* What is true right now and worth knowing, whether or not it changed.
+
+           The feed is a diff, which is the right shape for "what happened
+           while you were away" and the wrong shape for someone who has never
+           been here: nothing has changed yet, so the bell was empty on a first
+           visit and stayed empty until something moved twice. It was also
+           empty for anyone whose squad had been quietly carrying an injury
+           since before their last visit — the fact was still true, and still
+           the most useful thing the bell could say, but it was no longer news.
+
+           So a first pass reports the flags the squad is carrying now. Stable
+           ids mean each one is raised once and then behaves like any other
+           entry: read when you have read it, gone when the player recovers. */
+        function ntStanding(squad, gw, now) {
+            return (squad || [])
+                .filter(p => p && p.status && p.status !== 'a')
+                .map(p => ({
+                    id: `news-${gw}-${p.id}-${p.status}`,
+                    kind: 'squad-news',
+                    tone: p.status === 'd' ? 'warn' : 'bad',
+                    title: p.name,
+                    body: `${p.name} ${NT_STATUS_WORD[p.status] || 'has a news update'}${p.news ? ` — ${p.news}` : ''}`,
+                    at: now,
+                    href: `fpl-my-team-analysis.html#squad?player=${p.id}`
+                }));
+        }
+
+        /* Every event the current state implies that the previous one did not.
+
+           ctx: { squad, live, phase, gw, injuries, now, prev }  — prev is a
+           snapshot from ntSnapshot(), or null on a first visit. */
+        function ntCollect(ctx) {
+            const c = ctx || {};
+            const squad = c.squad || [];
+            const live = c.live || {};
+            const now = c.now != null ? c.now : Date.now();
+            const gw = c.gw;
+            const prev = c.prev;
+            const out = [];
+            /* No previous visit to compare against, so there is no diff to
+               take — report the standing flags instead of nothing. */
+            if (!prev) return ntStanding(squad, gw, now);
+
+            const byId = {};
+            squad.forEach(p => { byId[p.id] = p; });
+
+            // --- availability, which is the one thing here that is actionable
+            Object.keys(byId).forEach(id => {
+                const p = byId[id];
+                const was = prev.status ? prev.status[id] : undefined;
+                const is = p.status || 'a';
+                if (was === undefined || was === is) return;
+                const better = is === 'a';
+                out.push({
+                    id: `news-${gw}-${id}-${is}`,
+                    kind: 'squad-news',
+                    tone: better ? 'good' : 'bad',
+                    title: p.name,
+                    body: `${p.name} ${NT_STATUS_WORD[is] || 'has a news update'}${p.news ? ` — ${p.news}` : ''}`,
+                    at: now,
+                    href: `fpl-my-team-analysis.html#squad?player=${p.id}`
+                });
+            });
+
+            // --- what your players did, one line each, rewritten as it changes
+            Object.keys(live).forEach(id => {
+                const p = byId[id];
+                if (!p) return;
+                const st = live[id];
+                const was = prev.stats ? prev.stats[id] : null;
+                const changed = !was || ['pts', 'min', 'g', 'a', 'b', 'cs', 'yc', 'rc', 'sv']
+                    .some(k => (was[k] || 0) !== (st[k] || 0));
+                if (!changed) return;
+                const pts = st.pts || 0;
+                out.push({
+                    id: `live-${gw}-${id}`,
+                    kind: 'live',
+                    tone: st.rc ? 'bad' : pts >= 6 ? 'good' : 'info',
+                    title: `${p.name} — ${pts} point${pts === 1 ? '' : 's'}`,
+                    body: `${ntLiveSummary(st)}${st.min ? ` · ${st.min}'` : ''}`,
+                    at: now
+                    /* No href. What he scored is a fact, and the only place it
+                       could have sent you was the page you are almost certainly
+                       already on. See the row builder: an event with no
+                       destination is drawn as text rather than as a link that
+                       reloads the dashboard. */
+                });
+            });
+
+            /* --- an injury story about one of your fifteen.
+
+               Different from the availability diff above, which reads the status
+               letter FPL sets. This is what the club actually said, and the two do
+               not move together: a manager tells a press conference on Thursday
+               and the flag may not appear in the game until Friday, or at all if
+               he is passed fit.
+
+               New means an article this browser has not been shown before, not an
+               article the table has not carried before — a story can sit in the
+               table for a fortnight and it is still news the first time you see
+               it. `prev.inj` is missing for anyone whose last snapshot predates
+               this feature; treating that as "seen nothing" would fire every
+               standing story at once, so it is treated as "seen everything" and
+               the next visit starts clean. */
+            /* injuryArticle === false is the scrape's verdict that the club
+               article is a match report, a line-up or a press conference rather
+               than news about who is fit. Interrupting someone for a press
+               conference is exactly how a notification channel gets turned off.
+               null — an article we could not read — still counts: the table's own
+               fact about their player is the thing worth telling them. */
+            const injRows = (c.injuries || [])
+                .filter(r => r && r.url && r.injuryArticle !== false && byId[r.playerId]);
+            if (injRows.length) {
+                const seen = new Set(prev.inj || ntInjuryUrls(c.injuries));
+                const byUrl = new Map();
+                injRows.forEach(r => {
+                    if (seen.has(r.url)) return;
+                    if (!byUrl.has(r.url)) byUrl.set(r.url, []);
+                    byUrl.get(r.url).push(r);
+                });
+                byUrl.forEach((rows, url) => {
+                    const names = rows.map(r => byId[r.playerId].name);
+                    const first = rows[0];
+                    const who = names.length === 1
+                        ? names[0]
+                        : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+                    const what = rows.map(r => r.injury).filter(Boolean)[0];
+                    out.push({
+                        // One entry per article, not per player: a club update
+                        // covering three of yours is one thing that happened.
+                        id: `inj-${url}`,
+                        kind: 'injury-news',
+                        tone: 'bad',
+                        title: who,
+                        body: first.articleTitle
+                            ? `${first.club || 'The club'}: ${first.articleTitle}`
+                            : `${first.club || 'Their club'} has an injury update${what ? ` — ${who} (${what})` : ''}`,
+                        // The club's date where there is one. firstSeen is when
+                        // this site saw the article, which is a fact about us
+                        // rather than about the club, so it only ever orders.
+                        at: Date.parse(first.published || '') || now,
+                        href: url
+                    });
+                });
+            }
+
+            /* --- the gameweek turning over. Time-based rather than a diff of
+               anything a player did, and the only events that fire when nothing
+               about your squad has changed at all. */
+            if (prev.phase && c.phase && prev.phase !== c.phase) {
+                const moved = { locked: {
+                    tone: 'info', title: `GW${gw} is locked`,
+                    body: 'Your team is set. Nothing can change until the matches finish.'
+                }, live: {
+                    tone: 'info', title: `GW${gw} is under way`,
+                    body: 'Matches have kicked off. Scores here update every fifteen minutes.'
+                }, upcoming: {
+                    tone: 'info', title: `GW${gw} is done`,
+                    body: 'Every match has finished. Time to plan the next one.'
+                } }[c.phase];
+                if (moved) {
+                    // Also no href: the gameweek turning over is news, not a place.
+                    out.push({ id: `phase-${gw}-${c.phase}`, kind: 'phase', at: now, ...moved });
+                }
+            }
+
+            return out;
+        }
+
+        /* Fold new events into the stored log.
+
+           Matching on id rather than appending: a live line for one player is
+           rewritten in place as his afternoon goes on, and its timestamp moves
+           with it so it counts as unread again. Twelve separate entries for one
+           hat-trick would be the alternative. */
+        function ntMerge(existing, incoming, now) {
+            const byId = new Map((existing || []).map(e => [e.id, e]));
+            (incoming || []).forEach(e => { byId.set(e.id, e); });
+            const cutoff = (now != null ? now : Date.now()) - NT_MAX_AGE_DAYS * 86400000;
+            return [...byId.values()]
+                .filter(e => e.at >= cutoff)
+                .sort((a, b) => b.at - a.at)
+                .slice(0, NT_MAX_EVENTS);
+        }
+
+        function ntLoad() {
+            try {
+                const raw = JSON.parse(localStorage.getItem(NT_STORE) || 'null');
+                if (!raw || !Array.isArray(raw.events)) return { events: [], lastSeen: 0, snapshot: null };
+                return { events: raw.events, lastSeen: raw.lastSeen || 0, snapshot: raw.snapshot || null };
+            } catch (e) { return { events: [], lastSeen: 0, snapshot: null }; }
+        }
+
+        function ntSave(state) {
+            try { localStorage.setItem(NT_STORE, JSON.stringify(state)); } catch (e) { /* private mode */ }
+            return state;
+        }
+
+        // A function declaration rather than a const arrow, like everything else
+        // here: those are the ones that become real globals, so another script
+        // can ask how many are unread without going through the renderer.
+        function ntUnread(events, lastSeen) {
+            return (events || []).filter(e => e.at > (lastSeen || 0)).length;
+        }
+
+        /* Run one pass: diff, merge, persist. Returns the state to render.
+           The snapshot is always written, even when nothing came of it, so the
+           next visit compares against what was actually on screen this time. */
+        function ntUpdate(ctx) {
+            const state = ntLoad();
+            const now = ctx && ctx.now != null ? ctx.now : Date.now();
+            const events = ntCollect({ ...ctx, now, prev: state.snapshot });
+            const merged = ntMerge(state.events, events, now);
+            const next = {
+                events: merged,
+                lastSeen: state.lastSeen,
+                snapshot: ntSnapshot(ctx.squad, ctx.live, ctx.phase, ctx.gw, ctx.injuries)
+            };
+            ntSave(next);
+            return { ...next, unread: ntUnread(merged, state.lastSeen), fresh: events.length };
+        }
+
+        // Called when the panel is opened, not when the page loads: a feed that
+        // marks itself read on render is one you can miss by blinking.
+        function ntMarkSeen(now) {
+            const state = ntLoad();
+            state.lastSeen = now != null ? now : Date.now();
+            ntSave(state);
+            return state;
+        }
+
+        /* ===== rendering ===== */
+
+        function ntAgo(at, now) {
+            const secs = Math.max(0, Math.round(((now != null ? now : Date.now()) - at) / 1000));
+            if (secs < 90) return 'just now';
+            const mins = Math.round(secs / 60);
+            if (mins < 60) return `${mins} min ago`;
+            const hrs = Math.round(mins / 60);
+            if (hrs < 24) return `${hrs}h ago`;
+            const days = Math.round(hrs / 24);
+            return `${days} day${days === 1 ? '' : 's'} ago`;
+        }
+
+        /* Drawn rather than typed. The emoji rendered as a different bell on
+           every platform — full colour on one, flat outline on another — and
+           could not take the page's own text colour in either theme. */
+        const NT_BELL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M6.5 15V10a5.5 5.5 0 0 1 11 0v5"/>' +
+            '<path d="M4.5 15h15"/><path d="M10 18h4"/></svg>';
+
+        function ntBellHTML(unread) {
+            const n = unread || 0;
+            /* The dot says only whether there is anything, which is the whole
+               question the bell answers — the count that used to sit here is
+               one tap away in the panel, and stays in the label for anyone
+               reading this with a screen reader. */
+            /* A row in the sidebar's account menu, not a floating bell: an
+               icon, the word, and the count if there is one. It keeps the
+               .nt-bell class because everything else here — the panel
+               toggle, the has-new state, the dot — is written against it. */
+            return `<button type="button" class="nt-bell${n ? ' has-new' : ''}" onclick="ntTogglePanel()"
+                aria-label="${n ? `${n} new since your last visit` : 'Nothing new'}" aria-expanded="false">
+                <span class="nt-bell-icon">${NT_BELL_ICON}</span>
+                <span class="nt-bell-label">Notifications</span>
+                ${n ? `<span class="nt-count">${n > 9 ? '9+' : n}</span>` : ''}
+            </button>`;
+        }
+
+        /* The panel's header: "Activity", and beside it the switch for getting
+           the same things sent to you when the site is closed.
+         *
+           The alerts offer used to be a block on the dashboard, sitting under
+           the attention checks with nothing around it — a floating paragraph
+           on a page of panels. It belongs here: this panel IS the list of
+           things worth telling you about, so "and send these to my phone" is
+           a property of it rather than a separate feature that happened to
+           land on the home page.
+
+           The permission prompt is still only ever raised from a click, for
+           the reason it always was — a browser refusal is one-shot per origin
+           and cannot be asked again — so what the alerts cover is on hover and
+           on focus rather than spent as a paragraph nobody reads. */
+        function ntHeadHTML() {
+            return `<div class="nt-head">
+                <span class="nt-head-l">Activity</span>
+                <span class="nt-head-alerts" id="pnToggle"></span>
+            </div>`;
+        }
+
+        function ntPanelHTML(events, lastSeen, now) {
+            const esc = typeof escHTML === 'function' ? escHTML : (s => String(s == null ? '' : s));
+            if (!events || !events.length) {
+                return `<div class="nt-panel">
+                    ${ntHeadHTML()}
+                    <p class="nt-empty">Nothing yet. Once you have been here a couple of times, this is where
+                       news on your players, what they scored, and the gameweek turning over will show up.</p>
+                </div>`;
+            }
+            /* A row is a link when it has somewhere to go, and text when it
+               does not.
+
+               Every row used to be an <a>, defaulting to index.html — so a
+               "GW5 is locked" notice read on the dashboard reloaded the page
+               you were already on, and the rows that did lead somewhere real
+               looked exactly like the ones that did not. A panel where most of
+               the clicks do nothing teaches you not to click any of them,
+               including the two that work.
+
+               So the destination is the difference, and it is decided where the
+               event is made rather than sniffed out of a string here: a squad
+               news item carries the jump to that player, an injury story
+               carries the club's own article, and the live and phase lines
+               carry nothing because there is nothing for them to carry.
+
+               An external article opens in a new tab — it leaves the site, and
+               losing the panel you were reading to a club's website is not what
+               clicking a notification should cost. An internal jump navigates
+               in place, because that is where you were going anyway. */
+            const row = (e) => {
+                const inner = `<span class="nt-row-title">${esc(e.title)}</span>`
+                    + `<span class="nt-row-body">${esc(e.body)}</span>`
+                    + `<span class="nt-row-when">${esc(ntAgo(e.at, now))}</span>`;
+                if (!e.href) return `<div class="nt-row ${esc(e.tone || 'info')}">${inner}</div>`;
+                const external = /^https?:\/\//i.test(e.href);
+                return `<a class="nt-row is-link ${esc(e.tone || 'info')}" href="${esc(e.href)}"`
+                    + (external ? ' target="_blank" rel="noopener noreferrer"' : '')
+                    + `>${inner}<span class="nt-row-go" aria-hidden="true">\u2192</span></a>`;
+            };
+
+            const fresh = events.filter(e => e.at > (lastSeen || 0));
+            const older = events.filter(e => e.at <= (lastSeen || 0));
+
+            /* Split rather than a single list with dots against some of them.
+               "Since your last visit" is the question this panel exists to
+               answer, so it is a heading rather than a decoration. */
+            return `<div class="nt-panel">
+                ${ntHeadHTML()}
+                ${fresh.length ? `<div class="nt-group">
+                    <span class="nt-group-l">Since your last visit</span>
+                    ${fresh.map(row).join('')}
+                </div>` : '<p class="nt-empty">Nothing new since you were last here.</p>'}
+                ${older.length ? `<div class="nt-group">
+                    <span class="nt-group-l">Earlier</span>
+                    ${older.map(row).join('')}
+                </div>` : ''}
+            </div>`;
+        }
+
+        /* ===== the control on the page =====
+
+           Kept apart from the model above so everything that decides what an
+           event is stays testable without a DOM. */
+
+        function ntRenderInto(ctx) {
+            const host = document.getElementById('ntCentre');
+            if (!host) return null;
+            const state = ntUpdate(ctx);
+            host.dataset.ntMounted = '1';
+            host.innerHTML = ntBellHTML(state.unread)
+                + `<div class="nt-drop" id="ntDrop" hidden>${ntPanelHTML(state.events, state.lastSeen)}</div>`;
+            return state;
+        }
+
+        /* The bell, on the twelve pages that are not the dashboard.
+
+           The feed is a record kept in localStorage, and the dashboard is
+           where it is written — it is the only page that loads a squad, the
+           live scores and the price watch, which is what the events are
+           diffed from. Every other page can still show what is in the record,
+           and should: a bell that exists on one page in thirteen is a bell
+           you will never happen to be looking at when it rings.
+
+           So this renders the stored feed and nothing else. It collects no
+           events and saves no snapshot, which means visiting the players page
+           cannot quietly consume the "since you were away" grouping that the
+           dashboard built for you. */
+        function ntMount() {
+            const host = document.getElementById('ntCentre');
+            if (!host || host.dataset.ntMounted) return null;
+            const state = ntLoad();
+            host.dataset.ntMounted = '1';
+            host.innerHTML = ntBellHTML(ntUnread(state.events, state.lastSeen))
+                + `<div class="nt-drop" id="ntDrop" hidden>${ntPanelHTML(state.events, state.lastSeen)}</div>`;
+            return state;
+        }
+
+        function ntTogglePanel() {
+            const drop = document.getElementById('ntDrop');
+            const bell = document.querySelector('.nt-bell');
+            if (!drop) return;
+            const opening = drop.hidden;
+            drop.hidden = !opening;
+            if (bell) bell.setAttribute('aria-expanded', String(opening));
+            if (!opening) return;
+
+            /* Marked read on open, and the panel is re-rendered from the state
+               as it was before that — so the "since your last visit" grouping
+               you opened it to read does not vanish as you read it. */
+            const before = ntLoad();
+            drop.innerHTML = ntPanelHTML(before.events, before.lastSeen);
+            /* The alerts switch is rendered into the header this panel just
+               drew, so it has to be filled after — and on every open, since it
+               reports what the browser currently permits rather than what we
+               last saw it permit. */
+            if (typeof pnRefreshToggle === 'function') pnRefreshToggle();
+            ntMarkSeen();
+            /* Seen is seen. The dot and the has-new state were already cleared
+               here; the count beside the word was not, so the sidebar went on
+               claiming three new things while the three were open on screen. */
+            const dot = document.querySelector('.nt-dot');
+            if (dot) dot.remove();
+            const count = document.querySelector('.nt-count');
+            if (count) count.remove();
+            if (bell) {
+                bell.classList.remove('has-new');
+                bell.setAttribute('aria-label', 'Nothing new');
+            }
+        }
+
+        // Clicking away closes it. Registered once, on the document, because the
+        // bell itself is re-rendered on every dashboard pass.
+        if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+            document.addEventListener('click', (ev) => {
+                const host = document.getElementById('ntCentre');
+                const drop = document.getElementById('ntDrop');
+                if (!host || !drop || drop.hidden) return;
+                if (!host.contains(ev.target)) {
+                    drop.hidden = true;
+                    const bell = document.querySelector('.nt-bell');
+                    if (bell) bell.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }

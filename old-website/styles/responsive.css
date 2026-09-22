@@ -1,0 +1,1036 @@
+/* ============================================================
+   EasyFPL — Responsive layer
+   ------------------------------------------------------------
+   The site was built at desktop width and grew media queries one
+   symptom at a time: twenty-three different breakpoints across nine
+   stylesheets, so a phone crossed 900px, then 820px, then 768px, 720px,
+   700px, 640px and 620px, each one changing a different unrelated thing.
+   Nothing was wrong with any single query; together they meant no width
+   had a layout anyone had designed.
+
+   This file is the one that does. It loads last on every page, so it is
+   the final word wherever it speaks, and it uses three widths and only
+   three:
+
+       <= 1024px   tablet     two columns, the sidebar off-canvas
+       <=  768px   phone+     one column, tables scroll
+       <=  480px   phone      the tightest pass — chrome shrinks
+
+   The old queries are left where they are. They fire inside these
+   ranges and mostly agree with them; where they do not, this file wins
+   by load order, which is a great deal safer than editing a hundred
+   rules that other pages depend on.
+   ============================================================ */
+
+
+/* ============================================================
+   1. The shell
+   ============================================================ */
+
+/* On a narrow screen the sidebar stops being furniture and becomes a
+   drawer. Below 1024px it used to collapse to a 76px icon rail, which
+   on a 390px phone spent a fifth of the screen on navigation and hid
+   every label behind a :hover flyout — and a touch screen has no hover,
+   so those sections were simply unreachable. */
+
+/* Both of these are built on every page at every width, and hidden here
+   rather than by a resize handler. The scrim needs saying as much as the
+   bar does: its position:fixed lives inside the media query below, so
+   above the breakpoint it was an ordinary button sitting in the flow at
+   the top of <body> — 21px of nothing, pushing every page down by its own
+   height. Nobody sees a transparent button; everybody saw the gap. */
+.v2-mobile-bar,
+.v2-nav-scrim { display: none; }
+
+@media (max-width: 1024px) {
+
+    /* The bar that replaces the rail. Fixed, so navigation is one thumb
+       away from anywhere in a long page rather than a scroll to the top. */
+    .v2-mobile-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        height: 56px;
+        padding: 0 12px;
+        z-index: 60;
+        background: var(--surface-0);
+        border-bottom: 1px solid var(--border-emphasis);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .v2-mobile-bar-btn {
+        flex: 0 0 auto;
+        width: 40px; height: 40px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 1px solid var(--border-emphasis);
+        border-radius: 10px;
+        background: var(--surface-1);
+        color: var(--text-primary);
+        cursor: pointer;
+        padding: 0;
+    }
+    .v2-mobile-bar-btn svg { width: 19px; height: 19px; }
+    .v2-mobile-bar-btn:active { background: var(--surface-2); }
+
+    .v2-mobile-bar-title {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .v2-mobile-bar-title b { color: var(--color-primary); }
+
+    /* The drawer itself. Off-canvas, full labels, its own scroll —
+       everything the desktop sidebar has, at a width a thumb can hit. */
+    .v2-sidebar {
+        width: min(84vw, 300px);
+        max-width: 300px;
+        padding: 16px 14px;
+        align-items: stretch;
+        transform: translateX(-102%);
+        transition: transform 220ms cubic-bezier(.22,1,.36,1);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        box-shadow: none;
+        z-index: 90;
+    }
+    body.v2-nav-open .v2-sidebar {
+        transform: translateX(0);
+        box-shadow: 0 0 0 100vmax rgba(0,0,0,.001), 0 18px 50px rgba(0,0,0,.28);
+    }
+
+    /* Labels come back — this is a drawer, not a rail, and the 900px
+       query had hidden every one of them. */
+    .v2-sidebar-logo span,
+    .v2-nav-item span,
+    .v2-sidebar-group-label,
+    .v2-sidebar-team-id {
+        display: revert;
+    }
+    .v2-nav-item {
+        justify-content: flex-start;
+        width: auto;
+        padding: 11px 12px;
+        min-height: 44px;
+    }
+    .v2-sidebar-collapse { display: none; }
+
+    /* Flyouts opened on :hover, which never fires on a touch screen.
+       In the drawer they are plain disclosure lists instead: the toggle
+       is a real button again and the panel simply sits under its parent
+       when open, in the flow, rather than floating beside the rail. */
+    .v2-flyout-toggle {
+        display: inline-flex;
+        align-items: center; justify-content: center;
+        margin-left: auto;
+        width: 32px; height: 32px;
+        border: 0; background: none; color: inherit; cursor: pointer;
+        transition: transform 160ms ease;
+    }
+    .v2-nav-group.open .v2-flyout-toggle { transform: rotate(90deg); }
+
+    .v2-flyout-panel {
+        position: static;
+        transform: none;
+        opacity: 1;
+        pointer-events: auto;
+        display: none;
+        width: auto;
+        min-width: 0;
+        max-height: none;
+        margin: 2px 0 6px 10px;
+        padding: 4px;
+        box-shadow: none;
+        border-left: 2px solid var(--border-emphasis);
+        border-radius: 0;
+        background: none;
+    }
+    .v2-nav-group.open > .v2-flyout-panel { display: block; }
+    /* and hover must not open it any more */
+    .v2-nav-group:hover > .v2-flyout-panel { display: none; }
+    .v2-nav-group.open:hover > .v2-flyout-panel { display: block; }
+
+    .v2-flyout-item { padding: 9px 10px; min-height: 42px; }
+    .v2-flyout-desc { display: none; }
+
+    /* The scrim. A tap anywhere off the drawer closes it. */
+    .v2-nav-scrim {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 80;
+        background: rgba(15, 23, 25, .45);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 200ms ease;
+        border: 0;
+        padding: 0;
+    }
+    body.v2-nav-open .v2-nav-scrim { opacity: 1; pointer-events: auto; }
+    body.v2-nav-open { overflow: hidden; }
+
+    /* Above the sticky tab strip.
+
+       .tabs-container is position:sticky at z-index 99, and the drawer was
+       at 90 with its scrim at 80 — so opening the menu slid it out
+       underneath the tabs, which went on sitting over the top of it. The
+       tab strip is page furniture; a menu opened over the page outranks
+       it. The mobile bar stays above both, since the button that opened
+       the drawer has to remain visible to close it. */
+    .v2-sidebar { z-index: 130; }
+    .v2-nav-scrim { z-index: 120; }
+    .v2-mobile-bar { z-index: 140; }
+
+    /* The page gets the whole width back, and clears the fixed bar.
+       Scoped to the signed-in shell: the landing shell has no drawer and
+       no 56px bar, it has its own 64px one, and applying both left it
+       with 120px of nothing at the top. */
+    .v2-shell-app .v2-main-content {
+        margin-left: 0 !important;
+        padding-top: 56px;
+    }
+
+    /* The notification panel was positioned beside the rail. In the
+       drawer there is no beside — it opens over the drawer instead. */
+    .v2-sidebar .nt-drop {
+        position: fixed;
+        left: 8px; right: 8px;
+        top: 64px;
+        width: auto;
+        max-width: none;
+        max-height: calc(100vh - 96px);
+        z-index: 95;
+    }
+}
+
+/* The desktop rail preference must not leak into the drawer: a phone
+   that once visited the site on a laptop would otherwise open a 76px
+   drawer with no labels in it. */
+@media (max-width: 1024px) {
+    .v2-sidebar-collapsed .v2-sidebar {
+        width: min(84vw, 300px);
+        padding: 16px 14px;
+        align-items: stretch;
+    }
+    .v2-sidebar-collapsed .v2-sidebar-logo span,
+    .v2-sidebar-collapsed .v2-nav-item > span,
+    .v2-sidebar-collapsed .v2-sidebar-group-label,
+    .v2-sidebar-collapsed .v2-sidebar-team-id { display: revert; }
+    .v2-sidebar-collapsed .v2-nav-item { width: auto; justify-content: flex-start; }
+    .v2-sidebar-collapsed .v2-account,
+    .v2-sidebar-collapsed .v2-premium { display: flex; }
+}
+
+
+/* ============================================================
+   2. Sticky offsets
+   ============================================================ */
+
+/* The tab strip and the filter bar are position:sticky at top:0, sized
+   for a shell with no bar above them. The mobile bar is fixed and 56px
+   tall, so at top:0 they stick underneath it and disappear. */
+@media (max-width: 1024px) {
+    .v2-shell-app .v2-main-content .tabs-container,
+    .v2-shell-app .v2-main-content .tw-budget-bar-top { top: 56px; }
+    .v2-shell-app .v2-main-content .filter-bar { top: 91px; }
+    .v2-shell-app .v2-main-content .tabs-container.tabs-hidden ~ .filter-bar { top: 56px; }
+    .v2-shell-app .v2-main-content .tw-scout-col { top: 120px; }
+}
+
+
+/* ============================================================
+   3. Page rhythm
+   ============================================================ */
+
+/* Desktop padding is 24-32px on each side. On a 390px screen that is a
+   sixth of the width spent on margin, and every card inside inherits the
+   squeeze. Tighter, in two steps, so a phone reads at close to the same
+   line length a tablet does. */
+@media (max-width: 1024px) {
+    .v2-main-content > main.main-content,
+    .v2-main-content > main.content,
+    .v2-main-content > .main-content,
+    .main-content > .container,
+    .content-wrapper { padding-left: 18px; padding-right: 18px; }
+    .v2-section, .pa-panel, .sq-panel, .v2-info-panel { padding: 16px; }
+}
+
+@media (max-width: 768px) {
+    .v2-main-content > main.main-content,
+    .v2-main-content > main.content,
+    .v2-main-content > .main-content,
+    .main-content > .container,
+    .content-wrapper { padding-left: 12px; padding-right: 12px; }
+    .v2-section, .pa-panel, .sq-panel, .v2-info-panel { padding: 14px; }
+
+    /* Title insets shrink with the padding they sit inside, or the title
+       ends up further from the corner than the card is from the screen. */
+    :root { --v2-title-x: 14px; --v2-title-y: 15px; }
+}
+
+@media (max-width: 480px) {
+    .v2-main-content > main.main-content,
+    .v2-main-content > main.content,
+    .v2-main-content > .main-content,
+    .main-content > .container,
+    .content-wrapper { padding-left: 10px; padding-right: 10px; }
+    .v2-section, .pa-panel, .sq-panel, .v2-info-panel { padding: 12px; }
+    :root { --v2-title-x: 12px; --v2-title-y: 13px; }
+}
+
+
+/* ============================================================
+   4. Headings
+   ============================================================ */
+
+/* A 34px page title is four words per line on a phone. These step down
+   with the viewport rather than being fixed, so nothing has to be
+   re-chosen for a size nobody tested. */
+@media (max-width: 768px) {
+    .page-title, .v2-page-title, h1 { font-size: clamp(21px, 5.4vw, 28px); line-height: 1.2; }
+    h2 { font-size: clamp(17px, 4.4vw, 21px); }
+    .section-title, .v2-section-title { font-size: clamp(14px, 3.9vw, 16px); }
+    .page-subtitle, .v2-page-sub { font-size: 13px; }
+}
+
+/* The page header and its help button stay on one line — the "?" beside
+   the title is the way into the guide, and it must not wrap under it. */
+@media (max-width: 768px) {
+    .v2-page-head, .page-header, .v2-title-row {
+        flex-wrap: nowrap;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .v2-page-help { flex: 0 0 auto; margin-top: 2px; }
+}
+
+
+/* ============================================================
+   5. Grids
+   ============================================================ */
+
+/* Anything laid out in fixed columns collapses. Two columns of 180px on
+   a 390px screen is two columns of nothing; one column of 366px is a
+   readable card. Tablet keeps two, which is what 820px has room for. */
+@media (max-width: 1024px) {
+    .stats-grid,
+    .summary-grid,
+    .metrics-grid,
+    .v2-qa-grid,
+    .v2-desk-grid,
+    .insight-grid,
+    .kpi-grid,
+    .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+@media (max-width: 768px) {
+    .stats-grid,
+    .summary-grid,
+    .metrics-grid,
+    .v2-qa-grid,
+    .v2-desk-grid,
+    .insight-grid,
+    .kpi-grid,
+    .overview-grid,
+    .two-col,
+    .cards-grid,
+    .news-grid { grid-template-columns: minmax(0, 1fr) !important; }
+
+    /* Anything that spanned two tracks now spans the one there is. */
+    .v2-main-content [style*="grid-column: 1 / -1"],
+    .v2-main-content .span-2 { grid-column: 1 / -1 !important; }
+}
+
+/* A flex row of cards that never wrapped will wrap now. */
+@media (max-width: 768px) {
+    .card-row, .v2-row, .stat-row { flex-wrap: wrap; }
+}
+
+
+/* ============================================================
+   6. Tables
+   ============================================================ */
+
+/* A twelve-column table does not become readable by being squeezed; it
+   becomes readable by keeping its columns and letting you push it
+   sideways with a thumb. Every table gets a scrollport, its first
+   column pinned so you never lose track of whose row you are reading,
+   and a hint that there is more to the right.
+
+   The alternative — restacking each row as a card — would have meant
+   rewriting the renderer for six different tables and losing the
+   column-to-column comparison that is the whole point of them. */
+@media (max-width: 1024px) {
+    .table-container,
+    .tm-table-wrap,
+    .planner-table-wrap,
+    .sd-table-wrap,
+    .doc-table-wrap,
+    .data-table-wrap,
+    .apf-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+    }
+
+    /* Tables that are not already inside one of those. */
+    .v2-section > table,
+    .pa-panel > table,
+    .sq-panel > table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
+@media (max-width: 768px) {
+    /* The name column stays put while the numbers scroll past it. */
+    .data-table th:first-child,
+    .data-table td:first-child,
+    .tm-table th:first-child,
+    .tm-table td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        background: var(--surface-0);
+    }
+    .data-table thead th:first-child { z-index: 3; }
+
+    .data-table, .tm-table, .planner-table { font-size: 12px; }
+    .data-table th, .data-table td { padding: 8px 9px; }
+
+    /* Column minimums written for a 1400px canvas. */
+    .data-table td.col-player { min-width: 148px; max-width: 172px; }
+    .tm-player-cell { min-width: 132px; }
+    .planner-player { min-width: 120px; }
+}
+
+
+/* ============================================================
+   7. Tab strips and filter bars
+   ============================================================ */
+
+/* These already scroll horizontally; what they do not do is stop
+   wrapping, so on a phone a six-tab strip became three rows of tabs and
+   pushed the page content below the fold. One row, swipeable, with the
+   scrollbar hidden because the overflow is obvious from the cut-off
+   tab at the edge. */
+@media (max-width: 1024px) {
+    .tabs,
+    .tab-list,
+    .v2-tabs,
+    .filter-bar-inner,
+    .apf-bar,
+    .tm-pos-filter,
+    .charts-filter-panel .cf-row {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    .tabs::-webkit-scrollbar,
+    .tab-list::-webkit-scrollbar,
+    .v2-tabs::-webkit-scrollbar,
+    .filter-bar-inner::-webkit-scrollbar,
+    .apf-bar::-webkit-scrollbar,
+    .tm-pos-filter::-webkit-scrollbar { height: 0; }
+
+    .tabs .tab, .tab-btn, .v2-tab { flex: 0 0 auto; white-space: nowrap; }
+    .tabs { padding-left: 12px; padding-right: 12px; }
+    .tabs .tab { min-height: 46px; padding: 12px 14px; }
+    .tabs-container { min-height: 46px; }
+}
+
+/* The All Players filter bar is eight labelled groups. On a phone it
+   wraps into a column instead of scrolling — a horizontal scroll inside
+   a page you are also scrolling vertically is a fight, and these are
+   controls you set once rather than a strip you skim. */
+@media (max-width: 768px) {
+    .apf-bar {
+        flex-wrap: wrap;
+        overflow-x: visible;
+        gap: 10px;
+    }
+    .apf-group { flex: 1 1 calc(50% - 5px); min-width: 0; }
+    .apf-group.apf-wide, .apf-bar .search-box { flex: 1 1 100%; min-width: 0; }
+    .apf-tail { flex: 1 1 100%; justify-content: space-between; }
+}
+
+@media (max-width: 480px) {
+    .apf-group { flex: 1 1 100%; }
+}
+
+
+/* ============================================================
+   8. Modals
+   ============================================================ */
+
+/* A centred dialog with 24px of padding round it wastes the only two
+   dimensions a phone has. Below 768px every modal is a sheet: full
+   width, off the bottom of the screen, scrolling inside itself with the
+   close button reachable without scrolling first. */
+@media (max-width: 768px) {
+    .v2-modal.modal-overlay,
+    .modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .v2-modal .modal-content,
+    .v2-modal .v2-modal-panel,
+    .v2-modal .pdm-modal-panel,
+    .modal-overlay > .modal-content,
+    .modal-overlay > .modal-container,
+    .modal-container,
+    .detail-panel {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 92vh;
+        margin: 0;
+        border-radius: 18px 18px 0 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .modal-close, .pdm-close, .help-close {
+        top: 10px; right: 10px;
+        width: 38px; height: 38px;
+        font-size: 22px;
+    }
+
+    /* The blur is a 7px filter over the whole page; on a phone GPU that
+       is the most expensive thing on screen and it sits behind a sheet
+       that already covers everything. */
+    body.v2-blurred .main-content { filter: none; }
+}
+
+
+/* ============================================================
+   9. Touch targets
+   ============================================================ */
+
+/* Nothing you are meant to tap should be smaller than a fingertip.
+   Coarse pointers only, so a mouse layout is untouched. */
+/* Deliberately not `button { min-height: 40px }`. That was the first
+   version of this rule and it was wrong: a minimum height with no
+   matching width does not make a bigger target, it makes a different
+   shape — the position filters on the players page turned into circles,
+   and the round "?" beside each page title into an ellipse. A control
+   that is 30px tall and 60px wide is already an easy tap; the ones that
+   are not are the icon-only squares, and those are named.
+
+   The 24x24 floor is what WCAG asks for and most of these already clear
+   it. Where something genuinely needs more, it is listed. */
+@media (pointer: coarse) {
+    /* Real buttons with words in them — nothing here is sized by its
+       own height, so growing them costs no shape. */
+    .btn, [role="tab"], .tabs .tab, .tab-btn, .v2-nav-item, .v2-flyout-item {
+        min-height: 40px;
+    }
+
+    /* Icon-only squares: both dimensions, or they go oblong. */
+    .v2-mobile-bar-btn, .modal-close, .pdm-close, .help-close, .icon-btn {
+        min-width: 40px; min-height: 40px;
+    }
+
+    /* Fields are different: the 16px is not about the target at all. Under
+       16px, iOS Safari zooms the page when the field takes focus and never
+       zooms back out, and the layout is left wider than the screen for the
+       rest of the visit. */
+    input[type="text"], input[type="number"], input[type="search"],
+    input[type="email"], select, textarea {
+        min-height: 40px;
+        font-size: 16px;
+    }
+}
+
+
+/* ============================================================
+   10. Media
+   ============================================================ */
+
+@media (max-width: 768px) {
+    img, svg, canvas, video { max-width: 100%; }
+    .news-card-hero { flex-direction: column; }
+    .news-card-hero .news-card-img { width: 100%; min-height: 180px; }
+    /* Chart.js sizes its own canvas from the container and writes the
+       result as an inline height, so the container is the thing to
+       constrain — overriding the canvas itself would fight the library
+       and, with height:auto, collapse the chart to nothing. */
+    .chart-container, .chart-box, .chart-wrap { max-height: 46vh; }
+}
+
+
+/* ============================================================
+   11. The pitch
+   ============================================================ */
+
+/* Eleven player cards in four rows, sized for a 900px column. Five
+   defenders at 90px each is 450px of cards on a 390px screen, so the
+   back line ran off both sides. These widths are what actually fits:
+   five across, inside the section's padding, with the gap intact. */
+@media (max-width: 768px) {
+    .pcard {
+        width: 62px;
+        padding: 11px 3px 7px;
+        gap: 2px;
+        border-width: 1.5px;
+    }
+    .pcard .v2-pid-pitch { --v2-pid-face: 26px; --v2-pid-crest: 15px; gap: 3px; }
+    .pcard-name { font-size: 9px; }
+    .pcard-score b { font-size: 11px; }
+    .pcard-fixture { font-size: 8px; }
+    .pitch-row { gap: 3px; }
+    .dugout-cards .pcard { min-width: 58px; max-width: 76px; }
+
+    .pitch-player { min-width: 44px; }
+    .pitch-player-node { width: 27px; height: 27px; font-size: 10px; }
+    .pitch-player-name { font-size: 9.5px; max-width: 58px; }
+    .pitch-bench .pitch-player { min-width: 42px; }
+
+    .lw-pitch-node { width: 34px; height: 34px; font-size: 9px; }
+    .lw-pitch-name { font-size: 9px; max-width: 58px; }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+    .pcard { width: 76px; padding-left: 5px; padding-right: 5px; }
+    .pcard .v2-pid-pitch { --v2-pid-face: 30px; --v2-pid-crest: 18px; }
+    .pcard-name { font-size: 10px; }
+}
+
+/* The grass is sized by aspect ratio — 16/12 — and the four rows are
+   placed on it by percentage. That works while the pitch is wider than
+   it is tall. At 348px across it is 261px down, the rows land 62px
+   apart, and the cards are 104px tall: every line of the team was
+   drawn through the one in front of it.
+
+   A minimum height rather than a different ratio, because it is the
+   cards that set the requirement and they do not care what shape the
+   pitch is. Above about 620px wide the ratio already gives more than
+   this and the floor never applies. */
+@media (max-width: 768px) {
+    .pitch-grass, .pitch-container, .v2-pitch { min-height: 460px; }
+}
+@media (max-width: 480px) {
+    .pitch-grass, .pitch-container, .v2-pitch { min-height: 440px; }
+}
+
+/* Without a hover there is no way to reach the four actions at all, so
+   on a touch screen they are simply always there. They are the only
+   route to the captaincy, a replacement search and the full profile
+   from the pitch — a phone cannot be the one device where the pitch is
+   read-only. */
+@media (pointer: coarse) {
+    .pcard-cv {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(-50%) scale(1);
+        gap: 3px;
+    }
+    .pcard { margin-top: 11px; }
+}
+
+@media (pointer: coarse) and (max-width: 768px) {
+    .cv-toggle { width: 17px; height: 17px; }
+    .cv-toggle svg { width: 10px; height: 10px; }
+    .pcard-cv { gap: 2px; top: -9px; }
+}
+
+
+/* ============================================================
+   12. Dense list rows
+   ============================================================ */
+
+/* A squad row is a table row wearing a card: identity, eight stats, five
+   fixture chips and four action buttons, side by side. That needs about
+   760px. Below 768px it stacks instead — the same four blocks, in the
+   same order, down the card rather than across it. Nothing is dropped,
+   because everything in the row is something you read the row for. */
+@media (max-width: 768px) {
+    .sq-row { flex-direction: column; align-items: stretch; gap: 0; }
+
+    .sq-row-clickable {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 9px;
+        padding: 11px 12px 8px;
+    }
+
+    .sq-row-main { width: 100%; }
+
+    /* Eight stats in two rows of four rather than eight columns of 32px,
+       which is narrower than the labels in them. */
+    .sq-row-stats {
+        grid-auto-flow: row;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px 6px;
+        width: 100%;
+    }
+    .sq-stat-label { font-size: 9px; }
+    .sq-stat-value { font-size: 12px; }
+
+    .sq-row-fixtures { flex-wrap: wrap; }
+
+    .sq-row-actions {
+        justify-content: flex-end;
+        gap: 6px;
+        padding: 0 12px 10px;
+    }
+    .sq-act { width: 32px; height: 32px; }
+}
+
+@media (max-width: 480px) {
+    .sq-row-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* The same shape, wherever a row was built the same way. */
+@media (max-width: 768px) {
+    .lo-card, .ts-row, .rec-row, .tw-row {
+        flex-wrap: wrap;
+    }
+    .lo-card-side, .ts-side { min-width: 0; flex: 1 1 44%; }
+}
+
+
+/* ============================================================
+   13. Segmented controls and pill rows
+   ============================================================ */
+
+/* A four-way segmented control and a row of ranking pills are both
+   built as an unwrapping flex row, sized by their labels. Neither had a
+   width that fits a phone, and both are how you change what the page
+   below them shows — so they cannot simply be hidden. They swipe. */
+@media (max-width: 768px) {
+    .segmented-control,
+    .rankings-pills,
+    .pill-row,
+    .chip-row {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        max-width: 100%;
+    }
+    .segmented-control::-webkit-scrollbar,
+    .rankings-pills::-webkit-scrollbar,
+    .pill-row::-webkit-scrollbar,
+    .chip-row::-webkit-scrollbar { height: 0; }
+
+    .segmented-btn, .rankings-pill { flex: 0 0 auto; white-space: nowrap; }
+    .segmented-btn { padding-left: 12px; padding-right: 12px; font-size: 12px; }
+}
+
+
+/* ============================================================
+   14. Two-column layouts with a fixed rail
+   ============================================================ */
+
+/* A 360px rail beside a flexible column is a good desktop shape and an
+   impossible phone one: the rail alone is most of the screen and what
+   is left of the second column is a word wide. They stack. */
+@media (max-width: 900px) {
+    .report-dashboard,
+    .sd-featured { grid-template-columns: minmax(0, 1fr); }
+    .sd-featured > * { min-width: 0; }
+}
+
+/* The docs pages put a sticky contents rail beside the prose. On a
+   phone the contents come first, in the flow, and stop being sticky —
+   a sticky index above the text it indexes covers the text. */
+@media (max-width: 980px) {
+    .doc-layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-6, 20px); }
+    .doc-toc, .doc-rail { position: static; max-height: none; }
+}
+
+
+/* ============================================================
+   15. The page guide
+   ============================================================ */
+
+/* The "?" drawer is a 520px panel off the right edge. On a phone that
+   is wider than the screen, so it becomes the same bottom sheet every
+   other modal does. */
+@media (max-width: 768px) {
+    .detail-overlay { align-items: flex-end; padding: 0; }
+    .detail-panel {
+        width: 100%;
+        max-width: 100%;
+        max-height: 88vh;
+        border-radius: 18px 18px 0 0;
+    }
+    .help-step { padding: 12px 14px; }
+}
+
+
+/* ============================================================
+   16. The footer
+   ============================================================ */
+
+@media (max-width: 768px) {
+    .site-footer, footer .footer-inner, .footer-grid {
+        grid-template-columns: minmax(0, 1fr);
+        text-align: left;
+    }
+    .footer-bottom { flex-direction: column; align-items: flex-start; gap: 8px; }
+}
+
+
+/* ============================================================
+   17. The dashboard
+   ============================================================ */
+
+/* The hero row is the team name beside the gameweek chip, at a 64px gap
+   and 24px of padding, sized for a 1200px column. On a phone the chip
+   ran off the edge — the name gets the line and the chip the one under
+   it. */
+@media (max-width: 768px) {
+    .hero-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 20px 0 14px;
+    }
+    .hero-greeting { flex-wrap: wrap; gap: 10px; }
+    .hero-personalized { text-align: left; }
+
+    /* The deadline card's lanes and its stat quadrants. */
+    .v2-info-panel .rd-lanes { grid-template-columns: minmax(0, 1fr); }
+    .v2-stat-quad, .v2-info-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    /* The market strip's rising/falling pair. */
+    .v2-market-cols, .mk-cols { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The price ticker is a marquee: it is meant to be wider than the screen
+   and to move. It just must not drag the page with it. */
+.price-ticker-bar, .ticker-bar, .news-strip { overflow-x: hidden; }
+
+/* The snapshot's bench tokens. */
+@media (max-width: 480px) {
+    .v2-pitch-token { min-width: 0; }
+    .v2-pitch-token-name { font-size: 9px; }
+}
+
+
+/* ============================================================
+   18. Letting the columns actually shrink
+   ============================================================ */
+
+/* Collapsing a grid to one column is only half of it. A grid item's
+   default min-width is auto, which is its min-content — so a card whose
+   longest unbreakable run is 498px keeps a 498px track no matter what
+   the template says, and the "single column" is wider than the phone.
+   Every container this file narrows gets its children told they may be
+   narrower than their contents; the contents then wrap, ellipsis or
+   scroll on their own terms, which each of them already knows how to
+   do.
+
+   Not gated to a breakpoint. A grid item is only ever wider than its track
+   because its own contents refuse to be narrower, and that happens the
+   moment the track gets tight — which on a 1280px laptop with the sidebar
+   open is well above any phone breakpoint. min-width: 0 does not shrink
+   anything that has room; it only removes the floor. */
+.v2-top-row > *,
+.stats-grid > *,
+.summary-grid > *,
+.metrics-grid > *,
+.v2-qa-grid > *,
+.v2-desk-grid > *,
+.insight-grid > *,
+.kpi-grid > *,
+.overview-grid > *,
+.two-col > *,
+.cards-grid > *,
+.news-grid > *,
+.report-dashboard > *,
+.sd-featured > *,
+.doc-layout > *,
+.v2-info-panel .rd-lanes > *,
+.sq-row > *,
+.sq-row-clickable > * { min-width: 0; }
+
+
+/* The stat cards put a value on the left and a badge on the right, on
+   one line that does not wrap. At a phone's width the badge was being
+   crushed against the divider and clipped in half. It drops below the
+   value instead. */
+@media (max-width: 768px) {
+    .v2-stat-card, .v2-league-card { flex-wrap: wrap; gap: 4px 8px; }
+    .v2-stat-card > *, .v2-league-card > * { min-width: 0; }
+    .v2-stat-sub { font-size: 10.5px; }
+}
+
+
+/* ============================================================
+   19. Squad Analysis
+   ============================================================ */
+
+/* The pitch actions, on a touch screen.
+
+   Making them permanently visible works on a tablet, where a card is
+   90-118px wide and four 19px circles fit above it. On a phone the card
+   is 62px and the row is 74px, so every card's actions overlapped its
+   neighbours' and the lineup disappeared under a lattice of buttons.
+
+   Below 768px they come off the pitch. Nothing is lost: the squad table
+   directly below carries the same four actions on every row, full
+   width, always visible, with the player's name and numbers beside them
+   — which is a better place to act from on a phone anyway. */
+@media (pointer: coarse) and (max-width: 768px) {
+    .pcard-cv { display: none; }
+    .pcard { margin-top: 0; }
+}
+
+/* The page's own summary cards: two columns of ~160px, into which a
+   label like "Overall Rank" does not fit, so half of them read "OV…". */
+@media (max-width: 560px) {
+    .sq-kpis,
+    .sq-summary-grid,
+    .sq-stat-cards,
+    .squad-summary { grid-template-columns: minmax(0, 1fr) !important; }
+    .sq-kpi { min-width: 0; }
+}
+@media (max-width: 768px) {
+    .sq-stat-card .sq-stat-card-label,
+    .sq-card-label { white-space: normal; overflow: visible; text-overflow: clip; }
+}
+
+/* The help "?" is a 24px circle. The coarse-pointer minimum stretched
+   it vertically into an ellipse, because a min-height with no matching
+   min-width is not a bigger target, it is a different shape. */
+@media (pointer: coarse) {
+    .v2-page-help {
+        width: 34px; height: 34px;
+        min-width: 34px; min-height: 34px;
+        font-size: 16px;
+    }
+}
+
+
+/* ============================================================
+   20. The assistant dock
+   ============================================================ */
+
+/* The chat widget is fixed to the bottom of the viewport. On a desktop
+   it sits in the corner beside the page; on a phone it is a full-width
+   bar lying over the last card of whatever you were reading. The page
+   ends above it instead. */
+@media (max-width: 768px) {
+    .ai-widget {
+        left: 10px; right: 10px;
+        width: auto;
+        max-width: none;
+    }
+    .ai-widget .ai-body { max-height: 62vh; }
+    .v2-main-content { padding-bottom: 76px; }
+}
+
+
+/* ============================================================
+   21. Charts
+   ============================================================ */
+
+/* The momentum matrix is a 65/35 split — a scatter plot beside its
+   report panel — with a 400px floor under the plot. Below 900px the
+   plot gets the width and the report follows underneath, which is the
+   order you read them in anyway. */
+@media (max-width: 900px) {
+    .momentum-grid { grid-template-columns: minmax(0, 1fr); }
+    .momentum-grid > * { min-width: 0; }
+}
+
+/* A square-ish plot on a phone is taller than the screen. These are
+   the heights that keep a scatter readable without swallowing the
+   page — and they are min-heights, so a chart that wants less still
+   gets to be smaller. */
+@media (max-width: 768px) {
+    .momentum-chart-container { min-height: 320px; max-height: 60vh; }
+}
+@media (max-width: 480px) {
+    .momentum-chart-container { min-height: 280px; }
+}
+
+
+/* The KPI value is a 32px monospace number set to ellipsis rather than
+   wrap, which is right for a rank and wrong for a countdown: "2d 14h 19m
+   44s" became "2d 14h 19…" in a three-across tablet row. It scales with
+   the column instead, and is allowed to take a second line. */
+@media (max-width: 1024px) {
+    .sq-kpi-value, .mgr-deadline-value {
+        font-size: clamp(18px, 3.2vw, 30px);
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        letter-spacing: -0.8px;
+    }
+}
+
+
+/* ============================================================
+   22. The shared pitch, on a phone
+   ============================================================ */
+
+/* A 116px card lets three across a 312px pitch, so a back four wrapped
+   onto two lines and the formation — the one thing a pitch is for —
+   became unreadable. These widths put five across with the gap intact,
+   which is the widest row football has.
+
+   Everything on the card shrinks with it, and the parts that are saying
+   something twice stop: the club crest goes, because the fixture chip
+   under the name already gives the opponent and the venue, and at 60px
+   the crest was a smudge on the corner of a face. */
+@media (max-width: 768px) {
+    .dp-row { flex-wrap: nowrap; gap: 4px; }
+
+    .dp-card {
+        --dp-card-w: 74px;
+        padding: 7px 4px 5px;
+        gap: 1px;
+        border-radius: 10px;
+    }
+    .dp-card .v2-pid-pitch { --v2-pid-face: 26px; --v2-pid-crest: 16px; gap: 3px; }
+    .dp-name { font-size: 9.5px; }
+    .dp-score b { font-size: 13px; }
+    .dp-score .u { font-size: 8px; }
+    .dp-card .dp-fix { font-size: 8.5px; padding: 1px 3px; gap: 2px; }
+    .dp-card .dp-fix::before { width: 4px; height: 4px; }
+    .dp-card .dp-xp-run { font-size: 8px; }
+    .dp-card .dp-xp-run-u { font-size: 7px; }
+    .dp-cap { width: 15px; height: 15px; font-size: 8.5px; top: -5px; right: -5px; }
+
+    /* The info button is a 20px target on a 74px card, and every card on
+       the pitch has one. On touch it opens on tap of the card instead. */
+    .dp-transfer, .dp-act { width: 18px; height: 18px; font-size: 9px; }
+
+    .dp-bench-row { gap: 4px; }
+    .dp-bench { padding: 10px 10px 12px; }
+}
+
+@media (max-width: 480px) {
+    .dp-card {
+        --dp-card-w: 60px;
+        padding: 6px 3px 4px;
+    }
+    /* At 60px the crest is a smudge on the corner of a face, and the
+       fixture pill under the name already names the opponent. */
+    .dp-card .v2-pid-pitch { --v2-pid-face: 24px; }
+    .dp-card .v2-pid-crest { display: none; }
+    .dp-name { font-size: 8.5px; }
+    .dp-score b { font-size: 12px; }
+    /* The run total is the third number on a 60px card. The one the card
+       is ranked on stays; this one is a tap away in the player's detail. */
+    .dp-xp-run { display: none; }
+    .dp-row { gap: 3px; }
+}
+
+/* The pitch itself: at these card sizes the rows are short, so the grass
+   does not need a desktop pitch's height. */
+@media (max-width: 768px) {
+    .dp-pitch-card { padding: 10px 6px 10px; }
+    .dp-pitch { gap: 6px; }
+}

@@ -55,6 +55,27 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' https: data:; connect-src 'self' https://qlipcnedxchcsbpihscp.supabase.co https://fpl-proxy.jguilhermealexandre.workers.dev https://api.rss2json.com https://docs.google.com https://sdp-prem-prod.premier-league-prod.pulselive.com https://cloudflareinsights.com https://cdn.jsdelivr.net https://unpkg.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 
+# The previous design, kept at /old-website while it is still being reviewed.
+# Cloudflare Pages deploys the repository, so "in the tree" and "published on
+# the domain" are the same thing: twenty-two pages of it are live, and several
+# carry the same <title> as the page that replaced them — the old FAQ and the
+# real one are indistinguishable to a crawler.
+#
+# So it stays reachable and stops being findable. noindex takes the pages out
+# of the index; nofollow stops a crawl walking the whole old site from any one
+# of them. They are deliberately NOT disallowed in robots.txt: a page blocked
+# from crawling is a page whose noindex header is never read, so blocking it
+# there would leave anything already indexed exactly where it is.
+#
+# Typing the URL still works, for anyone who has it. Nothing links to it.
+#
+# TEMPORARY. This directory is for a review that is expected to take days, not
+# months. When it is done, delete old-website/ and this block with it — it is
+# 4.5MB of near-duplicate pages sitting on the live domain, and the noindex
+# above is the only thing keeping that from being an SEO problem.
+/old-website/*
+  X-Robots-Tag: noindex, nofollow
+
 # The data feed is rewritten every 15 minutes during match windows, so 300s at
 # the edge is roughly one refresh behind at worst and takes the repeated reads
 # off the origin entirely. Without this rule these were cf-cache-status: DYNAMIC
