@@ -42,6 +42,12 @@ const SHOTS = [
        picture of the furniture around it. */
     { file: 'wizard', url: '/fpl-my-team-analysis.html#transfers', wait: 10000, sel: '#transferDisplay, .v2-main-content',
       vw: 1500, vh: 1100, max: 900 },
+    /* The two wizards get feature pages of their own, so they need whole
+       screens rather than the tight card crops below. */
+    { file: 'transfer-wizard', url: '/fpl-my-team-analysis.html#transfer', wait: 12000,
+      sel: '#transferDisplay, .v2-main-content', vw: 1500, vh: 1200, max: 1000 },
+    { file: 'lineup-wizard', url: '/fpl-my-team-analysis.html#lineup', wait: 12000,
+      sel: '#lineupDisplay, .v2-main-content', vw: 1500, vh: 1200, max: 1000 },
     /* The two screens the feature pages were borrowing someone else's picture
        for: the news page was showing the Transfer Wizard and the Scout's Desk
        was showing the player board. A feature page that illustrates itself with
