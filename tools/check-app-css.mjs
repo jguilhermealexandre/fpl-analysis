@@ -34,6 +34,17 @@ for (const page of fs.readdirSync('.').filter(f => f.endsWith('.html')).sort()) 
         if (carries) problems.push(`${page}: loads v2-app.css without loading v2-design.css`);
         continue;
     }
+    /* Six pages never call loadSidebarNav(): sign in, register, reset, the
+       Team ID page, Premium and the Season Vault. They are standalone screens
+       with no sidebar, no account menu and no dashboard footer — measured at
+       0% of v2-app.css — so a saved Team ID is the wrong question for them and
+       the answer cost 56KB. Not carrying the snippet is correct here, and the
+       rule is the shell rather than a list of filenames so a new page of
+       either kind is judged by what it does. */
+    if (!html.includes('loadSidebarNav()')) {
+        if (carries) problems.push(`${page}: loads v2-app.css but never calls loadSidebarNav() — nothing on it can use the app shell`);
+        continue;
+    }
     checked++;
     const after = html.slice(link.index + link[0].length);
     if (!after.startsWith(SNIPPET)) {
