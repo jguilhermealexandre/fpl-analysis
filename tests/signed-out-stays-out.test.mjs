@@ -115,8 +115,9 @@ test('a page without auth.js hands the sign-out to one that has it', async () =>
 });
 
 /* index.html's 131KB inline block is scripts/index-page.js now — it was the
-   bulk of a render-blocking document. These assertions are about that code,
-   so they read it where it lives. */
+   bulk of a render-blocking document, and the dashboard half of it has since
+   moved again, to index-dashboard.js. These assertions are about the landing
+   page's own code, so they read it where it lives. */
 test('the landing page acts on that hand-off', () => {
     const html = read('scripts/index-page.js');
     assert.ok(/signout'\) === '1'/.test(html), 'the page script reads the flag');

@@ -14,12 +14,12 @@ const md = loadScript('scripts/matchday.js', browserStubs({
     v2Icon: name => `<svg data-icon="${name}"></svg>`
 }));
 
-const tickerNum = loadFunction('scripts/index-page.js', 'tickerNum');
-const tickerLiveSquad = loadFunction('scripts/index-page.js', 'tickerLiveSquad');
-const tickerPhase = loadFunction('scripts/index-page.js', 'tickerPhase', {
+const tickerNum = loadFunction('scripts/index-dashboard.js', 'tickerNum');
+const tickerLiveSquad = loadFunction('scripts/index-dashboard.js', 'tickerLiveSquad');
+const tickerPhase = loadFunction('scripts/index-dashboard.js', 'tickerPhase', {
     mdGameweekState: md.mdGameweekState
 });
-const tickerItems = loadFunction('scripts/index-page.js', 'tickerItems', {
+const tickerItems = loadFunction('scripts/index-dashboard.js', 'tickerItems', {
     tickerNum, tickerLiveSquad
 });
 

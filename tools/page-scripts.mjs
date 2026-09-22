@@ -17,6 +17,16 @@ export function pages(root = '.') {
            all, so the smoke test evaluated bare inline code and every page
            "failed" on the first function the missing files define. */
         const scripts = [...html.matchAll(/<script src="\/?scripts\/([\w.-]+\.js)/g)].map(m => `scripts/${m[1]}`);
+        /* index.html names its dashboard-only scripts in a JSON manifest instead
+           of linking them, so that the landing page never fetches them. They are
+           still loaded into the same global scope the moment the dashboard
+           opens, so as far as check:globals and the smoke tests are concerned
+           they are on this page — and if they stopped being listed here, a
+           collision between one of them and a landing-page script would go
+           unnoticed until it broke the dashboard in a browser. */
+        for (const m of html.matchAll(/<script type="application\/json"[^>]*>([\s\S]*?)<\/script>/g)) {
+            for (const s of m[1].matchAll(/"\/scripts\/([\w.-]+\.js)\?/g)) scripts.push(`scripts/${s[1]}`);
+        }
         const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).join('\n');
         out[f] = { scripts, inline };
     }
