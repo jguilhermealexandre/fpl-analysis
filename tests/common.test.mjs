@@ -75,77 +75,88 @@ test('escHTML is safe in attribute contexts, not just text', () => {
 });
 
 
-/* ===== The Team ID field in the landing bar =====
+/* ===== The way into the app =====
 
-   It is the only way in for nearly everyone who uses this site, so the two
-   paths out of it both get a test: a good id goes straight through, and
-   anything else lands in the box that has room to explain itself. */
-function landingField(over = {}) {
-    const calls = { entered: null, opened: 0 };
-    const input = { value: over.value ?? '', classList: { added: [], add(c) { this.added.push(c); }, remove() {} } };
-    const box = { value: '' };
-    const fn = loadFunction('scripts/common.js', 'v2SubmitLandingId', {
-        document: { getElementById: (id) => (id === 'v2LandingIdInput' ? input : id === 'v2LoginInput' ? box : null) },
-        openLoginModal: () => { calls.opened++; },
-        v2EnterWithTeam: (id) => { calls.entered = id; }
-    });
-    return { fn, calls, input, box };
-}
+   There used to be a Team ID field in the landing bar and a login dialog
+   behind it, and these tests covered both. The door moved: /dashboard/ is the
+   only way in, scripts/dashboard-gate.js decides who gets through, and the ID
+   page asks the question. So these cover the new contract instead — and the
+   first two are the ones that matter, because both failures are silent. A
+   dashboard page that stops loading the gate serves a stranger an empty
+   dashboard; a ?next= taken at its word turns an easyfpl.com link into
+   somebody else's redirect. */
 
-test('a real id goes straight in, without opening anything', () => {
-    const { fn, calls } = landingField({ value: '2951638' });
-    assert.equal(fn({ preventDefault() {} }), false, 'the form must never actually submit');
-    assert.equal(calls.entered, '2951638');
-    assert.equal(calls.opened, 0, 'no box for an id that is already valid');
+const APP_PAGES = [
+    'index.html',
+    'fpl-my-team-analysis.html',
+    'fpl-players-analysis.html',
+    'fpl-teams-analysis.html',
+    'fpl-league-rivals.html',
+    'fpl-scouts-desk.html',
+    'fpl-news.html',
+    'premium.html'
+];
+
+test('every page under /dashboard/ loads the gate, in the head', () => {
+    for (const page of APP_PAGES) {
+        const html = fs.readFileSync(path.join(ROOT, page), 'utf8');
+        const tag = html.indexOf('scripts/dashboard-gate.js');
+        assert.ok(tag > -1, `${page} does not load the gate`);
+
+        /* Before the body, or the page has already started drawing itself to
+           somebody who is about to be sent away. */
+        const head = html.indexOf('</head>');
+        assert.ok(tag < head, `${page} loads the gate after </head>`);
+    }
 });
 
-test('surrounding space is not a typo', () => {
-    const { fn, calls } = landingField({ value: '  2951638  ' });
-    fn({ preventDefault() {} });
-    assert.equal(calls.entered, '2951638');
+test('the gate is the only copy of the rule', () => {
+    /* Six pages each carried their own inline version of this, all of them
+       redirecting somewhere the ID page is not. One rule, one file. */
+    for (const page of APP_PAGES) {
+        const html = fs.readFileSync(path.join(ROOT, page), 'utf8');
+        assert.ok(!/location\.replace\('\/\?next=/.test(html),
+            `${page} still has its own gate`);
+    }
 });
 
-test('a typo opens the box and takes what was typed with it', () => {
-    /* The bar has nowhere to put a sentence, so the explanation lives in the
-       box — and retyping the id there would be a punishment for a typo. */
-    const { fn, calls, input, box } = landingField({ value: '29a51638' });
-    fn({ preventDefault() {} });
-    assert.equal(calls.entered, null, 'nothing is entered on a bad id');
-    assert.equal(calls.opened, 1);
-    assert.equal(box.value, '29a51638', 'the box is pre-filled so it can be corrected');
-    assert.deepEqual([...input.classList.added], ['is-bad'], 'and the field says which one was wrong');
+test('the ID page will not redirect off the app', () => {
+    /* next= is read back off a query string, so it is somebody else's input.
+       Anything that is not a path inside /dashboard/ has to collapse to the
+       dashboard rather than be followed. */
+    const html = fs.readFileSync(path.join(ROOT, 'welcome.html'), 'utf8');
+    const src = /function wlNext\(\) \{([\s\S]*?)\n {4}\}/.exec(html);
+    assert.ok(src, 'welcome.html should still resolve next= through wlNext()');
+
+    const at = (q) => {
+        const f = new Function('q', `
+            const location = { search: q };
+            const URLSearchParams = globalThis.URLSearchParams;
+            ${src[1]}
+        `);
+        return f(q);
+    };
+    assert.equal(at('?next=%2Fdashboard%2Fplayers'), '/dashboard/players');
+    assert.equal(at('?next=%2Fdashboard'), '/dashboard');
+    for (const bad of [
+        '?next=https%3A%2F%2Fevil.example%2Fx',
+        '?next=%2F%2Fevil.example',
+        '?next=%2Ffpl-pricing.html',
+        '?next=javascript%3Aalert(1)',
+        ''
+    ]) {
+        assert.equal(at(bad), '/dashboard/', `next=${bad} must not be followed`);
+    }
 });
 
-test('an empty field opens the box without marking anything wrong', () => {
-    // Pressing Go with nothing typed is a request for help, not a mistake.
-    const { fn, calls, input, box } = landingField({ value: '' });
-    fn({ preventDefault() {} });
-    assert.equal(calls.opened, 1);
-    assert.equal(calls.entered, null);
-    assert.equal(box.value, '', 'nothing to carry across');
-    assert.equal(input.classList.added.length, 0);
-});
-
-test('the bar and the box name the same function', () => {
-    /* The handler is an inline attribute in a fetch-injected partial, so
-       nothing links the two: rename one and the field silently submits the
-       form instead. */
+test('the landing bar offers no way into the app', () => {
+    /* Deliberate: the marketing page does not ask for a Team ID and does not
+       say "Log in", because there is no account to log in to. Somebody who
+       wants the dashboard goes to /dashboard/ and meets the ID page. */
     const nav = fs.readFileSync(path.join(ROOT, 'landing-nav.html'), 'utf8');
-    const called = /onsubmit="return (\w+)\(event\)"/.exec(nav);
-    assert.ok(called, 'the landing form should still submit through a named handler');
-    assert.match(fs.readFileSync(path.join(ROOT, 'scripts/common.js'), 'utf8'),
-        new RegExp(`function ${called[1]}\\(`), `${called[1]}() is not defined in common.js`);
-});
+    assert.ok(!/v2-landing-id/.test(nav), 'the ID field is back in the landing bar');
+    assert.ok(!/openLoginModal/.test(nav), 'the login button is back in the landing bar');
 
-test('exactly one way in is shown at a time', () => {
-    /* The field and the fallback button are both in the markup; CSS picks. If
-       the pairing rule is lost, a narrow screen shows both or neither. */
-    const nav = fs.readFileSync(path.join(ROOT, 'landing-nav.html'), 'utf8');
-    assert.match(nav, /class="v2-landing-id"/);
-    assert.match(nav, /v2-landing-id-fallback/);
-    const css = fs.readFileSync(path.join(ROOT, 'styles/v2-design.css'), 'utf8');
-    assert.match(css, /\.v2-landing-login\.v2-landing-id-fallback\s*\{\s*display:\s*none/,
-        'the fallback must be hidden by default, at a specificity that beats .v2-landing-login');
-    assert.match(css, /@media \(max-width: 560px\)[\s\S]{0,240}\.v2-landing-id\s*\{\s*display:\s*none/,
-        'and the field must give way to it on a narrow screen');
+    const common = fs.readFileSync(path.join(ROOT, 'scripts/common.js'), 'utf8');
+    assert.ok(!/function openLoginModal\(/.test(common), 'the login modal is back in common.js');
 });

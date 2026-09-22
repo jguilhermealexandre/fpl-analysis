@@ -10,7 +10,7 @@
 // 20 points per team for an exact position match, minus 1 per position
 // off (min 0), summed across 20 teams = 400 max.
 
-const PREDICTIONS_URL = 'data/predictions.json';
+const PREDICTIONS_URL = '/data/predictions.json';
 const SEASON_LABEL = '2026/27';
 
 // The friends' Google Sheet is the live source of truth — ONE TAB PER

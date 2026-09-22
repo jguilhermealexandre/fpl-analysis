@@ -829,7 +829,7 @@
                premierleague.com sends no CORS headers, so this is the only way
                the browser can have them at all. */
             try {
-                const plRes = await fetch('data/pl-news.json?v=' + Math.floor(Date.now() / 300000));
+                const plRes = await fetch('/data/pl-news.json?v=' + Math.floor(Date.now() / 300000));
                 if (plRes.ok) {
                     const pl = await plRes.json();
                     (pl.items || []).forEach(a => {
@@ -858,7 +858,7 @@
                for again; anything it is missing still goes through the proxy. */
             const servedFromFile = new Set();
             try {
-                const nfRes = await fetch('data/news-feeds.json?v=' + Math.floor(Date.now() / 300000));
+                const nfRes = await fetch('/data/news-feeds.json?v=' + Math.floor(Date.now() / 300000));
                 if (nfRes.ok) {
                     const nf = await nfRes.json();
                     (nf.feeds || []).forEach(f => {

@@ -2,34 +2,6 @@
 <html lang="en" class="v2-theme">
 <head>
     <meta charset="UTF-8">
-    <!-- ===== Signed-in only =====
-
-         This page is entirely about one manager's squad, and without a Team ID
-         there is no squad to be about — so a shared link used to open the whole
-         tool on somebody else's empty state. It now sends them to the landing
-         page instead, before anything paints, so there is no flash of a page
-         they are not entitled to.
-
-         Inline and first in <head> deliberately: a guard that waits for a
-         script file has already let the page render. localStorage is the only
-         thing the site has to go on — this is a client-side app with no server
-         session, so the gate is a redirect for the benefit of the person
-         sharing the link, not a security boundary, and nothing behind it is
-         secret. What it protects is the experience: a stranger should meet the
-         product, not an empty dashboard.
-
-         Where they were going is carried in ?next= so that entering an ID on
-         the landing page takes them there rather than dropping them at the
-         dashboard, which is the whole point of someone sharing the link. -->
-    <script>
-        (function () {
-            try {
-                if (localStorage.getItem('fpl_team_id')) return;
-            } catch (e) { /* storage unreadable — treat that as signed out */ }
-            var next = location.pathname + location.search + location.hash;
-            location.replace('/?next=' + encodeURIComponent(next));
-        })();
-    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="manifest" href="manifest.json">
     <title>The Scout's Desk — FPL Gameweek Analysis | EasyFPL</title>
@@ -44,10 +16,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/common.css?v=342">
-    <link rel="stylesheet" href="styles/v2-design.css?v=342">
-    <link rel="stylesheet" href="styles/scouts-desk.css?v=342">
-    <link rel="stylesheet" href="styles/responsive.css?v=342">
+    <script src="/scripts/dashboard-gate.js?v=343"></script>
+    <link rel="stylesheet" href="/styles/common.css?v=343">
+    <link rel="stylesheet" href="/styles/v2-design.css?v=343">
+    <link rel="stylesheet" href="/styles/scouts-desk.css?v=343">
+    <link rel="stylesheet" href="/styles/responsive.css?v=343">
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -106,16 +79,16 @@
         </div>
     </div>
 
-    <script src="scripts/error-monitor.js?v=342"></script>
-    <script src="scripts/auth.js?v=342"></script>
-    <script src="scripts/common.js?v=342"></script>
+    <script src="/scripts/error-monitor.js?v=343"></script>
+    <script src="/scripts/auth.js?v=343"></script>
+    <script src="/scripts/common.js?v=343"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="scripts/push-alerts.js?v=342"></script>
-    <script src="scripts/notifications.js?v=342"></script>
-    <script src="scripts/sidebar-nav.js?v=342"></script>
-    <script src="scripts/scouts-art.js?v=342"></script>
-    <script src="scripts/scouts-desk.js?v=342"></script>
+    <script src="/scripts/push-alerts.js?v=343"></script>
+    <script src="/scripts/notifications.js?v=343"></script>
+    <script src="/scripts/sidebar-nav.js?v=343"></script>
+    <script src="/scripts/scouts-art.js?v=343"></script>
+    <script src="/scripts/scouts-desk.js?v=343"></script>
     <script>
         initIcons();
         loadFooter();

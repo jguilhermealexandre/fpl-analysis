@@ -81,8 +81,25 @@ export const PREMIUM_PAGES = Object.freeze([
  * in any list and would have been served. A door beside the gate, and one built
  * months before the gate existed.
  *
- * Prefixes, because the rewrite is /squad-analysis/* too. */
-export const PREMIUM_ALIASES = Object.freeze(['/squad-analysis']);
+ * Prefixes, because the rewrite is /squad-analysis/* too.
+ *
+ * The /dashboard/ entries are the same door. Every signed-in screen moved
+ * under /dashboard/ and each is a 200 rewrite, so /dashboard/my-team is
+ * My Team Analysis as surely as /fpl-my-team-analysis.html is, and the
+ * middleware only ever sees the /dashboard/ spelling. Four of the seven land
+ * on a premium page; /dashboard, /dashboard/login, /dashboard/scouts-desk and
+ * /dashboard/news do not, and are deliberately absent.
+ *
+ * Listed one by one rather than gating /dashboard wholesale: the home screen
+ * and the Scout's Desk are free, and a prefix would take them with it. */
+export const PREMIUM_ALIASES = Object.freeze([
+    '/squad-analysis',
+    '/dashboard/my-team',
+    '/dashboard/squad',
+    '/dashboard/players',
+    '/dashboard/teams',
+    '/dashboard/rivals'
+]);
 
 export const PREMIUM_SCRIPTS = Object.freeze([
     // Transfer Wizard

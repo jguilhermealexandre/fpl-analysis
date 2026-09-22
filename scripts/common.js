@@ -856,128 +856,20 @@ function v2AccountName() {
     return 'Your team';
 }
 
-/* Logging in.
-
-   There is no account and no password — a Team ID is the whole of your
-   identity here, and typing it is the only thing "log in" can mean. Saying
-   so plainly is better than a form that implies an account you do not have.
-
-   Built on demand, like the settings sheet, and out of the same modal shell
-   so it opens and closes the same way and blurs the page behind it. */
-function openLoginModal() {
-    if (typeof document === 'undefined') return;
-    document.getElementById('v2LoginModal')?.remove();
-
-    document.body.insertAdjacentHTML('beforeend', `
-    <div class="modal-overlay v2-modal v2-login" id="v2LoginModal" onclick="closeLoginModal(event)">
-        <div class="modal-container" role="dialog" aria-modal="true" aria-label="Log in">
-            <div class="v2-set-head">
-                <span class="v2-section-title">${v2Icon('person')}Log in</span>
-                <button class="modal-close" onclick="closeLoginModal()" aria-label="Close">&times;</button>
-            </div>
-            <div class="v2-set-body">
-                <div class="v2-set-group">
-                    <div class="v2-set-label">Your FPL Team ID</div>
-                    <div class="v2-login-form">
-                        <input type="text" id="v2LoginInput" class="v2-set-input" inputmode="numeric"
-                            placeholder="e.g. 1234567" autocomplete="off"
-                            onkeypress="if (event.key === 'Enter') v2SubmitLogin()">
-                        <button class="btn btn-primary" onclick="v2SubmitLogin()">Continue</button>
-                    </div>
-                    <p class="v2-set-hint" id="v2LoginHint">Open your team on the FPL site: the number in
-                        <code>/entry/<b>1234567</b>/event/…</code> is your ID. It is stored in this browser
-                        and nothing is sent anywhere but the public FPL API.</p>
-                </div>
-                <div class="v2-set-group">
-                    <div class="v2-set-label">Just looking?</div>
-                    <button class="v2-set-ghost" onclick="v2LoginAsDemo()">Explore with a demo squad</button>
-                    <p class="v2-set-hint">Every page, filled with a sample team. You can put your own ID in later.</p>
-                </div>
-            </div>
-        </div>
-    </div>`);
-
-    document.body.classList.add('v2-blurred');
-    const el = document.getElementById('v2LoginModal');
-    if (el) requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
-    setTimeout(() => document.getElementById('v2LoginInput')?.focus(), 60);
-}
-
-function closeLoginModal(event) {
-    if (event && event.target !== event.currentTarget) return;
-    const el = document.getElementById('v2LoginModal');
-    document.body.classList.remove('v2-blurred');
-    if (!el) return;
-    el.classList.remove('open');
-    let done = false;
-    const drop = () => { if (done) return; done = true; el.remove(); };
-    el.addEventListener('transitionend', drop, { once: true });
-    setTimeout(drop, 320);
-}
-
-/* A team ID is digits. Anything else is a typo worth naming rather than a
-   reload that quietly does nothing. */
-function v2SubmitLogin() {
-    const input = document.getElementById('v2LoginInput');
-    const hint = document.getElementById('v2LoginHint');
-    if (!input) return;
-    const id = input.value.trim();
-    if (!/^\d+$/.test(id)) {
-        input.classList.add('is-bad');
-        if (hint) {
-            hint.textContent = id
-                ? 'That does not look like a Team ID — it is digits only, no letters or spaces.'
-                : 'Enter your Team ID to continue.';
-        }
-        input.focus();
-        return;
-    }
-    v2EnterWithTeam(id);
-}
-
-function v2LoginAsDemo() {
-    v2EnterWithTeam(DEMO_TEAM_ID);
-}
-
-/* The same submission, from the field in the landing bar.
+/* The login modal, the landing bar's ID field and v2EnterWithTeam() used to
+ * live here — about 120 lines that asked for a Team ID in a dialog over the
+ * landing page, plus the bar field that opened it.
  *
- * A good id goes straight in — that is the whole point of putting the field
- * in the bar rather than behind a button that opens a box containing a field.
+ * All of it is gone because the way in moved. /dashboard/ is the door now:
+ * scripts/dashboard-gate.js sends anybody without a saved id to the ID page,
+ * which asks the same question on a page of its own with room to answer it.
+ * A second place to type the same number, on the marketing page, was one
+ * place too many — and calling it "Log in" advertised an account the product
+ * deliberately does not have.
  *
- * Anything else opens the box, because the bar has nowhere to put a sentence.
- * The box already carries where-to-find-it and the demo squad, and it is 64
- * pixels tall up here with a burger and a theme switch beside it. A typo is
- * carried across so the reader corrects what they wrote rather than retyping
- * it, and the field is marked so the reason the box appeared is visible in
- * the thing that caused it. */
-function v2SubmitLandingId(event) {
-    if (event && typeof event.preventDefault === 'function') event.preventDefault();
-
-    const input = document.getElementById('v2LandingIdInput');
-    const id = input ? input.value.trim() : '';
-
-    if (!/^\d+$/.test(id)) {
-        if (input && id) input.classList.add('is-bad');
-        openLoginModal();
-        const inBox = document.getElementById('v2LoginInput');
-        if (inBox && id) inBox.value = id;
-        return false;
-    }
-
-    v2EnterWithTeam(id);
-    return false;
-}
-
-/* Save it and reload into the signed-in shell. A reload rather than
-   swapping the chrome in place: half this page is rendered for a visitor
-   with no squad, and re-running it against one is what every page already
-   does on a normal load. */
-function v2EnterWithTeam(teamId) {
-    try {
-        saveTeamId(teamId);
-    } catch (e) { /* private mode: nothing to save into, so nowhere to go */ }
-    location.href = 'index.html';
-}
+ * The demo squad went with it and came back on the ID page, which is where
+ * somebody deciding whether to hand over a number is actually standing.
+ */
 
 /* The theme row says which mode is on, so it has to be told when that
    changes — including by the fallback switch below it, and by another tab.
@@ -2092,17 +1984,17 @@ const DataCache = {
 // ===== DATA URLs (with 5-min cache busting) =====
 const CACHE_BUSTER = Math.floor(Date.now() / 300000);
 const DATA_URLS = {
-    bootstrap: 'data/bootstrap-static.json?v=' + CACHE_BUSTER,
-    fixtures:  'data/fixtures.json?v=' + CACHE_BUSTER,
-    players:   'data/players-data.json?v=' + CACHE_BUSTER,
-    teams:     'data/teams-data.json?v=' + CACHE_BUSTER,
-    eventLive: 'data/event-live.json?v=' + CACHE_BUSTER,
-    lastUpdated: 'data/last-updated.json?v=' + CACHE_BUSTER,
+    bootstrap: '/data/bootstrap-static.json?v=' + CACHE_BUSTER,
+    fixtures:  '/data/fixtures.json?v=' + CACHE_BUSTER,
+    players:   '/data/players-data.json?v=' + CACHE_BUSTER,
+    teams:     '/data/teams-data.json?v=' + CACHE_BUSTER,
+    eventLive: '/data/event-live.json?v=' + CACHE_BUSTER,
+    lastUpdated: '/data/last-updated.json?v=' + CACHE_BUSTER,
     // Bookmakers' prices for the upcoming round, written by
     // .github/workflows/fetch-odds.yml. Optional: the Matchday panel is the
     // only reader and it degrades to a message if the file is absent.
-    odds:      'data/odds.json?v=' + CACHE_BUSTER,
-    eo:        'data/eo.json?v=' + CACHE_BUSTER
+    odds:      '/data/odds.json?v=' + CACHE_BUSTER,
+    eo:        '/data/eo.json?v=' + CACHE_BUSTER
 };
 
 // ===== HTML ESCAPING =====
@@ -2279,7 +2171,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('footer.html?v=342')
+    fetch('/footer.html?v=343')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

@@ -411,37 +411,144 @@
    question down the rows. Our column is marked rather than coloured in
    wholesale — one tinted column reads as a comparison, three read as a
    graphic. */
-.lp-cmp { margin-top: 44px; overflow-x: auto; }
+/* ===== The comparison =====
+
+   Not a table with a tinted column. The EasyFPL column is a card standing on
+   top of the table — lifted, shadowed, rounded, taller than the rows either
+   side of it — because that is the one thing this section exists to say and a
+   7% background tint was saying it very quietly.
+
+   The lift is done with a shadow on every .is-us cell that has horizontal
+   offsets only. Each cell contributes the same glow down its left and right
+   edge, so the column reads as one continuous card with no seam between rows;
+   the first and last cell add the vertical half. A single element behind the
+   column would be cleaner and cannot be done in a table without measuring the
+   column in script and keeping it measured.
+
+   border-collapse: separate, because collapsed borders share edges between
+   cells and a shared edge cannot be rounded or shadowed independently. */
+/* The padding is the room the raised column's shadow needs; the negative
+   margin gives it back to the layout, so the table still starts and ends on
+   the page's own edges. Without it overflow-x clips the glow flat. */
+.lp-cmp {
+    margin-top: 44px; overflow-x: auto;
+    padding: 16px 0 26px;
+}
+/* Only where there is a gutter to borrow it from: the negative margin makes
+   this box wider than its parent, and on a phone the page grows sideways
+   instead. There the table scrolls anyway, so a clipped glow costs nothing. */
+@media (min-width: 760px) {
+    .lp-cmp { padding-inline: 26px; margin-inline: -26px; }
+}
 .lp-cmp-table {
-    width: 100%; min-width: 640px; border-collapse: collapse;
+    width: 100%; min-width: 700px;
+    border-collapse: separate; border-spacing: 0;
     font-size: 14px; text-align: left;
 }
 .lp-cmp-table th, .lp-cmp-table td {
-    padding: 15px 18px; border-bottom: 1px solid var(--border-subtle);
+    padding: 17px 20px;
     vertical-align: middle;
+    border-bottom: 1px solid var(--border-subtle);
 }
 .lp-cmp-table thead th {
     font-family: var(--font-display, 'Space Grotesk', sans-serif);
     font-size: 13px; font-weight: 650; color: var(--text-muted);
     letter-spacing: var(--lp-track-body) !important;
     border-bottom-color: var(--border-emphasis);
+    vertical-align: bottom;
+    padding-bottom: 14px;
 }
 .lp-cmp-table tbody th {
-    font-weight: 500; color: var(--text-primary);
+    font-weight: 550; color: var(--text-primary);
     letter-spacing: var(--lp-track-body) !important;
 }
-/* The one column that is ours, lit from the header down so the eye follows
-   it rather than hunting for it row by row. */
-.lp-cmp-table .is-us { background: color-mix(in srgb, var(--color-primary) 7%, transparent); }
-.lp-cmp-table thead .is-us {
-    color: var(--color-primary-text, var(--color-primary));
-    border-top-left-radius: 12px; border-top-right-radius: 12px;
+.lp-cmp-table tbody tr:last-child th,
+.lp-cmp-table tbody tr:last-child td:not(.is-us) { border-bottom: 0; }
+
+/* This is a marketing page, not a data table: nothing here responds to a
+   pointer, so nothing should light up under one. The rule doing it was a
+   dashboard rule that reaches any table inside .v2-main-content. */
+.v2-main-content .lp-cmp-table tbody tr:hover { background: none; }
+
+/* ---- the column that is ours ---- */
+.lp-cmp-table .is-us {
+    background: color-mix(in srgb, var(--color-primary) 9%, var(--surface-1));
+    border-bottom-color: color-mix(in srgb, var(--color-primary) 14%, transparent);
+    box-shadow:
+        -22px 0 38px -26px rgba(0, 0, 0, .75),
+         22px 0 38px -26px rgba(0, 0, 0, .75);
 }
-.lp-cmp-table tbody tr:last-child .is-us { border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
-.lp-cmp-yes { color: var(--text-primary); font-weight: 600; }
+.lp-cmp-table thead .is-us {
+    background: color-mix(in srgb, var(--color-primary) 14%, var(--surface-1));
+    color: var(--text-primary);
+    border-top-left-radius: 16px; border-top-right-radius: 16px;
+    border-bottom-color: color-mix(in srgb, var(--color-primary) 22%, transparent);
+    /* The card starts above the other headers rather than level with them. */
+    padding-top: 22px;
+    box-shadow:
+        -22px 0 38px -26px rgba(0, 0, 0, .75),
+         22px 0 38px -26px rgba(0, 0, 0, .75),
+          0 -16px 34px -22px rgba(0, 0, 0, .7);
+}
+.lp-cmp-table tbody tr:last-child .is-us {
+    border-bottom: 0;
+    border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;
+    padding-bottom: 24px;
+    box-shadow:
+        -22px 0 38px -26px rgba(0, 0, 0, .75),
+         22px 0 38px -26px rgba(0, 0, 0, .75),
+          0 20px 40px -24px rgba(0, 0, 0, .75);
+}
+
+/* The header's own line: the name, and a chip saying why it is the raised
+   one. Stacked, so the chip does not push the column wider. */
+.lp-cmp-us-head { display: flex; flex-direction: column; gap: 9px; align-items: flex-start; }
+.lp-cmp-us-name {
+    font-family: var(--font-display, 'Space Grotesk', sans-serif);
+    font-size: 17px; font-weight: 700;
+    letter-spacing: -0.02em !important;
+    color: var(--text-primary);
+}
+.lp-cmp-chip {
+    padding: 4px 10px; border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+    color: var(--color-primary-text, var(--color-primary));
+    font-size: 10px; font-weight: 700;
+    letter-spacing: .09em !important; text-transform: uppercase;
+}
+
+/* ---- the answers ---- */
+.lp-cmp-yes {
+    display: inline-flex; align-items: flex-start; gap: 8px;
+    color: var(--text-primary); font-weight: 600;
+}
+.lp-cmp-yes::before {
+    content: '';
+    flex: none; margin-top: 3px;
+    width: 15px; height: 15px; border-radius: 50%;
+    background: var(--color-primary);
+    /* The tick, drawn rather than fetched — this sits in seven cells and a
+       lucide icon in each is seven more nodes for one glyph. */
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 13 4 4 10-10'/%3E%3C/svg%3E") center / 11px 11px no-repeat,
+             linear-gradient(#000, #000);
+    -webkit-mask-composite: xor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 13 4 4 10-10'/%3E%3C/svg%3E") center / 11px 11px no-repeat,
+          linear-gradient(#000, #000);
+    mask-composite: exclude;
+}
 .lp-cmp-yes a { color: var(--color-primary-text, var(--color-primary)); }
 .lp-cmp-part { color: var(--text-secondary); }
-.lp-cmp-no { color: var(--text-muted); }
+/* A dash, not a cross. These are not failures — they are other people's
+   products doing less of this one thing, and a red X overstates it. */
+.lp-cmp-no { display: inline-flex; align-items: baseline; gap: 8px; color: var(--text-muted); }
+.lp-cmp-no::before {
+    content: '\2014';
+    color: color-mix(in srgb, var(--text-muted) 60%, transparent);
+}
+
+@media (max-width: 720px) {
+    .lp-cmp-table th, .lp-cmp-table td { padding: 14px 14px; }
+}
 
 /* ===== Testimonials ===== */
 .lp-quotes { margin-top: 48px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
@@ -519,4 +626,141 @@
     .lp-btn:hover { transform: none; }
     /* The drift is the decoration; the top of each screen is the content. */
     .lp-frame.is-pan img { animation: none; transform: none; }
+}
+
+/* ===== The wizard pages =====
+
+   The Transfer Wizard and the Lineup Wizard are the two screens somebody
+   actually opens on a Friday night, so their pages get a louder opening than
+   the six that describe a section of the site: a bigger title, a line of
+   numbers that says what the tool decides, and the screen itself on a stage
+   rather than dropped in a box below the fold.
+
+   Everything here is .fw- and lives only on those two pages. It deliberately
+   does not restyle .lp-hero — the rest of the site keeps one opening and
+   these two are the exception, which only reads as an exception while it
+   stays rare. */
+
+.fw-hero {
+    position: relative;
+    padding: clamp(72px, 9vw, 132px) 0 0;
+    text-align: center;
+    overflow: hidden;
+}
+/* The wash. Drawn behind rather than on the section so it can spill past the
+   content column without widening it. */
+.fw-hero::before {
+    content: '';
+    position: absolute;
+    inset: -20% -10% auto -10%;
+    height: 620px;
+    background:
+        radial-gradient(52% 58% at 50% 32%,
+            color-mix(in srgb, var(--color-primary) 17%, transparent), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+}
+.fw-hero > * { position: relative; z-index: 1; }
+
+.fw-eyebrow {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 32%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary-text, var(--color-primary));
+    font-size: 12px; font-weight: 700;
+    letter-spacing: .06em !important; text-transform: uppercase;
+}
+.fw-eyebrow svg, .fw-eyebrow .icon { width: 14px; height: 14px; }
+
+.fw-title {
+    margin: 22px auto 0;
+    max-width: 16ch;
+    font-family: var(--font-display, 'Space Grotesk', sans-serif);
+    font-size: clamp(42px, 6.2vw, 82px);
+    line-height: 0.98;
+    font-weight: 700;
+    letter-spacing: -0.045em !important;
+    color: var(--text-primary);
+    text-wrap: balance;
+}
+.fw-title em {
+    font-style: normal;
+    color: var(--color-primary-text, var(--color-primary));
+}
+.fw-lead {
+    margin: 22px auto 0;
+    max-width: 62ch;
+    font-size: clamp(15px, 1.35vw, 18px);
+    line-height: 1.6;
+    color: var(--text-secondary);
+    letter-spacing: var(--lp-track-lead) !important;
+}
+.fw-cta { margin-top: 30px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* What the tool decides, as three numbers. Not testimonials and not feature
+   bullets — the point is to say the size of the job before the screenshot
+   shows the screen that does it. */
+.fw-proof {
+    margin: 52px auto 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: 760px;
+    border: 1px solid var(--border-emphasis);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--surface-1) 72%, transparent);
+    overflow: hidden;
+}
+.fw-proof div { padding: 20px 18px; }
+.fw-proof div + div { border-left: 1px solid var(--border-emphasis); }
+.fw-proof b {
+    display: block;
+    font-family: var(--font-display, 'Space Grotesk', sans-serif);
+    font-size: clamp(22px, 2.4vw, 30px); font-weight: 700;
+    letter-spacing: -0.03em !important;
+    color: var(--text-primary);
+}
+.fw-proof span {
+    display: block; margin-top: 5px;
+    font-size: 12.5px; line-height: 1.45; color: var(--text-muted);
+}
+
+/* The stage. The screen sits wider than the prose and slightly below the
+   fold's edge, so the page opens on the product rather than on a paragraph
+   about it. */
+.fw-stage {
+    margin: clamp(48px, 6vw, 78px) auto 0;
+    max-width: min(1180px, 100%);
+    position: relative;
+}
+.fw-stage .lp-frame {
+    height: clamp(300px, 44vw, 620px);
+    --lp-pan: 20%;
+    box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .55);
+}
+
+@media (max-width: 760px) {
+    .fw-proof { grid-template-columns: 1fr; }
+    .fw-proof div + div { border-left: 0; border-top: 1px solid var(--border-emphasis); }
+}
+
+/* ---- the step rail, for "how it actually runs" ---- */
+.fw-steps { margin-top: 44px; display: flex; flex-direction: column; gap: 0; }
+.fw-step {
+    display: grid; grid-template-columns: 62px minmax(0, 1fr);
+    gap: 26px; padding: 26px 0;
+    border-top: 1px solid var(--border-subtle);
+}
+.fw-step:first-child { border-top: 0; padding-top: 0; }
+.fw-step-n {
+    font-family: var(--font-display, 'Space Grotesk', sans-serif);
+    font-size: 26px; font-weight: 700; line-height: 1;
+    letter-spacing: -0.03em !important;
+    color: color-mix(in srgb, var(--color-primary) 55%, var(--text-muted));
+}
+.fw-step h3 { margin: 0; font-size: 18px; }
+.fw-step p { margin: 8px 0 0; font-size: 14.5px; line-height: 1.7; color: var(--text-secondary); }
+@media (max-width: 680px) {
+    .fw-step { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 }

@@ -43,7 +43,7 @@
            tab has to say so rather than break the wizard around it. */
         function boLoadOdds() {
             if (boOddsPromise) return boOddsPromise;
-            const url = (typeof DATA_URLS !== 'undefined' && DATA_URLS.odds) || 'data/odds.json';
+            const url = (typeof DATA_URLS !== 'undefined' && DATA_URLS.odds) || '/data/odds.json';
             const load = (typeof DataCache !== 'undefined' && DataCache.fetchJSON)
                 ? DataCache.fetchJSON(url)
                 : fetch(url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });

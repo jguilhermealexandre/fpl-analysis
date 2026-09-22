@@ -28,8 +28,42 @@
 # every reload. Same 200-rewrite shape as /squad-analysis above, and for the
 # same reason: the clean URL is the one people end up sharing.
 #
-# Someone opening /dashboard without a saved Team ID gets the landing page,
-# which is the correct thing to show them; the page puts the URL back to / as
-# soon as a team is cleared.
+# ---------------------------------------------------------------- /dashboard
+#
+# Every signed-in screen lives under /dashboard/. It used to be only the home
+# screen, with the other six served from their own .html at the site root — so
+# the product's URLs were half one thing and half another, and no path said
+# "this is the app" except the one.
+#
+# 200 rewrites, not 301s: the clean URL is served in place, so a refresh keeps
+# it. Each page's assets are root-absolute for this reason — a relative
+# styles/common.css under /dashboard/players resolves to
+# /dashboard/styles/common.css and 404s.
+#
+# Order matters here: the named pages must precede the /dashboard/* catch-all,
+# or every one of them would be served the home screen instead.
+/dashboard/login          /welcome.html                 200
+/dashboard/my-team        /fpl-my-team-analysis.html    200
+/dashboard/squad          /fpl-my-team-analysis.html    200
+/dashboard/players        /fpl-players-analysis.html    200
+/dashboard/teams          /fpl-teams-analysis.html      200
+/dashboard/rivals         /fpl-league-rivals.html       200
+/dashboard/scouts-desk    /fpl-scouts-desk.html         200
+/dashboard/news           /fpl-news.html                200
+/dashboard/premium        /premium.html                 200
+
+# The old root paths keep working so nothing already linked or bookmarked
+# breaks; 301 because the /dashboard/ URL is the canonical one now.
+/fpl-my-team-analysis.html   /dashboard/my-team       301
+/fpl-players-analysis.html   /dashboard/players       301
+/fpl-teams-analysis.html     /dashboard/teams         301
+/fpl-league-rivals.html      /dashboard/rivals        301
+/fpl-scouts-desk.html        /dashboard/scouts-desk   301
+/fpl-news.html               /dashboard/news          301
+/welcome.html                /dashboard/login         301
+
+# Someone opening /dashboard without a saved Team ID is sent to the ID page by
+# the gate in common.js; the rewrite here only decides which file answers.
 /dashboard      /index.html   200
+/dashboard/     /index.html   200
 /dashboard/*    /index.html   200
