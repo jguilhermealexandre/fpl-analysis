@@ -81,6 +81,14 @@ jobs:
             }
           "
 
+      # The pages load .webp at two widths, built from these captures. Without
+      # this step a fresh capture lands as a PNG nothing references, and the
+      # landing page keeps serving the previous week's screenshots.
+      - name: Encode for the web
+        run: |
+          npm install --no-save sharp@^0.35.4
+          node tools/encode-lp-shots.mjs
+
       - name: Commit
         run: |
           git config user.name "github-actions[bot]"

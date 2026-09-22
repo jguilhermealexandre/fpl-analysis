@@ -33,15 +33,24 @@ jobs:
         with:
           node-version: '20'
 
-      # No lockfile and three dev dependencies, so a plain install is fine and
-      # keeps the repo free of node_modules bookkeeping.
+      # No lockfile and a handful of dev dependencies, so a plain install is
+      # fine and keeps the repo free of node_modules bookkeeping. esbuild and
+      # lightningcss are here for check:min, which re-minifies every source and
+      # fails if the committed .min files do not match.
       - name: Install dev dependencies
-        run: npm install --no-save eslint@^9.12.0 @eslint/js@^9.12.0 globals@^15.11.0
+        run: npm install --no-save eslint@^9.12.0 @eslint/js@^9.12.0 globals@^15.11.0 esbuild@^0.25.0 lightningcss@^1.30.0
 
       # Both of these were verified against the current tree before landing, so
       # they are blocking from day one.
       - name: No colliding globals
         run: node tools/check-globals.mjs
+
+      # The pages load styles/x.min.css and scripts/x.min.js, which are built
+      # from the files beside them and committed. Editing a source without
+      # running `npm run build` would ship the old bytes, silently — this is
+      # the check that stops it, the same shape as the generated eslint config.
+      - name: Minified assets match their source
+        run: node tools/minify.mjs --check
 
       - name: Asset version stamped everywhere
         run: node tools/check-versions.mjs

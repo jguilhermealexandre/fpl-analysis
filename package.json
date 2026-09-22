@@ -1,7 +1,7 @@
 {
   "name": "easyfpl",
   "private": true,
-  "description": "EasyFPL \u2014 static FPL analysis site. No bundler by design; see eslint.config.js.",
+  "description": "EasyFPL — static FPL analysis site. No bundler by design; see eslint.config.js.",
   "scripts": {
     "dev": "node tools/dev-server.mjs",
     "test": "node --test tests/*.test.mjs",
@@ -15,15 +15,21 @@
     "gen:globals": "node tools/gen-eslint-globals.mjs",
     "stamp": "node tools/stamp-version.mjs",
     "log": "git log --oneline --invert-grep --grep='^Update FPL data' --grep='^Refresh live FPL data'",
-    "check": "npm run lint && npm run check:globals && npm run check:gen && npm run check:versions && npm run check:bump && npm run check:inline && npm run check:css && npm run check:preload && npm test",
+    "check": "npm run lint && npm run check:globals && npm run check:gen && npm run check:min && npm run check:versions && npm run check:bump && npm run check:inline && npm run check:css && npm run check:preload && npm test",
     "check:sri": "node tools/check-sri.mjs",
     "check:photos": "node tools/check-player-photos.mjs",
     "check:gen": "node tools/check-gen-globals.mjs",
-    "rerender:articles": "node tools/rerender-articles.mjs"
+    "rerender:articles": "node tools/rerender-articles.mjs",
+    "build": "node tools/minify.mjs",
+    "check:min": "node tools/minify.mjs --check",
+    "encode:shots": "node tools/encode-lp-shots.mjs"
   },
   "devDependencies": {
-    "eslint": "^9.12.0",
     "@eslint/js": "^9.12.0",
-    "globals": "^15.11.0"
+    "esbuild": "^0.28.2",
+    "eslint": "^9.12.0",
+    "globals": "^15.11.0",
+    "lightningcss": "^1.33.0",
+    "sharp": "^0.35.4"
   }
 }

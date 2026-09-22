@@ -100,7 +100,7 @@ const APP_PAGES = [
 test('every page under /dashboard/ loads the gate, in the head', () => {
     for (const page of APP_PAGES) {
         const html = fs.readFileSync(path.join(ROOT, page), 'utf8');
-        const tag = html.indexOf('scripts/dashboard-gate.js');
+        const tag = html.search(/scripts\/dashboard-gate(\.min)?\.js/);
         assert.ok(tag > -1, `${page} does not load the gate`);
 
         /* Before the body, or the page has already started drawing itself to

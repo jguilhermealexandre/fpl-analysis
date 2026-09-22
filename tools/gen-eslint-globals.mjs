@@ -16,7 +16,9 @@ import { pages } from './page-scripts.mjs';
 
 const names = new Set();
 for (const f of fs.readdirSync('scripts').sort()) {
-    if (f.endsWith('.js') && f !== 'build-articles.js') {
+    // .min.js is generated from the file beside it and declares the same
+    // names; scanning both would list every global twice.
+    if (f.endsWith('.js') && !f.endsWith('.min.js') && f !== 'build-articles.js') {
         for (const n of topLevelNames(fs.readFileSync(`scripts/${f}`, 'utf8'))) names.add(n);
     }
 }

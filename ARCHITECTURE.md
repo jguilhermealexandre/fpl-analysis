@@ -385,3 +385,26 @@ delete a file, remove it from there and bump `CACHE_NAME`.
 - **`git log` is ~65% automated data commits.** `npm run log` filters them.
 - **`.git` is ~220 MB**, growing a few MB a day from data commits. Fine for
   months; wants a decision eventually.
+
+## Built assets
+
+Two things in this repo are generated and committed, and both have a check
+that fails if they drift from their source.
+
+**Minified CSS and JS.** `styles/x.css` and `scripts/x.js` are the sources —
+still commented, still classic scripts sharing one global scope. The pages
+load `styles/x.min.css` and `scripts/x.min.js`, built by `npm run build`
+(`tools/minify.mjs`). Identifiers are deliberately *not* minified: every one
+of these files declares globals the next one and the inline `onclick=`
+handlers reach for by name.
+
+Edit a source, run `npm run build`, commit both. `npm run check:min`
+re-minifies and fails if any committed file differs, so forgetting is a red
+CI rather than stale bytes in production.
+
+**Landing page screenshots.** `tools/capture-lp-shots.mjs` captures PNGs,
+which is the right format to capture in and the wrong one to serve.
+`tools/encode-lp-shots.mjs` (`npm run encode:shots`) writes `-700.webp` and
+`-1400.webp` beside each, and the markup asks for whichever fits. The capture
+workflow runs both, so a fresh capture cannot land as a PNG nothing
+references.

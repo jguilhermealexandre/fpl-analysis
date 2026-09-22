@@ -131,7 +131,10 @@ const RAW_FLAG = /\bf\.finished\b/;   // \b will not match f.finished_provisiona
 test('nothing partitions fixtures on the slow flag', () => {
     const files = [
         ...fs.readdirSync(ROOT).filter(f => f.endsWith('.html')),
-        ...fs.readdirSync(path.join(ROOT, 'scripts')).filter(f => f.endsWith('.js')).map(f => `scripts/${f}`)
+        // .min.js is tools/minify.mjs output — the same code again, and an
+        // offender there is only ever an offender in the source beside it.
+        ...fs.readdirSync(path.join(ROOT, 'scripts'))
+            .filter(f => f.endsWith('.js') && !f.endsWith('.min.js')).map(f => `scripts/${f}`)
     ];
     const offenders = [];
     for (const file of files) {
