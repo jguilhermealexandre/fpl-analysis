@@ -23,10 +23,16 @@ import path from 'node:path';
 import sharp from 'sharp';
 
 const DIR = 'assets/lp';
-/* The two the markup asks for. 1400 is the widest any of these is ever drawn
-   (the full-measure .lp-wide frame on a 1400px column, at 1x); 700 covers
-   every phone at 2x. Captures are 2400-3000px wide, which nothing displays. */
-const WIDTHS = [1400, 700];
+/* The three the markup asks for. 1400 is the widest any of these is ever
+   drawn (the full-measure .lp-wide frame on a 1400px column, at 1x).
+   
+   1000 is the one that matters on a phone and was missing: a 412px viewport
+   at device-pixel-ratio 2 needs about 824 real pixels, so with only 700 and
+   1400 to choose from the browser correctly took the 1400 — 80KB where 35
+   would do, for the image that turned out to be the largest paint.
+   
+   Captures are 2400-3000px wide, which nothing displays. */
+const WIDTHS = [1400, 1000, 700];
 const QUALITY = 82;
 
 const only = process.argv[2] || '';

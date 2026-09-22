@@ -13,9 +13,9 @@ import vm from 'node:vm';
 /* Pulled out on its own rather than by evaluating the page, which boots a
    dashboard when it loads. Only the URL surface it reads is stubbed. */
 function nextFor(search) {
-    const html = fs.readFileSync('index.html', 'utf8');
+    const html = fs.readFileSync('scripts/index-page.js', 'utf8');
     const src = /function nextAfterSignIn\(\)[\s\S]*?\n {8}\}/.exec(html);
-    assert.ok(src, 'nextAfterSignIn() not found in index.html');
+    assert.ok(src, 'nextAfterSignIn() not found in scripts/index-page.js');
     const ctx = vm.createContext({
         URL, URLSearchParams,
         location: { search, origin: 'https://easyfpl.co.uk' }

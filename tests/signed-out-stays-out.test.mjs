@@ -114,9 +114,12 @@ test('a page without auth.js hands the sign-out to one that has it', async () =>
     assert.equal(location.href, 'index.html?signout=1');
 });
 
+/* index.html's 131KB inline block is scripts/index-page.js now — it was the
+   bulk of a render-blocking document. These assertions are about that code,
+   so they read it where it lives. */
 test('the landing page acts on that hand-off', () => {
-    const html = read('index.html');
-    assert.ok(/signout'\) === '1'/.test(html), 'index.html reads the flag');
+    const html = read('scripts/index-page.js');
+    assert.ok(/signout'\) === '1'/.test(html), 'the page script reads the flag');
     const region = html.slice(html.indexOf("signout') === '1'"));
     assert.ok(region.slice(0, 400).includes('auSignOut('),
         'and actually signs out rather than only tidying the address bar');
@@ -124,9 +127,9 @@ test('the landing page acts on that hand-off', () => {
 
 test('adopting the account team cannot happen without a sign-in', () => {
     /* The loop's other half. Asserted against the source because the guard is
-       an inline block on the landing page, and what matters is not what it
-       computes but that nothing reaches the call without passing it. */
-    const html = read('index.html');
+       a plain block on the landing page's script, and what matters is not
+       what it computes but that nothing reaches the call without passing it. */
+    const html = read('scripts/index-page.js');
     const calls = html.split('adoptTeamIdFromAccount(').length - 1;
     assert.equal(calls, 1, 'one call site; a second would need its own guard');
 
@@ -149,7 +152,7 @@ test('signing in still sets the mark, so a new device still finds the squad', ()
 });
 
 test('the mark is read once and then gone', () => {
-    const html = read('index.html');
+    const html = read('scripts/index-page.js');
     assert.ok(html.includes("sessionStorage.removeItem('easyfpl_signed_in')"),
         'a mark that survives is the every-load behaviour again, one step removed');
 });

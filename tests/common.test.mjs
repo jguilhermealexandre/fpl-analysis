@@ -214,7 +214,7 @@ test('a transient FPL outage does not undress the dashboard', () => {
        and onTeamIdCleared() must not run when it was kept: it strips
        .has-team, which is what puts the marketing page back underneath a
        sidebar that is still signed in. */
-    const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const src = fs.readFileSync(path.join(ROOT, 'scripts/index-page.js'), 'utf8');
     const block = /const transient = [\s\S]{0,900}?\n {16}\}/.exec(src);
     assert.ok(block, 'the transient-error branch should still be there');
     const cleared = block[0].indexOf('onTeamIdCleared');
