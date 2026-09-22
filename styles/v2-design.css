@@ -3084,59 +3084,15 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
    be stated here instead of inherited from <button>. */
 .v2-landing-login { display: inline-flex; align-items: center; text-decoration: none; }
 
-/* ===== The Team ID, typed in the bar =====
+/* The Team ID pill that used to live in this bar is gone — the field, its Go
+   button, the focus ring they shared and the 560px swap to a fallback button.
+   The bar has a Log in link now and /dashboard/login asks for the number, on
+   a page with room to say where to find it. About sixty lines, deleted rather
+   than left behind a display:none, because a second front door nobody can
+   reach is still a second front door to keep working.
 
-   A pill that reads as one control: the field and its button share a border
-   that lights up together on focus. Sized so the bar still fits a logo, a
-   theme switch and a burger at 900px, where the page links have already
-   dropped into the drawer.
-
-   Below 560px it gives up and hands over to .v2-landing-id-fallback, which is
-   the old button. Exactly one of the two is ever displayed — the selectors
-   carry both class names so the rule wins on specificity rather than on which
-   happens to come last. */
-.v2-landing-id {
-    display: flex; align-items: center; gap: 6px;
-    padding: 3px 3px 3px 13px;
-    border: 1px solid var(--border-emphasis);
-    border-radius: 999px;
-    background: var(--surface-1);
-    transition: border-color 140ms ease;
-}
-.v2-landing-id:focus-within { border-color: var(--color-primary); }
-/* The html[data-theme] prefix is not decoration: common.css fills every text
-   input with --surface-0 at (0,2,1), which out-specified a plain
-   `.v2-landing-id input` and painted the field a shade darker than the pill
-   around it — so the field read as a box sitting inside the pill instead of
-   part of it. Naming html as well takes this to (0,2,2). */
-.v2-landing-id input,
-html[data-theme="dark"] .v2-landing-id input,
-html[data-theme="light"] .v2-landing-id input {
-    width: 100px; min-width: 0;
-    border: none; outline: none; padding: 0;
-    background: transparent;
-    font-family: inherit; font-size: 13px; font-weight: 600;
-    color: var(--text-primary);
-}
-.v2-landing-id input::placeholder { color: var(--text-muted); font-weight: 500; }
-.v2-landing-id input.is-bad { color: var(--color-error); }
-.v2-landing-id-go {
-    padding: 7px 15px;
-    border: none; border-radius: 999px;
-    background: var(--color-primary);
-    color: #fff;
-    font-family: inherit; font-size: 12.5px; font-weight: 700;
-    white-space: nowrap; cursor: pointer;
-    transition: filter 140ms ease;
-}
-.v2-landing-id-go:hover { filter: brightness(1.07); }
-
-.v2-landing-login.v2-landing-id-fallback { display: none; }
-
-@media (max-width: 560px) {
-    .v2-landing-id { display: none; }
-    .v2-landing-login.v2-landing-id-fallback { display: inline-flex; }
-}
+   scripts/dashboard-gate.js is the other half of that: it sends anybody who
+   opens an app screen without a saved id to the same page. */
 
 /* Signing in is the thing a returning reader does and creating an account is
    the thing a new one does; only one of them can be the loud one, and on a
@@ -3259,11 +3215,8 @@ html[data-theme="light"] .v2-landing-id input {
         background: var(--color-primary-muted);
     }
 
-    /* The bar is tighter here, and the field has to fit beside a burger. */
+    /* The bar is tighter here, and the button sits beside a burger. */
     .v2-landing-login { padding: 9px 14px; }
-    .v2-landing-id { padding-left: 11px; }
-    .v2-landing-id input { width: 82px; }
-    .v2-landing-id-go { padding: 7px 12px; }
 }
 
 /* One column once two of them would be narrower than the longest label. */

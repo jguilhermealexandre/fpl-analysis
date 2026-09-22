@@ -856,48 +856,15 @@ function v2AccountName() {
     return 'Your team';
 }
 
-/* Signing in from the landing bar.
+/* v2SubmitLandingId() and v2EnterWithTeam() lived here — the handler behind
+ * the Team ID field in the landing bar, and the one that saved an id and
+ * opened the dashboard.
  *
- * A good id goes straight through — that is the whole point of putting the
- * field in the bar rather than behind a button that opens a box containing a
- * field.
- *
- * Anything else hands over to /dashboard/login, which is the page the gate
- * sends people to anyway: it has room for where-to-find-your-id and for the
- * demo squad, neither of which fits in a 64px bar. What was typed goes with
- * it so the reader corrects what they wrote rather than retyping it, and the
- * field is marked so the reason they were moved is visible in the thing that
- * caused it.
- *
- * This used to open a modal over the landing page instead. The modal was a
- * second copy of that page, and the two drifted.
+ * Both are gone with the field. The bar has a Log in link to /dashboard/login
+ * now, which is the page scripts/dashboard-gate.js already sends people to,
+ * and welcome.html does the saving. Two places asked for the same number and
+ * only one of them had room to explain it.
  */
-function v2SubmitLandingId(event) {
-    if (event && typeof event.preventDefault === 'function') event.preventDefault();
-
-    const input = document.getElementById('v2LandingIdInput');
-    const id = input ? input.value.trim() : '';
-
-    if (!/^\d+$/.test(id)) {
-        if (input && id) input.classList.add('is-bad');
-        location.href = '/dashboard/login' + (id ? '?id=' + encodeURIComponent(id) : '');
-        return false;
-    }
-
-    v2EnterWithTeam(id);
-    return false;
-}
-
-/* Save it and go. Straight to /dashboard/ rather than to the page we are on:
-   half of this page is written for a visitor with no squad, and the dashboard
-   is what the id was for. */
-function v2EnterWithTeam(teamId) {
-    try {
-        saveTeamId(teamId);
-    } catch (e) { /* private mode: nothing to save into, so nowhere to go */ }
-    location.href = '/dashboard/';
-}
-
 
 /* The theme row says which mode is on, so it has to be told when that
    changes — including by the fallback switch below it, and by another tab.
@@ -2249,7 +2216,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=347')
+    fetch('/footer.html?v=348')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

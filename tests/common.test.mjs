@@ -149,49 +149,34 @@ test('the ID page will not redirect off the app', () => {
     }
 });
 
-test('the landing bar and the ID page agree on one handler', () => {
-    /* The handler is an inline attribute in a fetch-injected partial, so
-       nothing links the two: rename one and the field silently submits the
-       form to nowhere. */
+test('the landing bar has one way in, and it is the ID page', () => {
+    /* The bar used to carry the Team ID field itself, with a fallback button
+       for narrow screens — two ways in, three things to keep in step, and the
+       page that explains where to find the number was the third. It is a link
+       now, and this fails if the field comes back without the rest of it. */
     const nav = fs.readFileSync(path.join(ROOT, 'landing-nav.html'), 'utf8');
-    const called = /onsubmit="return (\w+)\(event\)"/.exec(nav);
-    assert.ok(called, 'the landing form should submit through a named handler');
-    assert.match(fs.readFileSync(path.join(ROOT, 'scripts/common.js'), 'utf8'),
-        new RegExp(`function ${called[1]}\\(`), `${called[1]}() is not defined in common.js`);
+    assert.match(nav, /class="v2-landing-login" href="\/dashboard\/login"/,
+        'the bar should link to the ID page');
+    assert.ok(!/v2-landing-id|v2LandingIdInput/.test(nav),
+        'the Team ID field should not be back in the bar');
 });
 
-test('exactly one way in is shown at a time', () => {
-    /* The field and the narrow-screen fallback are both in the markup; CSS
-       picks. If the pairing rule is lost, a narrow screen shows both or
-       neither. */
+test('the bar and the gate send people to the same page', () => {
+    /* Two front doors that drift apart is the failure this prevents: the gate
+       is what an app screen uses and the bar is what the marketing page uses,
+       and they have to name one page. */
     const nav = fs.readFileSync(path.join(ROOT, 'landing-nav.html'), 'utf8');
-    assert.match(nav, /class="v2-landing-id"/);
-    assert.match(nav, /v2-landing-id-fallback/);
-    const css = fs.readFileSync(path.join(ROOT, 'styles/v2-design.css'), 'utf8');
-    assert.match(css, /\.v2-landing-login\.v2-landing-id-fallback\s*\{\s*display:\s*none/,
-        'the fallback must be hidden by default, at a specificity that beats .v2-landing-login');
-    assert.match(css, /@media \(max-width: 560px\)[\s\S]{0,240}\.v2-landing-id\s*\{\s*display:\s*none/,
-        'and the field must give way to it on a narrow screen');
-});
-
-test('both ways in lead to the same place', () => {
-    /* The bar is a shortcut past the ID page, not a second copy of it: the
-       fallback link and the gate must point at the same page, or there are two
-       different front doors to keep in step. */
-    const nav = fs.readFileSync(path.join(ROOT, 'landing-nav.html'), 'utf8');
-    assert.match(nav, /class="v2-landing-login v2-landing-id-fallback" href="\/dashboard\/login"/,
-        'the narrow-screen fallback should link to the ID page');
-
     const gate = fs.readFileSync(path.join(ROOT, 'scripts/dashboard-gate.js'), 'utf8');
-    assert.match(gate, /'\/dashboard\/login\?next='/, 'the gate should send people to the same page');
+    assert.match(nav, /href="\/dashboard\/login"/);
+    assert.match(gate, /'\/dashboard\/login\?next='/);
 
-    /* And a good id skips it entirely, landing in the app rather than back on
-       the page the field is on. */
+    /* And that page is the only thing that writes an id from a form. */
+    const welcome = fs.readFileSync(path.join(ROOT, 'welcome.html'), 'utf8');
+    assert.match(welcome, /saveTeamId\(raw\)/, 'the ID page should still save the id');
+
     const common = fs.readFileSync(path.join(ROOT, 'scripts/common.js'), 'utf8');
-    const enter = /function v2EnterWithTeam\(teamId\) \{([\s\S]*?)\n\}/.exec(common);
-    assert.ok(enter, 'v2EnterWithTeam() should still exist');
-    assert.match(enter[1], /location\.href = '\/dashboard\/'/,
-        'a saved id should open the dashboard');
+    assert.ok(!/function v2SubmitLandingId\(|function v2EnterWithTeam\(/.test(common),
+        'the landing bar handlers should be gone with the field');
 });
 
 test('nothing fetches a relative path', () => {
