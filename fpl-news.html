@@ -6,7 +6,7 @@
     <link rel="manifest" href="manifest.json">
     <title>FPL News Hub — Premier League Injury & Team News | EasyFPL</title>
     <meta name="description" content="Premier League injury news and team updates for Fantasy Premier League managers, pulled from club sources and the official injury table every few hours.">
-    <link rel="canonical" href="https://easyfpl.com/fpl-news">
+    <link rel="canonical" href="https://easyfpl.com/dashboard/news">
     <meta name="theme-color" content="#0a0f1a">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <!-- The data URI stays as the fallback for anything that will not take an
@@ -25,10 +25,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-    <script src="/scripts/dashboard-gate.js?v=346"></script>
-    <link rel="stylesheet" href="/styles/common.css?v=346">
-    <link rel="stylesheet" href="/styles/v2-design.css?v=346">
-    <link rel="stylesheet" href="/styles/responsive.css?v=346">
+    <script src="/scripts/dashboard-gate.js?v=347"></script>
+    <link rel="stylesheet" href="/styles/common.css?v=347">
+    <link rel="stylesheet" href="/styles/v2-design.css?v=347">
+    <link rel="stylesheet" href="/styles/responsive.css?v=347">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -1121,15 +1121,15 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="/scripts/error-monitor.js?v=346"></script>
-    <script src="/scripts/auth.js?v=346"></script>
-    <script src="/scripts/injury-feed.js?v=346"></script>
-    <script src="/scripts/common.js?v=346"></script>
+    <script src="/scripts/error-monitor.js?v=347"></script>
+    <script src="/scripts/auth.js?v=347"></script>
+    <script src="/scripts/injury-feed.js?v=347"></script>
+    <script src="/scripts/common.js?v=347"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="/scripts/push-alerts.js?v=346"></script>
-    <script src="/scripts/notifications.js?v=346"></script>
-    <script src="/scripts/sidebar-nav.js?v=346"></script>
+    <script src="/scripts/push-alerts.js?v=347"></script>
+    <script src="/scripts/notifications.js?v=347"></script>
+    <script src="/scripts/sidebar-nav.js?v=347"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1270,7 +1270,7 @@
                an error — but it is the only source here that cannot silently
                return nothing, because the job that writes it fails loudly. */
             try {
-                const plRes = await fetch('data/pl-news.json?v=' + Math.floor(Date.now() / 300000));
+                const plRes = await fetch('/data/pl-news.json?v=' + Math.floor(Date.now() / 300000));
                 if (plRes.ok) {
                     const pl = await plRes.json();
                     (pl.items || []).forEach(a => {
@@ -1311,7 +1311,7 @@
                failed job is a page with fewer pictures rather than no news. */
             const servedFromFile = new Set();
             try {
-                const nfRes = await fetch('data/news-feeds.json?v=' + Math.floor(Date.now() / 300000));
+                const nfRes = await fetch('/data/news-feeds.json?v=' + Math.floor(Date.now() / 300000));
                 if (nfRes.ok) {
                     const nf = await nfRes.json();
                     (nf.feeds || []).forEach(f => {
@@ -1683,7 +1683,7 @@
                on it. */
             async function fetchInjuries() {
                 try {
-                    const res = await fetch('data/injuries.json?v=' + Math.floor(Date.now() / 300000));
+                    const res = await fetch('/data/injuries.json?v=' + Math.floor(Date.now() / 300000));
                     if (!res.ok) return [];
                     const d = await res.json();
                     return d && Array.isArray(d.items) ? d.items : [];

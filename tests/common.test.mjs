@@ -193,3 +193,47 @@ test('both ways in lead to the same place', () => {
     assert.match(enter[1], /location\.href = '\/dashboard\/'/,
         'a saved id should open the dashboard');
 });
+
+test('nothing fetches a relative path', () => {
+    /* The one that actually bit.
+     *
+     * Every app screen is served from /dashboard/, so a relative
+     * fetch('data/bootstrap-static.json') resolves to
+     * /dashboard/data/bootstrap-static.json. That does not 404 — the
+     * /dashboard/* catch-all in _redirects answers it with index.html, 200 —
+     * so r.ok is true and r.json() throws on the HTML. The dashboard read
+     * that as "your team could not be loaded" and put the landing page back,
+     * inside the signed-in sidebar, for every Team ID.
+     *
+     * The cost of the mistake is entirely out of proportion to how easy it is
+     * to make, which is what a test is for. */
+    const files = [
+        ...fs.readdirSync(ROOT).filter(f => f.endsWith('.html')),
+        ...fs.readdirSync(path.join(ROOT, 'scripts')).map(f => `scripts/${f}`)
+    ];
+    const offenders = [];
+    for (const f of files) {
+        const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
+        for (const m of src.matchAll(/fetch\(\s*['"`]([^'"`$)]+)/g)) {
+            const url = m[1];
+            if (/^(https?:|\/|\.\.\/)/.test(url)) continue;
+            offenders.push(`${f}: fetch('${url}')`);
+        }
+    }
+    assert.deepEqual(offenders, [],
+        'these resolve against /dashboard/ on every app screen — make them root-absolute');
+});
+
+test('a transient FPL outage does not undress the dashboard', () => {
+    /* The id is deliberately kept through a 503 so nobody has to retype it,
+       and onTeamIdCleared() must not run when it was kept: it strips
+       .has-team, which is what puts the marketing page back underneath a
+       sidebar that is still signed in. */
+    const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    const block = /const transient = [\s\S]{0,900}?\n {16}\}/.exec(src);
+    assert.ok(block, 'the transient-error branch should still be there');
+    const cleared = block[0].indexOf('onTeamIdCleared');
+    const notTransient = block[0].indexOf('if (!transient)');
+    assert.ok(cleared > -1 && notTransient > -1 && cleared > notTransient,
+        'onTeamIdCleared() must sit inside the !transient branch');
+});

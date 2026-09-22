@@ -24,8 +24,16 @@
        and there is nothing to gate. */
     if (path.indexOf('/dashboard') !== 0) return;
 
-    /* The ID page itself, which would otherwise redirect to itself forever. */
-    if (path === '/dashboard/login') return;
+    /* Pages that belong in the app but do not need a squad.
+     *
+     * The ID page itself, which would otherwise redirect to itself forever;
+     * and the two free reads. The Scout's Desk and the News Hub are written
+     * for everybody — asking for a Team ID before letting somebody read this
+     * week's article is asking for something the article does not use. They
+     * live under /dashboard/ because that is where they belong in the
+     * product, not because they are behind anything. */
+    var OPEN = ['/dashboard/login', '/dashboard/scouts-desk', '/dashboard/news'];
+    if (OPEN.indexOf(path.replace(/\/+$/, '')) !== -1) return;
 
     var id = null;
     try { id = localStorage.getItem('fpl_team_id'); } catch (e) {

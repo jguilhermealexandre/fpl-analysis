@@ -206,7 +206,9 @@ function main() {
      * noindex — so submitting them is asking Google to index a redirect to a
      * page that refuses to be indexed. They come back the day they serve a
      * public preview instead. */
-    const pages = ['', 'fpl-scouts-desk', 'fpl-news', 'fpl-how-it-works', 'fpl-faq',
+    /* The Desk and the News Hub are free and indexable, and they live at
+       /dashboard/. Submitting their old root spellings would submit a 301. */
+    const pages = ['', 'dashboard/scouts-desk', 'dashboard/news', 'fpl-how-it-works', 'fpl-faq',
         'fpl-methodology', 'fpl-privacy', 'fpl-contact',
         /* The marketing pages built since this list was written. They are
            public, they are the pages a search for "fpl transfer planner" should

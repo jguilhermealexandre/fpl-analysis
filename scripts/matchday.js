@@ -447,8 +447,8 @@
         function mdRefreshLive() {
             const bust = Math.floor(Date.now() / 60000);
             Promise.all([
-                fetch(`data/fixtures.json?v=${bust}`).then(r => r.ok ? r.json() : null).catch(() => null),
-                fetch(`data/event-live.json?v=${bust}`).then(r => r.ok ? r.json() : null).catch(() => null)
+                fetch(`/data/fixtures.json?v=${bust}`).then(r => r.ok ? r.json() : null).catch(() => null),
+                fetch(`/data/event-live.json?v=${bust}`).then(r => r.ok ? r.json() : null).catch(() => null)
             ]).then(([fixtures, eventLive]) => {
                 if (Array.isArray(fixtures) && fixtures.length) mdCtx.fixtures = fixtures;
                 if (eventLive && eventLive.elements) mdSetLive({ eventLive });
