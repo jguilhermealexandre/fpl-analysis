@@ -592,12 +592,7 @@
 
         function openGameweekReview() {
             const r = buildGameweekReview();
-            const title = document.getElementById('optReportTitle');
-            /* innerHTML, not textContent: this string carries the section
-               icon, and textContent printed "<svg class=..." across the top
-               of the panel as a line of markup. The gameweek number is the
-               only interpolated part and it is a number. */
-            if (title) title.innerHTML = `${v2Icon('chart')} Gameweek ${r ? Number(r.gw) : Number(currentGW)} review`;
+            v2SetPanelTitle('optReportTitle', `Gameweek ${r ? Number(r.gw) : Number(currentGW)} review`, 'chart');
             document.getElementById('optReportBody').innerHTML = renderGameweekReview(r);
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();

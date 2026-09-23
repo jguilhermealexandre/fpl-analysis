@@ -1347,8 +1347,7 @@
         }
 
         function openOptimizeReport() {
-            const title = document.getElementById('optReportTitle');
-            if (title) title.textContent = `${v2Icon('chart')} Optimization report`;
+            v2SetPanelTitle('optReportTitle', 'Optimization report', 'chart');
             document.getElementById('optReportBody').innerHTML = renderOptimizeReportModal();
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();

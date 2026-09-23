@@ -918,8 +918,7 @@
 
         function openLineupOptimizeReport() {
             if (!lineupState.optimizeReport) return;
-            const title = document.getElementById('optReportTitle');
-            if (title) title.textContent = `${v2Icon('chart')} GW${planningGW} — what Auto-optimise changed`;
+            v2SetPanelTitle('optReportTitle', `GW${Number(planningGW)} — what Auto-optimise changed`, 'chart');
             document.getElementById('optReportBody').innerHTML = renderLWChangeReport(lineupState.optimizeReport);
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();

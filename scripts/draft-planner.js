@@ -824,8 +824,7 @@
             const ds = getActiveDraft();
             const report = ds.optimizeReports && ds.optimizeReports[gw];
             if (!report) return;
-            const title = document.getElementById('optReportTitle');
-            if (title) title.textContent = `${v2Icon('chart')} GW${gw} optimization report`;
+            v2SetPanelTitle('optReportTitle', `GW${Number(gw)} optimization report`, 'chart');
             document.getElementById('optReportBody').innerHTML = renderOptimizeReportModal(report, gw);
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -2398,8 +2397,7 @@
         }
 
         function openDraftSuggestSummary() {
-            const title = document.getElementById('optReportTitle');
-            if (title) title.textContent = 'Auto-suggested transfers';
+            v2SetPanelTitle('optReportTitle', 'Auto-suggested transfers', 'sparkle');
             document.getElementById('optReportBody').innerHTML = renderDraftSuggestSummaryModal();
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();

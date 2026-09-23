@@ -1820,6 +1820,7 @@ export default [
                 v2RenderNewsCards: 'writable',
                 v2SaveSettings: 'writable',
                 v2SetNavPanel: 'writable',
+                v2SetPanelTitle: 'writable',
                 v2SetTeamName: 'writable',
                 v2Settings: 'writable',
                 v2StartCheckout: 'writable',

@@ -2216,7 +2216,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=355')
+    fetch('/footer.html?v=356')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
@@ -2780,6 +2780,26 @@ function favClubsSort(list, teamIdOf) {
         .map((item, i) => ({ item, i, fav: fav.includes(Number(teamIdOf(item))) }))
         .sort((a, b) => (a.fav === b.fav ? a.i - b.i : (a.fav ? -1 : 1)))
         .map(x => x.item);
+}
+
+/* The heading of the slide-in panel every page shares.
+ *
+ * Five places set it and four of them reached for textContent, which printed
+ * "<svg class=..." as a line of markup across the top of the panel — the icon
+ * arrives as a string of SVG, and textContent's whole job is to not be
+ * markup. It was found and fixed once, in the gameweek review, with a comment
+ * explaining exactly this; the other four kept doing it, which is what a
+ * fix applied at one call site rather than at the thing being called buys you.
+ *
+ * So the icon and the words are separate arguments and cannot be confused:
+ * the icon is our own markup and goes in as markup, the words are escaped.
+ * A caller with nothing to draw passes no icon.
+ */
+function v2SetPanelTitle(id, text, icon) {
+    const el = typeof document !== 'undefined' && document.getElementById(id);
+    if (!el) return;
+    const mark = icon && typeof v2Icon === 'function' ? v2Icon(icon) : '';
+    el.innerHTML = mark + (mark ? ' ' : '') + escHTML(String(text));
 }
 
 /* ===== Going to a section of a long document =====

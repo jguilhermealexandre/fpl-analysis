@@ -1036,20 +1036,27 @@
     max-width: min(600px, calc(100vw - 32px));
     padding: 12px 12px 12px 16px;
     border-radius: 999px;
-    /* Solid brand green with white on it. A white pill with a green hairline
-       reads as another card on a page full of them, and this is the one thing
-       here that appears, says something and leaves — it has a few seconds to be
-       noticed, so it does not get to be quiet. */
+    /* Solid brand green. A white pill with a green hairline reads as another
+       card on a page full of them, and this is the one thing here that
+       appears, says something and leaves — it has a few seconds to be noticed,
+       so it does not get to be quiet.
+
+       Dark ink on it, not white. --color-primary is #00E57D in dark and
+       #10B981 in light; white on the first is about 1.7:1, which is not a
+       contrast so much as a rumour of one, and the message this thing carries
+       is the number the optimiser just gained you. --on-primary is the token
+       the landing page's primary button already uses on the same green, and
+       it reads at better than 10:1 on both. */
     background: var(--color-primary);
     border: 1px solid var(--color-primary);
     box-shadow: 0 12px 32px color-mix(in srgb, var(--color-primary) 34%, transparent);
-    font-size: 13px; line-height: 1.45; color: #fff;
+    font-size: 13px; line-height: 1.45; color: var(--on-primary);
     opacity: 0; visibility: hidden; pointer-events: none;
     transition: opacity 200ms ease, transform 240ms cubic-bezier(.22,1,.36,1), visibility 0s linear 240ms;
 }
-/* Everything inside inherits the white: the message carries <strong> and the
-   report link is a button with its own colours. */
-.sq-toast strong, .sq-toast b { color: #fff; font-weight: 700; }
+/* Everything inside inherits the same ink: the message carries <strong> and
+   the buttons beside it have their own colours. */
+.sq-toast strong, .sq-toast b { color: var(--on-primary); font-weight: 700; }
 .sq-toast.show {
     opacity: 1; visibility: visible; pointer-events: auto;
     transform: translate(-50%, 0);
@@ -1069,21 +1076,23 @@
     transition: background 140ms ease, color 140ms ease;
 }
 .sq-toast-x:hover { background: rgba(255,255,255,0.18); color: #fff; }
-/* A white pill on the green, rather than the page's own outlined button —
-   which was a blue link on a green ground. */
+/* A solid pill on the green, rather than the page's own outlined button —
+   which was a blue link on a green ground. The ink is the same dark green the
+   toast itself uses, so the two read as one object rather than a button that
+   wandered in from another page. */
 .sq-toast .opt-report-btn,
 .sq-toast .opt-revert-btn {
     flex-shrink: 0;
     background: #fff;
     border-color: #fff;
-    color: var(--color-primary-text, #065F46);
+    color: var(--on-primary);
     font-weight: 700;
 }
 .sq-toast .opt-report-btn:hover,
 .sq-toast .opt-revert-btn:hover {
-    background: rgba(255,255,255,0.88);
-    border-color: rgba(255,255,255,0.88);
-    color: var(--color-primary-text, #065F46);
+    background: color-mix(in srgb, var(--on-primary) 12%, #fff);
+    border-color: color-mix(in srgb, var(--on-primary) 12%, #fff);
+    color: var(--on-primary);
 }
 .sq-toast .opt-report-btn .v2-sec-icon { color: currentColor; }
 @media (prefers-reduced-motion: reduce) { .sq-toast { transition: opacity 200ms ease, visibility 0s; } }
@@ -1878,7 +1887,16 @@
    colour the Star count uses, which is the only other place on this page that
    means "the model picked this". */
 .sq-pc-go { background: var(--verdict-star); border-color: var(--verdict-star); color: #fff; }
-.sq-pc-go:hover { background: color-mix(in srgb, var(--verdict-star) 82%, #000); }
+/* :not(.active) is not decoration here, it is the whole fix. The shared hover
+   two rules above is .sq-pc:not(.active):hover — three classes worth of
+   specificity against this rule's two — so it won on background and turned the
+   wand white, while the white text from the line above stayed where it was.
+   White on white, with the icon and the tooltip both still there. */
+.sq-pc-go:not(.active):hover {
+    background: color-mix(in srgb, var(--verdict-star) 82%, #000);
+    border-color: color-mix(in srgb, var(--verdict-star) 82%, #000);
+    color: #fff;
+}
 /* The way back from the wand beside it, and deliberately the plain control
    rather than a second coloured one. Undo is the escape hatch, wanted by the
    minority who disagree with the solve; drawn as loudly as Auto-optimise it
