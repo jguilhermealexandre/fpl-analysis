@@ -2077,6 +2077,17 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
    positioned by that component, so each card takes an equal share of its row
    and stops at a width that keeps a back five on one line. */
 .dp-field .pitch-row .dp-card { flex: 1 1 0; min-width: 0; max-width: 132px; }
+/* A card you can pick up should look like one, and nothing inside it should
+   be draggable in its own right — an image or a text selection starting its
+   own drag is how a substitution fails to begin. Same rules the Squad
+   Analysis pitch has carried since it was built. */
+.dp-field .dp-card { cursor: grab; touch-action: none; }
+.dp-field .dp-card:active { cursor: grabbing; }
+.dp-field .dp-card img { -webkit-user-drag: none; user-select: none; }
+.dp-field .dp-card .dp-name, .dp-field .dp-card .dp-score, .dp-field .dp-card .dp-fix { user-select: none; }
+/* The copy in flight is a .dp-card, so the ghost rules in my-team.css —
+   written for .pcard — have to reach it too; they are keyed on the class the
+   clone gains, not on what it was cloned from. */
 /* Squad Analysis's grass is a 16:12 box because its cards are three lines
    tall. The draft's carry a fourth — the run across the planned gameweeks,
    which is the whole reason this tab exists — and four rows of them do not
@@ -2505,7 +2516,18 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 .dp-move-suggest { align-items: flex-start; }
 .dp-move-why { font-size: 10px; color: var(--text-secondary); line-height: 1.5; margin-top: 4px; }
 .dp-suggest-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-.dp-suggest-actions .draft-action-btn { font-size: 10px; padding: 5px 10px; }
+.dp-suggest-actions .draft-action-btn { font-size: 10px; padding: 6px 11px; background: var(--surface-2); border-color: var(--border-emphasis); }
+/* The panel's own button, and the reason to open the panel. A 1px
+   border-default outline on surface-1, inside a drawer that is also
+   surface-1, read as a line of text rather than as the control that does the
+   work — so it gets the weight of what it is. */
+.dp-suggest-actions .dp-suggest-run {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--on-primary);
+    font-weight: 700;
+}
+.dp-suggest-actions .dp-suggest-run:hover { filter: brightness(1.08); border-color: var(--color-primary); color: var(--on-primary); }
 .dp-notes-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .dp-notes textarea {
     width: 100%; min-height: 220px;

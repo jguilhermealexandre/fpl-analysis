@@ -718,6 +718,116 @@
             }
         }
 
+        /* ===== Dragging a player to another position =====
+         *
+         * Squad Analysis has had this since its pitch was built, and the draft
+         * — the tab whose entire job is rearranging an eleven — did not. Now
+         * that both draw the same pitch, this is the same mechanism: see the
+         * long note in pitch-snapshot.js for why it is pointer events rather
+         * than the browser's own drag protocol. Short version: native drag does
+         * not exist on touch, and it dies the moment anything re-renders the
+         * card underneath it.
+         *
+         * A drag only starts after 6px of movement, so a click is still a
+         * click and click-to-swap is untouched. */
+        const DRAFT_DRAG_THRESHOLD = 6;
+        let draftPointer = null;
+
+        /* Light up the legal destinations without re-rendering. A drag cannot
+           survive its own source element being replaced, so this writes the
+           classes renderDraftPitchHTML() would have written instead of asking
+           it to write them. */
+        function draftMarkSwapTargets(sourceId) {
+            document.querySelectorAll('#draftPitchArea .dp-card[data-player-id]').forEach(card => {
+                card.classList.remove('swap-selected', 'swap-target', 'swap-ineligible');
+                if (sourceId === null) return;
+                const id = Number(card.dataset.playerId);
+                if (id === sourceId) card.classList.add('swap-selected');
+                else if (draftCanSwap(sourceId, id)) card.classList.add('swap-target');
+                else card.classList.add('swap-ineligible');
+            });
+        }
+
+        function draftPointerDown(event, playerId) {
+            if (event.button != null && event.button !== 0) return;   // left button or touch
+            if (event.target.closest('.dp-transfer, .dp-act')) return; // those are their own controls
+            draftPointer = { id: playerId, x: event.clientX, y: event.clientY, card: event.currentTarget, active: false, ghost: null };
+        }
+
+        function draftPointerMove(event) {
+            if (!draftPointer) return;
+            const dx = event.clientX - draftPointer.x;
+            const dy = event.clientY - draftPointer.y;
+
+            if (!draftPointer.active) {
+                if (Math.hypot(dx, dy) < DRAFT_DRAG_THRESHOLD) return;
+                draftPointer.active = true;
+                draftSwapSource = draftPointer.id;
+                bindDraftSwapDismiss();
+                draftMarkSwapTargets(draftPointer.id);
+
+                /* A copy follows the cursor rather than the card itself: the
+                   original has to stay in the layout or every other card in the
+                   row reflows the instant the drag begins. */
+                const rect = draftPointer.card.getBoundingClientRect();
+                const ghost = draftPointer.card.cloneNode(true);
+                ghost.classList.add('pcard-ghost');
+                ghost.style.width = `${rect.width}px`;
+                ghost.style.left = `${rect.left}px`;
+                ghost.style.top = `${rect.top}px`;
+                document.body.appendChild(ghost);
+                draftPointer.ghost = ghost;
+                draftPointer.offX = draftPointer.x - rect.left;
+                draftPointer.offY = draftPointer.y - rect.top;
+                draftPointer.card.classList.add('pcard-dragging');
+            }
+
+            if (draftPointer.ghost) {
+                draftPointer.ghost.style.left = `${event.clientX - draftPointer.offX}px`;
+                draftPointer.ghost.style.top = `${event.clientY - draftPointer.offY}px`;
+            }
+
+            // The ghost is pointer-events:none, so this reads the card beneath it.
+            const over = document.elementFromPoint(event.clientX, event.clientY);
+            const card = over && over.closest('.dp-card[data-player-id]');
+            document.querySelectorAll('#draftPitchArea .dp-card.pcard-drop-hot').forEach(c => c.classList.remove('pcard-drop-hot'));
+            if (card && card.classList.contains('swap-target')) card.classList.add('pcard-drop-hot');
+        }
+
+        function draftPointerUp(event) {
+            if (!draftPointer) return;
+            const state = draftPointer;
+            draftPointer = null;
+
+            if (state.ghost) state.ghost.remove();
+            if (state.card) state.card.classList.remove('pcard-dragging');
+            document.querySelectorAll('#draftPitchArea .dp-card.pcard-drop-hot').forEach(c => c.classList.remove('pcard-drop-hot'));
+
+            if (!state.active) return;   // never moved far enough — leave it to the click handler
+
+            const over = document.elementFromPoint(event.clientX, event.clientY);
+            const card = over && over.closest('.dp-card[data-player-id]');
+            const targetId = card ? Number(card.dataset.playerId) : null;
+
+            if (targetId != null && targetId !== state.id && draftCanSwap(state.id, targetId)) {
+                performDraftSwap(state.id, targetId);
+                return;
+            }
+            /* Dropped on nothing, or on somebody who cannot take the place.
+               Put the pitch back rather than leaving a selection lit up that
+               the manager did not ask for. */
+            draftSwapSource = null;
+            draftMarkSwapTargets(null);
+        }
+
+        /* Bound once on the document, not per card: the cards are replaced on
+           every re-render and a listener on one would not survive a swap. */
+        if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+            document.addEventListener('pointermove', draftPointerMove);
+            document.addEventListener('pointerup', draftPointerUp);
+            document.addEventListener('pointercancel', draftPointerUp);
+        }
+
         /* Getting out of a pending swap.
          *
          * Choosing a player dims every team-mate who cannot take his place, so
@@ -1767,7 +1877,10 @@
                    then who it comes against. The run total stays below it —
                    it is what the draft is for, and the one line the other
                    pitches have no equivalent of. */
-                return `<div class="dp-card ${posClass} ${swapClass} ${injured ? 'is-out' : ''}" onclick="handleDraftPitchClick(${p.id})">
+                return `<div class="dp-card ${posClass} ${swapClass} ${injured ? 'is-out' : ''}"
+                    data-player-id="${p.id}"
+                    onclick="handleDraftPitchClick(${p.id})"
+                    onpointerdown="draftPointerDown(event, ${p.id})">
                     <div class="dp-badges">${badges}</div>
                     ${armband}
                     <button class="dp-transfer" onclick="event.stopPropagation();openDraftTransferPanel(${p.id})" data-tooltip="Transfer ${escHTML(p.name)} out for GW${gw}">${DP_SWAP_ICON}</button>
@@ -1839,7 +1952,7 @@
                         : 'nobody in this squad can take his place under the formation rules.'}
                     <span class="planner-hint-esc">Press <kbd>Esc</kbd> or click away to cancel.</span></div>`;
             } else {
-                html += `<div class="planner-lineup-hint"><span>${v2Icon('bulb')}</span> Click a player to swap with the bench or reorder it. Use <strong>↔</strong> to make a transfer.</div>`;
+                html += `<div class="planner-lineup-hint"><span>${v2Icon('bulb')}</span> Drag a player onto a team-mate to swap them, or click one to pick it out. Use <strong>↔</strong> on a card to transfer him out.</div>`;
             }
             return html;
         }
@@ -2501,6 +2614,67 @@
             if (typeof updateStatus === 'function') updateStatus(`Applied the suggested transfer for GW${gw}.`, 'success');
         }
 
+        /* One proposed move, with both faces on it.
+         *
+         * The old row was two names, an arrow and a number — a diff, not a
+         * decision. Every other place on this site that asks you to choose
+         * between footballers shows you the footballers. */
+        function renderDraftProposal(row, index) {
+            const out = allPlayersById[row.outId];
+            const inn = allPlayersById[row.inId];
+            const pid = (pl, cls) => pl && typeof v2IdentityHTML === 'function'
+                ? v2IdentityHTML(pl, `v2-pid-portrait dps-face ${cls}`) : '';
+            return `<div class="dps-card">
+                <div class="dps-head">
+                    <span class="dps-gw">GW${row.gw}</span>
+                    <span class="dps-gain ${row.gain >= 0 ? 'good' : 'bad'}">${row.gain >= 0 ? '+' : ''}${row.gain.toFixed(1)} xP</span>
+                </div>
+                <div class="dps-swap">
+                    <div class="dps-side dps-out">
+                        ${pid(out, 'is-out')}
+                        <span class="dps-name">${escHTML(row.outName)}</span>
+                        <span class="dps-role">Out</span>
+                    </div>
+                    <span class="dps-arrow" aria-hidden="true">→</span>
+                    <div class="dps-side dps-in">
+                        ${pid(inn, 'is-in')}
+                        <span class="dps-name">${escHTML(row.inName)}</span>
+                        <span class="dps-role">In</span>
+                    </div>
+                </div>
+                ${row.why ? `<div class="dps-why">${row.why}</div>` : ''}
+                <div class="dps-actions">
+                    <button class="dps-accept" onclick="acceptDraftSuggestion(${index})"
+                        data-tooltip="Add this transfer to GW${row.gw} of the plan">Accept</button>
+                    <button class="dps-reject" onclick="rejectDraftSuggestion(${index})"
+                        data-tooltip="Drop this suggestion and leave the plan as it is">Reject</button>
+                </div>
+            </div>`;
+        }
+
+        /* The whole pending batch, with the two decisions that apply to all of
+           it. The note about the gains is not a disclaimer for its own sake:
+           the loop worked each move out with the ones before it already in
+           place, so taking four of six really does change what the other two
+           are worth. */
+        function renderDraftProposalList(ds) {
+            const list = ds.pendingSuggest || [];
+            if (!list.length) return '';
+            const total = list.reduce((sum, r) => sum + r.gain, 0);
+            return `<div class="dps-batch">
+                <div class="dps-batch-head">
+                    <span class="dps-batch-count">${list.length} suggested transfer${list.length === 1 ? '' : 's'}</span>
+                    <span class="dps-batch-total">+${total.toFixed(1)} xP if you take them all</span>
+                </div>
+                <div class="dps-batch-note">Nothing is in your plan yet. Each one was worked out with the ones above it already made, so accepting only some changes what the rest are worth.</div>
+                <div class="dps-batch-actions">
+                    <button class="dps-accept dps-all" onclick="acceptAllDraftSuggestions()">Accept all</button>
+                    <button class="dps-reject" onclick="discardDraftSuggestions()">Discard</button>
+                </div>
+                ${list.map((row, i) => renderDraftProposal(row, i)).join('')}
+            </div>`;
+        }
+
         function renderDraftSuggestForGW(gw) {
             const ds = getActiveDraft();
             if (ds.chips[gw] === 'freehit') {
@@ -2539,42 +2713,50 @@
         function renderDraftSuggestBody() {
             const ds = getActiveDraft();
             const gw = ds.selectedGW;
+            /* Waiting on an answer beats anything else this panel could say,
+               so the batch goes at the top and this week's own recommendation
+               waits its turn underneath. */
             return `<div class="dp-copilot-note">Projects squad value over a ${TW_HORIZON}-gameweek window from this gameweek on — the same engine behind the Transfer Wizard's own recommendation, scoped to this plan's budget and free transfers at each gameweek.</div>
                 <div class="dp-suggest-actions">
-                    <button class="draft-action-btn" onclick="draftAutoSuggestAllGWs()" data-tooltip="Runs this recommendation on every gameweek in the plan, in order, applying each accepted move before evaluating the next gameweek — a transfer at GW3 changes what GW4 needs. Only spends free transfers; it never takes a points hit on its own.">Auto-suggest all gameweeks</button>
+                    <button class="draft-action-btn dp-suggest-run" onclick="draftAutoSuggestAllGWs()" data-tooltip="Works this recommendation through every gameweek in the plan, in order, so each week is judged against the squad the week before would leave. Nothing is changed — the moves come back as suggestions you accept or reject one at a time. Only spends free transfers; it never takes a points hit on its own.">Suggest moves for every gameweek</button>
                     ${ds.lastSuggestLog ? `<button class="draft-action-btn" onclick="openDraftSuggestSummary()">View last summary</button>` : ''}
-                    ${ds.lastSuggestSnapshot ? `<button class="draft-action-btn danger" onclick="undoDraftAutoSuggest()">↩ Undo auto-suggested transfers</button>` : ''}
+                    ${ds.lastSuggestSnapshot ? `<button class="draft-action-btn danger" onclick="undoDraftAutoSuggest()">↩ Undo accepted transfers</button>` : ''}
                 </div>
+                ${renderDraftProposalList(ds)}
                 ${renderDraftSuggestForGW(gw)}`;
         }
 
-        // Runs Auto-suggest against every gameweek in the plan, applying the
-        // accepted move(s) before evaluating the next — transfers, unlike
-        // lineups, carry forward (confirmDraftTransfer already replays them
-        // through rebuildDraftSquads), so GW5's suggestion has to see whatever
-        // GW3/GW4 just did rather than the squad as it stood before this ran.
-        //
-        // freeTransfersOnly is passed to every gameweek's recommendation: an
-        // unattended loop across up to six gameweeks has nobody reviewing any
-        // single hit it might take, and six independently-"worth it" -4s add
-        // up to a lot of points sacrificed to a plan nobody actually looked
-        // at. A must-sell (injured/suspended) still gets fixed regardless —
-        // see twBuildRecommendation's own exemption for that.
-        //
-        // Every gameweek gets a log entry, applied or held-and-why, so the
-        // result is fully visible afterwards rather than a single toast line
-        // — openDraftSuggestSummary() renders it, and "View last summary" in
-        // the sidebar reopens it any time, not just right after the run.
-        // One-shot undo: ds.transfers is snapshotted first and restored whole
-        // if the manager doesn't like the result, same idea as a single undo
-        // step rather than a full history.
+        /* Auto-suggest across the whole plan — as a proposal, not as a fait
+         * accompli.
+         *
+         * It used to rewrite six gameweeks of transfers on one click and then
+         * show you what it had done. The only way back was a single undo
+         * button, all-or-nothing, and if you liked four of the six moves there
+         * was nothing to do but take all six or none. That is not a
+         * suggestion; it is an edit you have to argue with afterwards.
+         *
+         * So the loop still runs exactly as it did — applying each move before
+         * evaluating the next gameweek, because a transfer at GW3 changes what
+         * GW4 needs — and then the squad is put back where it started and the
+         * moves are handed over as a list you accept or reject one at a time.
+         *
+         * freeTransfersOnly is passed to every gameweek: an unattended loop
+         * across six gameweeks has nobody reviewing any single hit it might
+         * take, and six independently "worth it" −4s add up to a lot of points
+         * sacrificed to a plan nobody looked at. A must-sell (injured or
+         * suspended) is still fixed regardless — see twBuildRecommendation's
+         * own exemption.
+         *
+         * Every gameweek gets a log entry, proposed or held-and-why, so a week
+         * that offers nothing says so rather than going quiet.
+         */
         function draftAutoSuggestAllGWs() {
             const ds = getActiveDraft();
             if (!ds || !ds.gwNumbers || !ds.gwNumbers.length) return;
 
             const snapshot = JSON.parse(JSON.stringify(ds.transfers));
             const log = [];
-            let appliedCount = 0;
+            const proposals = [];
 
             ds.gwNumbers.forEach(gw => {
                 const chip = ds.chips[gw];
@@ -2595,25 +2777,96 @@
                     log.push({ gw, chip, applied: [], reason: 'Nothing clears the free-transfer margin this week.' });
                     return;
                 }
-                const applied = [];
+                const found = [];
                 rec.best.moves.forEach(m => {
+                    /* Applied here only so the next gameweek is judged against
+                       the squad this move would leave behind. It is undone
+                       below, before anybody sees it. */
                     if (applyDraftTransfer(gw, m.out.id, m.in.id)) {
-                        applied.push({ outName: m.out.name, inName: m.in.name, gain: m.gain });
-                        appliedCount++;
+                        const row = {
+                            gw,
+                            outId: m.out.id, inId: m.in.id,
+                            outName: m.out.name, inName: m.in.name,
+                            gain: m.gain,
+                            why: buildDraftMoveNarrative(m, rec.gws)
+                        };
+                        found.push({ outName: m.out.name, inName: m.in.name, gain: m.gain });
+                        proposals.push(row);
                     }
                 });
-                log.push({ gw, chip, applied, reason: applied.length ? '' : 'The recommended move could not be applied.' });
+                log.push({ gw, chip, applied: found, reason: found.length ? '' : 'The recommended move could not be applied.' });
             });
 
+            /* Put the plan back. Nothing is committed until it is accepted. */
+            ds.transfers = snapshot;
+            rebuildDraftSquads();
+
             ds.lastSuggestLog = log;
-            if (appliedCount > 0) {
-                ds.lastSuggestSnapshot = snapshot;
-                saveDraft();
-                rerenderDraftView();
-            } else {
-                rerenderDraftView();
-            }
+            ds.pendingSuggest = proposals.length ? proposals : null;
+            ds.lastSuggestSnapshot = null;
+            rerenderDraftView();
             openDraftSuggestSummary();
+        }
+
+        /* Accept one proposed move. The gains were worked out with the whole
+           chain in place, so taking a subset makes them an estimate rather than
+           a promise — the panel says as much. The move itself is always legal
+           on its own: applyDraftTransfer re-checks budget, club limits and
+           duplicates before it commits anything. */
+        function acceptDraftSuggestion(index) {
+            const ds = getActiveDraft();
+            const list = ds.pendingSuggest || [];
+            const row = list[index];
+            if (!row) return;
+            const ok = applyDraftTransfer(row.gw, row.outId, row.inId);
+            ds.pendingSuggest = list.filter((_, i) => i !== index);
+            if (!ds.pendingSuggest.length) ds.pendingSuggest = null;
+            if (ok) {
+                saveDraft();
+                if (typeof updateStatus === 'function') {
+                    updateStatus(`GW${row.gw}: ${row.outName} → ${row.inName} added to this plan`, 'success');
+                }
+            } else if (typeof updateStatus === 'function') {
+                updateStatus(`GW${row.gw}: ${row.outName} → ${row.inName} is no longer legal in this plan`, 'error');
+            }
+            rerenderDraftView();
+            if (document.getElementById('optReportOverlay')?.classList.contains('show')) openDraftSuggestSummary();
+        }
+
+        function rejectDraftSuggestion(index) {
+            const ds = getActiveDraft();
+            const list = ds.pendingSuggest || [];
+            if (!list[index]) return;
+            ds.pendingSuggest = list.filter((_, i) => i !== index);
+            if (!ds.pendingSuggest.length) ds.pendingSuggest = null;
+            rerenderDraftView();
+            if (document.getElementById('optReportOverlay')?.classList.contains('show')) openDraftSuggestSummary();
+        }
+
+        /* Take the lot, in the order they were worked out — which is the order
+           that makes the projected gains true. */
+        function acceptAllDraftSuggestions() {
+            const ds = getActiveDraft();
+            const list = ds.pendingSuggest || [];
+            if (!list.length) return;
+            const before = JSON.parse(JSON.stringify(ds.transfers));
+            let n = 0;
+            list.forEach(row => { if (applyDraftTransfer(row.gw, row.outId, row.inId)) n++; });
+            ds.pendingSuggest = null;
+            ds.lastSuggestSnapshot = before;
+            saveDraft();
+            rerenderDraftView();
+            if (typeof closeOptimizeReport === 'function') closeOptimizeReport();
+            if (typeof updateStatus === 'function') {
+                updateStatus(`${n} suggested transfer${n === 1 ? '' : 's'} added to this plan`, 'success');
+            }
+        }
+
+        function discardDraftSuggestions() {
+            const ds = getActiveDraft();
+            ds.pendingSuggest = null;
+            rerenderDraftView();
+            if (typeof closeOptimizeReport === 'function') closeOptimizeReport();
         }
 
         function undoDraftAutoSuggest() {
@@ -2635,7 +2888,7 @@
         function renderDraftSuggestSummaryModal() {
             const ds = getActiveDraft();
             const log = ds.lastSuggestLog || [];
-            if (!log.length) return '<div class="detail-section">Run "Auto-suggest all gameweeks" to see a summary here.</div>';
+            if (!log.length) return '<div class="detail-section">Run “Suggest moves for every gameweek” to see a summary here.</div>';
 
             const appliedTotal = log.reduce((s, row) => s + row.applied.length, 0);
             const gainTotal = log.reduce((s, row) => s + row.applied.reduce((s2, a) => s2 + a.gain, 0), 0);
@@ -2645,6 +2898,7 @@
                 if (row.applied.length) {
                     return `<div class="opt-bench-row">
                         <div class="opt-bench-head">GW${row.gw}${chipBadge} — ${row.applied.map(a => `${escHTML(a.outName)} → ${escHTML(a.inName)} <strong>(+${a.gain.toFixed(1)} xP)</strong>`).join(', ')}</div>
+                        <div class="opt-bench-why">Suggested — accept it in the panel to put it in the plan.</div>
                     </div>`;
                 }
                 return `<div class="opt-bench-row">
@@ -2656,20 +2910,24 @@
             return `<div class="detail-section">
                 <div class="opt-headline ${appliedTotal ? 'gain' : 'flat'}">
                     ${appliedTotal
-                        ? `<span class="opt-gain">${appliedTotal} transfer${appliedTotal > 1 ? 's' : ''}</span><span>applied across this plan, all on free transfers — no points hit anywhere</span>`
+                        ? `<span class="opt-gain">${appliedTotal} transfer${appliedTotal > 1 ? 's' : ''}</span><span>suggested across this plan, all on free transfers — no points hit anywhere. Nothing is in your plan until you accept it.</span>`
                         : `<span class="opt-gain">No changes</span><span>nothing cleared its margin on a free transfer in any gameweek of this plan</span>`}
-                    ${appliedTotal ? `<div class="opt-beforeafter">+${gainTotal.toFixed(1)} xP projected gain in total</div>` : ''}
+                    ${appliedTotal ? `<div class="opt-beforeafter">+${gainTotal.toFixed(1)} xP projected gain if you take them all</div>` : ''}
                 </div>
             </div>
+            ${ds.pendingSuggest ? `<div class="detail-section">
+                <div class="detail-section-title">${v2Icon('sparkle')} Accept or reject</div>
+                ${renderDraftProposalList(ds)}
+            </div>` : ''}
             <div class="detail-section">
                 <div class="detail-section-title">Gameweek by gameweek</div>
                 ${rows}
             </div>
-            ${ds.lastSuggestSnapshot ? `<div class="detail-section"><button class="rc-btn" style="width:100%;" onclick="undoDraftAutoSuggest()">↩ Undo all auto-suggested transfers</button></div>` : ''}`;
+            ${ds.lastSuggestSnapshot ? `<div class="detail-section"><button class="rc-btn" style="width:100%;" onclick="undoDraftAutoSuggest()">↩ Undo the transfers you accepted</button></div>` : ''}`;
         }
 
         function openDraftSuggestSummary() {
-            v2SetPanelTitle('optReportTitle', 'Auto-suggested transfers', 'sparkle');
+            v2SetPanelTitle('optReportTitle', 'Suggested transfers', 'sparkle');
             document.getElementById('optReportBody').innerHTML = renderDraftSuggestSummaryModal();
             document.getElementById('optReportOverlay').classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();
