@@ -155,7 +155,24 @@ async function tierEO(tier, event, sampleSize, concurrency) {
         for (const p of picks) {
             mult.set(p.element, (mult.get(p.element) || 0) + p.multiplier);
             owned.set(p.element, (owned.get(p.element) || 0) + 1);
-            if (p.is_captain) capt.set(p.element, (capt.get(p.element) || 0) + 1);
+            /* Anyone scoring more than once, not only the manager's nominated
+               captain.
+               
+               This counted p.is_captain, and that is not the same question.
+               When a captain does not play, FPL promotes the vice: his
+               multiplier becomes 2 while is_captain stays false on him and
+               true on the player who never took the field. So the armband's
+               second share landed in the EO total and in nothing else, and a
+               player carried by promoted vices reported an effective ownership
+               higher than the number of managers who own him — which is
+               impossible, and is what the invariant in tests/eo-layer.test.mjs
+               was catching.
+
+               The multiplier is the thing EO is actually about: how many times
+               this player's score lands in the field's totals. Triple Captain
+               is the same case with a third share, and is counted once here
+               for the same reason — the invariant allows it. */
+            if (p.multiplier >= 2) capt.set(p.element, (capt.get(p.element) || 0) + 1);
         }
     }
 

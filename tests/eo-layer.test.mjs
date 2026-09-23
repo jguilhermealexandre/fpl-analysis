@@ -165,8 +165,20 @@ test('the shipped table matches the shape the layer expects', () => {
                him template while the number that matters says nobody plays him.
                What it cannot exceed is everyone starting him and the captains
                counting again, allowing a Triple Captain its third share. */
-            assert.ok(v.eo <= v.own + 2 * v.cap + 0.01,
-                `${id} ${t}: eo ${v.eo} exceeds what ${v.own}% owning and ${v.cap}% captaining can produce`);
+            /* Tolerance of one sampled manager, not one hundredth of a
+               point. Each tier is a few hundred squads rounded to a tenth of
+               a percent, so a single manager is worth 100/sampled points and
+               the figures cannot resolve finer than that. Asserting to 0.01
+               claims a precision the sample does not have.
+
+               It is still a real check: the bug it caught — fetch-eo.mjs
+               counting p.is_captain rather than a multiplier of 2 or more, so
+               promoted vice-captains added their second share to EO and to
+               nothing else — shows up the moment more than one manager's
+               worth of armbands goes unaccounted for. */
+            const grain = 100 / (real.metadata.tiers.find(x => x.id === t)?.sampled || 100);
+            assert.ok(v.eo <= v.own + 2 * v.cap + grain,
+                `${id} ${t}: eo ${v.eo} exceeds what ${v.own}% owning and ${v.cap}% captaining can produce, by more than the ${grain.toFixed(2)}pp one sampled manager is worth`);
         }
     }
 });
