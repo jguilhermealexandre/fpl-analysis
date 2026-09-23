@@ -63,6 +63,45 @@ function getChartTheme() {
     };
 }
 
+/* Chart.js, fetched the first time something actually draws a chart.
+ *
+ * It was a 200KB <script> on five pages — about 67KB over the wire, plus a
+ * connection to a third-party CDN — loaded on every visit whether or not a
+ * chart was ever opened. On My Team not one of the three things that use it is
+ * on screen when the page loads: the Visual Analysis modal is behind a button,
+ * and the two radar charts are inside the Transfer Wizard.
+ *
+ * Every call site already asked `typeof Chart === 'undefined'` before drawing,
+ * because the tag sat at the foot of <body> and could still be in flight. That
+ * guard is now the hook: they call this instead of giving up, and draw when it
+ * resolves.
+ *
+ * The integrity hash is the same one the markup carried and is checked by
+ * check:sri, which reads this file for exactly this pattern — so the pinned
+ * version cannot drift without the build saying so. */
+const CHARTJS_SRC = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+const CHARTJS_SRI = 'sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g';
+let _chartJsPromise = null;
+
+function loadChartJs() {
+    if (typeof Chart !== 'undefined') return Promise.resolve(true);
+    if (_chartJsPromise) return _chartJsPromise;
+    _chartJsPromise = new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = CHARTJS_SRC;
+        s.integrity = CHARTJS_SRI;
+        s.crossOrigin = 'anonymous';
+        s.referrerPolicy = 'no-referrer';
+        s.onload = () => resolve(true);
+        /* Resolves false rather than rejecting: a chart that cannot be drawn
+           is a missing panel, not a broken page, and every caller already
+           handles Chart being absent. */
+        s.onerror = () => { _chartJsPromise = null; resolve(false); };
+        document.head.appendChild(s);
+    });
+    return _chartJsPromise;
+}
+
 function applyChartDefaults() {
     if (typeof Chart === 'undefined') return;
     const ct = getChartTheme();
@@ -1837,8 +1876,11 @@ let _demoSquadPromise = null;
 
 function _getDemoBootstrap() {
     if (!_demoBootstrapPromise) {
-        _demoBootstrapPromise = fetch(DATA_URLS.bootstrap)
-            .then(r => { if (!r.ok) throw new Error('bootstrap unavailable'); return r.json(); });
+        /* Through DataCache, not a bare fetch. Every other reader of this file
+           goes through the cache, so a raw fetch here was a second copy of the
+           same 131KB on every demo squad — which is what a first-time visitor
+           who clicks "look around with a demo squad" gets. */
+        _demoBootstrapPromise = DataCache.fetchJSON(DATA_URLS.bootstrap);
     }
     return _demoBootstrapPromise;
 }
@@ -1992,8 +2034,31 @@ const DataCache = {
         } catch { /* silent */ }
     },
 
-    async fetchJSON(url) {
+    /* Requests for the same file that are already in the air.
+     *
+     * The IndexedDB cache below is only consulted once a response has been
+     * stored, so two modules asking for the same file at the same moment both
+     * missed it and both downloaded it. Nothing errored; the page just paid
+     * twice. On My Team that was bootstrap-static.json — 131KB over the wire,
+     * about a fifth of everything the page loads — fetched twice within a
+     * second of itself.
+     *
+     * Keyed by the same cache key, so the 5-minute buster in the URL cannot
+     * make two names for one file. Cleared when the promise settles, so a
+     * later request still goes through the cache and its TTL. */
+    _inflight: new Map(),
+
+    fetchJSON(url) {
         const key = url.replace(/\?v=\d+$/, '');
+        const pending = this._inflight.get(key);
+        if (pending) return pending;
+        const run = this._fetchJSONUncached(url, key)
+            .finally(() => { this._inflight.delete(key); });
+        this._inflight.set(key, run);
+        return run;
+    },
+
+    async _fetchJSONUncached(url, key) {
         try {
             const cached = await this.get(key);
             if (cached && Date.now() - cached.ts < this.TTL) {
@@ -2274,7 +2339,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=367')
+    fetch('/footer.html?v=368')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

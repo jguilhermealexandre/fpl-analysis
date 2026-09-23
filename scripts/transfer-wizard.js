@@ -2442,6 +2442,17 @@
             twDrawComparisonCharts(sold, cand, fdrGWs);
         }
 
+        /* Chart.js comes from a CDN, and a CDN is a thing that can be blocked —
+           by an extension, a corporate proxy, or a bad minute. Returning early
+           left the reserved chart box and its caption on screen as a tall
+           empty rectangle explaining a picture that was never drawn. Take both
+           away instead: .twh-radar as well as the canvases, since it is the
+           panel around the radar and hiding only its contents left a bordered
+           box with two name pills and nothing between them. */
+        function twHideComparisonCharts() {
+            document.querySelectorAll('.twh-radar, .twh-chart, .twh-chart-note').forEach(n => { n.hidden = true; });
+        }
+
         function twDrawComparisonCharts(sold, cand, fdrGWs) {
             /* Chart.js comes from a CDN, and a CDN is a thing that can be
                blocked — by an extension, a corporate proxy, or a bad minute.
@@ -2449,10 +2460,15 @@
                screen as a tall empty rectangle explaining a picture that was
                never drawn. Take both away instead. */
             if (typeof Chart === 'undefined') {
-                /* .twh-radar as well as the canvases: it is the panel around
-                   the radar, and hiding only what is inside it left a bordered
-                   box with two name pills and nothing between them. */
-                document.querySelectorAll('.twh-radar, .twh-chart, .twh-chart-note').forEach(n => { n.hidden = true; });
+                /* Ask for it first. Chart.js is fetched on demand now, so the
+                   common case here is simply "not yet" rather than "blocked" —
+                   and drawing an empty box for a library nobody had requested
+                   would be the page giving up before it had tried. */
+                if (typeof loadChartJs === 'function') {
+                    loadChartJs().then(ok => { if (ok) twDrawComparisonCharts(sold, cand, fdrGWs); else twHideComparisonCharts(); });
+                    return;
+                }
+                twHideComparisonCharts();
                 return;
             }
             if (_twRadarChart) { _twRadarChart.destroy(); _twRadarChart = null; }

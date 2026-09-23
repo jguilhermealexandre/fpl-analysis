@@ -9,6 +9,7 @@
    Usage:  npm run dev        (http://localhost:8080)
            npm run dev -- 3000 */
 import http from 'node:http';
+import zlib from 'node:zlib';
 import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
@@ -25,6 +26,27 @@ const MIME = {
 };
 
 const CACHE_LIKE_PROD = process.env.DEV_CACHE === '1';
+
+/* Text responses are compressed, the way every host serves them.
+ *
+ * This server sent everything uncompressed, and that quietly invalidated
+ * every page-weight number ever taken against it. My Team's scripts are 832KB
+ * on disk and 244KB on the wire; its stylesheets are 508KB and 90KB. A
+ * throttled measurement here therefore described a page four times heavier
+ * than the one anybody loads, and pointed at a problem that is a quarter the
+ * size it looked.
+ *
+ * Only what a host would compress: markup, scripts, styles, JSON, SVG. Images
+ * and fonts are already compressed and gzipping them costs time to make them
+ * bigger. */
+const COMPRESSIBLE = /^(text\/|application\/(javascript|json|xml)|image\/svg)/;
+
+function encodingFor(req) {
+    const accept = String(req.headers['accept-encoding'] || '');
+    if (/\bbr\b/.test(accept)) return 'br';
+    if (/\bgzip\b/.test(accept)) return 'gzip';
+    return null;
+}
 
 // Parsed once at boot; restart to pick up changes to _redirects.
 const redirects = (() => {
@@ -86,8 +108,16 @@ http.createServer((req, res) => {
             res.writeHead(404, { 'Content-Type': 'text/plain' });
             return res.end(`404  ${pathname}`);
         }
+        const type = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
+        const encoding = COMPRESSIBLE.test(type) ? encodingFor(req) : null;
+        if (encoding) {
+            body = encoding === 'br'
+                ? zlib.brotliCompressSync(body, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } })
+                : zlib.gzipSync(body, { level: 6 });
+        }
         res.writeHead(200, {
-            'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
+            'Content-Type': type,
+            ...(encoding ? { 'Content-Encoding': encoding, Vary: 'Accept-Encoding' } : {}),
             /* Never cache locally: the whole point is seeing the edit you just
                made.
 
@@ -109,6 +139,7 @@ http.createServer((req, res) => {
     console.log(`\n  easyfpl → http://localhost:${PORT}\n`);
     console.log(`  ${redirects.length} redirect rule(s) loaded from _redirects`);
     console.log('  Data is served from the committed data/*.json, so the site works offline.');
+    console.log('  Text responses are brotli/gzip compressed, as a host serves them.');
     if (CACHE_LIKE_PROD) console.log('  DEV_CACHE=1: /assets, /scripts and /styles carry production cache headers.');
     console.log('  Ctrl-C to stop.\n');
 });

@@ -21,10 +21,35 @@ for (const f of fs.readdirSync('.').filter(f => f.endsWith('.html'))) {
         targets.set(m[1], { hash: m[2], where: f });
     }
 }
-// The runtime-injected one.
+/* The runtime-injected ones.
+
+   This used to match one exact shape: `s.src = '<url>';` on one line and
+   `s.integrity = '<hash>';` on the next. The moment Chart.js moved out of the
+   markup and into a lazy loader that assigns those two from named constants,
+   the pattern stopped matching and the file silently dropped out of SRI
+   coverage — no error, no warning, just one fewer thing checked. Which is the
+   failure mode this whole file exists to catch, arriving through the back
+   door.
+
+   So: every pinned CDN URL in the file, paired with the sha384 literal nearest
+   to it. Naming, formatting and the order of the two assignments no longer
+   matter; only that both are present. A URL with no hash within reach is
+   reported, because an injected script with no integrity is the thing worth
+   knowing about. */
 const common = fs.readFileSync('scripts/common.js', 'utf8');
-const inj = /s\.src = '(https:\/\/[^']+)';\s*\n\s*s\.integrity = '([^']+)'/.exec(common);
-if (inj) targets.set(inj[1], { hash: inj[2], where: 'scripts/common.js' });
+const hashes = [...common.matchAll(/'(sha(?:256|384|512)-[A-Za-z0-9+/=]+)'/g)]
+    .map(m => ({ hash: m[1], at: m.index }));
+for (const m of common.matchAll(/'(https:\/\/(?:cdn\.jsdelivr\.net|unpkg\.com|cdnjs\.cloudflare\.com)\/[^']+)'/g)) {
+    const near = hashes
+        .map(h => ({ ...h, d: Math.abs(h.at - m.index) }))
+        .sort((a, b) => a.d - b.d)[0];
+    if (!near || near.d > 600) {
+        console.error(`::error::${m[1]} is injected from scripts/common.js with no integrity hash near it`);
+        process.exitCode = 1;
+        continue;
+    }
+    targets.set(m[1], { hash: near.hash, where: 'scripts/common.js' });
+}
 
 if (!targets.size) { console.error('::error::no pinned CDN scripts found — did the markup change?'); process.exit(1); }
 

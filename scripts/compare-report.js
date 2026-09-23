@@ -1396,10 +1396,19 @@ function updateCompareBar() {
             content.scrollTop = 0;
             requestAnimationFrame(() => { modal.classList.add('show'); });
 
-            // Render radar chart
-            setTimeout(() => {
+            /* Named, so it can call itself back once Chart.js has arrived.
+               It is fetched on demand now rather than shipped with the page,
+               so "not defined yet" is the ordinary case here, and it used to
+               mean the panel simply kept an empty canvas in it. */
+            const drawReportRadar = () => {
                 const canvas = document.getElementById('reportRadarCanvas');
-                if (!canvas || typeof Chart === 'undefined') return;
+                if (!canvas) return;
+                if (typeof Chart === 'undefined') {
+                    if (typeof loadChartJs === 'function') {
+                        loadChartJs().then(ok => { if (ok) drawReportRadar(); });
+                    }
+                    return;
+                }
                 if (reportRadarChart) { reportRadarChart.destroy(); reportRadarChart = null; }
                 reportRadarChart = new Chart(canvas.getContext('2d'), {
                     type: 'radar',
@@ -1435,7 +1444,8 @@ function updateCompareBar() {
                     }
                 });
                 if (typeof lucide !== 'undefined') lucide.createIcons();
-            }, 50);
+            };
+            setTimeout(drawReportRadar, 50);
         }
 
         function closeCompareModal() {

@@ -814,11 +814,15 @@
             const canvas = document.getElementById('sqChartCanvas');
             if (!canvas) return;
             if (typeof Chart === 'undefined') {
-                // Chart.js loads via a <script> tag near the end of the document — on a
-                // slow connection it can still be mid-download when squad data finishes
-                // loading first. Retry briefly instead of silently leaving the widget
-                // blank forever.
-                if (attempt < 20) setTimeout(() => initSquadChart(attempt + 1), 150);
+                /* Chart.js is fetched on demand now — see loadChartJs() in
+                   common.js. This used to poll for three seconds hoping a
+                   <script> at the foot of the document had landed; it asks
+                   for it instead, and draws when it arrives. The attempt
+                   counter stays as the guard against a second pass if the
+                   load resolves without defining Chart. */
+                if (attempt < 1 && typeof loadChartJs === 'function') {
+                    loadChartJs().then(ok => { if (ok) initSquadChart(attempt + 1); });
+                }
                 return;
             }
             const xSel = document.getElementById('sq-chart-x-select');
