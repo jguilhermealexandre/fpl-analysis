@@ -2012,8 +2012,8 @@
             // measured on different stats — a keeper on save percentage, a midfielder
             // on xGI. That is why they could not live in the table header, and why
             // they were being reprinted in all fifteen rows.
-            const groupHeader = (label, pos) => {
-                let h = `<tr class="planner-pos-header"><td class="dp-group-name" colspan="1">${escHTML(label)}</td>`;
+            const groupHeader = (label, pos, count) => {
+                let h = `<tr class="planner-pos-header"><td class="dp-group-name" colspan="1">${escHTML(label)}<span class="dp-group-count">${count}</span></td>`;
                 if (draftTableView === 'stats') {
                     const names = draftStatNamesFor(pos);
                     names.forEach(n => { h += `<td class="dp-group-stat season" data-tooltip="${escHTML(n.tip)} — full season.">${escHTML(n.text)}</td>`; });
@@ -2027,12 +2027,12 @@
             posGroups.forEach(({ pos, label }) => {
                 const groupPlayers = starters.filter(p => p.position === pos);
                 if (groupPlayers.length === 0) return;
-                html += groupHeader(label, pos);
+                html += groupHeader(label, pos, groupPlayers.length);
                 groupPlayers.forEach(p => { html += renderDraftRow(p, gwNumbers, false); });
             });
 
             if (bench.length > 0) {
-                html += `<tr class="planner-pos-header planner-bench-header"><td colspan="${totalCols}">Bench</td></tr>`;
+                html += `<tr class="planner-pos-header planner-bench-header"><td colspan="${totalCols}">Bench<span class="dp-group-count">${bench.length}</span></td></tr>`;
                 bench.forEach(p => { html += renderDraftRow(p, gwNumbers, true); });
             }
             return html;
@@ -2051,11 +2051,16 @@
             const captain = player.isCaptain ? '<span class="planner-captain-badge">C</span> ' : player.isVice ? '<span class="planner-captain-badge">V</span> ' : '';
             const statusIcon = player.status === 'i' ? '' : player.status === 'd' ? '' : '';
             const transferBadge = player.isTransferIn ? '<span class="draft-transfer-badge">IN</span>' : '';
+            /* Squad Analysis settled this: fading a benched row says "benched"
+               a second time and charges an xP, a form figure and five fixture
+               chips for it — on the rows you read precisely to decide whether
+               he should still be benched. The tag carries it alone. */
+            const benchBadge = isBench ? '<span class="dp-row-bench">Bench</span>' : '';
 
             row += `<td><div class="planner-player">
                 ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(player) : ''}
                 <div>
-                    ${captain}${statusIcon}<span class="planner-player-name" onclick="openDraftTransferPanel(${player.id})">${escHTML(player.name)}</span>${transferBadge}
+                    ${captain}${statusIcon}<span class="planner-player-name" onclick="openDraftTransferPanel(${player.id})">${escHTML(player.name)}</span>${transferBadge}${benchBadge}
                     <div><span class="planner-player-team">${escHTML(player.team)}</span> <span class="planner-player-price">£${player.price.toFixed(1)}m</span></div>
                 </div>
             </div></td>`;

@@ -449,8 +449,31 @@ function playerPhotoLegacySrc(code) {
  * listener because these cards are rebuilt by innerHTML on every render, and a
  * listener would have to be reattached each time — the CSP already allows
  * inline handlers, and the rest of the codebase uses them. */
+/* The players the photo library has never heard of.
+ *
+ * A code that 404s through both URLs above ends with the <img> removing
+ * itself, which uncovers the initials. That is the right picture — but it is
+ * arrived at, every single time, by two failed round trips. And a 404 is not
+ * cached the way a 200 is, so re-rendering the list runs them again.
+ *
+ * On a page that re-renders on every click, one player therefore blinks on
+ * every click: his avatar goes empty, two requests fail, and the initials come
+ * back — while everybody else, served from cache, never moves. It looks like
+ * that one card is reloading itself, because it is.
+ *
+ * So the first failure is remembered and afterwards he is rendered as initials
+ * directly, with no <img> to fail. Deliberately only for this page load: the
+ * league does add photos, and a missing face should come back on the next
+ * visit rather than being written off for good. */
+const PLAYER_PHOTO_MISSING = new Set();
+
+function playerPhotoMissing(code) {
+    PLAYER_PHOTO_MISSING.add(Number(code));
+}
+
 function playerPhotoHTML(code, className) {
     if (code == null) return '';
+    if (PLAYER_PHOTO_MISSING.has(Number(code))) return '';
     /* draggable="false" matters on the squad pitch: a .pcard is draggable so
        you can substitute by dragging it, and an <img> inside a draggable
        element is itself draggable by default — so grabbing a card by the
@@ -474,7 +497,7 @@ function playerPhotoHTML(code, className) {
     return `<img class="${className}" alt="" decoding="async" draggable="false"
         src="${playerPhotoSrc(code)}"
         data-photo-fallback="${playerPhotoLegacySrc(code)}"
-        onerror="if (this.dataset.photoFallback) { this.src = this.dataset.photoFallback; delete this.dataset.photoFallback; } else { this.remove(); }">`;
+        onerror="if (this.dataset.photoFallback) { this.src = this.dataset.photoFallback; delete this.dataset.photoFallback; } else { playerPhotoMissing(${Number(code)}); this.remove(); }">`;
 }
 
 // ===== NEWS THUMBNAILS =====
@@ -652,14 +675,25 @@ function v2AvatarHTML(player) {
 
 /* The club badge, with its short name behind it for a club the badge endpoint
    does not know yet. */
+/* Same story as the photos above: a badge the endpoint has not got answers
+   404, the <img> removes itself and the short name behind it shows through —
+   correctly, but by way of a failed request repeated on every render. A
+   promoted club nobody has drawn a 50px badge for yet therefore blinks on
+   every click across the whole squad. Remembered for this page load only. */
+const CREST_MISSING = new Set();
+
+function crestMissing(code) {
+    CREST_MISSING.add(Number(code));
+}
+
 function v2CrestHTML(player) {
     const esc = typeof escHTML === 'function' ? escHTML : (t => String(t == null ? '' : t));
     const code = v2TeamCode(player && player.teamId, player && player.teamCode);
     return `<span class="v2-pid-crest">`
         + `<span class="v2-pid-crest-fallback">${esc((player && player.team) || '')}</span>`
-        + (code != null
+        + (code != null && !CREST_MISSING.has(Number(code))
             ? `<img src="https://resources.premierleague.com/premierleague/badges/50/t${code}.png"
-                 alt="" loading="lazy" draggable="false" onerror="this.remove()">`
+                 alt="" draggable="false" onerror="crestMissing(${Number(code)}); this.remove()">`
             : '')
         + `</span>`;
 }
@@ -2240,7 +2274,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=365')
+    fetch('/footer.html?v=366')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
