@@ -664,8 +664,17 @@
             if (!source || !target) return false;
             // Both on bench: allow reordering bench priority
             if (source.onBench && target.onBench) return true;
-            // Both starters: not supported
-            if (!source.onBench && !target.onBench) return false;
+            /* Both starters: the two swap places on the pitch.
+             *
+             * This used to return false, so dragging one of your eleven onto
+             * another — the first thing anybody tries on a pitch — did
+             * nothing at all, and the feature read as broken. Nothing about
+             * the formation changes, since both are already starting; what
+             * changes is the order they are drawn in, which is what the
+             * gesture looks like it should do. Restricted to two players of
+             * the same position, because pickPosition is what groups the rows
+             * and trading it across positions scrambles them. */
+            if (!source.onBench && !target.onBench) return source.position === target.position;
             // Starter ↔ bench: validate formation
             const simLineup = lineup.map(p => {
                 if (p.id === sourceId) return { ...p, onBench: target.onBench };
@@ -681,8 +690,10 @@
             const source = lineup.find(p => p.id === sourceId);
             const target = lineup.find(p => p.id === targetId);
             if (!source || !target) return;
-            if (source.onBench && target.onBench) {
-                // Bench-to-bench: swap pickPosition (auto-sub priority)
+            if (source.onBench === target.onBench) {
+                /* Two benched players: swap their pickPosition, which is the
+                   order they come on in. Two starters: swap the same field,
+                   which is the order they are drawn in across their row. */
                 const srcPos = source.pickPosition;
                 source.pickPosition = target.pickPosition;
                 target.pickPosition = srcPos;
@@ -751,7 +762,12 @@
         function draftPointerDown(event, playerId) {
             if (event.button != null && event.button !== 0) return;   // left button or touch
             if (event.target.closest('.dp-transfer, .dp-act')) return; // those are their own controls
-            draftPointer = { id: playerId, x: event.clientX, y: event.clientY, card: event.currentTarget, active: false, ghost: null };
+            draftPointer = { id: playerId, x: event.clientX, y: event.clientY, card: event.currentTarget, active: false, ghost: null, pointerId: event.pointerId };
+            /* Hold the pointer for the length of the gesture. Without it a
+               drag that wanders off the card can be taken over by whatever is
+               underneath — a scroll, a text selection, the browser's own
+               image drag — and the substitution silently never happens. */
+            try { event.currentTarget.setPointerCapture(event.pointerId); } catch (e) { /* not supported */ }
         }
 
         function draftPointerMove(event) {
@@ -800,7 +816,10 @@
             draftPointer = null;
 
             if (state.ghost) state.ghost.remove();
-            if (state.card) state.card.classList.remove('pcard-dragging');
+            if (state.card) {
+                state.card.classList.remove('pcard-dragging');
+                try { state.card.releasePointerCapture(state.pointerId); } catch (e) { /* already gone */ }
+            }
             document.querySelectorAll('#draftPitchArea .dp-card.pcard-drop-hot').forEach(c => c.classList.remove('pcard-drop-hot'));
 
             if (!state.active) return;   // never moved far enough — leave it to the click handler
@@ -1397,8 +1416,7 @@
                that changed it, and every click meant scrolling back up to see
                what it had done. The eleven takes the wider column — it is
                fifteen cards and the plan is a strip of numbers. */
-            const drawerOpen = localStorage.getItem('fpl_notepad_open') === 'true';
-            html += `<div class="dp-columns${drawerOpen ? ' drawer-open' : ''}" id="draftColumns" ${draftCompareMode ? 'style="display:none;"' : ''}>`;
+            html += `<div class="dp-columns${draftDrawerOpen ? ' drawer-open' : ''}" id="draftColumns" ${draftCompareMode ? 'style="display:none;"' : ''}>`;
 
             html += `<section class="v2-section dp-col dp-col-plan">
                 <div class="section-header"><h2>${v2Icon('calendar')} Your plan</h2></div>`;
@@ -1705,7 +1723,7 @@
                     <span class="draft-tl-ft ${used > ft ? 'over' : ''}" data-tooltip="${used} of ${ft} free transfer${ft === 1 ? '' : 's'} used in GW${g}.">${used}/${ft} FT</span>
                     ${hit > 0 ? `<span class="draft-tl-hit" data-tooltip="${used} transfers against ${ft} free — each extra one costs 4 points.">−${hit} pts</span>` : ''}
                 </button>`;
-            }).join('<span class="draft-tl-link"></span>');
+            }).join('');
 
             const totalHits = gwNumbers.reduce((s, g) => s + getDraftHitCost(g), 0);
 
@@ -1726,7 +1744,7 @@
                 : '';
 
             return `<div class="draft-timeline">
-                <div class="draft-tl-track">${nodes}${moreBtn ? `<span class="draft-tl-link"></span>${moreBtn}` : ''}</div>
+                <div class="draft-tl-track">${nodes}${moreBtn}</div>
                 <div class="draft-tl-summary">
                     <span class="draft-tl-total" data-tooltip="Projected points across all ${gwNumbers.length} planned gameweeks, after deducting every points hit.">
                         Plan total <strong>${planXP.toFixed(1)} pts</strong>
@@ -1856,39 +1874,53 @@
                     ? gwFixtures.map(f => `<span class="dp-fix fdr-${f.difficulty || 3}" data-tooltip="GW${gw}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3} (${FDR_WORD[f.difficulty || 3] || 'Average'})">${escHTML(f.opponent || '?')} <span class="dp-fix-ha">(${f.isHome ? 'H' : 'A'})</span></span>`).join('')
                     : `<span class="dp-fix dp-fix-blank" data-tooltip="${escHTML(p.team)} have no fixture in GW${gw} — this player scores nothing.">Blank</span>`;
 
-                /* The armband is its own mark on the card's opposite corner,
-                   the way the dashboard draws it, rather than one more chip
-                   in the row of status flags. */
+                /* The armband, the flags and the card itself are Squad
+                   Analysis's, class for class. This tab used to draw a card of
+                   its own — a different armband, a different badge row, a
+                   fixture chip that was a neutral pill with a coloured dot
+                   where the squad page fills the chip with the difficulty. The
+                   same fifteen players, on the same grass, looking like two
+                   products. It is .pcard now, and the only thing left that is
+                   the draft's alone is the extra line under the projection:
+                   the run across the gameweeks being planned, which is the
+                   reason this tab exists. */
                 let armband = '';
-                if (p.isCaptain) armband = `<span class="dp-cap" data-tooltip="Captain — ${activeChip === 'triplecaptain' ? 'points trebled by Triple Captain' : 'points doubled'}.">${activeChip === 'triplecaptain' ? '3×' : 'C'}</span>`;
-                else if (p.isVice) armband = `<span class="dp-cap" data-tooltip="Vice-captain — takes the armband if the captain does not play.">V</span>`;
+                if (p.isCaptain) armband = `<span class="pcard-armband cap" data-tooltip="Captain — ${activeChip === 'triplecaptain' ? 'points trebled by Triple Captain' : 'points doubled'}.">${activeChip === 'triplecaptain' ? '3×' : 'C'}</span>`;
+                else if (p.isVice) armband = `<span class="pcard-armband vice" data-tooltip="Vice-captain — takes the armband if the captain does not play.">V</span>`;
 
-                let badges = '';
-                if (p.isTransferIn) badges += `<span class="dp-badge in" data-tooltip="Transferred in for GW${gw} in this plan.">IN</span>`;
-                if (benchIndex != null) {
-                    const isGk = benchIndex === 'GK';
-                    badges += `<span class="dp-badge bench" data-tooltip="${isGk ? 'Reserve keeper — only comes on if your starting keeper does not play.' : `Substitution order — ${benchIndex} in line to come on.`}">${isGk ? 'GK' : 'B' + benchIndex}</span>`;
-                }
-                if (injured) badges += `<span class="dp-badge out" data-tooltip="${escHTML(p.news || 'Unavailable')}">OUT</span>`;
-                else if (doubtful) badges += `<span class="dp-badge doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}${p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance of playing)` : ''}">?</span>`;
+                let flags = '';
+                if (p.isTransferIn) flags += `<span class="dp-badge in" data-tooltip="Transferred in for GW${gw} in this plan.">IN</span>`;
+                if (injured) flags += `<span class="dp-badge out" data-tooltip="${escHTML(p.news || 'Unavailable')}">OUT</span>`;
+                else if (doubtful) flags += `<span class="dp-badge doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}${p.chanceNextRound != null ? ` (${p.chanceNextRound}% chance of playing)` : ''}">?</span>`;
 
-                /* Same card as the dashboard's pitch, down to the order it is
-                   read in: face and crest, name, the gameweek's projection,
-                   then who it comes against. The run total stays below it —
-                   it is what the draft is for, and the one line the other
-                   pitches have no equivalent of. */
-                return `<div class="dp-card ${posClass} ${swapClass} ${injured ? 'is-out' : ''}"
+                /* One filled chip per fixture, coloured by difficulty — the
+                   squad page's treatment. A double gameweek gets two, which is
+                   the one thing this pitch shows that that one does not. */
+                const fixtureTag = gwFixtures.length
+                    ? gwFixtures.map(f => `<span class="pcard-fixture fdr-${f.difficulty || 3}" data-tooltip="GW${gw}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3} (${FDR_WORD[f.difficulty || 3] || 'Average'})">${escHTML(f.opponent || '?')} <em>${f.isHome ? 'H' : 'A'}</em></span>`).join('')
+                    : `<span class="pcard-fixture fdr-3" data-tooltip="${escHTML(p.team)} have no fixture in GW${gw} — this player scores nothing.">No fixture</span>`;
+
+                return `<div class="pcard dp-card ${posClass} ${swapClass} ${injured ? 'pcard-injured' : ''} ${benchIndex != null ? 'pcard-bench' : ''}"
                     data-player-id="${p.id}"
                     onclick="handleDraftPitchClick(${p.id})"
                     onpointerdown="draftPointerDown(event, ${p.id})">
-                    <div class="dp-badges">${badges}</div>
                     ${armband}
-                    <button class="dp-transfer" onclick="event.stopPropagation();openDraftTransferPanel(${p.id})" data-tooltip="Transfer ${escHTML(p.name)} out for GW${gw}">${DP_SWAP_ICON}</button>
+                    <div class="pcard-cv" role="group" aria-label="Actions for ${escHTML(p.name)}">
+                        <button class="cv-toggle cap ${p.isCaptain ? 'active' : ''}" onclick="event.stopPropagation(); setDraftCaptain(${p.id})"
+                            data-tooltip="Make ${escHTML(p.name)} captain for GW${gw}" aria-label="Make ${escHTML(p.name)} captain">C</button>
+                        <button class="cv-toggle vice ${p.isVice ? 'active' : ''}" onclick="event.stopPropagation(); setDraftViceCaptain(${p.id})"
+                            data-tooltip="Make ${escHTML(p.name)} vice-captain for GW${gw}" aria-label="Make ${escHTML(p.name)} vice-captain">V</button>
+                        <button class="cv-toggle cv-ico" onclick="event.stopPropagation(); openDraftTransferPanel(${p.id})"
+                            data-tooltip="Transfer ${escHTML(p.name)} out for GW${gw}" aria-label="Find replacements for ${escHTML(p.name)}">${DP_SWAP_ICON}</button>
+                    </div>
+                    <div class="pcard-flags">${flags}</div>
                     ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p, 'v2-pid-pitch') : ''}
-                    <div class="dp-name">${escHTML(p.name)}</div>
-                    <div class="dp-score" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}, from expected minutes, the opponent and this player's underlying rates."><b>${xp.toFixed(1)}</b><span class="u">xP</span></div>
-                    <div class="dp-fixtures">${fixtureChips}</div>
-                    ${dpRun.length > 1 ? `<div class="dp-xp-run" data-tooltip="Projected points across GW${dpRun[0]}\u2013GW${dpRun[dpRun.length - 1]} combined, so a soft run and a hard one stop looking alike. One gameweek tells you who plays; a run tells you who is worth owning.">${dpRunXP.toFixed(1)}<span class="dp-xp-run-u">next ${dpRun.length}</span></div>` : ''}
+                    <div class="pcard-name">${escHTML(p.name)}</div>
+                    ${fixtureTag}
+                    <div class="pcard-score" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}, from expected minutes, the opponent and this player's underlying rates.">
+                        <b>${xp.toFixed(1)}</b><span class="pcard-score-u">xP</span>
+                        ${dpRun.length > 1 ? `<span class="pcard-when" data-tooltip="Projected points across GW${dpRun[0]}–GW${dpRun[dpRun.length - 1]} combined, so a soft run and a hard one stop looking alike. One gameweek tells you who plays; a run tells you who is worth owning.">· ${dpRunXP.toFixed(1)}/${dpRun.length}</span>` : ''}
+                    </div>
                 </div>`;
             };
 
@@ -1952,7 +1984,7 @@
                         : 'nobody in this squad can take his place under the formation rules.'}
                     <span class="planner-hint-esc">Press <kbd>Esc</kbd> or click away to cancel.</span></div>`;
             } else {
-                html += `<div class="planner-lineup-hint"><span>${v2Icon('bulb')}</span> Drag a player onto a team-mate to swap them, or click one to pick it out. Use <strong>↔</strong> on a card to transfer him out.</div>`;
+                html += `<div class="planner-lineup-hint"><span>${v2Icon('bulb')}</span> Drag a substitute onto the pitch to bring him on, or two team-mates onto each other to swap them. Use <strong>↔</strong> on a card to transfer him out.</div>`;
             }
             return html;
         }
@@ -2510,7 +2542,7 @@
             const wrap = document.getElementById('draftColumns');
             if (!wrap) return;
             const open = wrap.classList.toggle('drawer-open');
-            localStorage.setItem('fpl_notepad_open', open ? 'true' : 'false');
+            draftDrawerOpen = open;
             /* A shut drawer is still in the document, three inches off the
                right-hand edge. Without this its tabs and its textarea stay in
                the tab order, so tabbing through the pitch walks into a panel
@@ -2619,20 +2651,27 @@
             if (typeof updateStatus === 'function') updateStatus(`Applied the suggested transfer for GW${gw}.`, 'success');
         }
 
-        /* One proposed move, with both faces on it.
+        /* One move, with both faces on it.
          *
          * The old row was two names, an arrow and a number — a diff, not a
          * decision. Every other place on this site that asks you to choose
-         * between footballers shows you the footballers. */
-        function renderDraftProposal(row, index) {
+         * between footballers shows you the footballers.
+         *
+         * Two dresses, one pattern. `detailed` adds the sentence explaining
+         * why the engine picked it, which belongs in the full-screen review
+         * where there is room to read; the drawer that slides over the pitch
+         * gets the same card without it, because a 340px panel laid over the
+         * eleven you are looking at should be portraits, a gameweek, a number
+         * and two buttons — not a paragraph. */
+        function renderDraftMoveCard(row, actionsHTML, detailed) {
             const out = allPlayersById[row.outId];
             const inn = allPlayersById[row.inId];
             const pid = (pl, cls) => pl && typeof v2IdentityHTML === 'function'
                 ? v2IdentityHTML(pl, `v2-pid-portrait dps-face ${cls}`) : '';
-            return `<div class="dps-card">
+            return `<div class="dps-card${detailed ? ' is-detailed' : ''}">
                 <div class="dps-head">
                     <span class="dps-gw">GW${row.gw}</span>
-                    <span class="dps-gain ${row.gain >= 0 ? 'good' : 'bad'}">${row.gain >= 0 ? '+' : ''}${row.gain.toFixed(1)} xP</span>
+                    <span class="dps-gain ${row.gain >= 0 ? 'good' : 'bad'}">${row.gain >= 0 ? '+' : ''}${row.gain.toFixed(1)}<span class="dps-gain-u">xP</span></span>
                 </div>
                 <div class="dps-swap">
                     <div class="dps-side dps-out">
@@ -2647,22 +2686,26 @@
                         <span class="dps-role">In</span>
                     </div>
                 </div>
-                ${row.why ? `<div class="dps-why">${row.why}</div>` : ''}
-                <div class="dps-actions">
-                    <button class="dps-accept" onclick="acceptDraftSuggestion(${index})"
-                        data-tooltip="Add this transfer to GW${row.gw} of the plan">Accept</button>
-                    <button class="dps-reject" onclick="rejectDraftSuggestion(${index})"
-                        data-tooltip="Drop this suggestion and leave the plan as it is">Reject</button>
-                </div>
+                ${detailed && row.why ? `<div class="dps-why">${row.why}</div>` : ''}
+                <div class="dps-actions">${actionsHTML}</div>
             </div>`;
+        }
+
+        function renderDraftProposal(row, index, detailed) {
+            return renderDraftMoveCard(row, `
+                <button class="dps-accept" onclick="acceptDraftSuggestion(${index})"
+                    data-tooltip="Add this transfer to GW${row.gw} of the plan">Accept</button>
+                <button class="dps-reject" onclick="rejectDraftSuggestion(${index})"
+                    data-tooltip="Drop this suggestion and leave the plan as it is">Reject</button>`, detailed);
         }
 
         /* The whole pending batch, with the two decisions that apply to all of
            it. The note about the gains is not a disclaimer for its own sake:
            the loop worked each move out with the ones before it already in
            place, so taking four of six really does change what the other two
-           are worth. */
-        function renderDraftProposalList(ds) {
+           are worth. It is only printed in the detailed view — the drawer
+           says it once, at the top, or not at all. */
+        function renderDraftProposalList(ds, detailed) {
             const list = ds.pendingSuggest || [];
             if (!list.length) return '';
             const total = list.reduce((sum, r) => sum + r.gain, 0);
@@ -2671,12 +2714,12 @@
                     <span class="dps-batch-count">${list.length} suggested transfer${list.length === 1 ? '' : 's'}</span>
                     <span class="dps-batch-total">+${total.toFixed(1)} xP if you take them all</span>
                 </div>
-                <div class="dps-batch-note">Nothing is in your plan yet. Each one was worked out with the ones above it already made, so accepting only some changes what the rest are worth.</div>
+                ${detailed ? '<div class="dps-batch-note">Nothing is in your plan yet. Each one was worked out with the ones above it already made, so accepting only some changes what the rest are worth.</div>' : ''}
                 <div class="dps-batch-actions">
                     <button class="dps-accept dps-all" onclick="acceptAllDraftSuggestions()">Accept all</button>
                     <button class="dps-reject" onclick="discardDraftSuggestions()">Discard</button>
                 </div>
-                ${list.map((row, i) => renderDraftProposal(row, i)).join('')}
+                ${list.map((row, i) => renderDraftProposal(row, i, detailed)).join('')}
             </div>`;
         }
 
@@ -2699,18 +2742,14 @@
                 </div>`;
             }
             const hitNote = best.cost > 0 ? `, after a −${best.cost}-point hit` : ', on a free transfer';
-            const movesHtml = best.moves.map(m => `<div class="dp-move dp-move-suggest">
-                <div class="dp-move-body">
-                    <div class="dp-move-players">
-                        <span class="dp-move-out">${escHTML(m.out.name)}</span>
-                        <span class="dp-move-arrow">→</span>
-                        <span class="dp-move-in">${escHTML(m.in.name)}</span>
-                        <span class="dp-move-gain ${m.gain >= 0 ? 'good' : 'bad'}">${m.gain >= 0 ? '+' : ''}${m.gain.toFixed(1)} xP</span>
-                    </div>
-                    <div class="dp-move-why">${buildDraftMoveNarrative(m, rec.gws)}</div>
-                </div>
-                <button class="dp-move-apply" onclick="applyDraftSuggestion(${gw}, ${m.out.id}, ${m.in.id})" data-tooltip="Apply this transfer to GW${gw} of this plan">Apply</button>
-            </div>`).join('');
+            /* The same card the batch uses, in its minimal dress: portraits, a
+               gameweek, a number and one button. This was a row of names with
+               a three-line explanation under it, in a 340px drawer laid over
+               the pitch — the place on the page with the least room to read. */
+            const movesHtml = best.moves.map(m => renderDraftMoveCard({
+                gw, outId: m.out.id, inId: m.in.id, outName: m.out.name, inName: m.in.name, gain: m.gain
+            }, `<button class="dps-accept" onclick="applyDraftSuggestion(${gw}, ${m.out.id}, ${m.in.id})"
+                    data-tooltip="${escHTML(buildDraftMoveNarrative(m, rec.gws).replace(/<[^>]*>/g, ''))}">Apply</button>`, false)).join('');
             return `<div class="dp-copilot-note">${best.n === 1 ? '1 transfer' : `${best.n} transfers`} recommended for GW${gw}${hitNote} — net +${best.net.toFixed(1)} xP over ${span}.</div>
                 ${movesHtml}`;
         }
@@ -2719,16 +2758,19 @@
             const ds = getActiveDraft();
             const gw = ds.selectedGW;
             /* Waiting on an answer beats anything else this panel could say,
-               so the batch goes at the top and this week's own recommendation
-               waits its turn underneath. */
-            return `<div class="dp-copilot-note">Projects squad value over a ${TW_HORIZON}-gameweek window from this gameweek on — the same engine behind the Transfer Wizard's own recommendation, scoped to this plan's budget and free transfers at each gameweek.</div>
-                <div class="dp-suggest-actions">
-                    <button class="draft-action-btn dp-suggest-run" onclick="draftAutoSuggestAllGWs()" data-tooltip="Works this recommendation through every gameweek in the plan, in order, so each week is judged against the squad the week before would leave. Nothing is changed — the moves come back as suggestions you accept or reject one at a time. Only spends free transfers; it never takes a points hit on its own.">Suggest moves for every gameweek</button>
+               so while a batch is pending it is the whole panel — this week's
+               own recommendation is already in it, and printing it again
+               underneath was the same card twice.
+               The paragraph explaining the engine has gone to the button's
+               tooltip: this drawer lies over the eleven you are reading, and
+               four lines of method is not what you opened it for. */
+            const pending = !!ds.pendingSuggest;
+            return `<div class="dp-suggest-actions">
+                    <button class="draft-action-btn dp-suggest-run" onclick="draftAutoSuggestAllGWs()" data-tooltip="Projects squad value over a ${TW_HORIZON}-gameweek window — the same engine behind the Transfer Wizard's own recommendation, scoped to this plan's budget and free transfers. It works through every gameweek in order, so each week is judged against the squad the week before would leave. Nothing is changed: the moves come back as suggestions you accept or reject one at a time, and it never takes a points hit on its own.">Suggest moves for every gameweek</button>
                     ${ds.lastSuggestLog ? `<button class="draft-action-btn" onclick="openDraftSuggestSummary()">View last summary</button>` : ''}
                     ${ds.lastSuggestSnapshot ? `<button class="draft-action-btn danger" onclick="undoDraftAutoSuggest()">↩ Undo accepted transfers</button>` : ''}
                 </div>
-                ${renderDraftProposalList(ds)}
-                ${renderDraftSuggestForGW(gw)}`;
+                ${pending ? renderDraftProposalList(ds, false) : renderDraftSuggestForGW(gw)}`;
         }
 
         /* Auto-suggest across the whole plan — as a proposal, not as a fait
@@ -2898,19 +2940,12 @@
             const appliedTotal = log.reduce((s, row) => s + row.applied.length, 0);
             const gainTotal = log.reduce((s, row) => s + row.applied.reduce((s2, a) => s2 + a.gain, 0), 0);
 
-            const rows = log.map(row => {
-                const chipBadge = row.chip ? ` <span class="draft-tl-chip" data-tooltip="${escHTML(DRAFT_CHIP_NAME[row.chip] || row.chip)} played in GW${row.gw}">${escHTML(DRAFT_CHIP_SHORT[row.chip] || row.chip)}</span>` : '';
-                if (row.applied.length) {
-                    return `<div class="opt-bench-row">
-                        <div class="opt-bench-head">GW${row.gw}${chipBadge} — ${row.applied.map(a => `${escHTML(a.outName)} → ${escHTML(a.inName)} <strong>(+${a.gain.toFixed(1)} xP)</strong>`).join(', ')}</div>
-                        <div class="opt-bench-why">Suggested — accept it in the panel to put it in the plan.</div>
-                    </div>`;
-                }
-                return `<div class="opt-bench-row">
-                    <div class="opt-bench-head">GW${row.gw}${chipBadge} — Held</div>
-                    <div class="opt-bench-why">${escHTML(row.reason || '')}</div>
-                </div>`;
-            }).join('');
+            /* The gameweek-by-gameweek list is gone. It restated every card
+               below it in words — the gameweek is on the card, in the largest
+               type in the panel — and buried the one thing the cards cannot
+               say between the repetitions: which weeks the engine looked at
+               and had nothing to offer. That is one line now. */
+            const held = log.filter(row => !row.applied.length);
 
             return `<div class="detail-section">
                 <div class="opt-headline ${appliedTotal ? 'gain' : 'flat'}">
@@ -2922,12 +2957,12 @@
             </div>
             ${ds.pendingSuggest ? `<div class="detail-section">
                 <div class="detail-section-title">${v2Icon('sparkle')} Accept or reject</div>
-                ${renderDraftProposalList(ds)}
+                ${renderDraftProposalList(ds, true)}
             </div>` : ''}
-            <div class="detail-section">
-                <div class="detail-section-title">Gameweek by gameweek</div>
-                ${rows}
-            </div>
+            ${held.length ? `<div class="detail-section">
+                <div class="dps-held">Nothing to do in ${held.map(r => `GW${r.gw}`).join(', ')}
+                    — ${escHTML(held[0].reason || 'nothing cleared the free-transfer margin')}${held.length > 1 ? ', or similar' : ''}.</div>
+            </div>` : ''}
             ${ds.lastSuggestSnapshot ? `<div class="detail-section"><button class="rc-btn" style="width:100%;" onclick="undoDraftAutoSuggest()">↩ Undo the transfers you accepted</button></div>` : ''}`;
         }
 
@@ -2950,8 +2985,17 @@
             </div>`;
         }
 
+        /* Shut on arrival, every time.
+         *
+         * This was remembered in localStorage, so opening it once meant every
+         * later visit began with a panel over the pitch — and the pitch is
+         * what the page is for. Kept in memory instead: it stays open while
+         * you are using it and through every re-render, and the next visit
+         * starts clean. */
+        let draftDrawerOpen = false;
+
         function renderDraftSidebar() {
-            const collapsed = localStorage.getItem('fpl_notepad_open') !== 'true';
+            const collapsed = !draftDrawerOpen;
             return `<button class="dp-side-toggle" id="draftSidebarToggle" onclick="toggleDraftSidebar()"
                         aria-expanded="${collapsed ? 'false' : 'true'}" aria-controls="draftDrawer"
                         data-tooltip="${collapsed ? 'Transfer suggestions for this gameweek, and your notes on the plan' : 'Close the panel'}">${draftSideToggleLabel(collapsed)}</button>

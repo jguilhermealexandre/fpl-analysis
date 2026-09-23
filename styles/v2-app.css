@@ -2076,15 +2076,29 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 /* The draft's cards, on the shared .pitch-field. The rows are absolutely
    positioned by that component, so each card takes an equal share of its row
    and stops at a width that keeps a back five on one line. */
-.dp-field .pitch-row .dp-card { flex: 1 1 0; min-width: 0; max-width: 132px; }
+/* On the pitch the draft's card IS .pcard — same width, padding and rhythm
+   as the squad page's, because it is the same fifteen players on the same
+   grass. .dp-card rides along for the handful of draft-only bits (the swap
+   states, the run line), and since v2-app.css loads after my-team.css the few
+   properties both classes set have to be handed back explicitly. */
+.dp-field .pcard.dp-card { flex: 0 1 auto; }
+/* The run across the planned gameweeks rides in the same slot the squad
+   page's "GW6" label uses — on the baseline beside the figure, not on a line
+   of its own. Given its own row it made the card a dozen pixels taller than
+   .pcard, which is enough for four rows of them to start touching. */
+.dp-field .pcard.dp-card .pcard-when { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 /* A card you can pick up should look like one, and nothing inside it should
    be draggable in its own right — an image or a text selection starting its
    own drag is how a substitution fails to begin. Same rules the Squad
    Analysis pitch has carried since it was built. */
 .dp-field .dp-card { cursor: grab; touch-action: none; }
 .dp-field .dp-card:active { cursor: grabbing; }
-.dp-field .dp-card img { -webkit-user-drag: none; user-select: none; }
-.dp-field .dp-card .dp-name, .dp-field .dp-card .dp-score, .dp-field .dp-card .dp-fix { user-select: none; }
+/* Nothing in the card is selectable. Picking three of its lines one at a
+   time was not enough: a drag that begins on the padding, the badge row or
+   the armband starts a text selection instead, and the substitution never
+   begins. The card is a thing you pick up, not a paragraph. */
+.dp-field .dp-card, .dp-field .dp-card * { user-select: none; -webkit-user-select: none; }
+.dp-field .dp-card img { -webkit-user-drag: none; }
 /* The copy in flight is a .dp-card, so the ghost rules in my-team.css —
    written for .pcard — have to reach it too; they are keyed on the class the
    clone gains, not on what it was cloned from. */
@@ -2097,7 +2111,6 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 .dp-field .pitch-grass { min-height: 560px; }
 @media (max-width: 620px) { .dp-field .pitch-grass { min-height: 430px; } }
 .dp-field .dugout-cards { justify-content: center; }
-.dp-field .dugout-seat .dp-card { width: 118px; }
 .dp-bench {
     margin-top: 10px;
     padding: 12px 14px 14px;
@@ -2125,7 +2138,12 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
    object and now look like it — a near-white tile on the grass, face and
    crest side by side above the name, then the two things you actually read
    across an eleven: the number, and who it comes against. */
-.dp-card {
+/* The Transfer Wizard's pitch cards. The GW Draft used to draw this box too
+   and now draws .pcard — the squad page's card — so these rules step aside
+   for anything carrying both classes. Left fighting it they won on width,
+   padding and face size purely because v2-app.css loads after my-team.css,
+   which also meant responsive.css's phone sizes never reached the draft. */
+.dp-card:not(.pcard) {
     position: relative;
     /* The card is fluid, not fixed. --dp-card-w is the width it wants; the
        flex line below lets it give width back when the row would otherwise
@@ -2152,10 +2170,10 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     cursor: pointer;
     transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
 }
-.dp-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22); }
+.dp-card:not(.pcard):hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22); }
 /* The identity mark is v2IdentityHTML's pitch form: face and crest side by
    side at a size worth looking at, with nothing laid over the photo. */
-.dp-card .v2-pid-pitch { --v2-pid-face: 34px; --v2-pid-crest: 22px; gap: 5px; margin-bottom: 2px; }
+.dp-card:not(.pcard) .v2-pid-pitch { --v2-pid-face: 34px; --v2-pid-crest: 22px; gap: 5px; margin-bottom: 2px; }
 .dp-transfer svg { width: 11px; height: 11px; }
 .dp-card.is-out { opacity: .55; }
 /* Mid-swap, the pitch is in a mode and says so three ways: the player you

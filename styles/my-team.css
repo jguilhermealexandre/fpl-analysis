@@ -4832,37 +4832,36 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 }
 
 /* ===== GW Draft: timeline, stat chips, chip pills, pitch cards ===== */
-.draft-timeline { margin-bottom: 12px; }
+/* A row of its own inside .draft-toolbar, which is a wrapping flex box. The
+   track below is a grid of 1fr columns, and a grid that is shrink-to-fit
+   resolves those against its own content — so as a plain flex item it
+   collapsed to about 200px in a 538px column. */
+.draft-timeline { flex: 1 1 100%; width: 100%; margin-bottom: 12px; }
 
+/* Three weeks to a row.
+ *
+ * This was one scrolling line, so a plan opened out to six put half of it
+ * past the right-hand edge of the section — and the plan lives in the narrow
+ * column now, which made that worse rather than better. A grid instead: three
+ * across, and the next three drop onto a second row underneath. The "+3 more
+ * weeks" button takes the whole of the row it would land on, so it reads as
+ * "add another row" rather than as a fourth, half-width gameweek.
+ *
+ * No separator spans between the nodes any more — they were flex children
+ * that would have become grid cells and thrown the columns out. */
 .draft-tl-track {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
     align-items: stretch;
-    gap: 0;
-    overflow-x: auto;
-    /* Room above for the hover.
-     *
-     * A box cannot have visible overflow on one axis and auto on the other —
-     * setting overflow-x: auto computes the y axis to auto as well — so this
-     * track clips vertically even though nothing here scrolls that way. The
-     * nodes lift 1px on hover and gain an inset ring when active, and both
-     * were being sheared off at the top edge: the card moved and its own
-     * border disappeared. The padding is the lift plus the ring plus a little,
-     * on both axes so the row still looks centred. */
-    padding-top: 4px;
-    padding-bottom: 4px;
+    /* Room above for the hover: the nodes lift 1px and gain an inset ring,
+       and a grid with no padding shears both off its own edge. */
+    padding: 4px 0;
 }
-
-/* The connector is what turns six buttons into one plan you read left to right. */
-.draft-tl-link {
-    flex: 0 0 14px;
-    align-self: center;
-    height: 2px;
-    background: var(--border-default);
-}
+@media (max-width: 560px) { .draft-tl-track { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .draft-tl-node {
-    flex: 1 1 0;
-    min-width: 108px;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -4883,14 +4882,13 @@ tr.planner-swap-ineligible { opacity: 0.35; }
  * accent so it does not read as a week you already have. It does not take an
  * equal share of the row: the weeks are the content, this is a control. */
 .draft-tl-more {
-    flex: 0 0 auto;
-    min-width: 84px;
+    grid-column: 1 / -1;
+    flex-direction: row;
+    gap: 7px;
+    min-height: 44px;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    align-self: stretch;
     padding: 8px 12px;
     border: 1px dashed color-mix(in srgb, var(--color-primary) 55%, transparent);
     border-radius: var(--radius-lg);
@@ -8314,14 +8312,28 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     border-radius: var(--radius-lg);
     background: var(--surface-2);
 }
-.dps-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.dps-gw {
-    font-size: 9px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
-    color: var(--text-muted);
-    padding: 2px 7px; border-radius: 999px;
-    border: 1px solid var(--border-subtle);
+.dps-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    padding-bottom: 7px; margin-bottom: 2px;
+    border-bottom: 1px solid var(--border-subtle);
 }
-.dps-gain { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 800; }
+/* The gameweek, at the size of the thing it is.
+ *
+ * It was a 9px grey pill, which on a panel of four suggestions made the one
+ * fact that tells them apart the smallest thing on each card. It is the
+ * heading now — the gameweek-by-gameweek list underneath used to carry this
+ * job in words, and has been removed because this does it. */
+.dps-gw {
+    font-family: var(--font-display);
+    font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em;
+    color: var(--color-primary-text, var(--color-primary));
+    line-height: 1;
+}
+.dps-gain { font-family: var(--font-mono); font-size: 0.92rem; font-weight: 800; line-height: 1; }
+.dps-gain-u { font-size: 0.62rem; font-weight: 700; margin-left: 2px; opacity: .7; }
+/* What the engine looked at and had nothing to say about — one line, in
+   place of a list that restated every card above it. */
+.dps-held { font-size: 0.72rem; line-height: 1.6; color: var(--text-muted); }
 .dps-gain.good { color: var(--verdict-hold); }
 .dps-gain.bad { color: var(--text-muted); }
 
