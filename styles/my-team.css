@@ -995,6 +995,18 @@
 .pitch-player-node.sell, .pitch-player-node.monitor, .pitch-player-node.hold, .pitch-player-node.star { border: none; box-shadow: 0 2px 6px rgba(0,0,0,0.18); }
 .pitch-player-node.injured { opacity: 0.5; }
 .captain-badge { position: absolute; top: -5px; right: -5px; width: 16px; height: 16px; background: var(--color-captain); border-radius: 50%; font-size: 9px; font-weight: 600; color: #1a1a1a; display: flex; align-items: center; justify-content: center; border: 1.5px solid rgba(0,0,0,0.3); }
+/* Both of these carry coordinates from the pitch this page used to draw, where
+   they were pinned to the edges of a round player node: the availability chip
+   under it, the price arrow off its top-left. That node is gone — they live in
+   .pcard-flags now, a flex row in the card's corner — but absolute positioning
+   ignores a flex parent and measures from the nearest positioned ancestor
+   instead, which is the whole card. So a player who is both a fitness doubt
+   and falling in price got the two stacked on top of each other, and neither
+   could be read. Inside that row they are static and sit side by side; the
+   coordinates stay for anything still drawing the old node. */
+.pcard-flags .pitch-injury-badge,
+.pcard-flags .pitch-market-badge { position: static; transform: none; flex: none; }
+
 .pitch-injury-badge { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); background: var(--verdict-sell); color: #fff; font-size: 7px; font-weight: 600; padding: 1px 4px; border-radius: 6px; white-space: nowrap; line-height: 1.2; border: 1px solid rgba(0,0,0,0.3); z-index: 2; }
 .pitch-injury-badge.doubt { background: var(--verdict-monitor); }
 .pitch-market-badge { position: absolute; top: -4px; left: -6px; width: 14px; height: 14px; border-radius: 50%; font-size: 8px; font-weight: 600; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(0,0,0,0.3); z-index: 2; line-height: 1; }
@@ -2386,10 +2398,16 @@
    the identity mark beside it. The letter, its colour and its radius all come
    from that class, so this cannot drift from the squad rows and the players
    table, which draw the same edge. */
+/* Full height of the row, not a chip beside the portrait — .sq-row carries
+   this as a bar down its whole leading edge and the eye reads the column of
+   them as the position grouping. The cell has no left padding and clips, so
+   the bar meets the row's rounded corner exactly. */
+.planner-player { padding: 2px 10px 2px 0; }
 .dp-row-pos {
-    flex: 0 0 16px;
+    flex: 0 0 18px;
     align-self: stretch;
-    min-height: 28px;
+    min-height: 34px;
+    margin: -11px 0;
 }
 
 /* ===== FDR & SHARED STYLES ===== */
@@ -2438,11 +2456,22 @@
 
 /* Squad Overview Table */
 .planner-table-wrap { overflow-x: auto; border-radius: var(--radius-lg); border: 1px solid var(--border-default); background: var(--surface-1); }
-.planner-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+/* Rows as separated cards, the way Squad Analysis → Your squad draws them.
+ *
+ * That page does not use a <table> at all: its rows are tinted blocks with an
+ * 8px radius, 6px of air between them and no dividing lines anywhere. This one
+ * has to stay a table — it is a matrix, with a column per planned gameweek —
+ * but border-spacing gives the rows the same separation, and rounding the
+ * first and last cell of each gives them the same edges. A hairline under
+ * every row on top of that would be a second, weaker way of saying the same
+ * thing, so it goes. */
+.planner-table { width: 100%; border-collapse: separate; border-spacing: 0 6px; min-width: 900px; }
 .planner-table th { position: sticky; top: 0; background: var(--surface-2); padding: 5px 4px; font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); text-align: center; border-bottom: 1px solid var(--border-emphasis); white-space: nowrap; z-index: 2; }
 .planner-table th:first-child { text-align: left; padding-left: 10px; min-width: 140px; position: sticky; left: 0; z-index: 3; }
-.planner-table td { padding: 7px 4px; text-align: center; border-bottom: 1px solid var(--border-subtle); font-size: 0.75rem; vertical-align: middle; }
-.planner-table td:first-child { text-align: left; padding-left: 8px; position: sticky; left: 0; background: inherit; z-index: 1; }
+.planner-table td { padding: 9px 4px; text-align: center; font-size: 0.75rem; vertical-align: middle; }
+.planner-table tbody tr > td:first-child { border-radius: 8px 0 0 8px; }
+.planner-table tbody tr > td:last-child { border-radius: 0 8px 8px 0; }
+.planner-table td:first-child { text-align: left; padding-left: 0; position: sticky; left: 0; background: inherit; z-index: 1; overflow: hidden; }
 /* Rows, the way Squad Analysis → Your squad draws them.
  *
  * That page settled this: a light tint rather than the full weight of
@@ -2468,6 +2497,8 @@
 /* Position group headers, in the same voice as .sq-position-header: display
    face, muted, with the count of players beside the name. The 2px rules
    between groups were heavier than the header itself. */
+.planner-table tbody tr.planner-pos-header > td:first-child,
+.planner-table tbody tr.planner-bench-header > td:first-child { border-radius: 0; }
 .planner-pos-header td { background: var(--surface-0) !important; padding: 9px 12px 5px !important; font-family: var(--font-display); font-size: 0.69rem; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--text-muted); border-bottom: 1px solid var(--border-subtle); }
 .planner-pos-header.pos-gk td { color: var(--position-gk); }
 .planner-pos-header.pos-def td { color: var(--position-def); }

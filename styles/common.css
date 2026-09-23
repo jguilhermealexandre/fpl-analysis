@@ -1804,6 +1804,20 @@ body * {
     letter-spacing: var(--tracking-2xl) !important;
 }
 
+/* Small uppercase labels want the opposite of what the base tracking gives
+   them.
+ *
+ * `body *` above forces every element to inherit the page's tracking, so a
+ * component asking for its own is overruled unless it says !important — which
+ * is what every exception in this block is. These two are group labels: ten
+ * and twelve pixels, all caps, sitting above a list. Caps are all one height,
+ * so nothing breaks up the run and a category like WHERE YOU STAND reads as
+ * one long word; they need air between the letters rather than less of it.
+ * .pd-group-title had already asked for +0.5px in its own file and been
+ * overruled the same way. */
+.v2-flyout-group-title { letter-spacing: 0.1em !important; }
+.pd-group-title { letter-spacing: 0.06em !important; }
+
 h2 {
     letter-spacing: var(--tracking-xl) !important;
 }
@@ -1824,10 +1838,15 @@ h4 {
    nothing — on a 68px one, when large type is exactly what needs to be
    drawn in. The landing headings opt out and set their own em-based scale
    in styles/landing.css; everything else keeps this. */
+/* [class*="title"] is a proxy for "this is a heading", and a blunt one: a
+   *-group-title is a small uppercase label above a list, not a heading, and
+   drawing it in is the opposite of what it needs. Excluded here as well as
+   given its own rule below — both carry !important, and this selector is the
+   more specific of the two, so an opt-out alone would lose to it. */
 body :is(
     h1, h2, h3, h4, h5, h6,
     [class*="title"], [class*="heading"]
-):not(.lp-h1):not(.lp-h2):not(.lp-h3) {
+):not(.lp-h1):not(.lp-h2):not(.lp-h3):not([class*="group-title"]) {
     letter-spacing: -0.5px !important;
 }
 

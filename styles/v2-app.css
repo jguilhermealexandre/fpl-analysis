@@ -241,10 +241,12 @@
     transform: translateX(0);
 }
 
+/* Its tracking is not set here: `body * { letter-spacing: inherit !important }`
+   in common.css overrules any element that asks for its own, so the opt-out
+   lives beside the others in that file. */
 .v2-flyout-group-title {
     font-size: 10px;
     font-weight: 600;
-    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--text-muted);
     padding: 4px 8px;
@@ -2401,6 +2403,11 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
        <body> and positioned against the viewport, so nothing that needs to
        escape this box is inside it. */
     overflow: clip visible;
+    /* The same gap .v2-section leaves under itself. The two columns inside are
+       sections and would each have carried it, but they are grid items with
+       their margins zeroed — so the wrapper has to, or the lineup card butts
+       straight into Insights below it. */
+    margin-bottom: 20px;
 }
 .dp-col { margin: 0; }
 /* The sections are already cards; inside the grid they stop being full-width
