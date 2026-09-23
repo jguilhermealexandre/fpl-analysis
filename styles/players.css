@@ -2322,12 +2322,21 @@
     height: 8px;
     border-radius: 50%;
 }
+/* Three across at most.
+ *
+ * auto-fill at 300px put five cards on a wide screen, and a Rising Form card
+ * is not a tile — it carries a player hero, up to seven signals and a bar and
+ * a number for each. At a fifth of the width the labels wrapped, the bars were
+ * stubs and the green detail beside them ran past the card's own edge. The
+ * cards have a maximum now rather than a minimum, so a wide screen gives them
+ * room instead of more neighbours. */
 .rising-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
 }
-@media (max-width: 700px) { .rising-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1180px) { .rising-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px)  { .rising-grid { grid-template-columns: 1fr; } }
 
 .rising-card {
     background: var(--surface-1);
@@ -2401,14 +2410,30 @@
     flex-direction: column;
     gap: 5px;
 }
+/* Stacked, not a row.
+ *
+ * This was icon | label | bar | value on one line, and the four fought each
+ * other for a width none of them could have: the label wrapped to two lines on
+ * some cards and one on others, so no two signals in a column lined up, and
+ * the green detail on the end — "+2.1 pts per game since GW4" — had whatever
+ * was left, which was usually not enough, so it ran out past the card.
+ *
+ * Label, then the bar, then the number it explains. Each signal is the same
+ * height whatever it says, every card in a row lines up, and the detail gets
+ * the card's full width because nothing is beside it. */
 .rising-signal {
+    display: grid;
+    gap: 4px;
+    padding: 7px 9px;
+    background: var(--surface-2);
+    border-radius: 7px;
+    font-size: 11px;
+}
+.rising-signal-head {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 8px;
-    background: var(--surface-2);
-    border-radius: 6px;
-    font-size: 11px;
+    min-width: 0;
 }
 .rising-signal-icon {
     width: 18px;
@@ -2424,7 +2449,32 @@
 .rising-signal-value {
     font-weight: 600;
     font-size: 11px;
-    flex-shrink: 0;
+    /* It has the whole row now, so it wraps rather than overflowing. */
+    min-width: 0;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+}
+
+/* The count and the fixture rating, on one line above the signals. */
+.rising-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.rising-meta-count {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+.rising-meta-fdr {
+    font-size: 10px;
+    padding: 2px 7px;
+    /* It carries a tooltip, so it has to look like something you can ask. */
+    cursor: help;
 }
 .rising-signal-value.positive { color: var(--color-success); }
 .rising-signal-value.neutral { color: var(--text-secondary); }
@@ -4049,8 +4099,20 @@
 
 /* The note lines in the routes legend run to a sentence, so they wrap onto
    their own row rather than sitting in the flow of coloured keys. */
+/* A paragraph in a panel built for a colour key.
+ *
+ * .legend-panel-item is white-space: nowrap, which is right for "● Team Form"
+ * and ruinous for four sentences: flex-basis:100% gave this its own row and
+ * the nowrap it inherits then ran that row off the side of the screen, so the
+ * explanation of why the order is not the route count was mostly not on the
+ * page. It wraps, and the dot alignment the key needs is released so a
+ * multi-line note starts at the top rather than centring on its own height. */
 .legend-panel-note {
     flex-basis: 100%;
+    white-space: normal;
+    align-items: flex-start;
+    min-width: 0;
+    overflow-wrap: anywhere;
     opacity: .8;
     line-height: 1.5;
 }
