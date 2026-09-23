@@ -143,3 +143,22 @@ test('the gate knows exactly the routes _redirects serves', () => {
     assert.deepEqual(unlisted, [], 'served by _redirects, but the gate sends them to /404.html');
     assert.deepEqual(invented, [], 'the gate treats these as real and _redirects has no rule for them');
 });
+
+test('the remembered Team ID is a reminder, never a key', () => {
+    /* The ID page fills its field from fpl_team_id_hint so nobody has to go
+       and find a seven-digit number again. That is a convenience and it must
+       stay one: the gate decides on fpl_team_id and only fpl_team_id, so a
+       remembered number in a browser cannot on its own put anyone back into
+       the dashboard. Checked in a browser too — hint set, id cleared, and
+       /dashboard/my-team still sends you to the ID page. */
+    assert.ok(gate.includes("localStorage.getItem('fpl_team_id')"),
+        'the gate should read the saved id');
+    assert.ok(!gate.includes('fpl_team_id_hint'),
+        'the gate must never consult the hint — that would make a reminder an access token');
+
+    const common = read('scripts/common.js');
+    assert.match(common, /function forgetTeamIdHint\(\)/,
+        'a reminder that cannot be forgotten is just storage nobody agreed to');
+    assert.match(read('welcome.html'), /forgetTeamIdHint\(\)/,
+        'and the ID page has to offer it');
+});

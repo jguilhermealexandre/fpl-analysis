@@ -2068,6 +2068,13 @@ function getSavedTeamId() {
 function saveTeamId(id) {
     if (!id || !/^\d+$/.test(String(id))) return;
     localStorage.setItem('fpl_team_id', String(id));
+    /* And a copy that outlives clearing, so the ID page can offer it back
+       rather than making somebody find a seven-digit number again. It is a
+       reminder, not a session: nothing reads it to decide anything, the gate
+       never sees it, and forgetTeamIdHint() below is wired to the ID page so
+       it can actually be forgotten. Same browser, same storage, and it never
+       leaves either. */
+    try { localStorage.setItem('fpl_team_id_hint', String(id)); } catch (e) { /* private mode */ }
     if (typeof auSaveTeamId === 'function') {
         try { Promise.resolve(auSaveTeamId(String(id))).catch(() => {}); } catch (e) { /* not signed in */ }
     }
@@ -2095,6 +2102,21 @@ async function adoptTeamIdFromAccount() {
 
 function clearTeamId() {
     localStorage.removeItem('fpl_team_id');
+}
+
+/* The last id this browser was used with, offered back on the ID page.
+   Deliberately not read by anything that decides access — dashboard-gate.js
+   asks for fpl_team_id and only that, so a remembered number cannot let
+   anybody back in on its own. */
+function getTeamIdHint() {
+    try {
+        const id = localStorage.getItem('fpl_team_id_hint');
+        return (id && /^\d+$/.test(id)) ? id : null;
+    } catch (e) { return null; }
+}
+
+function forgetTeamIdHint() {
+    try { localStorage.removeItem('fpl_team_id_hint'); } catch (e) { /* private mode */ }
 }
 
 function loadDemoTeam() {
@@ -2216,7 +2238,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=358')
+    fetch('/footer.html?v=359')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

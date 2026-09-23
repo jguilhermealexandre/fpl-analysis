@@ -21,10 +21,10 @@
          waiting for the stylesheet to name them: same-origin now, so a
          preload here costs nothing and starts them with the CSS. -->
     <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-ca11fe9ca5.woff2" crossorigin>
-    <link rel="stylesheet" href="/styles/fonts.min.css?v=358">
-    <link rel="stylesheet" href="/styles/common.min.css?v=358">
-    <link rel="stylesheet" href="/styles/v2-design.min.css?v=358">
-    <link rel="stylesheet" href="/styles/auth.min.css?v=358">
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=359">
+    <link rel="stylesheet" href="/styles/common.min.css?v=359">
+    <link rel="stylesheet" href="/styles/v2-design.min.css?v=359">
+    <link rel="stylesheet" href="/styles/auth.min.css?v=359">
     <style>
         /* The one thing this page is for. Bigger than a form field has any
            business being, because it is the only field on the page and the
@@ -56,6 +56,15 @@
             transition: border-color 150ms ease, color 150ms ease;
         }
         .wl-demo:hover { border-color: var(--color-primary); color: var(--text-primary); }
+        .wl-hint {
+            margin: 10px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted);
+            display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; justify-content: center;
+        }
+        .wl-hint-forget {
+            background: none; border: none; padding: 0; cursor: pointer;
+            font: inherit; color: var(--color-primary); font-weight: 600;
+            text-decoration: underline; text-underline-offset: 2px;
+        }
     </style>
 </head>
 <body>
@@ -93,6 +102,13 @@
                 <button class="au-submit" id="wlSubmit" type="submit">Open my dashboard</button>
             </form>
 
+            <!-- Shown only when the field was filled from the remembered id,
+                 so the offer explains itself and can be refused. -->
+            <p class="wl-hint" id="wlHint" hidden>
+                Filled in from the last ID used on this browser.
+                <button type="button" class="wl-hint-forget" id="wlForget">Not you? Forget it</button>
+            </p>
+
             <!-- The demo squad. It used to sit in a login dialog over the
                  landing page; this is where it belongs, in front of somebody
                  deciding whether to hand over a number at all. -->
@@ -111,7 +127,8 @@
                  where somebody is deciding whether to type it. -->
             <p class="wl-privacy">Remembered in <b>this browser only</b>, so next time you go straight in.
                 There is no account and no password: a Team ID identifies a page anyone can already
-                look at. Clearing it is one click in the sidebar.</p>
+                look at. Clearing it is one click in the sidebar — and the last ID stays here to fill
+                this box in, until you press <b>Forget it</b> above.</p>
 
             <div class="au-alt">
                 <a href="/">Back to the site</a>
@@ -121,8 +138,8 @@
     </main>
 </div>
 
-<script src="/scripts/auth.min.js?v=358"></script>
-<script src="/scripts/common.min.js?v=358"></script>
+<script src="/scripts/auth.min.js?v=359"></script>
+<script src="/scripts/common.min.js?v=359"></script>
 <script>
     /* The door to /dashboard/.
      *
@@ -186,11 +203,37 @@
             wlError.textContent = 'A Team ID is just digits — no spaces, letters or dashes.';
             wlError.classList.add('is-on');
         }
+
+        /* The id this browser was last used with, offered rather than
+           demanded. A Team ID is seven digits in a tab nobody has open any
+           more, and asking for it again because the saved copy was cleared is
+           the site forgetting somebody who never went anywhere.
+
+           Filled in, not submitted: it is still their decision, the field is
+           selected so typing replaces it outright, and there is a way to make
+           the browser forget it that actually forgets it. Skipped when a
+           mistyped id is already in the field, which is the more recent
+           intention. */
+        const hint = !typed && typeof getTeamIdHint === 'function' ? getTeamIdHint() : null;
+        if (hint) {
+            input.value = hint;
+            const row = document.getElementById('wlHint');
+            if (row) row.hidden = false;
+        }
         input.focus();
+        if (hint) input.select();
     })();
 
     document.getElementById('wlInput').addEventListener('input', function () {
         wlError.classList.remove('is-on');
+    });
+
+    document.getElementById('wlForget').addEventListener('click', function () {
+        if (typeof forgetTeamIdHint === 'function') forgetTeamIdHint();
+        const input = document.getElementById('wlInput');
+        if (input) { input.value = ''; input.focus(); }
+        const row = document.getElementById('wlHint');
+        if (row) row.hidden = true;
     });
 
     /* DEMO_TEAM_ID is '0', a sentinel the data layer answers with a built
