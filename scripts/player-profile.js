@@ -1965,7 +1965,29 @@
                 }
             } catch (e) { /* no teams map here */ }
             const verdict = analysis && analysis.verdict;
-            const chip = { star: 'STAR', hold: 'HOLD', monitor: 'WATCH', sell: 'SELL' }[verdict] || '';
+            /* The four verdicts, in the words they actually mean.
+             *
+             * "STAR" said nothing. It is the top of a four-step scale — sell,
+             * watch, hold, star — and read on its own, next to a name, it
+             * could as easily have meant "this player is famous" as "this is
+             * one of the best players in your squad and a captain shout". The
+             * rule behind it is a low sell rating, form well clear of the
+             * positional median and 75+ minutes a game, and what the page
+             * tells you to do with it is "captain candidate, lock in and don't
+             * overthink". TOP PICK is that, in two words.
+             *
+             * The other three were already plain. All four now carry the
+             * sentence as a tooltip, because a four-letter chip is a label and
+             * not an explanation — and tooltips work on every page now, which
+             * they did not when these were written. */
+            const VERDICTS = {
+                star:    { chip: 'TOP PICK', tip: 'One of the best players in your squad right now — strong form, kind fixtures, and playing the full 90. A captain candidate.' },
+                hold:    { chip: 'HOLD',     tip: 'Performing as expected. Nothing here says sell — keep starting him.' },
+                monitor: { chip: 'WATCH',    tip: 'Some concerns — form, minutes or fixtures. Not a sell yet, but worth reassessing after the next gameweek.' },
+                sell:    { chip: 'SELL',     tip: 'Poor form, hard fixtures or a fitness concern. Prioritise him for a transfer out.' }
+            };
+            const v = VERDICTS[verdict] || null;
+            const chip = v ? v.chip : '';
 
             return `<div class="pdm-hero" style="--club:${shirt};--club-ink:${ink};">
                 <div class="pdm-hero-shape" aria-hidden="true"></div>
@@ -1984,7 +2006,7 @@
                     </span>
                 </div>
                 <div class="pdm-hero-side">
-                    ${chip ? `<span class="pdm-hero-chip v-${verdict}">${chip}</span>` : ''}
+                    ${chip ? `<span class="pdm-hero-chip v-${verdict}" data-tooltip="${escHTML(v.tip)}">${chip}</span>` : ''}
                     <span class="pdm-hero-price">£${player.price.toFixed(1)}m</span>
                     <span class="pdm-hero-own">${player.ownership.toFixed(1)}% owned</span>
                 </div>

@@ -139,62 +139,11 @@
         // long player names — a bubble anchored in there gets clipped. One shared
         // node positioned in viewport coordinates escapes that, and appears
         // instantly rather than after the browser's ~1s title= delay.
-        let tooltipNode = null;
-
-        function positionTooltip(target) {
-            const r = target.getBoundingClientRect();
-            // Measure unconstrained before deciding which side it fits on.
-            tooltipNode.style.left = '0px';
-            tooltipNode.style.top = '0px';
-            const t = tooltipNode.getBoundingClientRect();
-
-            let left = r.left + (r.width / 2) - (t.width / 2);
-            left = Math.max(8, Math.min(left, window.innerWidth - t.width - 8));
-
-            let top = r.top - t.height - 8;
-            const below = top < 8;                    // no room above — flip under
-            if (below) top = r.bottom + 8;
-
-            tooltipNode.classList.toggle('below', below);
-            tooltipNode.style.left = `${Math.round(left)}px`;
-            tooltipNode.style.top = `${Math.round(top)}px`;
-        }
-
-        function hideTooltip() {
-            if (tooltipNode) tooltipNode.classList.remove('visible');
-        }
-
-        function initTooltips() {
-            if (tooltipNode) return;
-            tooltipNode = document.createElement('div');
-            tooltipNode.className = 'ui-tooltip';
-            tooltipNode.setAttribute('role', 'tooltip');
-            document.body.appendChild(tooltipNode);
-
-            const show = event => {
-                const target = event.target.closest && event.target.closest('[data-tooltip]');
-                if (!target) return;
-                const text = target.getAttribute('data-tooltip');
-                if (!text) return;
-                tooltipNode.textContent = text;
-                tooltipNode.classList.add('visible');
-                positionTooltip(target);
-            };
-            const maybeHide = event => {
-                if (event.target.closest && event.target.closest('[data-tooltip]')) hideTooltip();
-            };
-
-            // Delegated, so anything re-rendered later is covered without rebinding.
-            document.addEventListener('mouseover', show);
-            document.addEventListener('mouseout', maybeHide);
-            document.addEventListener('focusin', show);
-            document.addEventListener('focusout', maybeHide);
-            // Capture phase: the panels and the table scroll in their own containers,
-            // and a tooltip left behind would float detached from its element.
-            document.addEventListener('scroll', hideTooltip, true);
-            window.addEventListener('resize', hideTooltip);
-            document.addEventListener('keydown', e => { if (e.key === 'Escape') hideTooltip(); });
-        }
+         /* The tooltip bubble moved to common.js.
+           It was built here, in a file two pages load, and called from one
+           page — so every data-tooltip on the rest of the site showed the
+           question-mark cursor v2-design.css gives it and then nothing. It is
+           shared now and initialises itself. */
 
         /* Team context, as compact pills.
 
