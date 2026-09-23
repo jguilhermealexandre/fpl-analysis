@@ -124,3 +124,22 @@ test('signing in returns you to the page the gate took you from', () => {
     assert.deepEqual(accepted.sort(), written.sort(),
         'the gate sends a ?next= from here and the ID page would throw it away');
 });
+
+test('the gate knows exactly the routes _redirects serves', () => {
+    /* _redirects answers everything under /dashboard/ with index.html at 200,
+       so the list of what actually exists is in the gate, and the two have to
+       agree in both directions: a route in the table and not in the gate is
+       sent to the 404 page it can reach, and a route in the gate and not in
+       the table is a name for nothing. */
+    const OPEN = listInGate('OPEN');
+    const KNOWN = listInGate('KNOWN');
+    const claims = new Set([...OPEN, ...KNOWN]);
+    const served = new Set(appRoutes()
+        .map(r => r.from.replace(/\/\*$/, '').replace(/\/+$/, '') || '/')
+        .filter(p => p === '/dashboard' || p.startsWith('/dashboard/')));
+
+    const unlisted = [...served].filter(p => !claims.has(p));
+    const invented = [...claims].filter(p => !served.has(p));
+    assert.deepEqual(unlisted, [], 'served by _redirects, but the gate sends them to /404.html');
+    assert.deepEqual(invented, [], 'the gate treats these as real and _redirects has no rule for them');
+});

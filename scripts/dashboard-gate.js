@@ -49,6 +49,28 @@
     var OPEN = ['/dashboard/login', '/dashboard/scouts-desk', '/dashboard/news'];
     if (OPEN.indexOf(path) !== -1) return;
 
+    /* A path under /dashboard/ that is not one of the app's pages.
+     *
+     * _redirects answers everything under here with index.html at 200, which
+     * it has to: the named rules cover the URLs we link and not the ones a
+     * trailing slash, a shared link or a typo produce, and without the
+     * catch-all those are no page at all. The cost is that /dashboard/nonsense
+     * comes back as the home screen — a real page, with real content, at a URL
+     * that means nothing, which is the shape of a soft 404 and is how a
+     * crawler ends up indexing twenty copies of the dashboard.
+     *
+     * So the list of what exists lives here instead, and anything else is sent
+     * to the 404 page. tests/dashboard-gate.test.mjs holds this list to the
+     * 200 rewrites in _redirects, in both directions, so a route added there
+     * and forgotten here fails the build rather than becoming unreachable. */
+    var KNOWN = ['/dashboard', '/dashboard/my-team', '/dashboard/squad', '/dashboard/players',
+        '/dashboard/teams', '/dashboard/rivals', '/dashboard/premium'];
+    if (path.indexOf('/dashboard') === 0
+        && OPEN.indexOf(path) === -1 && KNOWN.indexOf(path) === -1) {
+        location.replace('/404.html');
+        return;
+    }
+
     var id = null;
     try { id = localStorage.getItem('fpl_team_id'); } catch (e) {
         /* Private mode, or storage blocked. Treated as "no id": the ID page

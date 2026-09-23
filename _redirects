@@ -67,19 +67,25 @@
 /dashboard      /index.html   200
 /dashboard/     /index.html   200
 
-# And nothing else under it exists. There used to be a /dashboard/* catch-all
-# here, which answered every unknown path with index.html at 200 and so made
-# /dashboard/ a generator of pages that are not missing: /dashboard/anything
-# returned the home screen, and the relative fetches on it resolved to
-# /dashboard/data/*.json and got 200 and a page of HTML where the code
-# expected JSON — the bug that showed the landing page with a sidebar over it.
-# A crawler that finds one of these sees a soft 404: a real page, with real
-# content, at a URL that means nothing.
+# Everything else under /dashboard/ is answered here rather than left to fall
+# through. This rule was deleted for a day and signing in started landing on a
+# 404: the named routes above cover the paths we link, and not the ones a
+# browser, a shared link or Pages' own path normalising can produce —
+# /dashboard/my-team/ with a trailing slash is not /dashboard/my-team, and
+# with nothing matching it there is no page at all.
 #
-# Deleted rather than replaced with a rule pointing at 404.html. With no rule
-# matching, an unknown path under /dashboard/ finds no file and Pages serves
-# the site's own 404.html with a 404 — the behaviour we want, out of the
-# default path, with nothing here that has to be right for it to happen.
+# What the rule cost when it was last here is a real problem and is fixed
+# elsewhere rather than by deleting it: every unknown path returned the home
+# screen at 200, so /dashboard/anything was a page that is not missing, and
+# the relative fetches on it resolved to /dashboard/data/*.json and got HTML
+# where the code expected JSON. Those fetches are root-absolute now and a test
+# keeps them that way, and dashboard-gate.js sends an unrecognised path under
+# /dashboard/ to the 404 page — from the list in _redirects, checked against
+# it by tests/dashboard-gate.test.mjs — so a URL that means nothing says so
+# instead of quietly being the dashboard.
+#
+# Last, after every named page above, so it only catches what is left.
+/dashboard/*    /index.html   200
 
 # NOT the extensionless spellings. /fpl-my-team-analysis and /welcome were
 # 301'd here too, for a day, so that the canonical on each of those pages named
