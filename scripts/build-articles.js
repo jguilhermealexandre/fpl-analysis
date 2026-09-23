@@ -103,15 +103,15 @@ function articlePage(a) {
 <meta name="twitter:description" content="${esc(a.dek)}">
 <meta name="twitter:image" content="${card}">
 <!-- The site's own typefaces, not Google's — see tools/fetch-fonts.mjs. -->
-<link rel="stylesheet" href="/styles/fonts.min.css?v=363" media="print" onload="this.media='all';this.onload=null">
-<noscript><link rel="stylesheet" href="/styles/fonts.min.css?v=363"></noscript>
+<link rel="stylesheet" href="/styles/fonts.min.css?v=364" media="print" onload="this.media='all';this.onload=null">
+<noscript><link rel="stylesheet" href="/styles/fonts.min.css?v=364"></noscript>
 <!-- Root-absolute, minified and versioned, like every other page. These were
      ../styles/*.css: relative, unminified and uncacheable, so an archive page
      shipped 161KB of raw v2-design.css and revalidated it on every visit. -->
-<link rel="stylesheet" href="/styles/common.min.css?v=363">
-<link rel="stylesheet" href="/styles/v2-design.min.css?v=363">
-<script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=363';document.head.appendChild(l)})();</script>
-<link rel="stylesheet" href="/styles/scouts-desk.min.css?v=363">
+<link rel="stylesheet" href="/styles/common.min.css?v=364">
+<link rel="stylesheet" href="/styles/v2-design.min.css?v=364">
+<script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=364';document.head.appendChild(l)})();</script>
+<link rel="stylesheet" href="/styles/scouts-desk.min.css?v=364">
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
 </head>
 <body>

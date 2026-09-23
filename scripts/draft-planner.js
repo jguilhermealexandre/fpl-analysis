@@ -389,8 +389,13 @@
             const remainingBudget = getDraftBudget(gw);
             const maxAffordable = remainingBudget + (player.sellPrice || player.price);
 
-            document.getElementById('draftTransferTitle').textContent = player.name;
-            document.getElementById('draftTransferMeta').innerHTML = `<span class="position-badge ${posConfig.class}">${posConfig.short}</span> ${escHTML(player.team)} · £${player.price.toFixed(1)}m`;
+            /* The header names the job, not the player — the player is the card
+               immediately under it, at a size worth looking at. It used to say
+               his name here and then again in a heading called "Current
+               Player", with the face nowhere at all. */
+            document.getElementById('draftTransferTitle').textContent = 'Transfer out';
+            document.getElementById('draftTransferMeta').innerHTML =
+                `Gameweek ${gw} · £${maxAffordable.toFixed(1)}m to spend`;
 
             let html = '';
 
@@ -398,54 +403,80 @@
             const sSt = getPlayerSeasonPer90(player);
             const rSt = getPlayerRecentStats(player.id, 6);
             const posStats = getPositionStats(player, sSt, rSt);
+            const outFix = (teamFixtures6[player.teamId] || []).slice(0, 5);
 
-            html += `<div class="detail-section">
-                <div class="detail-section-title"><i data-lucide="bar-chart-3" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Current Player</div>
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;">
-                    ${posStats.map(s => `<div style="text-align:center;background:var(--surface-0);padding:6px;border-radius:var(--radius-sm);">
-                        <div style="font-size:0.6rem;color:var(--text-muted);">${s.label}</div>
-                        <div style="font-family:var(--font-mono);font-weight:700;font-size:0.85rem;">${s.season}</div>
-                        <div style="font-size:0.6rem;color:var(--text-muted);">L6: ${s.recent}</div>
+            /* The player leaving, as a card rather than a row of grey text.
+               This is the one decision the panel is about, so it gets the
+               portrait, the badge, the price and the run he is walking out of
+               — the same things the replacement cards below carry, so the two
+               halves of the swap can actually be compared. */
+            html += `<div class="dtp-out">
+                <div class="dtp-out-head">
+                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(player, 'v2-pid-portrait dtp-out-face') : ''}
+                    <div class="dtp-out-id">
+                        <div class="dtp-out-name">${escHTML(player.name)}</div>
+                        <div class="dtp-out-meta">
+                            <span class="position-badge ${posConfig.class}">${posConfig.short}</span>
+                            <span>${escHTML(player.team)}</span>
+                            <span class="dtp-out-price">£${player.price.toFixed(1)}m</span>
+                        </div>
+                    </div>
+                    <div class="dtp-out-tag">Out</div>
+                </div>
+                <div class="dtp-out-stats">
+                    ${posStats.map(s => `<div class="dtp-stat" data-tooltip="${escHTML(typeof s.label === 'string' ? s.label.replace(/<[^>]*>/g, '') : '')} — season per 90, and the last six gameweeks.">
+                        <span class="dtp-stat-label">${s.label}</span>
+                        <span class="dtp-stat-value">${s.season}</span>
+                        <span class="dtp-stat-recent">L6 ${s.recent}</span>
                     </div>`).join('')}
                 </div>
-                <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;">Budget: £${maxAffordable.toFixed(1)}m available</div>
-                <div class="transfer-section-title">Upcoming Fixtures</div>
-                <div class="transfer-fdr-strip">
-                    ${(teamFixtures6[player.teamId] || []).slice(0, 6).map(f => `<div class="transfer-fdr-badge fdr-${f.difficulty || 3}">${escHTML(f.opponent)}${f.isHome ? '(H)' : '(A)'}</div>`).join('')}
-                </div>
+                ${outFix.length ? `<div class="dtp-out-fix">
+                    <span class="dtp-out-fix-label">Next up</span>
+                    ${outFix.map(f => `<span class="dtp-fix fdr-${f.difficulty || 3}" data-tooltip="GW${f.event}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent)} — FDR ${f.difficulty || 3}">${escHTML(f.opponent)} <span class="dtp-fix-ha">(${f.isHome ? 'H' : 'A'})</span></span>`).join('')}
+                </div>` : ''}
             </div>`;
 
             // Search
             html += `<div class="detail-section">
-                <div class="detail-section-title"><i data-lucide="search" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Find Replacement</div>
+                <div class="detail-section-title">${v2Icon('search')} Find a replacement yourself</div>
                 <div class="planner-search-wrap">
-                    <input type="text" class="planner-search-input" id="draftSearchInput" placeholder="Search ${posConfig.name}s by name..." oninput="filterDraftSearch()" onfocus="filterDraftSearch()">
+                    <input type="text" class="planner-search-input" id="draftSearchInput" placeholder="Search ${posConfig.name}s by name…" oninput="filterDraftSearch()" onfocus="filterDraftSearch()">
                     <div class="planner-search-dropdown" id="draftSearchDropdown"></div>
                 </div>
             </div>`;
 
             html += `<div id="draftTransferComparison"></div>`;
 
-            // Quick suggestions — AI-ranked, one click swaps the player in immediately
-            // (unlike the manual Search results above, which go through the compare-then-
-            // confirm flow via selectDraftReplacement, since these are already AI-vetted).
+            // Ranked replacements. One click swaps the player in — unlike the
+            // manual search above, which goes through the compare-then-confirm
+            // flow via selectDraftReplacement, since these are already vetted.
             const squad2 = getDraftSquad(gw);
             const suggestions = findDraftReplacements(player, squad2, 8);
             if (suggestions.length > 0) {
                 html += `<div class="detail-section">
-                    <div class="detail-section-title"><i data-lucide="zap" style="width:14px;height:14px;display:inline;vertical-align:middle;"></i> Top Suggestions</div>
+                    <div class="detail-section-title">${v2Icon('sparkle')} Best available for £${maxAffordable.toFixed(1)}m</div>
+                    <div class="dtp-grid">
                     ${suggestions.map((r, i) => {
-                        const nextF = (r.fixtures || [])[0];
-                        const fdrHtml = nextF ? `<span class="fdr-dot fdr-${nextF.difficulty}"></span> ${escHTML(nextF.opponent)} (${nextF.isHome ? 'H' : 'A'})` : 'No fixture';
-                        return `<div class="tw-market-row" onclick="confirmDraftTransfer(${player.id}, ${r.id})" title="Click to swap in ${escHTML(r.name)}">
-                            <div class="tw-market-rank">${i + 1}</div>
-                            <span class="tw-market-name">${escHTML(r.name)}</span>
-                            <span style="font-size:10px;color:var(--text-muted);flex-shrink:0;">${escHTML(r.team)}</span>
-                            <span class="tw-market-price">£${r.price.toFixed(1)}m ${priceChangeBadge(r)}</span>
-                            <span class="tw-market-score" title="AI Projected Score">${r._score.toFixed(0)}</span>
-                            <div class="tw-market-row-detail">${fdrHtml}</div>
-                        </div>`;
+                        const rFix = (r.fixtures || []).slice(0, 3);
+                        const delta = r.price - player.price;
+                        return `<button class="dtp-opt" onclick="confirmDraftTransfer(${player.id}, ${r.id})"
+                            data-tooltip="Bring ${escHTML(r.name)} in for ${escHTML(player.name)} in GW${gw}.">
+                            <span class="dtp-opt-rank">${i + 1}</span>
+                            ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(r, 'v2-pid-portrait dtp-opt-face') : ''}
+                            <span class="dtp-opt-id">
+                                <span class="dtp-opt-name">${escHTML(r.name)}</span>
+                                <span class="dtp-opt-team">${escHTML(r.team)}</span>
+                            </span>
+                            <span class="dtp-opt-price">£${r.price.toFixed(1)}m ${priceChangeBadge(r)}
+                                <span class="dtp-opt-delta ${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}">${delta === 0 ? 'same price' : `${delta > 0 ? '+' : '−'}£${Math.abs(delta).toFixed(1)}m`}</span>
+                            </span>
+                            <span class="dtp-opt-fix">${rFix.length
+                                ? rFix.map(f => `<span class="dtp-fix fdr-${f.difficulty || 3}">${escHTML(f.opponent)} <span class="dtp-fix-ha">(${f.isHome ? 'H' : 'A'})</span></span>`).join('')
+                                : '<span class="dtp-fix dtp-fix-blank">No fixture</span>'}</span>
+                            <span class="dtp-opt-score" data-tooltip="Our ranking for this swap: form, points per game, the projection for the week ahead and the run of fixtures, combined.">${r._score.toFixed(0)}</span>
+                        </button>`;
                     }).join('')}
+                    </div>
                 </div>`;
             }
 
@@ -1245,27 +1276,39 @@
                next began. Every id below is unchanged; these are wrappers. */
             let html = '';
 
-            // ---- 1. the plan ----
-            html += `<section class="v2-section">
-                <div class="section-header"><h2>${v2Icon('calendar')} Your plan</h2></div>`;
-            html += `<div id="draftPlanBar">${renderDraftPlanBar()}</div>`;
-            html += `<div class="draft-toolbar" id="draftToolbar" ${draftCompareMode ? 'style="display:none;"' : ''}>${renderDraftToolbar()}</div>`;
-            html += `<div id="draftChipRow" ${draftCompareMode ? 'style="display:none;"' : ''}>${renderDraftChipRow()}</div>`;
-            html += `</section>`;
-
-            // Compare mode replaces the two sections below it rather than
-            // sitting between them, so it stays outside.
+            /* Compare mode replaces the plan and the eleven rather than
+               sitting between them, so it stays outside the columns. */
             html += `<div id="draftCompareArea">${draftCompareMode ? renderDraftComparison() : ''}</div>`;
 
-            // ---- 2. the eleven ----
-            const sidebarOpen = localStorage.getItem('fpl_notepad_open') === 'true';
-            html += `<section class="v2-section" ${draftCompareMode ? 'style="display:none;"' : ''}>
+            // ---- 1 and 2: the plan, and the eleven it produces ----
+            /* Side by side, because they are one question. You pick a week and
+               a chip on the left and look at what that gives you on the right;
+               stacked, the answer was a screen and a half below the control
+               that changed it, and every click meant scrolling back up to see
+               what it had done. The eleven takes the wider column — it is
+               fifteen cards and the plan is a strip of numbers. */
+            const drawerOpen = localStorage.getItem('fpl_notepad_open') === 'true';
+            html += `<div class="dp-columns${drawerOpen ? ' drawer-open' : ''}" id="draftColumns" ${draftCompareMode ? 'style="display:none;"' : ''}>`;
+
+            html += `<section class="v2-section dp-col dp-col-plan">
+                <div class="section-header"><h2>${v2Icon('calendar')} Your plan</h2></div>`;
+            html += `<div id="draftPlanBar">${renderDraftPlanBar()}</div>`;
+            html += `<div class="draft-toolbar" id="draftToolbar">${renderDraftToolbar()}</div>`;
+            html += `<div id="draftChipRow">${renderDraftChipRow()}</div>`;
+            html += `</section>`;
+
+            html += `<section class="v2-section dp-col dp-col-pitch">
                 <div class="section-header"><h2>${v2Icon('shirt')} Gameweek <span id="draftLineupGW">${Number(ds.selectedGW)}</span> lineup</h2></div>`;
-            html += `<div class="planner-layout-wrapper dp-layout${sidebarOpen ? '' : ' sidebar-collapsed'}">`;
             html += `<div class="planner-pitch-wrap" id="draftPitchArea">${renderDraftPitchHTML()}</div>`;
+            html += `</section>`;
+
+            /* Suggest Transfers and Notes are a drawer over the right-hand
+               column, shut on arrival. Neither is part of reading the plan:
+               one is a machine opinion you ask for, the other is a scratchpad.
+               As a third column they took width from the eleven all the time
+               to be useful occasionally. */
             html += renderDraftSidebar();
             html += `</div>`;
-            html += `</section>`;
 
             // ---- 3. what the data says ----
             html += `<section class="v2-section" ${draftCompareMode ? 'style="display:none;"' : ''}>
@@ -1736,25 +1779,52 @@
                 </div>`;
             };
 
-            let html = `<div class="dp-pitch-card">`;
+            /* The same pitch Squad Analysis draws.
+             *
+             * This tab used to have a pitch of its own — a padded green box
+             * with the rows stacked down the middle of it and the bench in a
+             * separate white panel underneath. Two pitches, in one product, for
+             * the same eleven players. It is .pitch-field now, markings, grass,
+             * absolute rows and dugout, so the draft and the squad page are the
+             * same component with different numbers on the cards. */
+            const seatLabel = (p, i) => {
+                if (p.position === 1) return 'GK';
+                return `Sub ${bench.slice(0, i).filter(x => x.position !== 1).length + 1}`;
+            };
+
+            let html = `<div class="pitch-field dp-field">`;
             if (activeChip) {
                 html += `<div class="draft-chip-overlay">${DRAFT_CHIP_NAME[activeChip].toUpperCase()}</div>`;
             }
-            html += `<div class="dp-pitch">`;
-            html += `<div class="dp-row">${fwds.map(p => renderNode(p)).join('')}</div>`;
-            html += `<div class="dp-row">${mids.map(p => renderNode(p)).join('')}</div>`;
-            html += `<div class="dp-row">${defs.map(p => renderNode(p)).join('')}</div>`;
-            html += `<div class="dp-row">${gks.map(p => renderNode(p)).join('')}</div>`;
-            /* Closes .dp-pitch and then .dp-pitch-card: the bench is a
-               sibling below the grass rather than a white panel laid on it.
-               Substitutes are not on the field. */
-            html += `</div></div>`;
-
-            let benchCounter = 0;
-            html += `<div class="dp-bench">
-                <div class="dp-bench-label">${activeChip === 'benchboost' ? 'Bench · boosted, these score too' : 'Bench'}</div>
-                <div class="dp-bench-row">${bench.map(p => renderNode(p, p.position === 1 ? 'GK' : ++benchCounter)).join('')}</div>
+            html += `<div class="pitch-grass">
+                <div class="pitch-markings" aria-hidden="true">
+                    <span class="pm-halfway"></span>
+                    <span class="pm-circle"></span>
+                    <span class="pm-box pm-box-top"></span>
+                    <span class="pm-box-6 pm-box-6-top"></span>
+                    <span class="pm-box pm-box-bottom"></span>
+                    <span class="pm-box-6 pm-box-6-bottom"></span>
+                </div>
+                <div class="pitch-rows">
+                    <div class="pitch-row">${fwds.map(p => renderNode(p)).join('')}</div>
+                    <div class="pitch-row">${mids.map(p => renderNode(p)).join('')}</div>
+                    <div class="pitch-row">${defs.map(p => renderNode(p)).join('')}</div>
+                    <div class="pitch-row">${gks.map(p => renderNode(p)).join('')}</div>
+                </div>
             </div>`;
+
+            /* Inside the field, not a panel under it — the substitutes belong
+               to this eleven. The seat says what it is, so the card no longer
+               carries a B1/B2/B3 badge saying the same thing. */
+            html += `<div class="pitch-dugout">
+                <div class="dugout-label">${activeChip === 'benchboost' ? 'Dugout · boosted, these score too' : 'Dugout · substitutes'}
+                    <span class="dugout-hint">${activeChip === 'benchboost' ? 'every one of them counts this week' : 'order decides who comes on first'}</span></div>
+                <div class="dugout-cards">${bench.map((p, i) => `<div class="dugout-seat">
+                    <div class="dugout-seat-label">${seatLabel(p, i)}</div>
+                    ${renderNode(p)}
+                </div>`).join('')}</div>
+            </div>`;
+            html += `</div>`;
 
             if (draftSwapSource !== null) {
                 const src = lineup.find(p => p.id === draftSwapSource);
@@ -2315,23 +2385,27 @@
            the transfer suggestions — half of what this tab is for. It carries
            its own name now, written up the edge by the CSS. */
         function draftSideToggleLabel(collapsed) {
-            return `<span class="dp-side-toggle-caret">${collapsed ? '\u25b8' : '\u25c2'}</span>Your plan`;
+            return `<span class="dp-side-toggle-caret">${collapsed ? '\u25c2' : '\u25b8'}</span>Suggest &amp; notes`;
         }
 
         function toggleDraftSidebar() {
-            /* .dp-layout, not the bare wrapper class: the Lineup Wizard builds
-               one of those too, and on a page where both tabs are in the DOM
-               querySelector returns whichever comes first in the markup. */
-            const wrap = document.querySelector('.planner-layout-wrapper.dp-layout');
+            const wrap = document.getElementById('draftColumns');
             if (!wrap) return;
-            const collapsed = wrap.classList.toggle('sidebar-collapsed');
-            localStorage.setItem('fpl_notepad_open', collapsed ? 'false' : 'true');
+            const open = wrap.classList.toggle('drawer-open');
+            localStorage.setItem('fpl_notepad_open', open ? 'true' : 'false');
+            /* A shut drawer is still in the document, three inches off the
+               right-hand edge. Without this its tabs and its textarea stay in
+               the tab order, so tabbing through the pitch walks into a panel
+               nobody can see. */
+            const drawer = document.getElementById('draftDrawer');
+            if (drawer) { if (open) drawer.removeAttribute('inert'); else drawer.setAttribute('inert', ''); }
             const btn = document.getElementById('draftSidebarToggle');
             if (btn) {
-                btn.innerHTML = draftSideToggleLabel(collapsed);
-                btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-                btn.setAttribute('data-tooltip', collapsed ? 'Open the strategy panel' : 'Collapse the panel and give the pitch the full width');
+                btn.innerHTML = draftSideToggleLabel(!open);
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                btn.setAttribute('data-tooltip', open ? 'Close the panel' : 'Transfer suggestions for this gameweek, and your notes on the plan');
             }
+            if (open && draftSidebarTab === 'notes') initNotepad();
         }
 
         // ===== STRATEGY SIDEBAR: SUGGEST TRANSFERS =====
@@ -2616,9 +2690,9 @@
         function renderDraftSidebar() {
             const collapsed = localStorage.getItem('fpl_notepad_open') !== 'true';
             return `<button class="dp-side-toggle" id="draftSidebarToggle" onclick="toggleDraftSidebar()"
-                        aria-expanded="${collapsed ? 'false' : 'true'}"
-                        data-tooltip="${collapsed ? 'Open the strategy panel' : 'Collapse the panel and give the pitch the full width'}">${draftSideToggleLabel(collapsed)}</button>
-                <aside class="dp-sidebar">
+                        aria-expanded="${collapsed ? 'false' : 'true'}" aria-controls="draftDrawer"
+                        data-tooltip="${collapsed ? 'Transfer suggestions for this gameweek, and your notes on the plan' : 'Close the panel'}">${draftSideToggleLabel(collapsed)}</button>
+                <aside class="dp-sidebar dp-drawer" id="draftDrawer"${collapsed ? ' inert' : ''}>
                     <div class="dp-side-tabs">
                         <button class="dp-side-tab ${draftSidebarTab === 'suggest' ? 'active' : ''}" data-tab="suggest" onclick="setDraftSidebarTab('suggest')">Suggest Transfers</button>
                         <button class="dp-side-tab ${draftSidebarTab === 'notes' ? 'active' : ''}" data-tab="notes" onclick="setDraftSidebarTab('notes')">Notes</button>

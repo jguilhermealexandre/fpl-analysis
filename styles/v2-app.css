@@ -2066,9 +2066,27 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     border-radius: 50%;
     pointer-events: none;
 }
+/* The Lineup Wizard and the Transfer Wizard still draw this pitch. The GW
+   Draft used to as well and now uses the shared .pitch-field below, but these
+   rules are theirs and stay. */
 .dp-pitch, .dp-bench { position: relative; z-index: 1; }
 .dp-pitch { display: flex; flex-direction: column; gap: 16px; }
 .dp-row { display: flex; justify-content: center; gap: 8px; flex-wrap: nowrap; }
+
+/* The draft's cards, on the shared .pitch-field. The rows are absolutely
+   positioned by that component, so each card takes an equal share of its row
+   and stops at a width that keeps a back five on one line. */
+.dp-field .pitch-row .dp-card { flex: 1 1 0; min-width: 0; max-width: 132px; }
+/* Squad Analysis's grass is a 16:12 box because its cards are three lines
+   tall. The draft's carry a fourth — the run across the planned gameweeks,
+   which is the whole reason this tab exists — and four rows of them do not
+   fit in 24% of 424 pixels: below about 1400px the midfield landed on top of
+   the defence. The floor is what four of these cards actually need; the ratio
+   still governs once the column is wide enough to beat it. */
+.dp-field .pitch-grass { min-height: 560px; }
+@media (max-width: 620px) { .dp-field .pitch-grass { min-height: 430px; } }
+.dp-field .dugout-cards { justify-content: center; }
+.dp-field .dugout-seat .dp-card { width: 118px; }
 .dp-bench {
     margin-top: 10px;
     padding: 12px 14px 14px;
@@ -2325,82 +2343,112 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 .dp-act.is-cap { background: var(--color-captain, #facc15); border-color: var(--color-captain, #facc15); color: #111827; }
 .dp-act.is-vice { background: var(--text-muted); border-color: var(--text-muted); color: #fff; }
 .planner-layout-wrapper.sidebar-collapsed .dp-sidebar { display: none; }
-/* GW Draft only: the plan on the left, the eleven on the right.
+/* GW Draft: the plan and the eleven, side by side.
  *
- * Squad Analysis reads pitch-then-panel. The draft is the mirror of it,
- * because here the plan is the subject and the eleven is what the plan
- * produces — you pick a week on the left and look at what it gives you on the
- * right. Scoped to .dp-layout rather than done on .planner-layout-wrapper,
- * which the Lineup Wizard shares: its panel stays where it was.
+ * They are one question. You pick a week and a chip on the left and look at
+ * what that gives you on the right. Stacked — which is how this tab was built
+ * — the answer sat a screen and a half below the control that changed it, so
+ * every click meant scrolling back down to find out what it had done.
  *
- * Columns are swapped by reversing the template, and each child is pinned to
- * a column rather than moved in the markup — the sidebar is re-rendered by id
- * from four different places, and reordering the DOM to change which side it
- * sits on is how those get missed.
- *
- * Pinned, not ordered: collapsed, the sidebar is display:none and so is not
- * placed at all, and an auto-placed pitch would drop back into the first
- * column — which is the one that has just been set to 0. */
-/* Only while there are two columns to swap. Below the breakpoint the wrapper
-   collapses to one, and these rules would otherwise have to be undone at a
-   higher specificity than the rule doing the collapsing — which is a fight
-   the collapsing rule loses. Bounded here, there is nothing to undo. */
-@media (min-width: 1101px) {
-    .planner-layout-wrapper.dp-layout { grid-template-columns: var(--dp-side-w) minmax(0, 1fr); }
-    .planner-layout-wrapper.dp-layout.sidebar-collapsed { grid-template-columns: 0 minmax(0, 1fr); }
-    .planner-layout-wrapper.dp-layout .dp-sidebar { grid-column: 1; grid-row: 1; }
-    .planner-layout-wrapper.dp-layout .planner-pitch-wrap { grid-column: 2; grid-row: 1; }
+ * The eleven takes the wider column: it is fifteen cards laid on a pitch, and
+ * the plan beside it is a strip of numbers and a row of chips. */
+.dp-columns {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 14px;
+    align-items: start;
+    /* The shut drawer parks itself past the right-hand edge, which without
+       this adds 340px to the width of the document and gives every page with
+       this tab on it a horizontal scrollbar. `clip` rather than `hidden`
+       because the pair `visible clip` is the one combination that clips one
+       axis and leaves the other alone — `hidden` on x forces y to auto and
+       turns the grid into a scroll container. The tooltips are appended to
+       <body> and positioned against the viewport, so nothing that needs to
+       escape this box is inside it. */
+    overflow: clip visible;
+}
+.dp-col { margin: 0; }
+/* The sections are already cards; inside the grid they stop being full-width
+   blocks with their own vertical rhythm and become the two columns. */
+.dp-col-plan { grid-column: 1; }
+.dp-col-pitch { grid-column: 2; }
+
+/* Below this the two columns stop fitting side by side: the plan strip needs
+   about 420px before its gameweek nodes start wrapping, and the pitch needs
+   most of 600 before the back five does. */
+@media (max-width: 1100px) {
+    .dp-columns { grid-template-columns: minmax(0, 1fr); }
+    .dp-col-plan, .dp-col-pitch { grid-column: 1; }
 }
 
-/* The handle that opens the plan panel.
+/* ---- Suggest Transfers and Notes: a drawer, shut on arrival ----
  *
- * It was a 22px sliver of surface-1 with a 10px caret in it, parked against
- * the right edge of a full-width pitch — the same colour as the card behind
- * it, no label, and nothing saying it was the way to a panel at all. People
- * did not find it, which is a poor result for the control that opens half the
- * feature: the transfer suggestions live behind it.
+ * Neither is part of reading a plan. One is a machine opinion you go and ask
+ * for; the other is a scratchpad. As a permanent third column they took width
+ * from the eleven all of the time in order to be useful some of the time —
+ * so they slide in over the right-hand column and slide back out.
  *
- * Now it says what it opens, in the accent, on the side the panel is on. The
- * writing-mode turns the label up the edge so it stays a handle rather than
- * becoming a button standing in front of the pitch.
- *
- * Still absolutely positioned, because the wrapper is a two-column grid and a
- * third child in flow would be placed into one of those columns and take a
- * row of its own. --dp-side-w is the panel column’s own width, declared on
- * the wrapper in my-team.css and set to 0 when collapsed, so `left` lands on
- * the seam in both states without a second copy of the clamp. */
+ * Absolutely positioned inside .dp-columns rather than fixed to the viewport,
+ * so it belongs to this tab and cannot outlive it on screen. */
+.dp-drawer {
+    position: absolute;
+    top: 0; right: 0;
+    z-index: 6;
+    width: min(340px, 100%);
+    max-height: 100%;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg, 0 12px 32px rgb(0 0 0 / 22%));
+    transform: translateX(calc(100% + 18px));
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.dp-columns.drawer-open .dp-drawer { transform: none; }
+
+/* The handle. It was a 22px sliver of surface-1 with a 10px caret in it, the
+   same colour as the card behind it and carrying no words at all — so the
+   control that opens the transfer suggestions, which is half of what this tab
+   does, was invisible. It says what it opens, up the edge, in the accent, and
+   rides the drawer in and out so it is always the thing on the seam. */
 .dp-side-toggle {
     position: absolute;
-    top: 10px;
-    left: var(--dp-side-w, 0px);
-    z-index: 3;
+    top: 46px; right: 0;
+    z-index: 7;
     display: flex; align-items: center; justify-content: center; gap: 7px;
     width: 30px; padding: 18px 0;
     writing-mode: vertical-rl; text-orientation: mixed;
-    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
     border: 1px solid var(--color-primary);
-    border-left: none;
+    border-right: none;
     background: color-mix(in srgb, var(--color-primary) 16%, var(--surface-1));
     color: var(--color-primary);
     font-family: inherit;
     font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
     cursor: pointer;
-    box-shadow: 2px 0 10px rgb(0 0 0 / 14%);
-    transition: left 300ms cubic-bezier(0.4, 0, 0.2, 1), background 140ms ease, color 140ms ease, border-color 140ms ease;
+    box-shadow: -2px 0 10px rgb(0 0 0 / 14%);
+    transition: right 320ms cubic-bezier(0.22, 1, 0.36, 1), background 140ms ease, color 140ms ease, border-color 140ms ease;
 }
+.dp-columns.drawer-open .dp-side-toggle { right: min(340px, 100%); }
 /* The caret is the one part that should not be turned on its side: pointing
    up the page is not pointing at the panel. */
 .dp-side-toggle-caret { writing-mode: horizontal-tb; display: flex; line-height: 1; font-size: 9px; }
-/* Open, the panel is beside it and the handle only has to close it again, so
+/* Open, the panel is beside it and the handle only has to shut it again, so
    it goes quiet and stops asking to be pressed. */
-.planner-layout-wrapper:not(.sidebar-collapsed) .dp-side-toggle {
+.dp-columns.drawer-open .dp-side-toggle {
     border-color: var(--border-default);
     background: var(--surface-1);
     color: var(--text-secondary);
 }
 .dp-side-toggle:hover { background: var(--color-primary); color: var(--on-primary); border-color: var(--color-primary); }
 .dp-side-toggle:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .dp-side-toggle { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+    .dp-side-toggle, .dp-drawer { transition: none; }
+}
+/* On one column the drawer covers the whole width, which is the right answer
+   on a phone — it is a sheet, not a sidebar. */
+@media (max-width: 620px) {
+    .dp-drawer { width: 100%; }
+    .dp-columns.drawer-open .dp-side-toggle { right: 0; top: 0; }
+}
 .dp-sidebar {
     border: 1px solid var(--border-default);
     border-radius: var(--radius-xl);

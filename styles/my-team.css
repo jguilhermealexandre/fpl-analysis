@@ -2751,10 +2751,6 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 /* ===== MANAGER'S NOTEPAD ===== */
 .planner-layout-wrapper { display: flex; gap: 0; overflow-x: hidden; position: relative; align-items: flex-start; }
 .planner-layout-wrapper .planner-pitch-wrap { flex: 1; min-width: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-/* The draft's own sidebar is .dp-sidebar, and the side it sits on is decided
-   by .dp-layout in v2-app.css — not here, because this wrapper class is
-   shared with the Lineup Wizard, whose panel stays on the right.
-   (.notepad-panel is the wizard's; the two are easy to confuse and were.) */
 .notepad-toggle-tab { position: absolute; right: 0; top: 80px; z-index: 5; display: flex; align-items: center; gap: 4px; writing-mode: vertical-rl; text-orientation: mixed; padding: 10px 5px; background: var(--surface-2); border: 1px solid var(--border-default); border-right: none; border-radius: var(--radius-md) 0 0 var(--radius-md); cursor: pointer; color: var(--text-secondary); font-size: 0.7rem; font-weight: 600; font-family: var(--font-display); letter-spacing: 0.5px; transition: all 0.2s; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
 .notepad-toggle-tab:hover { color: var(--color-primary); background: var(--surface-1); }
 .notepad-toggle-tab .notepad-tab-icon { writing-mode: horizontal-tb; display: flex; }
@@ -5048,15 +5044,11 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .planner-layout-wrapper {
     position: relative;
     display: grid;
-    /* Named, because the GW Draft's handle has to sit exactly on the seam
-       between the two columns and would otherwise have to repeat this clamp
-       and drift out of step with it. */
-    --dp-side-w: clamp(250px, 23vw, 330px);
-    grid-template-columns: minmax(0, 1fr) var(--dp-side-w);
+    grid-template-columns: minmax(0, 1fr) clamp(250px, 23vw, 330px);
     gap: 10px;
     align-items: start;
 }
-.planner-layout-wrapper.sidebar-collapsed { --dp-side-w: 0px; grid-template-columns: minmax(0, 1fr) 0; }
+.planner-layout-wrapper.sidebar-collapsed { grid-template-columns: minmax(0, 1fr) 0; }
 
 
 
@@ -5077,12 +5069,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 
 @media (max-width: 1100px) {
     .planner-layout-wrapper, .planner-layout-wrapper.sidebar-collapsed { grid-template-columns: minmax(0, 1fr); }
-    /* One column, and the eleven goes first: the plan is worth reading beside
-       the pitch, not stacked on top of it pushing the pitch off the screen.
-       (.dp-layout's two columns are bounded by a min-width query in
-       v2-app.css, so there is nothing to undo here beyond the order.) */
-    .planner-layout-wrapper.dp-layout .planner-pitch-wrap { order: 0; }
-    .planner-layout-wrapper.dp-layout .dp-sidebar { order: 1; }
 }
 
 /* ===== Plan comparison ===== */
@@ -6236,15 +6222,11 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     letter-spacing: 0;
     opacity: 0.75;
 }
-/* Two across, like the overview panel on the dashboard home. Four chips in a
-   column of two-line rows was the tallest thing in the toolbar and it was
-   mostly the detail line, which the tooltip already carries. */
-.draft-chip-advice-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px;
-}
-@media (max-width: 620px) { .draft-chip-advice-grid { grid-template-columns: 1fr; } }
+/* One per line. This started as two columns, which was right when the plan
+   ran the full width of the page; in the left-hand column it is about 230px
+   per chip and every headline was cut off mid-sentence. The detail line
+   underneath is gone either way — it said what the row's own tooltip says. */
+.draft-chip-advice-grid { display: grid; gap: 4px; }
 
 .draft-chip-advice-row {
     display: flex;
@@ -8118,4 +8100,165 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     border-top: 1px solid var(--border-subtle);
     opacity: .85;
     font-size: 11px;
+}
+
+/* ===== GW Draft — transfer panel ===== */
+/* It was a list.
+ *
+ * The player you were transferring out appeared as his name in the panel
+ * header and then again as a heading called "Current Player", with no face
+ * anywhere; the replacements were eight rows of small grey text. Deciding
+ * between footballers off a spreadsheet is the thing this site exists not to
+ * make people do, and the rest of the product already shows a face, a crest,
+ * a price and a run of fixtures on a card. This is that, on both halves of
+ * the swap, so the two can be compared rather than read. */
+.dtp-out {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    background: var(--surface-1);
+}
+.dtp-out-head { display: flex; align-items: center; gap: 12px; }
+.dtp-out-face { --v2-pid-face: 58px; --v2-pid-crest: 26px; flex: none; }
+.dtp-out-id { min-width: 0; flex: 1; }
+.dtp-out-name {
+    font-family: var(--font-display);
+    font-size: 1.05rem; font-weight: 700; color: var(--text-primary);
+    line-height: 1.2;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dtp-out-meta {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
+    margin-top: 4px;
+    font-size: 0.72rem; color: var(--text-secondary);
+}
+.dtp-out-price { font-family: var(--font-mono); font-weight: 700; color: var(--text-primary); }
+/* Named, because a card with a face on it and no label is a player, not a
+   player on his way out. */
+.dtp-out-tag {
+    flex: none;
+    align-self: flex-start;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--verdict-sell) 14%, transparent);
+    color: var(--verdict-sell);
+    font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+}
+.dtp-out-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.dtp-stat {
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    padding: 7px 4px;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    text-align: center;
+}
+.dtp-stat-label { font-size: 0.58rem; color: var(--text-muted); line-height: 1.2; }
+.dtp-stat-value { font-family: var(--font-mono); font-weight: 700; font-size: 0.88rem; color: var(--text-primary); }
+.dtp-stat-recent { font-size: 0.58rem; color: var(--text-muted); }
+.dtp-out-fix { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.dtp-out-fix-label {
+    font-size: 9px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--text-muted); margin-right: 2px;
+}
+
+/* The difficulty as a dot inside a neutral pill, the way the pitch cards
+   carry it — five coloured chips in a row read as traffic lights and drown
+   out everything else on the card. */
+.dtp-fix {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font-size: 10px; font-weight: 700; line-height: 1.3;
+}
+.dtp-fix::before {
+    content: ''; flex: none;
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--fdr-3);
+}
+.dtp-fix.fdr-1::before { background: var(--fdr-1); }
+.dtp-fix.fdr-2::before { background: var(--fdr-2); }
+.dtp-fix.fdr-4::before { background: var(--fdr-4); }
+.dtp-fix.fdr-5::before { background: var(--fdr-5); }
+.dtp-fix-blank { color: var(--text-muted); }
+.dtp-fix-blank::before { background: var(--text-muted); opacity: .5; }
+.dtp-fix-ha { opacity: .65; font-size: 8px; }
+
+/* The candidates. One column of wide cards rather than a grid of narrow ones:
+   the panel is a side sheet, and two columns would cut the fixture run off
+   exactly where it starts being worth reading. */
+.dtp-grid { display: flex; flex-direction: column; gap: 7px; }
+.dtp-opt {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+        'rank face id price score'
+        'rank face fix fix score';
+    align-items: center;
+    column-gap: 10px; row-gap: 4px;
+    width: 100%;
+    padding: 9px 11px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    background: var(--surface-1);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+.dtp-opt:hover {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 6%, var(--surface-1));
+    transform: translateY(-1px);
+}
+.dtp-opt:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.dtp-opt-rank {
+    grid-area: rank;
+    width: 18px; text-align: center;
+    font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700;
+    color: var(--text-muted);
+}
+.dtp-opt-face { grid-area: face; --v2-pid-face: 40px; --v2-pid-crest: 20px; }
+.dtp-opt-id { grid-area: id; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.dtp-opt-name {
+    font-size: 0.82rem; font-weight: 700; color: var(--text-primary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dtp-opt-team { font-size: 0.65rem; color: var(--text-muted); }
+.dtp-opt-price {
+    grid-area: price;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+    font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; color: var(--text-primary);
+    white-space: nowrap;
+}
+/* What the swap does to the bank, which is the second question after "is he
+   any good" and was not answered anywhere in the old list. */
+.dtp-opt-delta { font-family: var(--font-body); font-size: 0.6rem; font-weight: 600; color: var(--text-muted); }
+.dtp-opt-delta.up { color: var(--verdict-sell); }
+.dtp-opt-delta.down { color: var(--verdict-hold); }
+.dtp-opt-fix { grid-area: fix; display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.dtp-opt-score {
+    grid-area: score;
+    min-width: 34px; padding: 5px 7px;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    color: var(--color-primary-text, var(--color-primary));
+    font-family: var(--font-mono); font-size: 0.82rem; font-weight: 800;
+    text-align: center;
+}
+@media (max-width: 520px) {
+    .dtp-opt {
+        grid-template-columns: auto auto minmax(0, 1fr) auto;
+        grid-template-areas:
+            'rank face id score'
+            'rank face price score'
+            'fix  fix  fix  fix';
+    }
+    .dtp-opt-price { align-items: flex-start; }
+    .dtp-out-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
