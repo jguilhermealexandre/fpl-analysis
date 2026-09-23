@@ -2366,10 +2366,31 @@
 .h2h-card .v2-pid-crest img { width: 20px; height: 20px; }
 
 /* The planner table's identity column, sized for a row rather than a card. */
-.planner-player { display: flex; align-items: center; gap: 8px; }
-.planner-player .v2-pid-avatar { width: 26px; height: 26px; }
+/* The player cell, borrowed whole from Squad Analysis → Your squad.
+ *
+ * Both tables list the same fifteen players, and both put the same three
+ * facts in the first column — the identity mark, the name, the club and
+ * price. They were doing it at different sizes under different class names,
+ * so the two read as different components. The name block is literally
+ * .sq-row-name-block now; what is left here is the row's own leading edge in
+ * the position colour, which that page carries on the row itself and this one
+ * cannot, since a <tr> with rounded corners and a coloured border is not a
+ * thing a table will draw. */
+.planner-player { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.planner-player .v2-pid-avatar { width: 28px; height: 28px; }
 .planner-player .v2-pid-crest,
-.planner-player .v2-pid-crest img { width: 15px; height: 15px; }
+.planner-player .v2-pid-crest img { width: 16px; height: 16px; }
+.planner-player .sq-row-name { font-size: 12.5px; }
+.planner-player .sq-row-team { font-size: 10.5px; }
+/* Just the box .v2-pos-edge's own ::before fills — 16px wide, the height of
+   the identity mark beside it. The letter, its colour and its radius all come
+   from that class, so this cannot drift from the squad rows and the players
+   table, which draw the same edge. */
+.dp-row-pos {
+    flex: 0 0 16px;
+    align-self: stretch;
+    min-height: 28px;
+}
 
 /* ===== FDR & SHARED STYLES ===== */
 .planner-fdr-cell { border-radius: var(--radius-sm); padding: 4px 3px; font-family: var(--font-mono); font-size: 0.68rem; font-weight: 600; line-height: 1.2; text-align: center; color: #000; }
@@ -2420,8 +2441,8 @@
 .planner-table { width: 100%; border-collapse: collapse; min-width: 900px; }
 .planner-table th { position: sticky; top: 0; background: var(--surface-2); padding: 5px 4px; font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); text-align: center; border-bottom: 1px solid var(--border-emphasis); white-space: nowrap; z-index: 2; }
 .planner-table th:first-child { text-align: left; padding-left: 10px; min-width: 140px; position: sticky; left: 0; z-index: 3; }
-.planner-table td { padding: 4px 3px; text-align: center; border-bottom: 1px solid var(--border-subtle); font-size: 0.75rem; vertical-align: middle; }
-.planner-table td:first-child { text-align: left; padding-left: 10px; position: sticky; left: 0; background: inherit; z-index: 1; }
+.planner-table td { padding: 7px 4px; text-align: center; border-bottom: 1px solid var(--border-subtle); font-size: 0.75rem; vertical-align: middle; }
+.planner-table td:first-child { text-align: left; padding-left: 8px; position: sticky; left: 0; background: inherit; z-index: 1; }
 /* Rows, the way Squad Analysis → Your squad draws them.
  *
  * That page settled this: a light tint rather than the full weight of
@@ -2441,14 +2462,8 @@
    decide whether he should still be benched. The tag beside the name carries
    it alone, which is the call Squad Analysis already made. */
 .planner-table tr.bench-row { opacity: 1; }
-.dp-row-bench {
-    display: inline-block; margin-left: 6px;
-    padding: 1px 6px; border-radius: 999px;
-    background: var(--surface-3, var(--surface-2));
-    color: var(--text-muted);
-    font-size: 0.55rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
-    vertical-align: 1px;
-}
+/* .bench-tag, the one Squad Analysis already defines, rather than a second
+   pill that means the same thing. */
 
 /* Position group headers, in the same voice as .sq-position-header: display
    face, muted, with the count of players beside the name. The 2px rules

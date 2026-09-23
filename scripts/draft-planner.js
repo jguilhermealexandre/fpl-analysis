@@ -2087,13 +2087,19 @@
                a second time and charges an xP, a form figure and five fixture
                chips for it — on the rows you read precisely to decide whether
                he should still be benched. The tag carries it alone. */
-            const benchBadge = isBench ? '<span class="dp-row-bench">Bench</span>' : '';
+            const benchBadge = isBench ? '<span class="bench-tag">BENCH</span>' : '';
 
+            /* The same name block Squad Analysis → Your squad uses, class for
+               class: the identity mark, the name over the club and price, the
+               bench tag. It was a near-copy under its own names — same three
+               facts, a different size for each of them — so the two tables of
+               the same fifteen players read as two components. */
             row += `<td><div class="planner-player">
+                ${typeof v2PosEdgeClass === 'function' ? `<span class="dp-row-pos ${v2PosEdgeClass(player.position)}"></span>` : ''}
                 ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(player) : ''}
-                <div>
-                    ${captain}${statusIcon}<span class="planner-player-name" onclick="openDraftTransferPanel(${player.id})">${escHTML(player.name)}</span>${transferBadge}${benchBadge}
-                    <div><span class="planner-player-team">${escHTML(player.team)}</span> <span class="planner-player-price">£${player.price.toFixed(1)}m</span></div>
+                <div class="sq-row-name-block">
+                    <div class="sq-row-name" onclick="openDraftTransferPanel(${player.id})" title="Transfer ${escHTML(player.name)} out">${captain}${statusIcon}${escHTML(player.name)}${transferBadge}${benchBadge}</div>
+                    <div class="sq-row-team"><span class="sq-row-club">${escHTML(player.team)} · £${player.price.toFixed(1)}m</span>${typeof priceChangeBadge === 'function' ? priceChangeBadge(player) : ''}</div>
                 </div>
             </div></td>`;
 
