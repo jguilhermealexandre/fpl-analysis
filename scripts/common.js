@@ -1076,7 +1076,9 @@ function openSettingsModal(section) {
                 <div class="v2-set-group"${teamId ? '' : ' hidden'}>
                     <div class="v2-set-label">Connected squad</div>
                     <div class="v2-set-row between">
-                        <span class="v2-set-value">${teamId ? 'FPL team ID ' + esc(teamId) : 'No team connected yet'}</span>
+                        <span class="v2-set-value">${teamId
+                            ? `FPL team ID: <span class="v2-set-id">${esc(teamId)}</span>`
+                            : 'No team connected yet'}</span>
                         <span class="v2-set-actions">
                             <button class="v2-set-ghost" onclick="closeSettingsModal(); v2ChangeTeam();">Change ID</button>
                             ${teamId ? '<button class="v2-set-ghost danger" onclick="v2LogOut(this)">Log out</button>' : ''}
@@ -2238,7 +2240,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=362')
+    fetch('/footer.html?v=363')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

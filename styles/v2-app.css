@@ -1555,7 +1555,20 @@ html.v2-shell-app .footer-mail .icon {
 .v2-set-row.between { align-items: center; justify-content: space-between; }
 .v2-set-stack { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
 .v2-set-inline { display: flex; align-items: center; gap: 8px; }
-.v2-set-value { font-size: 12.5px; color: var(--text-secondary); }
+.v2-set-value { font-size: 12.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 7px; }
+/* The ID itself, in the same tinted chip the sidebar puts it in — it is one
+   value in a row of prose, and the one thing here somebody reads out or types
+   into another tab. Mono so the digits line up, and user-select: all so a
+   single click takes the whole number and not half of it. */
+.v2-set-id {
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+    color: var(--color-primary-text, var(--color-primary));
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 12px; font-weight: 700; letter-spacing: .03em;
+    user-select: all;
+}
 
 .v2-set-input {
     width: 100%;
@@ -2116,9 +2129,17 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 .dp-card .v2-pid-pitch { --v2-pid-face: 34px; --v2-pid-crest: 22px; gap: 5px; margin-bottom: 2px; }
 .dp-transfer svg { width: 11px; height: 11px; }
 .dp-card.is-out { opacity: .55; }
+/* Mid-swap, the pitch is in a mode and says so three ways: the player you
+   picked, the team-mates who can take his place, and everybody else. */
 .dp-card.swap-selected { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary); }
-.dp-card.swap-target { border-color: var(--verdict-hold); box-shadow: 0 0 0 2px var(--verdict-hold); }
-.dp-card.swap-ineligible { opacity: .35; cursor: not-allowed; }
+.dp-card.swap-target { border-color: var(--verdict-hold); box-shadow: 0 0 0 2px var(--verdict-hold); cursor: pointer; }
+.dp-card.swap-target:hover { transform: translateY(-2px); box-shadow: 0 0 0 2px var(--verdict-hold), 0 8px 16px rgb(0 0 0 / 18%); }
+/* Locked out, not merely faded. cursor: not-allowed was drawn over a card
+   that was still perfectly clickable — clicking one silently moved the
+   selection to it, so the pitch said "you cannot pick this" and then picked
+   it. pointer-events: none makes the claim true, and hands the click to the
+   grass behind, where it cancels the swap. */
+.dp-card.swap-ineligible { opacity: .32; pointer-events: none; }
 .dp-name {
     font-size: 12.5px;
     font-weight: 700;

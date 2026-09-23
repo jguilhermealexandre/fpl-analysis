@@ -669,18 +669,51 @@
         function handleDraftPitchClick(playerId) {
             if (draftSwapSource === null) {
                 draftSwapSource = playerId;
+                bindDraftSwapDismiss();
                 rerenderDraftView();
             } else if (draftSwapSource === playerId) {
                 draftSwapSource = null;
                 rerenderDraftView();
+            } else if (draftCanSwap(draftSwapSource, playerId)) {
+                performDraftSwap(draftSwapSource, playerId);
             } else {
-                if (draftCanSwap(draftSwapSource, playerId)) {
-                    performDraftSwap(draftSwapSource, playerId);
-                } else {
-                    draftSwapSource = playerId;
-                    rerenderDraftView();
-                }
+                /* Unreachable from the pitch — an ineligible card is locked out
+                   in CSS while a swap is pending — but a swap can also be
+                   started from the table, so this stays as the safe answer:
+                   pick the player that was clicked rather than silently doing
+                   nothing with a selection still lit up somewhere else. */
+                draftSwapSource = playerId;
+                rerenderDraftView();
             }
+        }
+
+        /* Getting out of a pending swap.
+         *
+         * Choosing a player dims every team-mate who cannot take his place, so
+         * the pitch is in a mode — and a mode with no way out but clicking the
+         * same card again is a trap. Clicking anywhere that is not a player
+         * cancels it, and so does Escape. That includes clicking one of the
+         * locked-out players: they are pointer-events: none, so the click lands
+         * on the grass behind them and reads as "not that one, then".
+         *
+         * Bound once, for the life of the page, and a no-op when nothing is
+         * selected — cheaper and far harder to get wrong than adding and
+         * removing a listener around every path that clears the selection. */
+        let draftSwapDismissBound = false;
+        function bindDraftSwapDismiss() {
+            if (draftSwapDismissBound) return;
+            draftSwapDismissBound = true;
+            document.addEventListener('pointerdown', ev => {
+                if (draftSwapSource === null) return;
+                if (ev.target && ev.target.closest && ev.target.closest('.dp-card')) return;
+                draftSwapSource = null;
+                rerenderDraftView();
+            }, true);
+            document.addEventListener('keydown', ev => {
+                if (ev.key !== 'Escape' || draftSwapSource === null) return;
+                draftSwapSource = null;
+                rerenderDraftView();
+            });
         }
 
         function setDraftCaptain(playerId) {
@@ -1725,7 +1758,16 @@
 
             if (draftSwapSource !== null) {
                 const src = lineup.find(p => p.id === draftSwapSource);
-                html += `<div class="planner-lineup-hint"><span>${v2Icon('pointer')}</span> ${src ? escHTML(src.name) : 'Player'} selected — click an eligible player to swap.</div>`;
+                /* "Click an eligible player" left the reader to work out which
+                   ones those were. The highlighted cards are the answer, and
+                   saying how many there are confirms that the dimming is the
+                   site deciding rather than the page half-rendered. */
+                const eligible = lineup.filter(p => p.id !== draftSwapSource && draftCanSwap(draftSwapSource, p.id)).length;
+                html += `<div class="planner-lineup-hint is-swapping"><span>${v2Icon('pointer')}</span>
+                    <strong>${src ? escHTML(src.name) : 'Player'}</strong> selected — ${eligible
+                        ? `the ${eligible} highlighted player${eligible === 1 ? '' : 's'} can take his place.`
+                        : 'nobody in this squad can take his place under the formation rules.'}
+                    <span class="planner-hint-esc">Press <kbd>Esc</kbd> or click away to cancel.</span></div>`;
             } else {
                 html += `<div class="planner-lineup-hint"><span>${v2Icon('bulb')}</span> Click a player to swap with the bench or reorder it. Use <strong>↔</strong> to make a transfer.</div>`;
             }
