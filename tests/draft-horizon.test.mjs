@@ -48,7 +48,6 @@ function constant(name) {
 }
 
 const DRAFT_GW_MAX = constant('DRAFT_GW_MAX');
-const DRAFT_GW_STEP = constant('DRAFT_GW_STEP');
 
 /* The globals draftPlannableGWs() closes over on the page. */
 function run(allFixtures, currentGW = 5) {
@@ -86,11 +85,16 @@ test('with nothing unplayed on record it counts forward from the current week', 
     assert.deepEqual(run(played, 5), [6, 7, 8, 9, 10, 11].slice(0, DRAFT_GW_MAX));
 });
 
-test('a plan opens on fewer weeks than the pool holds, so there is something to extend', () => {
-    assert.ok(DRAFT_GW_STEP < DRAFT_GW_MAX,
-        'DRAFT_GW_STEP must be smaller than DRAFT_GW_MAX or "more weeks" never appears');
-    assert.equal(DRAFT_GW_MAX % DRAFT_GW_STEP, 0,
-        'the pool should divide into whole steps, or the last batch is a stub');
+test('a plan covers the whole window, with nothing for the reader to add', () => {
+    /* This opened on three weeks with a button for the other three, which put
+       a control in front of the reader for a decision they had no reason to
+       make. initDraft takes draftPlannableGWs() whole. */
+    const body = lift('initDraft');
+    assert.match(body, /draftPlannableGWs\(\)/);
+    assert.doesNotMatch(body, /\.slice\(/,
+        'initDraft is trimming the window again — a plan is the whole window');
+    assert.doesNotMatch(src, /extendDraftHorizon/,
+        'the add-more-weeks control is gone; nothing should still call it');
 });
 
 test('loadDraftSlot asks draftPlannableGWs rather than working the list out again', () => {

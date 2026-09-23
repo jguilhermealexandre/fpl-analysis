@@ -30,15 +30,15 @@
 
         function getActiveDraft() { return draftStates[activeDraftSlot]; }
 
-        /* How far a plan can reach, and how much of it is shown.
+        /* How far a plan reaches: six gameweeks, always.
          *
-         * DRAFT_GW_MAX is six because that is how far the fixture strip and the
-         * expected-points model actually see. A plan opens on the first
-         * DRAFT_GW_STEP of them and grows a step at a time: six gameweeks of
-         * nodes, transfers, chips and free-transfer arithmetic is a lot to meet
-         * on arrival when the decision in front of you is this week's. */
+         * Six because that is how far the fixture strip and the expected-points
+         * model actually see. It briefly opened on three with a button to add
+         * the rest, which put a control in front of the reader for a decision
+         * they had no reason to make — a plan is the whole window or it is not
+         * a plan. The timeline lays them out three to a row instead, which was
+         * the real problem that idea was solving. */
         const DRAFT_GW_MAX = 6;
-        const DRAFT_GW_STEP = 3;
 
         /* The weeks a plan can cover.
          *
@@ -68,8 +68,7 @@
 
         function initDraft(slotIndex) {
             if (slotIndex === undefined) slotIndex = activeDraftSlot;
-            const gwPool = draftPlannableGWs();
-            const gwNumbers = gwPool.slice(0, DRAFT_GW_STEP);
+            const gwNumbers = draftPlannableGWs();
 
             const bank = (picksData?.entry_history?.bank || 0) / 10;
 
@@ -82,9 +81,10 @@
             }
 
             draftStates[slotIndex] = {
-                // Every week this plan could reach; gwNumbers is the visible
-                // prefix of it, extended by "3 more weeks".
-                gwPool: gwPool,
+                /* Still written under both names: plans saved while this
+                   opened on three weeks carry a gwPool, and the staleness
+                   check in loadDraftSlot compares against it. */
+                gwPool: gwNumbers,
                 gwNumbers: gwNumbers,
                 selectedGW: gwNumbers[0] || null,
                 originalSquad: selectedPlayers.map(p => ({ ...p })),
@@ -1189,10 +1189,11 @@
 
                 // Restore state
                 ds.gwPool = pool;
-                // However far it had been opened up, never fewer than a plan
-                // starts with and never past the end of the pool.
-                const shown = (saved.gwNumbers || []).length || DRAFT_GW_STEP;
-                ds.gwNumbers = pool.slice(0, Math.min(pool.length, Math.max(DRAFT_GW_STEP, shown)));
+                /* The whole window, whatever the saved plan covered. A plan
+                   stored while this opened on three weeks comes back as six;
+                   the three it had keep their transfers, chips and lineups,
+                   and the rest start empty. */
+                ds.gwNumbers = pool;
                 ds.transfers = saved.transfers || {};
                 ds.chips = saved.chips || {};
                 ds.optimizeReports = saved.optimizeReports || {};
@@ -1225,33 +1226,6 @@
                 return true;
             } catch (e) {
                 return false;
-            }
-        }
-
-        /* Three more weeks on the end of the plan.
-         *
-         * Everything downstream reads ds.gwNumbers — the timeline, the free
-         * transfer arithmetic, the plan total, the save payload — so growing
-         * the plan is growing that array and rebuilding from the transfers,
-         * exactly as loading a saved plan does. The weeks already in it keep
-         * their transfers, chips and lineups. */
-        function extendDraftHorizon() {
-            const ds = getActiveDraft();
-            if (!ds) return;
-            const pool = ds.gwPool || ds.gwNumbers;
-            if (ds.gwNumbers.length >= pool.length) return;
-            const next = pool.slice(ds.gwNumbers.length, ds.gwNumbers.length + DRAFT_GW_STEP);
-            next.forEach(gw => {
-                if (!ds.transfers[gw]) ds.transfers[gw] = [];
-                if (ds.chips[gw] === undefined) ds.chips[gw] = null;
-            });
-            ds.gwNumbers = pool.slice(0, ds.gwNumbers.length + next.length);
-            rebuildDraftSquads();
-            saveDraft();
-            draftTabRendered = false;
-            renderSquadPlanner();
-            if (typeof updateStatus === 'function') {
-                updateStatus(`Plan now runs to GW${ds.gwNumbers[ds.gwNumbers.length - 1]}`, 'success');
             }
         }
 
@@ -1523,14 +1497,39 @@
             }
             html += `</div>`;
 
-            // Plan actions
+            /* Everything you can do to this plan, in one row.
+             *
+             * Auto-optimise, Auto-optimise all and Reset plan used to sit at
+             * the end of the stat strip below, wearing their names, so a row
+             * that exists to report four numbers ended in three controls and
+             * the numbers had nowhere to be. They are up here with Duplicate
+             * and Compare now, and icon-only: five labelled buttons do not fit
+             * across a column this narrow, and every one of them already
+             * carries a sentence on hover that says more than its label did. */
+            const ds = getActiveDraft();
+            const gw = ds.selectedGW;
+            const optimizeRunGWs = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON, gw) : [gw];
             html += `<div class="draft-plan-actions">`;
             if (draftSlotCount < 3) {
-                html += `<button class="draft-plan-action-btn" onclick="duplicateDraftSlot(${activeDraftSlot})" title="Duplicate current plan">${v2Icon('clipboard')} Duplicate</button>`;
+                html += `<button class="dp-tool" onclick="duplicateDraftSlot(${activeDraftSlot})"
+                    aria-label="Duplicate this plan"
+                    data-tooltip="Duplicate this plan — a copy you can try a different set of moves on, side by side with this one">${v2Icon('clipboard')}</button>`;
             }
             if (draftSlotCount >= 2) {
-                html += `<button class="draft-plan-action-btn" onclick="openPlanComparison()" data-tooltip="Score every plan side by side on projected points, hits, bank and squad differences">${v2Icon('scales')} Compare plans</button>`;
+                html += `<button class="dp-tool" onclick="openPlanComparison()"
+                    aria-label="Compare plans"
+                    data-tooltip="Score every plan side by side on projected points, hits, bank and squad differences">${v2Icon('scales')}</button>`;
             }
+            html += `<span class="dp-tool-sep" aria-hidden="true"></span>`;
+            html += `<button class="dp-tool" onclick="draftAutoOptimizeLineup()"
+                aria-label="Auto-optimise this gameweek"
+                data-tooltip="Auto-optimise GW${gw} — rebuild its XI, bench order and captain from the players available that week${optimizeRunGWs.length > 1 ? `, ranked on expected points across GW${optimizeRunGWs[0]}–GW${optimizeRunGWs[optimizeRunGWs.length - 1]} combined` : ''}">${v2Icon('sparkle')}</button>`;
+            html += `<button class="dp-tool" onclick="draftAutoOptimizeAllGWs()"
+                aria-label="Auto-optimise every gameweek"
+                data-tooltip="Auto-optimise all — run it on every gameweek in this plan (GW${ds.gwNumbers[0]}–GW${ds.gwNumbers[ds.gwNumbers.length - 1]}) in one go, each scored against its own week and its own run ahead">${v2Icon('sparkle')}<span class="dp-tool-all">all</span></button>`;
+            html += `<button class="dp-tool danger" onclick="resetDraft()"
+                aria-label="Reset this plan"
+                data-tooltip="Reset plan — discard every change in it and start again from your current squad">↩</button>`;
             html += `</div>`;
             html += `</div>`;
             return html;
@@ -1727,24 +1726,8 @@
 
             const totalHits = gwNumbers.reduce((s, g) => s + getDraftHitCost(g), 0);
 
-            /* The plan opens on three weeks and grows from here. The button is
-               the last thing on the track rather than a control somewhere in
-               the toolbar, because what it does is add nodes to this strip. It
-               disappears once the pool is exhausted — six weeks is as far as
-               the fixture data and the projection go. */
-            const pool = ds.gwPool || gwNumbers;
-            const remaining = pool.length - gwNumbers.length;
-            const nextBatch = Math.min(DRAFT_GW_STEP, remaining);
-            const moreBtn = remaining > 0
-                ? `<button class="draft-tl-more" onclick="extendDraftHorizon()"
-                        data-tooltip="Plan ${nextBatch} more gameweek${nextBatch === 1 ? '' : 's'}, out to GW${pool[Math.min(pool.length, gwNumbers.length + nextBatch) - 1]}. Nothing you have already planned changes.">
-                        <span class="draft-tl-more-plus">+${nextBatch}</span>
-                        <span class="draft-tl-more-text">more week${nextBatch === 1 ? '' : 's'}</span>
-                    </button>`
-                : '';
-
             return `<div class="draft-timeline">
-                <div class="draft-tl-track">${nodes}${moreBtn}</div>
+                <div class="draft-tl-track">${nodes}</div>
                 <div class="draft-tl-summary">
                     <span class="draft-tl-total" data-tooltip="Projected points across all ${gwNumbers.length} planned gameweeks, after deducting every points hit.">
                         Plan total <strong>${planXP.toFixed(1)} pts</strong>
@@ -1763,35 +1746,42 @@
             const ft = getDraftFreeTransfers(gw);
             const hitCost = getDraftHitCost(gw);
             const numTransfers = (ds.transfers[gw] || []).length;
-            const optimizeRunGWs = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON, gw) : [gw];
 
             let html = renderDraftTimeline();
 
-            // Named stat chips rather than a run of abbreviations separated by pipes.
+            /* Four numbers, four tiles, and nothing else in the row.
+             *
+             * This ended in three labelled buttons, so a strip whose job is to
+             * report the state of a gameweek was mostly controls, and the
+             * numbers themselves were small grey text squeezed to whatever was
+             * left. The buttons are in the plan bar above; these get the row
+             * to themselves, an even four across, each with the icon for what
+             * it is. */
             html += `<div class="draft-stats-row">
-                <div class="draft-stat">
-                    <span class="draft-stat-label">In the bank</span>
+                <div class="draft-stat" data-tooltip="Money left after this plan's transfers up to GW${gw}.">
+                    <span class="draft-stat-icon">${v2Icon('wallet')}</span>
+                    <span class="draft-stat-label">Bank</span>
                     <span class="draft-stat-value">£${budget.toFixed(1)}m</span>
                 </div>
-                <div class="draft-stat">
-                    <span class="draft-stat-label">Free transfers</span>
-                    <span class="draft-stat-value ${numTransfers > ft ? 'over' : ''}">${numTransfers} <span class="draft-stat-sub">of ${ft} used</span></span>
+                <div class="draft-stat${numTransfers > ft ? ' over' : ''}" data-tooltip="${numTransfers} of the ${ft} free transfer${ft === 1 ? '' : 's'} available in GW${gw}${numTransfers > ft ? ' — each one beyond them costs 4 points' : ''}.">
+                    <span class="draft-stat-icon">${v2Icon('swap')}</span>
+                    <span class="draft-stat-label">Transfers</span>
+                    <span class="draft-stat-value">${numTransfers}<span class="draft-stat-sub">of ${ft}</span></span>
                 </div>
-                <div class="draft-stat">
+                <div class="draft-stat" data-tooltip="The shape GW${gw}'s eleven makes: defenders, midfielders, forwards.">
+                    <span class="draft-stat-icon">${v2Icon('shirt')}</span>
                     <span class="draft-stat-label">Formation</span>
                     <span class="draft-stat-value">${escHTML(formation)}</span>
                 </div>
                 ${hitCost > 0 ? `<div class="draft-stat hit">
+                    <span class="draft-stat-icon">${v2Icon('warn')}</span>
                     <span class="draft-stat-label">Points hit</span>
-                    <span class="draft-stat-value">−${hitCost} pts</span>
-                </div>` : ''}
-                <div class="draft-stat editable">
-                    <label class="draft-stat-label" for="draftStartFT" data-tooltip="Free transfers you began this plan with. FPL does not publish this, so set it if the guess is wrong.">Starting FT</label>
+                    <span class="draft-stat-value">−${hitCost}</span>
+                </div>` : `<div class="draft-stat editable">
+                    <span class="draft-stat-icon">${v2Icon('ticket')}</span>
+                    <label class="draft-stat-label" for="draftStartFT" data-tooltip="Free transfers you began this plan with. FPL does not publish this, so set it if the guess is wrong.">Start FT</label>
                     <input id="draftStartFT" type="number" class="draft-ft-input" value="${ds.startingFT}" min="0" max="5" onchange="updateDraftStartingFT(this.value)">
-                </div>
-                <button class="draft-action-btn" onclick="draftAutoOptimizeLineup()" data-tooltip="Rebuild GW${gw}'s XI, bench order and captain from the players available that week${optimizeRunGWs.length > 1 ? `, ranked on expected points across GW${optimizeRunGWs[0]}–GW${optimizeRunGWs[optimizeRunGWs.length - 1]} combined` : ''}.">${v2Icon('sparkle')} Auto-optimise</button>
-                <button class="draft-action-btn" onclick="draftAutoOptimizeAllGWs()" data-tooltip="Run Auto-optimise on every gameweek in this plan (GW${ds.gwNumbers[0]}–GW${ds.gwNumbers[ds.gwNumbers.length - 1]}) in one go, each scored against its own week and its own run ahead.">${v2Icon('sparkle')} Auto-optimise all</button>
-                <button class="draft-action-btn danger" onclick="resetDraft()" data-tooltip="Discard every change in this plan and start again from your current squad.">↩ Reset plan</button>
+                </div>`}
             </div>`;
 
             // Each gameweek keeps its own report — switching weeks shows that

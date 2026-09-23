@@ -2384,8 +2384,13 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 .dp-columns {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    gap: 14px;
+    /* The same split Squad Analysis uses for its own pitch and side column,
+       mirrored: minmax(0, 2.1fr) against minmax(280px, 1fr) there, so the
+       eleven gets the same share of the page on both tabs. The plan was on
+       5fr/7fr, which left the pitch barely wider than the strip of numbers
+       beside it. */
+    grid-template-columns: minmax(280px, 1fr) minmax(0, 2.1fr);
+    gap: 16px;
     align-items: start;
     /* The shut drawer parks itself past the right-hand edge, which without
        this adds 340px to the width of the document and gives every page with
@@ -2426,12 +2431,23 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     z-index: 6;
     width: min(340px, 100%);
     max-height: 100%;
-    overflow-y: auto;
     box-shadow: var(--shadow-lg, 0 12px 32px rgb(0 0 0 / 22%));
     transform: translateX(calc(100% + 18px));
     transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .dp-columns.drawer-open .dp-drawer { transform: none; }
+/* Both classes, because .dp-sidebar below sets `overflow: hidden` to keep its
+   rounded corners, is written later in this file and has the same specificity
+   — so a plain `overflow-y: auto` here lost, and a panel holding six
+   gameweeks of suggestions clipped whatever did not fit with no way to reach
+   it. Horizontal stays hidden, which is what that rule was for.
+   overscroll-behavior stops a flick at the end of the list carrying on into
+   the page behind it. */
+.dp-drawer.dp-sidebar {
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+}
 
 /* The handle. It was a 22px sliver of surface-1 with a 10px caret in it, the
    same colour as the card behind it and carrying no words at all — so the

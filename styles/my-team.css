@@ -2750,9 +2750,45 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .draft-plan-del:hover { background: var(--color-error); color: #fff; }
 .draft-plan-add { padding: 7px 14px; border-radius: 999px; border: 1px dashed var(--v2-card-border, var(--border-emphasis)); background: transparent; color: var(--text-muted); font-size: 0.78rem; font-weight: 650; font-family: var(--font-display); cursor: pointer; transition: all 0.2s; }
 .draft-plan-add:hover { border-color: var(--color-primary); color: var(--color-primary); border-style: solid; }
-.draft-plan-actions { display: flex; gap: 4px; margin-left: auto; }
+.draft-plan-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .draft-plan-action-btn { padding: 5px 10px; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--surface-1); color: var(--text-secondary); font-size: 0.68rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
 .draft-plan-action-btn:hover { border-color: var(--color-info); color: var(--color-info); }
+
+/* Everything you can do to a plan, as icons.
+ *
+ * Five labelled buttons do not fit across a column this narrow, and each of
+ * these already carries a sentence on hover that says more than its label
+ * did — "Auto-optimise" against "rebuild GW6's XI, bench order and captain
+ * from the players available that week". 30px square, over the 30px thumb
+ * minimum, with an aria-label carrying the same words for anyone not
+ * hovering. */
+.dp-tool {
+    min-width: 30px; height: 30px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 2px;
+    padding: 0 6px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-emphasis, var(--border-default));
+    /* surface-2, not surface-1: the plan bar is already surface-1, and a
+       button the same colour as the panel behind it reads as a loose icon
+       rather than as something to press. */
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 13px; line-height: 1;
+    transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+.dp-tool svg { width: 15px; height: 15px; }
+.dp-tool:hover { border-color: var(--color-primary); color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, var(--surface-1)); }
+.dp-tool:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.dp-tool.danger:hover { border-color: var(--verdict-sell); color: var(--verdict-sell); background: color-mix(in srgb, var(--verdict-sell) 8%, var(--surface-1)); }
+/* The all-gameweeks wand is the same wand, so it says which one it is rather
+   than inventing a second icon for the same idea. */
+.dp-tool-all {
+    font-family: var(--font-body);
+    font-size: 8px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+    margin-left: 1px;
+}
+.dp-tool-sep { width: 1px; height: 18px; background: var(--border-default); margin: 0 3px; }
 
 /* Compare plans side-by-side */
 .draft-compare-wrapper { display: flex; gap: 12px; margin-top: 8px; flex-wrap: nowrap; }
@@ -4876,42 +4912,6 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 
 .draft-tl-node:hover { border-color: var(--color-primary); transform: translateY(-1px); }
 
-/* "+3 more weeks" — the last stop on the track.
- *
- * Shaped like a node so it reads as the next one along, dashed and in the
- * accent so it does not read as a week you already have. It does not take an
- * equal share of the row: the weeks are the content, this is a control. */
-.draft-tl-more {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    gap: 7px;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 12px;
-    border: 1px dashed color-mix(in srgb, var(--color-primary) 55%, transparent);
-    border-radius: var(--radius-lg);
-    background: transparent;
-    color: var(--color-primary);
-    font-family: inherit;
-    cursor: pointer;
-    transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
-}
-.draft-tl-more:hover {
-    border-style: solid;
-    border-color: var(--color-primary);
-    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
-    transform: translateY(-1px);
-}
-.draft-tl-more:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.draft-tl-more-plus { font-size: 15px; font-weight: 800; font-family: var(--font-mono); line-height: 1.1; }
-.draft-tl-more-text { font-size: 9px; font-weight: 600; color: var(--text-muted); text-align: center; }
-
-.draft-tl-node.active { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 10%, var(--surface-1)); box-shadow: 0 0 0 1px var(--color-primary) inset; }
-.draft-tl-node.has-hit { border-color: var(--verdict-sell); }
-.draft-tl-node.has-chip { border-style: dashed; }
-
 .draft-tl-gw { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: var(--text-primary); }
 .draft-tl-chip { font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 3px; background: var(--color-primary); color: #fff; }
 .draft-tl-dgw { font-size: 8px; font-weight: 800; padding: 1px 4px; border-radius: 3px; background: var(--color-info); color: #fff; }
@@ -4929,25 +4929,66 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .draft-tl-total-ok { color: var(--verdict-hold); font-weight: 600; }
 
 /* Named stats instead of "ITB: £0.0m | FT: 1 | Used: 0". */
-.draft-stats-row { display: flex; align-items: stretch; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+/* The state of the gameweek, as four tiles.
+ *
+ * This was a wrapping flex row that also carried Auto-optimise, Auto-optimise
+ * all and Reset plan, so a strip whose job is to report four numbers was
+ * mostly controls and the numbers were whatever width was left over — each
+ * one a different size, none of them lining up. The buttons are in the plan
+ * bar now. Four equal columns, so the figures sit on a grid and can be read
+ * across, with the icon saying which is which before the label is read. */
+.draft-stats-row {
+    /* A row of its own inside .draft-toolbar, which is a wrapping flex box —
+       the same trap the timeline above fell into. A grid of 1fr columns that
+       is shrink-to-fit resolves them against its own content, so the four
+       tiles bunched up on the left and left a third of the row empty. */
+    flex: 1 1 100%;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+}
+@media (max-width: 520px) { .draft-stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .draft-stat {
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    padding: 6px 11px;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+    padding: 10px 6px 9px;
     border: 1px solid var(--border-default);
     border-radius: var(--radius-lg);
     background: var(--surface-2);
+    text-align: center;
 }
-
-.draft-stat-label { font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
-.draft-stat-value { font-size: 14px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); }
-.draft-stat-value.over { color: var(--verdict-sell); }
-.draft-stat-sub { font-size: 10px; font-weight: 500; color: var(--text-muted); font-family: var(--font-sans); }
+.draft-stat-icon { display: flex; color: var(--text-muted); }
+.draft-stat-icon svg { width: 15px; height: 15px; }
+/* Wraps rather than truncates. At 1280 the plan column is 312px, which leaves
+   each of the four tiles about 48px of text: "FORMATION" and "TRANSFERS" both
+   came out as "FORMATI…", and a label that cannot be read is not a label. Two
+   lines cost a few pixels of height and keep all four tiles on one row, which
+   is the thing worth protecting. */
+.draft-stat-label {
+    font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    line-height: 1.25;
+    color: var(--text-muted);
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+.draft-stat-value {
+    display: flex; align-items: baseline; gap: 4px;
+    font-size: 16px; font-weight: 800; font-family: var(--font-mono); color: var(--text-primary);
+    line-height: 1.1;
+}
+.draft-stat-sub { font-size: 10px; font-weight: 500; color: var(--text-muted); font-family: var(--font-body); }
+/* Over the free-transfer allowance: the tile says so, not just the figure. */
+.draft-stat.over { border-color: var(--verdict-sell); }
+.draft-stat.over .draft-stat-value { color: var(--verdict-sell); }
+.draft-stat.over .draft-stat-icon { color: var(--verdict-sell); }
 .draft-stat.hit { border-color: var(--verdict-sell); background: color-mix(in srgb, var(--verdict-sell) 10%, transparent); }
-.draft-stat.hit .draft-stat-value { color: var(--verdict-sell); }
-.draft-stat.editable .draft-stat-label { }
+.draft-stat.hit .draft-stat-value, .draft-stat.hit .draft-stat-icon { color: var(--verdict-sell); }
 
 .draft-ft-input {
     width: 46px;
