@@ -20,15 +20,15 @@
          waiting for the stylesheet to name them: same-origin now, so a
          preload here costs nothing and starts them with the CSS. -->
     <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-ca11fe9ca5.woff2" crossorigin>
-    <link rel="stylesheet" href="/styles/fonts.min.css?v=376">
-    <link rel="stylesheet" href="/styles/common.min.css?v=376">
-    <link rel="stylesheet" href="/styles/v2-design.min.css?v=376">
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=381">
+    <link rel="stylesheet" href="/styles/common.min.css?v=381">
+    <link rel="stylesheet" href="/styles/v2-design.min.css?v=381">
     <!-- v2-app.css is the signed-in half of v2-design.css. Asked for here, so
          that the cascade reads the same as it did when the two were one file,
          and only when there is a saved Team ID — see the note at the top of
          v2-design.css. Kept identical on every page by check:appcss. -->
-    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=376';document.head.appendChild(l)})();</script>
-    <link rel="stylesheet" href="/styles/responsive.min.css?v=376">
+    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=381';document.head.appendChild(l)})();</script>
+    <link rel="stylesheet" href="/styles/responsive.min.css?v=381">
     <style>
         /* ===== Chart palette =====
 
@@ -121,7 +121,36 @@
         .ma-table td { font-family: var(--font-mono); color: var(--text-secondary); }
         .ma-swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px;
             vertical-align: baseline; }
-    </style>
+
+/* === GENERATED: size-keyed tracking — node tools/gen-tracking.mjs === */
+/* Written by tools/gen-tracking.mjs — do not edit by hand. Every rule in
+   this file that sets a font-size under 16px gets the tracking that size
+   calls for; one that asked for more air than its band keeps its own. */
+.ma-fig-t {
+    letter-spacing: 0.005em !important;
+}
+.ma-banner,
+.ma-empty,
+.ma-sub {
+    letter-spacing: 0.01em !important;
+}
+.ma-fig-c,
+.ma-table,
+.ma-table-t,
+.ma-tile-n {
+    letter-spacing: 0.015em !important;
+}
+.ma-tile-l {
+    letter-spacing: 0.04em !important;
+}
+.ma-crumb {
+    letter-spacing: 0.08em !important;
+}
+.ma-section-h {
+    letter-spacing: 0.1em !important;
+}
+/* === END GENERATED TRACKING === */
+</style>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -252,10 +281,10 @@
         </div>
     </div><!-- /.v2-main-content -->
 
-    <script src="/scripts/error-monitor.min.js?v=376"></script>
-    <script src="/scripts/auth.min.js?v=376"></script>
-    <script src="/scripts/common.min.js?v=376"></script>
-    <script src="/scripts/sidebar-nav.min.js?v=376"></script>
+    <script src="/scripts/error-monitor.min.js?v=381"></script>
+    <script src="/scripts/auth.min.js?v=381"></script>
+    <script src="/scripts/common.min.js?v=381"></script>
+    <script src="/scripts/sidebar-nav.min.js?v=381"></script>
     <script>
         /* The quality dashboard.
          *
@@ -352,6 +381,14 @@
         // ---- expected points
 
         function maDrawError(acc) {
+            const args = [acc];
+            /* Chart.js is fetched on demand now (loadChartJs in common.js), so
+               "not defined" is the ordinary first case rather than a failure.
+               Ask for it and come back. */
+            if (typeof Chart === 'undefined') {
+                if (typeof loadChartJs === 'function') loadChartJs().then(ok => { if (ok) maDrawError(...args); });
+                return;
+            }
             const rounds = (acc && acc.rounds) || [];
             const usable = rounds.filter(r => r.populations && r.populations.starters);
             if (!usable.length) {
@@ -384,6 +421,14 @@
         }
 
         function maDrawCalibration(acc) {
+            const args = [acc];
+            /* Chart.js is fetched on demand now (loadChartJs in common.js), so
+               "not defined" is the ordinary first case rather than a failure.
+               Ask for it and come back. */
+            if (typeof Chart === 'undefined') {
+                if (typeof loadChartJs === 'function') loadChartJs().then(ok => { if (ok) maDrawCalibration(...args); });
+                return;
+            }
             const buckets = (acc && acc.overall && acc.overall.calibration) || [];
             if (!buckets.length) {
                 maEmptyFigure('maCalChart', 'maCalEmpty',
@@ -425,6 +470,14 @@
         }
 
         function maDrawBias(acc) {
+            const args = [acc];
+            /* Chart.js is fetched on demand now (loadChartJs in common.js), so
+               "not defined" is the ordinary first case rather than a failure.
+               Ask for it and come back. */
+            if (typeof Chart === 'undefined') {
+                if (typeof loadChartJs === 'function') loadChartJs().then(ok => { if (ok) maDrawBias(...args); });
+                return;
+            }
             const byPos = (acc && acc.overall && acc.overall.byPosition) || {};
             const names = Object.keys(byPos);
             if (!names.length) {
@@ -457,6 +510,14 @@
         // ---- goals against, vs the market
 
         function maDrawOdds(odds) {
+            const args = [odds];
+            /* Chart.js is fetched on demand now (loadChartJs in common.js), so
+               "not defined" is the ordinary first case rather than a failure.
+               Ask for it and come back. */
+            if (typeof Chart === 'undefined') {
+                if (typeof loadChartJs === 'function') loadChartJs().then(ok => { if (ok) maDrawOdds(...args); });
+                return;
+            }
             const rounds = (odds && odds.rounds) || [];
             const samples = rounds.reduce((all, r) => all.concat(r.samples || []), []);
             if (!samples.length) {
@@ -511,6 +572,14 @@
         }
 
         function maDrawVenue(odds) {
+            const args = [odds];
+            /* Chart.js is fetched on demand now (loadChartJs in common.js), so
+               "not defined" is the ordinary first case rather than a failure.
+               Ask for it and come back. */
+            if (typeof Chart === 'undefined') {
+                if (typeof loadChartJs === 'function') loadChartJs().then(ok => { if (ok) maDrawVenue(...args); });
+                return;
+            }
             const rounds = (odds && odds.rounds) || [];
             if (!rounds.length) {
                 maEmptyFigure('maVenueChart', 'maVenueEmpty', 'No priced rounds recorded yet.');
@@ -567,6 +636,14 @@
         }
 
         function maDrawRising(acc) {
+            const args = [acc];
+            /* Chart.js is fetched on demand now (loadChartJs in common.js), so
+               "not defined" is the ordinary first case rather than a failure.
+               Ask for it and come back. */
+            if (typeof Chart === 'undefined') {
+                if (typeof loadChartJs === 'function') loadChartJs().then(ok => { if (ok) maDrawRising(...args); });
+                return;
+            }
             const usable = maRisingRounds(acc);
             if (!usable.length) {
                 maEmptyFigure('maRiseChart', 'maRiseEmpty',
@@ -609,6 +686,14 @@
         }
 
         function maDrawRisingCorr(acc) {
+            const args = [acc];
+            /* Chart.js is fetched on demand now (loadChartJs in common.js), so
+               "not defined" is the ordinary first case rather than a failure.
+               Ask for it and come back. */
+            if (typeof Chart === 'undefined') {
+                if (typeof loadChartJs === 'function') loadChartJs().then(ok => { if (ok) maDrawRisingCorr(...args); });
+                return;
+            }
             const usable = maRisingRounds(acc).filter(r => r.rising.rankCorrelation != null);
             if (!usable.length) {
                 maEmptyFigure('maRiseCorrChart', 'maRiseCorrEmpty',
@@ -650,6 +735,14 @@
         // ---- captaincy
 
         function maDrawCaptaincy(acc) {
+            const args = [acc];
+            /* Chart.js is fetched on demand now (loadChartJs in common.js), so
+               "not defined" is the ordinary first case rather than a failure.
+               Ask for it and come back. */
+            if (typeof Chart === 'undefined') {
+                if (typeof loadChartJs === 'function') loadChartJs().then(ok => { if (ok) maDrawCaptaincy(...args); });
+                return;
+            }
             const usable = ((acc && acc.rounds) || []).filter(r => r.captaincy && r.captaincy.top20Hits != null);
             if (!usable.length) {
                 maEmptyFigure('maCapChart', 'maCapEmpty',

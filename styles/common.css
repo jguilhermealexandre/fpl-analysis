@@ -101,7 +101,12 @@
     --tracking-xl: -1.5px;
     --tracking-lg: -1px;
     --tracking-md: -0.5px;
-    --tracking-base: 0;
+    /* Not dead zero. A handful of elements take their size from an inline
+       style attribute, so no rule in any stylesheet describes them and the
+       generated per-size tracking cannot reach them; they fall back to this.
+       0.08px is about 0.005em at body size — the same band a 15px rule gets,
+       so the fallback agrees with the scale rather than undercutting it. */
+    --tracking-base: 0.08px;
 
     /* Spacing scale */
     --space-1: 0.25rem;
@@ -1796,9 +1801,16 @@ body {
     letter-spacing: var(--tracking-base) !important;
 }
 
-body * {
-    letter-spacing: inherit !important;
-}
+/* `body * { letter-spacing: inherit !important }` used to sit here, and it was
+   doing harm rather than work. letter-spacing already inherits — that is its
+   default — so the only thing this added was the !important, which stamped out
+   every component that set its own. Three hundred and thirty-odd rules across
+   this stylesheet and the others were asking for a tracking they never got,
+   which is why the same size looked right in one place and wrong in another:
+   the difference was whether some other rule had an !important to spare. The
+   generated block at the foot of each stylesheet now gives small text the
+   tracking its size calls for, and a component asking for more air than that
+   keeps it. */
 
 .hero-title {
     letter-spacing: var(--tracking-2xl) !important;
@@ -1843,10 +1855,14 @@ h4 {
    drawing it in is the opposite of what it needs. Excluded here as well as
    given its own rule below — both carry !important, and this selector is the
    more specific of the two, so an opt-out alone would lose to it. */
-body :is(
-    h1, h2, h3, h4, h5, h6,
-    [class*="title"], [class*="heading"]
-):not(.lp-h1):not(.lp-h2):not(.lp-h3):not([class*="group-title"]) {
+/* Headings only. This used to match [class*="title"] and [class*="heading"]
+   too, which is a guess about size made from a name: a 10px .foo-title and a
+   10px .foo-label are the same words at the same size, and one of them was
+   drawn in by half a pixel while the other was not. There was nothing to see
+   that explained it, because the reason was the class name. Everything that
+   is not an actual heading now takes the tracking its own font-size calls
+   for, from the generated block further down. */
+body :is(h1, h2, h3, h4, h5, h6):not(.lp-h1):not(.lp-h2):not(.lp-h3) {
     letter-spacing: -0.5px !important;
 }
 
@@ -2057,3 +2073,52 @@ body h1:not(.hero-title) > .icon,
     box-shadow: 0 8px 24px rgba(0, 0, 0, .55);
 }
 
+/* === GENERATED: size-keyed tracking — node tools/gen-tracking.mjs === */
+/* Written by tools/gen-tracking.mjs — do not edit by hand. Every rule in
+   this file that sets a font-size under 16px gets the tracking that size
+   calls for; one that asked for more air than its band keeps its own. */
+.btn,
+.input,
+.loading-text,
+.tabs .tab {
+    letter-spacing: 0.005em !important;
+}
+.btn-sm,
+.footer-coffee-btn,
+.footer-links a,
+.footer-mail,
+.footer-tagline,
+.state-message-text,
+.status-bar,
+.tab,
+.toast {
+    letter-spacing: 0.01em !important;
+}
+.badge,
+.fb-toggle,
+.fc-chip,
+.footer-api-badge,
+.footer-legal,
+.footer-status,
+.fp-pill,
+.nav-tid-badge,
+.nav-tid-form .btn,
+.ui-tooltip {
+    letter-spacing: 0.015em !important;
+}
+.fixture-chip,
+.pos-badge,
+.stat-tip-btn {
+    letter-spacing: 0.025em !important;
+}
+.fb-badge {
+    letter-spacing: 0.03em !important;
+}
+.input-group label {
+    letter-spacing: 0.0417em !important;
+}
+.footer-col-title,
+.section-label {
+    letter-spacing: 0.1364em !important;
+}
+/* === END GENERATED TRACKING === */
