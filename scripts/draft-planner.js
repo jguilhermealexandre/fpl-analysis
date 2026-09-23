@@ -1734,11 +1734,12 @@
 
             return `<div class="draft-timeline">
                 <div class="draft-tl-track">${nodes}</div>
-                <div class="draft-tl-summary">
-                    <span class="draft-tl-total" data-tooltip="Projected points across all ${gwNumbers.length} planned gameweeks, after deducting every points hit.">
-                        Plan total <strong>${planXP.toFixed(1)} pts</strong>
-                    </span>
-                    ${totalHits > 0 ? `<span class="draft-tl-total-hit" data-tooltip="Total points sacrificed to extra transfers across the plan.">−${totalHits} in hits</span>` : '<span class="draft-tl-total-ok">No hits taken</span>'}
+                <div class="draft-tl-summary" data-tooltip="Projected points across all ${gwNumbers.length} planned gameweeks, after deducting every points hit.">
+                    <div class="draft-tl-sum-top">
+                        <span class="draft-tl-sum-label">Plan total</span>
+                        ${totalHits > 0 ? `<span class="draft-tl-total-hit" data-tooltip="Total points sacrificed to extra transfers across the plan.">−${totalHits} in hits</span>` : '<span class="draft-tl-total-ok">No hits taken</span>'}
+                    </div>
+                    <div class="draft-tl-sum-value">${planXP.toFixed(1)}<span class="draft-tl-sum-u">pts</span></div>
                 </div>
             </div>`;
         }
