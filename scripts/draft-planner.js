@@ -30,22 +30,46 @@
 
         function getActiveDraft() { return draftStates[activeDraftSlot]; }
 
-        function initDraft(slotIndex) {
-            if (slotIndex === undefined) slotIndex = activeDraftSlot;
-            const gwNumbers = [];
-            // A gameweek with any match already under way cannot be planned — its
-            // deadline has passed. Taking every gameweek with an unfinished fixture
-            // put the current one at the head of the plan, where it projected almost
-            // nothing because nine of its ten matches were already played.
+        /* How far a plan can reach, and how much of it is shown.
+         *
+         * DRAFT_GW_MAX is six because that is how far the fixture strip and the
+         * expected-points model actually see. A plan opens on the first
+         * DRAFT_GW_STEP of them and grows a step at a time: six gameweeks of
+         * nodes, transfers, chips and free-transfer arithmetic is a lot to meet
+         * on arrival when the decision in front of you is this week's. */
+        const DRAFT_GW_MAX = 6;
+        const DRAFT_GW_STEP = 3;
+
+        /* The weeks a plan can cover.
+         *
+         * initDraft() and loadDraftSlot() each worked this out for themselves
+         * and did not agree: initDraft() drops any gameweek with a match already
+         * under way, because its deadline has gone and it cannot be planned,
+         * while loadDraftSlot() counted it. So from the first kick of a gameweek
+         * until its last match was marked finished, the list loadDraftSlot()
+         * built began a week earlier than the one in the plan it was checking,
+         * the equality test failed, and every saved plan was thrown away as
+         * stale. That is why a draft did not survive a refresh. One function
+         * now, so the two cannot drift apart again. */
+        function draftPlannableGWs() {
             const started = new Set(
                 allFixtures.filter(f => f.event !== null && (f.started || f.finished_provisional)).map(f => f.event)
             );
             const upcoming = allFixtures
                 .filter(f => !f.finished_provisional && f.event !== null && !started.has(f.event))
                 .map(f => f.event);
-            const uniqueGWs = [...new Set(upcoming)].sort((a, b) => a - b);
-            for (let i = 0; i < Math.min(6, uniqueGWs.length); i++) gwNumbers.push(uniqueGWs[i]);
-            if (gwNumbers.length === 0) for (let i = currentGW + 1; i <= Math.min(currentGW + 6, 38); i++) gwNumbers.push(i);
+            const unique = [...new Set(upcoming)].sort((a, b) => a - b).slice(0, DRAFT_GW_MAX);
+            if (unique.length) return unique;
+            // Nothing unplayed on record — count forward from the current week.
+            const fallback = [];
+            for (let i = currentGW + 1; i <= Math.min(currentGW + DRAFT_GW_MAX, 38); i++) fallback.push(i);
+            return fallback;
+        }
+
+        function initDraft(slotIndex) {
+            if (slotIndex === undefined) slotIndex = activeDraftSlot;
+            const gwPool = draftPlannableGWs();
+            const gwNumbers = gwPool.slice(0, DRAFT_GW_STEP);
 
             const bank = (picksData?.entry_history?.bank || 0) / 10;
 
@@ -58,6 +82,9 @@
             }
 
             draftStates[slotIndex] = {
+                // Every week this plan could reach; gwNumbers is the visible
+                // prefix of it, extended by "3 more weeks".
+                gwPool: gwPool,
                 gwNumbers: gwNumbers,
                 selectedGW: gwNumbers[0] || null,
                 originalSquad: selectedPlayers.map(p => ({ ...p })),
@@ -860,10 +887,19 @@
             const ds = draftStates[slotIndex];
             if (!ds || !ds.teamId) return;
             const payload = {
+                // The pool is what a reload checks the plan against; gwNumbers
+                // is how far the manager had opened it up.
+                gwPool: ds.gwPool || ds.gwNumbers,
                 gwNumbers: ds.gwNumbers,
                 selectedGW: ds.selectedGW,
                 transfers: ds.transfers,
                 chips: ds.chips,
+                /* Auto-optimise's own record. Left out, a refresh dropped the
+                   sparkle from every week it had rebuilt and the report behind
+                   it, so the plan came back saying nobody had optimised
+                   anything — while the lineups it had produced were still
+                   there. */
+                optimizeReports: ds.optimizeReports || {},
                 lineups: {},
                 bank: ds.bank,
                 startingFT: ds.startingFT,
@@ -946,21 +982,27 @@
                 const teamId = localStorage.getItem('fpl_team_id') || '';
                 if (!saved || saved.teamId !== teamId) return false;
 
-                // Validate saved GWs still make sense
-                const currentGWNums = [];
-                const upcoming = allFixtures.filter(f => !f.finished_provisional && f.event !== null).map(f => f.event);
-                const uniqueGWs = [...new Set(upcoming)].sort((a, b) => a - b);
-                for (let i = 0; i < Math.min(6, uniqueGWs.length); i++) currentGWNums.push(uniqueGWs[i]);
-
-                // If GW numbers don't match, saved data is stale
-                if (JSON.stringify(currentGWNums) !== JSON.stringify(saved.gwNumbers)) return false;
+                /* Is the plan still about the same weeks? Compared against the
+                   pool rather than the visible weeks, so opening a plan up to
+                   six and reloading does not read as a changed fixture list.
+                   Plans saved before the pool existed carry only gwNumbers,
+                   which was the whole six — the same list. */
+                const pool = draftPlannableGWs();
+                const savedPool = saved.gwPool || saved.gwNumbers;
+                if (JSON.stringify(pool) !== JSON.stringify(savedPool)) return false;
 
                 const ds = draftStates[slotIndex];
                 if (!ds) return false;
 
                 // Restore state
+                ds.gwPool = pool;
+                // However far it had been opened up, never fewer than a plan
+                // starts with and never past the end of the pool.
+                const shown = (saved.gwNumbers || []).length || DRAFT_GW_STEP;
+                ds.gwNumbers = pool.slice(0, Math.min(pool.length, Math.max(DRAFT_GW_STEP, shown)));
                 ds.transfers = saved.transfers || {};
                 ds.chips = saved.chips || {};
+                ds.optimizeReports = saved.optimizeReports || {};
                 ds.startingFT = saved.startingFT || 1;
                 ds.savedAt = saved.savedAt;
 
@@ -993,14 +1035,59 @@
             }
         }
 
+        /* Three more weeks on the end of the plan.
+         *
+         * Everything downstream reads ds.gwNumbers — the timeline, the free
+         * transfer arithmetic, the plan total, the save payload — so growing
+         * the plan is growing that array and rebuilding from the transfers,
+         * exactly as loading a saved plan does. The weeks already in it keep
+         * their transfers, chips and lineups. */
+        function extendDraftHorizon() {
+            const ds = getActiveDraft();
+            if (!ds) return;
+            const pool = ds.gwPool || ds.gwNumbers;
+            if (ds.gwNumbers.length >= pool.length) return;
+            const next = pool.slice(ds.gwNumbers.length, ds.gwNumbers.length + DRAFT_GW_STEP);
+            next.forEach(gw => {
+                if (!ds.transfers[gw]) ds.transfers[gw] = [];
+                if (ds.chips[gw] === undefined) ds.chips[gw] = null;
+            });
+            ds.gwNumbers = pool.slice(0, ds.gwNumbers.length + next.length);
+            rebuildDraftSquads();
+            saveDraft();
+            draftTabRendered = false;
+            renderSquadPlanner();
+            if (typeof updateStatus === 'function') {
+                updateStatus(`Plan now runs to GW${ds.gwNumbers[ds.gwNumbers.length - 1]}`, 'success');
+            }
+        }
+
         function resetDraft() {
             const ds = getActiveDraft();
             if (!ds) return;
             const teamId = ds.teamId;
             try { localStorage.removeItem(`fpl_draft_${teamId}_plan${activeDraftSlot}`); } catch(e) {}
+            /* The notes are keyed per plan and per gameweek, in their own
+               localStorage entries. initDraft() builds a clean state but
+               initNotepad() reads those straight back out, so "start again from
+               your current squad" used to hand back last plan's notes. Swept
+               across the whole pool, not just the weeks on screen, or the ones
+               belonging to a week that had been hidden again would survive. */
+            (ds.gwPool || ds.gwNumbers || []).forEach(gw => {
+                try { localStorage.removeItem(`fpl_notes_${teamId}_plan${activeDraftSlot}_gw${gw}`); } catch(e) {}
+            });
             initDraft(activeDraftSlot);
+            /* Which table view, which panel tab, a half-finished swap and the
+               comparison overlay all live outside the plan object, so initDraft()
+               cannot clear them and a reset left the tab looking mid-edit. */
+            draftTableView = 'stats';
+            draftSidebarTab = 'suggest';
+            draftCompareMode = false;
+            draftSwapSource = null;
+            draftReplacementTarget = null;
             draftTabRendered = false;
             renderSquadPlanner();
+            if (typeof updateStatus === 'function') updateStatus('Plan reset to your current squad', 'success');
         }
 
         // ===== PLAN SLOT MANAGEMENT =====
@@ -1162,9 +1249,11 @@
 
             html += `<div class="dp-table-toolbar">
                 <div class="dp-view-toggle" role="group" aria-label="Table view">
-                    <button class="dp-view-btn ${draftTableView === 'stats' ? 'active' : ''}" onclick="setDraftTableView('stats')"
+                    <button class="filter-pill compact-pill ${draftTableView === 'stats' ? 'active' : ''}" onclick="setDraftTableView('stats')"
+                        aria-pressed="${draftTableView === 'stats'}"
                         data-tooltip="What each player has actually done — per-90 rates for the season and the last six gameweeks.">${v2Icon('chart')} Historical stats</button>
-                    <button class="dp-view-btn ${draftTableView === 'xp' ? 'active' : ''}" onclick="setDraftTableView('xp')"
+                    <button class="filter-pill compact-pill ${draftTableView === 'xp' ? 'active' : ''}" onclick="setDraftTableView('xp')"
+                        aria-pressed="${draftTableView === 'xp'}"
                         data-tooltip="What each player projects for every gameweek in the plan — the quickest way to spot a benching headache.">${v2Icon('target')} Projected xP</button>
                 </div>
                 <span class="dp-table-hint">${draftTableView === 'stats'
@@ -1433,8 +1522,25 @@
             }).join('<span class="draft-tl-link"></span>');
 
             const totalHits = gwNumbers.reduce((s, g) => s + getDraftHitCost(g), 0);
+
+            /* The plan opens on three weeks and grows from here. The button is
+               the last thing on the track rather than a control somewhere in
+               the toolbar, because what it does is add nodes to this strip. It
+               disappears once the pool is exhausted — six weeks is as far as
+               the fixture data and the projection go. */
+            const pool = ds.gwPool || gwNumbers;
+            const remaining = pool.length - gwNumbers.length;
+            const nextBatch = Math.min(DRAFT_GW_STEP, remaining);
+            const moreBtn = remaining > 0
+                ? `<button class="draft-tl-more" onclick="extendDraftHorizon()"
+                        data-tooltip="Plan ${nextBatch} more gameweek${nextBatch === 1 ? '' : 's'}, out to GW${pool[Math.min(pool.length, gwNumbers.length + nextBatch) - 1]}. Nothing you have already planned changes.">
+                        <span class="draft-tl-more-plus">+${nextBatch}</span>
+                        <span class="draft-tl-more-text">more week${nextBatch === 1 ? '' : 's'}</span>
+                    </button>`
+                : '';
+
             return `<div class="draft-timeline">
-                <div class="draft-tl-track">${nodes}</div>
+                <div class="draft-tl-track">${nodes}${moreBtn ? `<span class="draft-tl-link"></span>${moreBtn}` : ''}</div>
                 <div class="draft-tl-summary">
                     <span class="draft-tl-total" data-tooltip="Projected points across all ${gwNumbers.length} planned gameweeks, after deducting every points hit.">
                         Plan total <strong>${planXP.toFixed(1)} pts</strong>
