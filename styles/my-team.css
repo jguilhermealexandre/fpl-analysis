@@ -2729,6 +2729,10 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 /* ===== MANAGER'S NOTEPAD ===== */
 .planner-layout-wrapper { display: flex; gap: 0; overflow-x: hidden; position: relative; align-items: flex-start; }
 .planner-layout-wrapper .planner-pitch-wrap { flex: 1; min-width: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+/* The draft's own sidebar is .dp-sidebar, and the side it sits on is decided
+   by .dp-layout in v2-app.css — not here, because this wrapper class is
+   shared with the Lineup Wizard, whose panel stays on the right.
+   (.notepad-panel is the wizard's; the two are easy to confuse and were.) */
 .notepad-toggle-tab { position: absolute; right: 0; top: 80px; z-index: 5; display: flex; align-items: center; gap: 4px; writing-mode: vertical-rl; text-orientation: mixed; padding: 10px 5px; background: var(--surface-2); border: 1px solid var(--border-default); border-right: none; border-radius: var(--radius-md) 0 0 var(--radius-md); cursor: pointer; color: var(--text-secondary); font-size: 0.7rem; font-weight: 600; font-family: var(--font-display); letter-spacing: 0.5px; transition: all 0.2s; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
 .notepad-toggle-tab:hover { color: var(--color-primary); background: var(--surface-1); }
 .notepad-toggle-tab .notepad-tab-icon { writing-mode: horizontal-tb; display: flex; }
@@ -2746,7 +2750,9 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 #fpl-notes-area { width: 100%; flex: 1; min-height: 200px; resize: none; border: none; outline: none; background: transparent; color: var(--text-primary); font-family: var(--font-body); font-size: 0.8rem; line-height: 1.6; padding: 12px 14px; box-sizing: border-box; }
 #fpl-notes-area::placeholder { color: var(--text-muted); font-style: italic; }
 @media (max-width: 768px) {
+    /* One column: the plan first, then the eleven it describes. */
     .planner-layout-wrapper { flex-direction: column; }
+
     .notepad-toggle-tab { position: static; writing-mode: horizontal-tb; border-radius: var(--radius-md); border: 1px solid var(--border-default); margin-bottom: 8px; padding: 8px 14px; box-shadow: none; align-self: flex-end; }
     .notepad-panel { width: 100% !important; margin-left: 0; }
     .notepad-panel.collapsed { width: 0 !important; height: 0; margin: 0; }
@@ -4788,6 +4794,16 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     align-items: stretch;
     gap: 0;
     overflow-x: auto;
+    /* Room above for the hover.
+     *
+     * A box cannot have visible overflow on one axis and auto on the other —
+     * setting overflow-x: auto computes the y axis to auto as well — so this
+     * track clips vertically even though nothing here scrolls that way. The
+     * nodes lift 1px on hover and gain an inset ring when active, and both
+     * were being sheared off at the top edge: the card moved and its own
+     * border disappeared. The padding is the lift plus the ring plus a little,
+     * on both axes so the row still looks centred. */
+    padding-top: 4px;
     padding-bottom: 4px;
 }
 
@@ -4973,8 +4989,18 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    left the pitch about 490px — narrow enough that a back five had to wrap.
    It gives width back now, and stops being a column at all before it gets
    small enough to be useless. */
-.planner-layout-wrapper { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) clamp(250px, 23vw, 330px); gap: 10px; align-items: start; }
-.planner-layout-wrapper.sidebar-collapsed { grid-template-columns: minmax(0, 1fr) 0; }
+.planner-layout-wrapper {
+    position: relative;
+    display: grid;
+    /* Named, because the GW Draft's handle has to sit exactly on the seam
+       between the two columns and would otherwise have to repeat this clamp
+       and drift out of step with it. */
+    --dp-side-w: clamp(250px, 23vw, 330px);
+    grid-template-columns: minmax(0, 1fr) var(--dp-side-w);
+    gap: 10px;
+    align-items: start;
+}
+.planner-layout-wrapper.sidebar-collapsed { --dp-side-w: 0px; grid-template-columns: minmax(0, 1fr) 0; }
 
 
 
@@ -4995,6 +5021,12 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 
 @media (max-width: 1100px) {
     .planner-layout-wrapper, .planner-layout-wrapper.sidebar-collapsed { grid-template-columns: minmax(0, 1fr); }
+    /* One column, and the eleven goes first: the plan is worth reading beside
+       the pitch, not stacked on top of it pushing the pitch off the screen.
+       (.dp-layout's two columns are bounded by a min-width query in
+       v2-app.css, so there is nothing to undo here beyond the order.) */
+    .planner-layout-wrapper.dp-layout .planner-pitch-wrap { order: 0; }
+    .planner-layout-wrapper.dp-layout .dp-sidebar { order: 1; }
 }
 
 /* ===== Plan comparison ===== */
@@ -6148,13 +6180,23 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     letter-spacing: 0;
     opacity: 0.75;
 }
+/* Two across, like the overview panel on the dashboard home. Four chips in a
+   column of two-line rows was the tallest thing in the toolbar and it was
+   mostly the detail line, which the tooltip already carries. */
+.draft-chip-advice-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+}
+@media (max-width: 620px) { .draft-chip-advice-grid { grid-template-columns: 1fr; } }
+
 .draft-chip-advice-row {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 8px 10px;
-    margin-bottom: 4px;
+    padding: 7px 10px;
+    margin-bottom: 0;
     background: transparent;
     border: 1px solid transparent;
     border-radius: 9px;
@@ -6174,13 +6216,13 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     border-color: rgba(0, 255, 135, 0.28);
 }
 .draft-chip-advice-icon { font-size: 1rem; line-height: 1.35; flex-shrink: 0; }
-.draft-chip-advice-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.draft-chip-advice-text strong { font-size: 0.86rem; font-weight: 600; }
-.draft-chip-advice-text em {
-    font-style: normal;
-    font-size: 0.78rem;
-    line-height: 1.4;
-    color: var(--v2-text-dim, #9aa4b2);
+.draft-chip-advice-text { min-width: 0; }
+/* One line. The row carries the detail as a tooltip, so a headline that will
+   not fit is trimmed rather than wrapping the grid out of alignment. */
+.draft-chip-advice-text strong {
+    display: block;
+    font-size: 0.84rem; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .draft-chip-advice-foot {
     margin-top: 6px;

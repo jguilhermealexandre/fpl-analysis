@@ -711,6 +711,25 @@
             draftSwapSource = null;
             saveDraft();
             rerenderDraftView();
+            draftOptimizeToast(gw);
+        }
+
+        /* What Squad Analysis does when its own wand finishes: a toast at the
+           foot of the page carrying what changed and a way through to the full
+           report. The draft wrote the same sentence into a line inside the
+           toolbar and nowhere else, so on a tab this tall the result of the
+           thing you just clicked could be off the screen. Same summary, same
+           report link, same component — sqToast() is on this page already.
+
+           Skipped silently when there is no report, which is what
+           optimizeDraftGWLineup() produces when a week had nothing to improve. */
+        function draftOptimizeToast(gw, extra) {
+            const ds = getActiveDraft();
+            const report = ds.optimizeReports && ds.optimizeReports[gw];
+            if (!report || typeof sqToast !== 'function') return;
+            const icon = typeof v2Icon === 'function' ? v2Icon('sparkle') : '';
+            const lead = extra ? `<strong>${escHTML(extra)}</strong> ` : '';
+            sqToast(`${icon}${lead}${buildOptimizeSummary(report, `openDraftOptimizeReport(${Number(gw)})`)}`);
         }
 
         // Runs Auto-optimise against every gameweek in the current plan, not
@@ -730,6 +749,11 @@
             if (typeof updateStatus === 'function') {
                 updateStatus(`Optimised all ${ds.gwNumbers.length} gameweeks in this plan (GW${ds.gwNumbers[0]}–GW${ds.gwNumbers[ds.gwNumbers.length - 1]})`, 'success');
             }
+            /* The toast reports the week you are looking at, because that is
+               the eleven that just changed in front of you; the other weeks
+               keep their own reports and show them when you switch. The lead
+               says how many were done so the button's full effect is stated. */
+            draftOptimizeToast(ds.selectedGW, `All ${ds.gwNumbers.length} weeks optimised.`);
         }
 
         // The actual per-gameweek optimize + report-build, shared by the single-
@@ -1116,8 +1140,8 @@
             // ---- 2. the eleven ----
             const sidebarOpen = localStorage.getItem('fpl_notepad_open') === 'true';
             html += `<section class="v2-section" ${draftCompareMode ? 'style="display:none;"' : ''}>
-                <div class="section-header"><h2>${v2Icon('shirt')} Gameweek ${ds.selectedGW} lineup</h2></div>`;
-            html += `<div class="planner-layout-wrapper${sidebarOpen ? '' : ' sidebar-collapsed'}">`;
+                <div class="section-header"><h2>${v2Icon('shirt')} Gameweek <span id="draftLineupGW">${Number(ds.selectedGW)}</span> lineup</h2></div>`;
+            html += `<div class="planner-layout-wrapper dp-layout${sidebarOpen ? '' : ' sidebar-collapsed'}">`;
             html += `<div class="planner-pitch-wrap" id="draftPitchArea">${renderDraftPitchHTML()}</div>`;
             html += renderDraftSidebar();
             html += `</div>`;
@@ -1347,18 +1371,23 @@
                     .filter(Boolean).join(' and ')
                 : '';
 
+            /* Two columns of one-line rows, the shape the dashboard's overview
+               panel uses. This was a stack of four two-line rows in which the
+               second line, the <em>, printed p.detail — the same string already
+               sitting in the row's own data-tooltip, so the card was twice the
+               height it needed to be in order to say everything twice. The
+               detail stays in the tooltip, which works on every page now. */
             let html = `<div class="draft-chip-advice">`;
             html += `<div class="draft-chip-advice-head">Best week for each chip <span>GW${advice.from}–${advice.to}</span></div>`;
+            html += `<div class="draft-chip-advice-grid">`;
             advice.picks.forEach(p => {
                 html += `<button class="draft-chip-advice-row${p.strong ? ' strong' : ''}" onclick="switchDraftGW(${p.gw})"
                     data-tooltip="${escHTML(p.detail)}">
                     <span class="draft-chip-advice-icon">${p.icon}</span>
-                    <span class="draft-chip-advice-text">
-                        <strong>${escHTML(p.headline)}</strong>
-                        <em>${escHTML(p.detail)}</em>
-                    </span>
+                    <span class="draft-chip-advice-text"><strong>${escHTML(p.headline)}</strong></span>
                 </button>`;
             });
+            html += `</div>`;
             html += special
                 ? `<div class="draft-chip-advice-foot">Fixture list shows ${escHTML(special)}.</div>`
                 : `<div class="draft-chip-advice-foot">No doubles or blanks are scheduled in this window, so no week is unusually good for a chip. Wildcard is not listed — its value depends on a squad you do not own yet.</div>`;
@@ -1805,6 +1834,15 @@
             if (chipRow) chipRow.style.display = draftCompareMode ? 'none' : '';
             if (chipRow && !draftCompareMode) chipRow.innerHTML = renderDraftChipRow();
 
+            /* The heading above the pitch. It is written once by
+               renderSquadPlanner() and was never touched again, so picking a
+               different week changed the eleven, the table, the chips and the
+               sidebar underneath a title that still named the week you started
+               on. The number is its own span so this stays a text update and
+               the icon beside it is left alone. */
+            const gwLabel = document.getElementById('draftLineupGW');
+            if (gwLabel) gwLabel.textContent = String(Number(ds.selectedGW));
+
             const pitchArea = document.getElementById('draftPitchArea');
             if (pitchArea) pitchArea.innerHTML = draftCompareMode ? '' : renderDraftPitchHTML();
 
@@ -2124,14 +2162,26 @@
             if (tab === 'notes') initNotepad();
         }
 
+        /* The handle used to be a bare ◀. A caret on a strip the colour of the
+           card behind it is not an invitation, and the panel it opens holds
+           the transfer suggestions — half of what this tab is for. It carries
+           its own name now, written up the edge by the CSS. */
+        function draftSideToggleLabel(collapsed) {
+            return `<span class="dp-side-toggle-caret">${collapsed ? '\u25b8' : '\u25c2'}</span>Your plan`;
+        }
+
         function toggleDraftSidebar() {
-            const wrap = document.querySelector('.planner-layout-wrapper');
+            /* .dp-layout, not the bare wrapper class: the Lineup Wizard builds
+               one of those too, and on a page where both tabs are in the DOM
+               querySelector returns whichever comes first in the markup. */
+            const wrap = document.querySelector('.planner-layout-wrapper.dp-layout');
             if (!wrap) return;
             const collapsed = wrap.classList.toggle('sidebar-collapsed');
             localStorage.setItem('fpl_notepad_open', collapsed ? 'false' : 'true');
             const btn = document.getElementById('draftSidebarToggle');
             if (btn) {
-                btn.innerHTML = collapsed ? '◀' : '▶';
+                btn.innerHTML = draftSideToggleLabel(collapsed);
+                btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
                 btn.setAttribute('data-tooltip', collapsed ? 'Open the strategy panel' : 'Collapse the panel and give the pitch the full width');
             }
         }
@@ -2418,7 +2468,8 @@
         function renderDraftSidebar() {
             const collapsed = localStorage.getItem('fpl_notepad_open') !== 'true';
             return `<button class="dp-side-toggle" id="draftSidebarToggle" onclick="toggleDraftSidebar()"
-                        data-tooltip="${collapsed ? 'Open the strategy panel' : 'Collapse the panel and give the pitch the full width'}">${collapsed ? '◀' : '▶'}</button>
+                        aria-expanded="${collapsed ? 'false' : 'true'}"
+                        data-tooltip="${collapsed ? 'Open the strategy panel' : 'Collapse the panel and give the pitch the full width'}">${draftSideToggleLabel(collapsed)}</button>
                 <aside class="dp-sidebar">
                     <div class="dp-side-tabs">
                         <button class="dp-side-tab ${draftSidebarTab === 'suggest' ? 'active' : ''}" data-tab="suggest" onclick="setDraftSidebarTab('suggest')">Suggest Transfers</button>
