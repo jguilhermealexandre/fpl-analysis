@@ -1144,6 +1144,7 @@ export default [
                 renderDraftMoveCard: 'writable',
                 renderDraftPitchHTML: 'writable',
                 renderDraftPlanBar: 'writable',
+                renderDraftPlanTools: 'writable',
                 renderDraftProposal: 'writable',
                 renderDraftProposalList: 'writable',
                 renderDraftRow: 'writable',

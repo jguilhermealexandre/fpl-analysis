@@ -1393,7 +1393,10 @@
             html += `<div class="dp-columns${draftDrawerOpen ? ' drawer-open' : ''}" id="draftColumns" ${draftCompareMode ? 'style="display:none;"' : ''}>`;
 
             html += `<section class="v2-section dp-col dp-col-plan">
-                <div class="section-header"><h2>${v2Icon('calendar')} Your plan</h2></div>`;
+                <div class="section-header">
+                    <h2>${v2Icon('calendar')} Your plan</h2>
+                    <div class="dp-tools" id="draftPlanTools">${renderDraftPlanTools()}</div>
+                </div>`;
             html += `<div id="draftPlanBar">${renderDraftPlanBar()}</div>`;
             html += `<div class="draft-toolbar" id="draftToolbar">${renderDraftToolbar()}</div>`;
             html += `<div id="draftChipRow">${renderDraftChipRow()}</div>`;
@@ -1497,23 +1500,28 @@
             }
             html += `</div>`;
 
-            /* Everything you can do to this plan, in one row.
-             *
-             * Auto-optimise, Auto-optimise all and Reset plan used to sit at
-             * the end of the stat strip below, wearing their names, so a row
-             * that exists to report four numbers ended in three controls and
-             * the numbers had nowhere to be. They are up here with Duplicate
-             * and Compare now, and icon-only: five labelled buttons do not fit
-             * across a column this narrow, and every one of them already
-             * carries a sentence on hover that says more than its label did. */
+            html += `</div>`;
+            return html;
+        }
+
+        /* Everything you can do to this plan, on the title row.
+         *
+         * These were at the end of the stat strip wearing their names, so a row
+         * that exists to report four numbers ended in three controls. They are
+         * beside "Your plan" now, which is where a section's controls belong on
+         * every other screen here, and icon-only: five labelled buttons do not
+         * fit across a column this narrow, and every one already carries a
+         * sentence on hover that says more than its label did. */
+        function renderDraftPlanTools() {
             const ds = getActiveDraft();
+            if (!ds) return '';
             const gw = ds.selectedGW;
             const optimizeRunGWs = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON, gw) : [gw];
-            html += `<div class="draft-plan-actions">`;
+            let html = '';
             if (draftSlotCount < 3) {
                 html += `<button class="dp-tool" onclick="duplicateDraftSlot(${activeDraftSlot})"
                     aria-label="Duplicate this plan"
-                    data-tooltip="Duplicate this plan — a copy you can try a different set of moves on, side by side with this one">${v2Icon('clipboard')}</button>`;
+                    data-tooltip="Duplicate this plan \u2014 a copy you can try a different set of moves on, side by side with this one">${v2Icon('clipboard')}</button>`;
             }
             if (draftSlotCount >= 2) {
                 html += `<button class="dp-tool" onclick="openPlanComparison()"
@@ -1523,15 +1531,13 @@
             html += `<span class="dp-tool-sep" aria-hidden="true"></span>`;
             html += `<button class="dp-tool" onclick="draftAutoOptimizeLineup()"
                 aria-label="Auto-optimise this gameweek"
-                data-tooltip="Auto-optimise GW${gw} — rebuild its XI, bench order and captain from the players available that week${optimizeRunGWs.length > 1 ? `, ranked on expected points across GW${optimizeRunGWs[0]}–GW${optimizeRunGWs[optimizeRunGWs.length - 1]} combined` : ''}">${v2Icon('sparkle')}</button>`;
+                data-tooltip="Auto-optimise GW${gw} \u2014 rebuild its XI, bench order and captain from the players available that week${optimizeRunGWs.length > 1 ? `, ranked on expected points across GW${optimizeRunGWs[0]}\u2013GW${optimizeRunGWs[optimizeRunGWs.length - 1]} combined` : ''}">${v2Icon('sparkle')}</button>`;
             html += `<button class="dp-tool" onclick="draftAutoOptimizeAllGWs()"
                 aria-label="Auto-optimise every gameweek"
-                data-tooltip="Auto-optimise all — run it on every gameweek in this plan (GW${ds.gwNumbers[0]}–GW${ds.gwNumbers[ds.gwNumbers.length - 1]}) in one go, each scored against its own week and its own run ahead">${v2Icon('sparkle')}<span class="dp-tool-all">all</span></button>`;
+                data-tooltip="Auto-optimise all \u2014 run it on every gameweek in this plan (GW${ds.gwNumbers[0]}\u2013GW${ds.gwNumbers[ds.gwNumbers.length - 1]}) in one go, each scored against its own week and its own run ahead">${v2Icon('sparkle')}<span class="dp-tool-all">all</span></button>`;
             html += `<button class="dp-tool danger" onclick="resetDraft()"
                 aria-label="Reset this plan"
-                data-tooltip="Reset plan — discard every change in it and start again from your current squad">↩</button>`;
-            html += `</div>`;
-            html += `</div>`;
+                data-tooltip="Reset plan \u2014 discard every change in it and start again from your current squad">\u21a9</button>`;
             return html;
         }
 
@@ -1973,9 +1979,13 @@
                         ? `the ${eligible} highlighted player${eligible === 1 ? '' : 's'} can take his place.`
                         : 'nobody in this squad can take his place under the formation rules.'}
                     <span class="planner-hint-esc">Press <kbd>Esc</kbd> or click away to cancel.</span></div>`;
-            } else {
-                html += `<div class="planner-lineup-hint"><span>${v2Icon('bulb')}</span> Drag a substitute onto the pitch to bring him on, or two team-mates onto each other to swap them. Use <strong>↔</strong> on a card to transfer him out.</div>`;
             }
+            /* No standing instruction under the pitch. It explained a gesture
+               the cards already offer — they take cursor: grab — and it sat
+               there for the whole life of the page saying the same sentence to
+               somebody who had read it once. What stays is the line above:
+               it appears only while a swap is pending, and it reports state
+               rather than teaching. */
             return html;
         }
 
@@ -2181,6 +2191,12 @@
 
             const planBar = document.getElementById('draftPlanBar');
             if (planBar) planBar.innerHTML = renderDraftPlanBar();
+
+            /* The tools live in the section header, which renderSquadPlanner
+               writes once — but their tooltips name the selected gameweek, so
+               they are refreshed here like everything else that does. */
+            const planTools = document.getElementById('draftPlanTools');
+            if (planTools) planTools.innerHTML = renderDraftPlanTools();
 
             const compareArea = document.getElementById('draftCompareArea');
             if (compareArea) compareArea.innerHTML = draftCompareMode ? renderDraftComparison() : '';
