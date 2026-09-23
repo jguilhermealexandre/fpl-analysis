@@ -1734,14 +1734,20 @@
 
             return `<div class="draft-timeline">
                 <div class="draft-tl-track">${nodes}</div>
-                <div class="draft-tl-summary" data-tooltip="Projected points across all ${gwNumbers.length} planned gameweeks, after deducting every points hit.">
-                    <div class="draft-tl-sum-top">
-                        <span class="draft-tl-sum-label">Plan total</span>
-                        ${totalHits > 0 ? `<span class="draft-tl-total-hit" data-tooltip="Total points sacrificed to extra transfers across the plan.">−${totalHits} in hits</span>` : '<span class="draft-tl-total-ok">No hits taken</span>'}
-                    </div>
-                    <div class="draft-tl-sum-value">${planXP.toFixed(1)}<span class="draft-tl-sum-u">pts</span></div>
+                <div class="draft-stat draft-tl-summary" data-tooltip="Projected points across all ${gwNumbers.length} planned gameweeks, after deducting every points hit.">
+                    <span class="draft-stat-icon">${v2Icon('trophy')}</span>
+                    <span class="draft-stat-label">Plan total</span>
+                    <span class="draft-stat-value">${planXP.toFixed(1)}<span class="draft-stat-sub">pts</span></span>
+                    ${totalHits > 0 ? `<span class="draft-tl-total-hit" data-tooltip="Total points sacrificed to extra transfers across the plan.">−${totalHits} in hits</span>` : '<span class="draft-tl-total-ok">No hits taken</span>'}
                 </div>
             </div>`;
+        }
+
+        function draftFTTip() {
+            const max = draftMaxFT();
+            return escHTML(`Free transfers this plan starts with. You can bank at most ${max} at once, `
+                + `so type any number from 0 to ${max} — 0 if you have already used this week's. `
+                + `FPL does not publish the figure, so set it if the guess is wrong.`);
         }
 
         function renderDraftToolbar() {
@@ -1786,8 +1792,12 @@
                     <span class="draft-stat-value">−${hitCost}</span>
                 </div>` : `<div class="draft-stat editable">
                     <span class="draft-stat-icon">${v2Icon('ticket')}</span>
-                    <label class="draft-stat-label" for="draftStartFT" data-tooltip="Free transfers you began this plan with. FPL does not publish this, so set it if the guess is wrong.">Start FT</label>
-                    <input id="draftStartFT" type="number" class="draft-ft-input" value="${ds.startingFT}" min="0" max="5" onchange="updateDraftStartingFT(this.value)">
+                    <label class="draft-stat-label" for="draftStartFT" data-tooltip="${draftFTTip()}">Start FT</label>
+                    <input id="draftStartFT" type="text" inputmode="numeric" autocomplete="off"
+                        class="draft-ft-input" value="${ds.startingFT}" maxlength="${String(draftMaxFT()).length}"
+                        aria-label="Free transfers this plan starts with, 0 to ${draftMaxFT()}"
+                        data-tooltip="${draftFTTip()}"
+                        oninput="draftFTInput(this)" onchange="updateDraftStartingFT(this.value)">
                 </div>`}
             </div>`;
 
@@ -2184,13 +2194,50 @@
             rerenderDraftView();
         }
 
-        function updateDraftStartingFT(val) {
-            const v = parseInt(val);
-            if (!isNaN(v) && v >= 0 && v <= 5) {
-                getActiveDraft().startingFT = v;
-                saveDraft();
-                rerenderDraftView();
+        /* The cap on banked free transfers is a game setting, not a constant.
+           team-analysis-core.js reads it out of bootstrap as
+           game_settings.max_extra_free_transfers + 1 — five this season, and
+           not five for all of the game's history. This field had 5 written
+           into it in two places. */
+        function draftMaxFT() {
+            return typeof maxFreeTransfers === 'number' && maxFreeTransfers > 0 ? maxFreeTransfers : 5;
+        }
+
+        /* Digits only, and never more than the cap allows.
+         *
+         * This was <input type="number">, which sounds like it enforces its
+         * own min and max and does not: the spinner respects them, typing does
+         * not, and "e", "+" and "-" are all valid characters in a number field
+         * — so `12` or `e` went in and came back out of .value as either a
+         * number nobody can have or an empty string. Text plus inputmode
+         * numeric instead, so what is typed is what we can read, and anything
+         * that is not a digit is taken straight back out.
+         *
+         * Only the text is corrected here. Committing on every keystroke would
+         * re-render the toolbar and take the focus out of the field mid-word,
+         * so the value is stored on change — blur or Enter. */
+        function draftFTInput(el) {
+            const max = draftMaxFT();
+            let cleaned = String(el.value).replace(/\D+/g, '').slice(0, String(max).length);
+            if (cleaned !== '' && parseInt(cleaned, 10) > max) cleaned = String(max);
+            if (cleaned !== el.value) {
+                const at = el.selectionStart;
+                el.value = cleaned;
+                try { el.setSelectionRange(Math.min(at, cleaned.length), Math.min(at, cleaned.length)); } catch (e) { /* not a text field */ }
             }
+        }
+
+        function updateDraftStartingFT(val) {
+            const v = parseInt(val, 10);
+            /* Zero is a real answer, not an empty one: deriveFreeTransfers()
+               subtracts the moves already staged for the round being planned,
+               so a manager who has spent this week's transfer genuinely starts
+               the plan on none. Anything outside the range — including a field
+               left blank — puts the stored value back on screen. */
+            if (isNaN(v) || v < 0 || v > draftMaxFT()) return rerenderDraftView();
+            getActiveDraft().startingFT = v;
+            saveDraft();
+            rerenderDraftView();
         }
 
         function rerenderDraftView() {
