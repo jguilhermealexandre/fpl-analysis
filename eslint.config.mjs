@@ -72,6 +72,7 @@ export default [
                 DEMO_TEAM_ID: 'writable',
                 DP_BENCH_ICON: 'writable',
                 DP_SWAP_ICON: 'writable',
+                DRAFT_CHIP_ICON: 'writable',
                 DRAFT_CHIP_NAME: 'writable',
                 DRAFT_CHIP_SHORT: 'writable',
                 DRAFT_CHIP_STANDOUT: 'writable',

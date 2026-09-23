@@ -1812,30 +1812,49 @@
             return html;
         }
 
+        /* The chips, drawn as the manager card on Squad Analysis draws them.
+         *
+         * That card has had this component for a while: a line saying which
+         * chip is active and how many are left, then a row of pills — one per
+         * chip, each with its own line mark, struck through once it is spent
+         * and lit in the star colour while it is the one being played. This
+         * tab had a row of its own instead: four unmarked buttons, an empty
+         * <span> where each icon should have been, and a solid green fill for
+         * the active one that matched nothing else on the page.
+         *
+         * .mgr-chip now, class for class. The only difference left is that
+         * these are buttons rather than labels, because here a chip is
+         * something you play rather than something you are told about. */
+        const DRAFT_CHIP_ICON = { wildcard: 'chip', freehit: 'refresh', benchboost: 'boost', triplecaptain: 'crown' };
+
         function renderDraftChipRow() {
             const ds = getActiveDraft();
             const gw = ds.selectedGW;
             const activeChip = ds.chips[gw];
             const chips = [
-                { id: 'wildcard', icon: '', label: 'Wildcard' },
-                { id: 'freehit', icon: '', label: 'Free Hit' },
-                { id: 'benchboost', icon: '', label: 'Bench Boost' },
-                { id: 'triplecaptain', icon: '', label: 'Triple Captain' }
+                { id: 'wildcard', label: 'Wildcard' },
+                { id: 'freehit', label: 'Free Hit' },
+                { id: 'benchboost', label: 'Bench Boost' },
+                { id: 'triplecaptain', label: 'Triple Captain' }
             ];
+            const stillAvailable = chips.filter(c => isDraftChipAvailable(c.id) || activeChip === c.id).length;
+            const activeLabel = activeChip ? (chips.find(c => c.id === activeChip) || {}).label : '';
 
-            let html = `<div class="draft-chip-bar">`;
-            html += `<span class="draft-chip-bar-label">Chips for GW${gw}</span>`;
-            html += `<div class="draft-chip-selector">`;
+            let html = `<div class="mgr-chips draft-chip-bar">`;
+            html += `<div class="mgr-chips-head">${v2Icon('chip')}${activeLabel
+                ? `GW${gw}: <strong>${escHTML(activeLabel)}</strong>`
+                : `No chip in GW${gw}`} <span class="mgr-chips-count" data-tooltip="${stillAvailable} of ${chips.length} chips still available to this plan">(${stillAvailable}/${chips.length})</span></div>`;
+            html += `<div class="mgr-chips-list">`;
             chips.forEach(ch => {
                 const isActive = activeChip === ch.id;
                 const available = isDraftChipAvailable(ch.id) || isActive;
-                const cls = isActive ? 'active' : (!available ? 'used' : '');
+                const cls = isActive ? 'active' : (available ? 'avail' : 'used');
                 const tip = isActive ? `Playing ${ch.label} in GW${gw} — click to cancel.`
                     : available ? `Play ${ch.label} in GW${gw}.`
                     : `${ch.label} has already been used this season.`;
-                html += `<button class="draft-chip-btn ${cls}" ${available || isActive ? `onclick="activateDraftChip('${ch.id}')"` : 'disabled'}
+                html += `<button class="mgr-chip draft-chip-btn ${cls}" ${available ? `onclick="activateDraftChip('${ch.id}')"` : 'disabled'}
                     data-tooltip="${escHTML(tip)}" aria-pressed="${isActive}">
-                    <span class="draft-chip-icon">${ch.icon}</span>${ch.label}
+                    ${v2Icon(DRAFT_CHIP_ICON[ch.id] || 'chip')}${escHTML(ch.label)}
                 </button>`;
             });
             html += `</div></div>`;

@@ -2718,11 +2718,6 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .draft-meta-item.hit-warning { border-color: var(--color-error); color: var(--color-error); background: rgba(239,68,68,0.06); }
 .draft-meta-item.hit-warning strong { color: var(--color-error); }
 
-.draft-chip-selector { display: flex; gap: 4px; }
-.draft-chip-btn { padding: 4px 10px; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--surface-2); color: var(--text-secondary); font-size: 0.7rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.draft-chip-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
-.draft-chip-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
-.draft-chip-btn.used { opacity: 0.35; cursor: not-allowed; text-decoration: line-through; }
 
 .draft-actions { display: flex; gap: 6px; }
 .draft-action-btn { padding: 5px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--surface-1); color: var(--text-secondary); font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
@@ -5104,29 +5099,21 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 }
 
 /* Chips read as actions now, not labels. */
-.draft-chip-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.draft-chip-bar-label { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
-.draft-chip-selector { display: flex; flex-wrap: wrap; gap: 5px; }
-
-.draft-chip-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 6px 12px;
-    border: 1px solid var(--border-default);
-    border-radius: 999px;
-    background: var(--surface-1);
-    color: var(--text-secondary);
-    font-size: 11px;
-    font-weight: 600;
+/* The draft's chips are .mgr-chips from the manager card on Squad Analysis.
+   Only two things differ: this is not inside that card, so it drops the
+   card's own padding and top rule, and its pills are buttons — here a chip is
+   something you play rather than something you are told about. */
+.draft-chip-bar.mgr-chips { padding: 0; border-top: none; margin-bottom: 10px; }
+button.mgr-chip.draft-chip-btn {
+    font-family: inherit;
     cursor: pointer;
-    transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+    display: inline-flex; align-items: center;
+    transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
 }
-
-.draft-chip-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--text-primary); transform: translateY(-1px); }
-.draft-chip-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
-.draft-chip-btn.used, .draft-chip-btn:disabled { opacity: .4; cursor: not-allowed; text-decoration: line-through; }
-.draft-chip-icon { font-size: 12px; }
+button.mgr-chip.draft-chip-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+button.mgr-chip.draft-chip-btn.active:hover { border-color: var(--verdict-star); color: var(--verdict-star); }
+button.mgr-chip.draft-chip-btn:disabled { cursor: not-allowed; }
+button.mgr-chip.draft-chip-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 
 /* The pitch is a contained card, so it stops reading as a second product bolted
    onto a light page. */
