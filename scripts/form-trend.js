@@ -122,11 +122,46 @@
             };
         }
 
-        function rfPerGame(rows, keys) {
-            const out = {};
-            keys.forEach(k => { out[k] = rows.reduce((s, r) => s + rfNum(r, k), 0) / (rows.length || 1); });
+        /* Rates per NINETY MINUTES, not per appearance.
+
+           Per-game conflates how well he played with how long he was on, and it
+           got both directions wrong on live data. Araujo went from 16 minutes a
+           game to 84, and per-game that read as "BPS +2533%" — almost entirely
+           the minutes. The same comparison hid a real improvement: his xGC per
+           game rose 134% (worse) while his xGC per 90 FELL 54% (much better),
+           because a man on the pitch five times as long concedes more in total
+           and far less per minute. One number was absurd, the other was
+           backwards, and both came from dividing by appearances.
+
+           Minutes are their own signal — see "More minutes" below. This one is
+           about the football. */
+        function rfPer90(rows, keys) {
+            const mins = rows.reduce((t, r) => t + rfNum(r, 'minutes'), 0);
+            const out = { __minutes: mins };
+            const per = mins > 0 ? mins / 90 : 0;
+            keys.forEach(k => {
+                out[k] = per > 0 ? rows.reduce((t, r) => t + rfNum(r, k), 0) / per : 0;
+            });
             return out;
         }
+
+        /* Below these a rate cannot carry a percentage.
+
+           Taken from the real distribution rather than picked: each is a quarter
+           of the median per-90 among players with 270+ minutes this season. A
+           base under that is indistinguishable from zero for the metric, and
+           dividing by it is what produced "Threat +600%" off a base of 1.0 on a
+           scale whose median is 7.8. The metric is skipped, not scored as an
+           improvement — a number too small to compare is not evidence of one. */
+        const RF_MIN_BASE = {
+            expected_goal_involvements: 0.04, expected_goals: 0.02, expected_assists: 0.02,
+            bps: 4.2, threat: 1.9, creativity: 2.8, expected_goals_conceded: 0.37, saves: 0.78
+        };
+
+        /* And a window with almost no football in it is not a baseline at all.
+           Araujo's "before" was 33 minutes across two matches; any rate built on
+           that is noise wearing a decimal point. */
+        const RF_MIN_PRIOR_MINUTES = 90;
 
         /* Which numbers actually pay this position. xGC counts downward for the
            people paid to keep it out, which is what `invert` means. */
@@ -279,9 +314,24 @@
            strings inside the model, which is how a data engine ends up owning a
            rendering detail — and how the section broke when the engine moved out
            and the tag came with it. */
+        /* Whose numbers are these?
+
+           A reader looking at Brobbey's card read "6 scored against 9.8 xG in 5"
+           as Brobbey's own — he has three goals and 2.9 xG — and reported the
+           site as showing false data. It was not false: it was Sunderland's, and
+           nothing on the row said so. On a site whose product is trust, a true
+           number attributed to the wrong subject does the same damage as a wrong
+           one. Every club-level detail names the club now. */
+        function rfClub(player) {
+            if (player && typeof player.team === 'string' && player.team) return player.team;
+            const t = (typeof teams !== 'undefined' && teams) ? teams[player && player.teamId] : null;
+            return (t && (t.short_name || t.name)) || 'His club';
+        }
+
         function rfPillars(player, split, ctx) {
             const pos = RF_POS[player.position];
             const isDefPos = (pos === 'GK' || pos === 'DEF');
+            const club = rfClub(player);
             const signals = [];
             let score = 0;
 
@@ -312,20 +362,26 @@
             // so this fires from five matches instead of needing six.
             const metrics = RF_METRICS[pos] || RF_METRICS.MID;
             const keys = metrics.map(m => m.k);
-            const now = rfPerGame(split.recent, keys);
-            const before = rfPerGame(split.prior, keys);
+            const now = rfPer90(split.recent, keys);
+            const before = rfPer90(split.prior, keys);
             let uplift = 0;
             const parts = [];
-            metrics.forEach(m => {
-                const base = before[m.k] || 0;
-                const val = now[m.k] || 0;
-                if (base <= 0.01) return;               // nothing to be a rise above
-                const pct = m.invert ? (base - val) / base : (val - base) / base;
-                if (pct > 0) {
-                    uplift += pct * m.w * 4;
-                    if (pct > 0.10) parts.push(`${m.label} +${(pct * 100).toFixed(0)}%`);
-                }
-            });
+            if (before.__minutes >= RF_MIN_PRIOR_MINUTES) {
+                metrics.forEach(m => {
+                    const base = before[m.k] || 0;
+                    const val = now[m.k] || 0;
+                    if (base < (RF_MIN_BASE[m.k] || 0.01)) return;   // too small to be a rise above
+                    const pct = m.invert ? (base - val) / base : (val - base) / base;
+                    if (pct > 0) {
+                        /* Capped where it stops meaning anything. A tripling is
+                           already the strongest thing this can say, and a bigger
+                           printed number reads as a glitch rather than a finding. */
+                        const capped = Math.min(pct, 2);
+                        uplift += capped * m.w * 4;
+                        if (pct > 0.10) parts.push(`${m.label} +${(capped * 100).toFixed(0)}%${pct > 2 ? '+' : ''} per 90`);
+                    }
+                });
+            }
             if (uplift > 0) {
                 const v = Math.min(18, uplift);
                 score += v;
@@ -355,7 +411,7 @@
                 const v = Math.min(8, ((ts.formRating - 55) / 45) * 8) * 0.8;
                 score += v;
                 signals.push({ label: 'Team in form', icon: 'trending-up', color: '#4ADE80',
-                    detail: `${ts.wins}W ${ts.draws}D ${ts.losses}L`,
+                    detail: `${club} ${ts.wins}W ${ts.draws}D ${ts.losses}L`,
                     strength: Math.min(10, v) });
             }
 
@@ -372,8 +428,8 @@
                         color: '#34D399',
                         // The sample is named because at this stage it is small.
                         detail: isDefPos
-                            ? `${trend.xgcRecent.toFixed(2)} xGC/g over ${trend.recentGames}, against ${trend.xgcPrior.toFixed(2)} over ${trend.priorGames}`
-                            : `${trend.xgRecent.toFixed(2)} xG/g over ${trend.recentGames}, against ${trend.xgPrior.toFixed(2)} over ${trend.priorGames}`,
+                            ? `${club} ${trend.xgcRecent.toFixed(2)} xGC a game over ${trend.recentGames}, against ${trend.xgcPrior.toFixed(2)} over ${trend.priorGames}`
+                            : `${club} ${trend.xgRecent.toFixed(2)} xG a game over ${trend.recentGames}, against ${trend.xgPrior.toFixed(2)} over ${trend.priorGames}`,
                         strength: Math.min(10, v) });
                 }
             }
@@ -393,8 +449,8 @@
                         icon: 'refresh-cw',
                         color: '#C084FC',
                         detail: isDefPos
-                            ? `${seasonXg.totalConceded} conceded against ${seasonXg.totalXgc.toFixed(1)} xGC in ${seasonXg.games}`
-                            : `${seasonXg.totalGoals} scored against ${seasonXg.totalXg.toFixed(1)} xG in ${seasonXg.games}`,
+                            ? `${club} have conceded ${seasonXg.totalConceded} against ${seasonXg.totalXgc.toFixed(1)} xGC in ${seasonXg.games}`
+                            : `${club} have scored ${seasonXg.totalGoals} against ${seasonXg.totalXg.toFixed(1)} xG in ${seasonXg.games}`,
                         strength: Math.min(10, v) });
                 }
             }
@@ -406,7 +462,7 @@
                 const v = Math.min(8, outlook.turn * 4);
                 score += v;
                 signals.push({ label: 'Fixtures easing', icon: 'calendar', color: '#60A5FA',
-                    detail: `FDR ${outlook.fdrPast.toFixed(1)} behind him, ${outlook.fdrNear.toFixed(1)} in front`,
+                    detail: `${club} FDR ${outlook.fdrPast.toFixed(1)} behind, ${outlook.fdrNear.toFixed(1)} in front`,
                     strength: Math.min(10, v) });
             } else if (outlook && outlook.fdrNear <= 2.5) {
                 const v = Math.min(6, (3 - outlook.fdrNear) * 5);

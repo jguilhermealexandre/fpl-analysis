@@ -169,7 +169,8 @@ test('fixtures easing is measured against what he has just played', () => {
     }));
     const easing = eased.signals.find(s => s.label === 'Fixtures easing');
     assert.ok(easing, 'a real turn is reported');
-    assert.match(easing.detail, /behind him/);
+    assert.match(easing.detail, /behind/);
+    assert.match(easing.detail, /in front/);
 });
 
 /* ---- the two multipliers ---- */
@@ -267,4 +268,99 @@ test('the ranked pool is ordered, and carries what the card draws', () => {
     assert.ok(rows[0].risingScore >= rows[1].risingScore);
     assert.ok(rows[0].signalCount >= 2);
     assert.equal(typeof rows[0].fdrNear, 'number');
+});
+
+/* ---- whose number is it, and is it a number at all --------------------- */
+
+test('every club-level signal names the club', () => {
+    /* A reader saw "6 scored against 9.8 xG in 5" on Brobbey's card and
+       reported the site for showing false data. He has three goals and 2.9 xG;
+       the figures were Sunderland's, and nothing on the row said so. A true
+       number attributed to the wrong subject costs exactly as much trust as a
+       wrong one. */
+    const club = engine({
+        teams: { 1: { short_name: 'SUN' } },
+        getTeamSeasonXg: () => ({ games: 5, xGpg: 2.0, xGCpg: 1.2,
+            totalXg: 10.4, totalXgc: 6, totalGoals: 6, totalConceded: 10 }),
+        getTeamXgWindow: () => ({ games: 3, xGpg: 2.6, xGCpg: 0.9,
+            totalXg: 7.7, totalXgc: 2.7, totalGoals: 5, totalConceded: 4 }),
+        teamAnalysis: { 1: { formRating: 70, wins: 2, draws: 1, losses: 2 } }
+    }).risingFormFor(player({ team: 'SUN' }));
+
+    const clubLevel = ['Team in form', 'Team xG rising', 'Team xGC improving',
+        'Goals regression due', 'CS regression due', 'Fixtures easing'];
+    const shown = club.signals.filter(s => clubLevel.includes(s.label));
+    assert.ok(shown.length >= 2, 'the fixture has club signals to check');
+    for (const s of shown) {
+        assert.match(s.detail, /SUN/, `${s.label} says whose numbers these are`);
+    }
+    const reg = club.signals.find(s => s.label === 'Goals regression due');
+    assert.match(reg.detail, /SUN have scored 6 against 10.4 xG in 5/);
+});
+
+test('a player who simply played more has not improved', () => {
+    /* The per-game bug, as its own case. Identical football per minute, three
+       times the minutes: per appearance every rate triples and the card claimed
+       "+2533%". Per 90 there is nothing to report, which is the truth. */
+    const sameRatePer90 = player({
+        history: [
+            row({ minutes: 30, bps: 5, expected_goal_involvements: 0.1, creativity: 5, threat: 5 }),
+            row({ minutes: 30, bps: 5, expected_goal_involvements: 0.1, creativity: 5, threat: 5 }),
+            hot({ minutes: 90, bps: 15, expected_goal_involvements: 0.3, creativity: 15, threat: 15 }),
+            hot({ minutes: 90, bps: 15, expected_goal_involvements: 0.3, creativity: 15, threat: 15 }),
+            hot({ minutes: 90, bps: 15, expected_goal_involvements: 0.3, creativity: 15, threat: 15 })
+        ]
+    });
+    const r = base.risingFormFor(sameRatePer90);
+    const stats = (r.signals || []).find(s => s.label === 'Stats improving');
+    assert.equal(stats, undefined, 'more minutes is not better football');
+});
+
+test('a base too small to divide by is skipped, not scored', () => {
+    /* "Threat +600%" came off a base of 1.0 on a scale whose median is 7.8.
+       The ratio was arithmetically correct and told the reader nothing. */
+    const fromNothing = player({
+        history: [
+            row({ minutes: 90, threat: 0.5, creativity: 0.5, expected_goal_involvements: 0.001 }),
+            row({ minutes: 90, threat: 0.5, creativity: 0.5, expected_goal_involvements: 0.001 }),
+            hot({ minutes: 90, threat: 4, creativity: 4, expected_goal_involvements: 0.5 }),
+            hot({ minutes: 90, threat: 4, creativity: 4, expected_goal_involvements: 0.5 }),
+            hot({ minutes: 90, threat: 4, creativity: 4, expected_goal_involvements: 0.5 })
+        ]
+    });
+    const stats = (base.risingFormFor(fromNothing).signals || [])
+        .find(s => s.label === 'Stats improving');
+    if (stats) {
+        assert.doesNotMatch(stats.detail, /Threat/, 'a 0.5 threat base cannot carry a percentage');
+        assert.doesNotMatch(stats.detail, /Creativity/);
+    }
+});
+
+test('no percentage is printed larger than it can mean', () => {
+    const huge = player({
+        history: [
+            row({ minutes: 90, expected_goal_involvements: 0.05 }),
+            row({ minutes: 90, expected_goal_involvements: 0.05 }),
+            hot({ minutes: 90, expected_goal_involvements: 2.0 }),
+            hot({ minutes: 90, expected_goal_involvements: 2.0 }),
+            hot({ minutes: 90, expected_goal_involvements: 2.0 })
+        ]
+    });
+    const stats = (base.risingFormFor(huge).signals || []).find(s => s.label === 'Stats improving');
+    assert.ok(stats, 'a fortyfold rise is still a rise');
+    const pct = Number(/\+(\d+)%/.exec(stats.detail)[1]);
+    assert.ok(pct <= 200, `printed ${pct}% — past a tripling it reads as a glitch`);
+    assert.match(stats.detail, /per 90/, 'and it says what it is a rate of');
+});
+
+test('a prior window with almost no football is not a baseline', () => {
+    // 33 minutes of "before" cannot support a rate comparison of any kind.
+    const cameo = player({
+        history: [
+            row({ minutes: 16, bps: 1 }), row({ minutes: 17, bps: 1 }),
+            hot({ minutes: 84 }), hot({ minutes: 90 }), hot({ minutes: 90 })
+        ]
+    });
+    const stats = (base.risingFormFor(cameo).signals || []).find(s => s.label === 'Stats improving');
+    assert.equal(stats, undefined);
 });
