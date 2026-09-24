@@ -1357,8 +1357,15 @@ function v2HelpButtonHTML() {
         + ' aria-label="How to use this page" data-tooltip="How to use this page">?</button>';
 }
 
-/* The drawer. `sections` is [{ title, steps: [{ title, text }] }], which is
-   the shape the My Team panel already reads as. */
+/* The drawer. `sections` is [{ title, steps: [{ title, text, more }] }], which
+   is the shape the My Team panel already reads as.
+
+   `more` is optional and is the long answer: what a tab is actually doing,
+   which numbers it reads, and where they stop being reliable. It sits folded
+   behind a Read more, because the short line is what most readers want and the
+   long one is what the rest need before acting on a recommendation. Both are
+   trusted HTML written in this repo, never user input — same as `text`, which
+   has always carried markup. */
 function v2HelpOverlayHTML(heading, intro, sections) {
     const esc = typeof escHTML === 'function' ? escHTML : (t => String(t == null ? '' : t));
     const body = (sections || []).map(sec => `
@@ -1368,6 +1375,10 @@ function v2HelpOverlayHTML(heading, intro, sections) {
                 <div>
                     <div class="help-step-title">${esc(step.title)}</div>
                     <div class="help-step-text">${step.text}</div>
+                    ${step.more ? `<details class="help-more">
+                        <summary>Read more</summary>
+                        <div class="help-more-body">${step.more}</div>
+                    </details>` : ''}
                 </div>
             </div>`).join('')}`).join('');
 
@@ -2339,7 +2350,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=381')
+    fetch('/footer.html?v=382')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
