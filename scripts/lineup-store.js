@@ -78,11 +78,17 @@
             return true;
         }
 
-        function lsSave(teamId, gw, arrangement) {
+        /* `now` is the same optional clock lsLoad() takes, and is here for the
+           same reason: a test that saves on the real clock and reads back at a
+           fixed instant is measuring the gap between today and that instant,
+           so it starts failing on a date rather than on a change. Callers in
+           the app leave it out. */
+        function lsSave(teamId, gw, arrangement, now) {
             if (!arrangement || teamId == null || gw == null) return false;
             try {
                 localStorage.setItem(LS_STORE, JSON.stringify({
-                    teamId: String(teamId), gw, arrangement, savedAt: Date.now()
+                    teamId: String(teamId), gw, arrangement,
+                    savedAt: now != null ? now : Date.now()
                 }));
                 return true;
             } catch (e) { return false; }

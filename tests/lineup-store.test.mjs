@@ -60,7 +60,7 @@ test('an arrangement captures decisions and not derived facts', () => {
 test('a saved lineup comes back for the same team and gameweek', () => {
     const ls = load();
     const saved = ls.lsArrangement(stateOf({ captain: 7 }));
-    assert.equal(ls.lsSave('4089628', 4, saved), true);
+    assert.equal(ls.lsSave('4089628', 4, saved, T0), true);
 
     const back = ls.lsLoad('4089628', 4, T0);
     assert.ok(back);
@@ -73,7 +73,7 @@ test('it expires when the gameweek rolls over', () => {
        a shape chosen against fixtures that have already been played, and it
        would look identical to one picked deliberately. */
     const ls = load();
-    ls.lsSave('4089628', 4, ls.lsArrangement(stateOf()));
+    ls.lsSave('4089628', 4, ls.lsArrangement(stateOf()), T0);
     assert.ok(ls.lsLoad('4089628', 4, T0), 'still the same gameweek');
     assert.equal(ls.lsLoad('4089628', 5, T0), null, 'the round moved on');
     assert.equal(ls.lsLoad('4089628', 3, T0), null, 'and it does not go backwards either');
@@ -83,7 +83,7 @@ test('another team never gets your lineup', () => {
     // The team id is switchable on this site, so this is reachable rather than
     // theoretical.
     const ls = load();
-    ls.lsSave('4089628', 4, ls.lsArrangement(stateOf()));
+    ls.lsSave('4089628', 4, ls.lsArrangement(stateOf()), T0);
     assert.equal(ls.lsLoad('999999', 4, T0), null);
     assert.ok(ls.lsLoad(4089628, 4, T0), 'and a numeric id is the same id');
 });
@@ -92,7 +92,7 @@ test('a very old arrangement is dropped even if the keys match', () => {
     // A backstop for a season ending, or an id going missing, while something
     // is still in storage.
     const ls = load();
-    ls.lsSave('4089628', 4, ls.lsArrangement(stateOf()));
+    ls.lsSave('4089628', 4, ls.lsArrangement(stateOf()), T0);
     assert.equal(ls.lsLoad('4089628', 4, T0 + 40 * 86400000), null);
 });
 
@@ -170,7 +170,7 @@ test('two identical arrangements are recognised as the same decision', () => {
 
 test('clearing removes it', () => {
     const ls = load();
-    ls.lsSave('4089628', 4, ls.lsArrangement(stateOf()));
+    ls.lsSave('4089628', 4, ls.lsArrangement(stateOf()), T0);
     ls.lsClear();
     assert.equal(ls.lsLoad('4089628', 4, T0), null);
 });

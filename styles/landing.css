@@ -306,7 +306,13 @@
 /* Hairlines, not twelve floating cards. The grid gap is the border: cells sit
    1px apart over a background the colour of a rule, so the block reads as one
    table of contents rather than nine separate boxes. */
+/* Three of these cells are links, and a link inside a card should not be
+   drawn as one: the whole cell is the target, and the browser's default
+   underline put a rule under the heading and every line of the
+   paragraph. The hover is the affordance instead. */
 .lp-cell { background: var(--surface-bg); padding: 26px 24px 28px; }
+a.lp-cell { text-decoration: none; transition: background 150ms ease; }
+a.lp-cell:hover { background: var(--surface-1); }
 .lp-cell-ico {
     width: 34px; height: 34px; margin-bottom: 16px;
     display: grid; place-items: center;
@@ -461,10 +467,19 @@
     padding: 16px 0 26px;
 }
 /* Only where there is a gutter to borrow it from: the negative margin makes
-   this box wider than its parent, and on a phone the page grows sideways
-   instead. There the table scrolls anyway, so a clipped glow costs nothing. */
+   this box wider than its parent, and below this width the table is stacked
+   into cards anyway, so there is no glow left to clip.
+
+   Tied to --lp-gutter rather than written as a number. It was 26px against a
+   24px gutter, which is 2px more room than there is to borrow — so the box
+   ended 2px past the page's own edge and every iPad width had a two-pixel
+   horizontal scroll. The shadow needs 15px (22px offset, 38px blur, -26px
+   spread); the gutter is 24px, so it fits with room over. */
 @media (min-width: 760px) {
-    .lp-cmp { padding-inline: 26px; margin-inline: -26px; }
+    .lp-cmp {
+        padding-inline: var(--lp-gutter);
+        margin-inline: calc(var(--lp-gutter) * -1);
+    }
 }
 .lp-cmp-table {
     width: 100%; min-width: 700px;
@@ -572,8 +587,78 @@
     color: color-mix(in srgb, var(--text-muted) 60%, transparent);
 }
 
-@media (max-width: 720px) {
-    .lp-cmp-table th, .lp-cmp-table td { padding: 14px 14px; }
+/* ---- the same comparison, on a phone ----
+
+   Four columns cannot be four columns at 360px. The table used to keep its
+   700px minimum inside an overflow-x box, which meant the EasyFPL column —
+   the one thing this section exists to show — sat 340px off the right edge
+   of a scroller nobody thinks to swipe. The first thing a phone reader saw
+   was two columns of what other people do not do.
+
+   So below the width where four columns fit, the table is one card per
+   question: the question, then the three answers labelled, ours last and
+   tinted. Same order, same words, same emphasis — the lift the raised column
+   does across a row, done down a card instead.
+
+   The labels come from data-label on every cell rather than from script, so
+   the markup is one table at every width and the header row is only hidden
+   visually — a screen reader still reads it as a table with column headers. */
+@media (max-width: 759.98px) {
+    /* No scroller and no minimum: nothing here is wider than the page now. */
+    .lp-cmp { overflow-x: visible; padding: 0; margin-top: 30px; }
+    .lp-cmp-table { display: block; width: 100%; min-width: 0; }
+    .lp-cmp-table thead {
+        position: absolute; width: 1px; height: 1px;
+        overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+    }
+    .lp-cmp-table tbody { display: block; }
+    .lp-cmp-table tbody tr {
+        display: block;
+        padding: 18px 18px 15px;
+        border: 1px solid var(--border-emphasis);
+        border-radius: 16px;
+        background: var(--surface-1);
+    }
+    .lp-cmp-table tbody tr + tr { margin-top: 12px; }
+    /* Both selectors, because the base sheet zeroes the last row's border at
+       a specificity this rule would otherwise lose to. */
+    .lp-cmp-table tbody th,
+    .lp-cmp-table tbody tr:last-child th {
+        display: block; padding: 0 0 13px;
+        border-bottom: 1px solid var(--border-subtle);
+        font-size: 15px; line-height: 1.35;
+    }
+    .lp-cmp-table tbody td {
+        display: grid; grid-template-columns: 110px minmax(0, 1fr);
+        gap: 13px; align-items: baseline;
+        padding: 12px 0 0; border-bottom: 0;
+    }
+    /* 110px and 11px: "Other FPL sites" is the longest of the three and has
+       to sit on one line, or the label column reads as a second answer. */
+    .lp-cmp-table tbody td::before {
+        content: attr(data-label);
+        font-family: var(--font-display, 'Space Grotesk', sans-serif);
+        font-size: 11px; font-weight: 650; line-height: 1.5;
+        text-transform: uppercase; letter-spacing: .07em !important;
+        color: var(--text-muted);
+    }
+    /* Ours is the card inside the card. The wide table lifts the column with
+       a shadow down its edges; there is no column to lift here, so the same
+       thing is said with the tint, the border and the accent on the label. */
+    .lp-cmp-table tbody .is-us,
+    .lp-cmp-table tbody tr:last-child .is-us {
+        display: block;
+        margin-top: 14px; padding: 12px 13px 13px;
+        border: 1px solid color-mix(in srgb, var(--color-primary) 26%, transparent);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--color-primary) 11%, var(--surface-1));
+        box-shadow: none;
+    }
+    .lp-cmp-table tbody .is-us::before {
+        display: block; margin-bottom: 6px;
+        color: var(--color-primary-text, var(--color-primary));
+    }
+    .lp-cmp-table tbody .is-us .lp-cmp-yes { font-size: 14.5px; }
 }
 
 /* ===== Testimonials ===== */
@@ -624,7 +709,17 @@
 @media (max-width: 960px) {
     :root { --lp-gap: 108px; --lp-gap-sm: 76px; }
     .lp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .lp-quotes { grid-template-columns: 1fr; }
+    /* Both grids on this page hold an odd number of things — three ways in,
+       nine capabilities — so two columns leave the last row half empty, and in
+       the hairline grid that gap is a visible hole in the block rather than
+       space. The odd one out takes the whole row instead. Only where the grid
+       is two wide: at three columns nine cells come out even, and at one the
+       rule is a no-op it would be a mistake to let fire. */
+    .lp-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+    /* Two quotes and one, not one and one and one: a quote set the width of a
+       tablet is a 110-character line, which is twice a readable measure. */
+    .lp-quotes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lp-quotes .lp-quote:last-child { grid-column: 1 / -1; }
     .lp-feature { grid-template-columns: 1fr; gap: 32px; }
     /* Text first on every row once they stack — alternating the order is what
        keeps a two-column page from marching, and in one column it just means
@@ -634,14 +729,66 @@
     .lp-feature .lp-frame { height: 280px; }
     .lp-duo-card .lp-frame { height: 300px; }
 }
+/* ===== Tablet =====
+
+   An iPad is not a small desktop and not a big phone: the page keeps its two
+   columns where two columns still read, and the only thing that really has to
+   move is the rhythm — 168px between sections is a screen and a half of empty
+   on a 1024-tall portrait tablet. */
+/* Bounded at the bottom as well as the top: the 960px block above already
+   sets the next rung of the rhythm and stacks the quotes, and this one is
+   written later in the file, so an open-ended max-width would undo it. */
+@media (min-width: 961px) and (max-width: 1100px) {
+    :root { --lp-gap: 132px; --lp-gap-sm: 92px; }
+    /* Three quotes across a portrait iPad leaves each one about 290px wide,
+       which is four words a line. Two and one reads; three does not. */
+    .lp-quotes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lp-quotes .lp-quote:last-child { grid-column: 1 / -1; }
+}
+
+/* ===== Phone ===== */
 @media (max-width: 640px) {
-    :root { --lp-gutter: 16px; }
-    .lp-feature .lp-frame, .lp-duo-card .lp-frame { height: 220px; }
-    .lp-wide-points { flex-direction: column; align-items: flex-start; text-align: left; }
-    .lp-grid { grid-template-columns: 1fr; }
-    .lp-trust-inner { justify-content: flex-start; gap: 10px 24px; }
-    .lp-cta-row .lp-btn { flex: 1 1 auto; }
+    :root {
+        --lp-gutter: 16px;
+        /* The page is 11,000px tall on a phone at the desktop rhythm, and
+           most of that is gaps. Sections still need to read as separate
+           parts, which at this width is about two thumb-scrolls, not six. */
+        --lp-gap: 82px;
+        --lp-gap-sm: 58px;
+    }
+
+    /* ---- the screens ----
+       A 1400px-wide dashboard drawn 390px wide is a grey mush: it shows that
+       there is an app without showing what is in it. So on a phone the frame
+       becomes a window onto part of the screen at nearly twice the size —
+       every one of these shots puts its main panel down the left — and you
+       can read the rows instead of guessing at them.
+       max-width: none, because the global img rule caps images at 100%. */
+    .lp-frame img,
+    .lp-frame.is-pan img { width: var(--lp-zoom, 190%); max-width: none; }
+    /* Taller too: at this zoom a 220px window is a band, not a screen. */
+    .lp-shot-hero .lp-frame.is-hero { height: 300px; }
+    .lp-feature .lp-frame, .lp-duo-card .lp-frame { height: 250px; }
+    .lp-wide .lp-frame { height: 280px; }
+    .lp-shot-hero { margin-top: 36px; }
     .lp-frame.is-cropped { max-height: 300px; }
+
+    /* ---- the blocks ----
+       Panel padding set for a 400px column is a lot of it once the column is
+       the page. The type does not change; only the room around it. */
+    .lp-cell { padding: 22px 18px 24px; }
+    .lp-step { padding: 22px 20px 24px; }
+    .lp-quote { padding: 22px 20px; gap: 14px; }
+    .lp-close { border-radius: 20px; }
+    .lp-grid, .lp-quotes { grid-template-columns: 1fr; }
+    .lp-grid, .lp-steps, .lp-quotes { margin-top: 32px; }
+    .lp-section-head .lp-lead { margin-top: 12px; }
+
+    .lp-wide-points { flex-direction: column; align-items: flex-start; text-align: left; }
+    .lp-trust-inner { justify-content: flex-start; gap: 10px 24px; }
+    /* One per line rather than two half-width buttons with the label wrapping
+       inside them — a call to action that has to be read twice is not one. */
+    .lp-cta-row .lp-btn { flex: 1 1 100%; }
 }
 
 /* Motion is decoration here; the page has to read the same without it. */
@@ -901,6 +1048,9 @@
 .lp-btn,
 .lp-bullets li,
 .lp-cmp-table,
+.lp-cmp-table tbody .is-us .lp-cmp-yes,
+.lp-cmp-table tbody th,
+.lp-cmp-table tbody tr:last-child th,
 .lp-quote-text,
 .lp-step-n,
 .lp-wide-points li {
