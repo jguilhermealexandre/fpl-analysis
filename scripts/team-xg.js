@@ -53,8 +53,27 @@
             });
             const finishedFx = fixturesData.filter(fixturePlayed);
             finishedFx.forEach(f => {
-                if (teamXgData[f.team_h]) { teamXgData[f.team_h].seasonGames++; teamXgData[f.team_h].seasonConceded += f.team_a_score || 0; }
-                if (teamXgData[f.team_a]) { teamXgData[f.team_a].seasonGames++; teamXgData[f.team_a].seasonConceded += f.team_h_score || 0; }
+                /* Goals and conceded both come from the scoreline, and goals did
+                   not used to. They were summed from each player's goals_scored,
+                   which silently drops a goal every time an opponent puts one
+                   into his own net — six clubs were wrong on GW5 data, Brighton
+                   by two. It mattered: the "goals regression due" signal is
+                   xG minus goals, so undercounting goals widened the gap and
+                   fired the signal for Bournemouth and Leeds, neither of whom
+                   were actually behind their xG.
+
+                   It also means seasonGoals is now the number a reader can check
+                   against the league table, which is the whole point. */
+                if (teamXgData[f.team_h]) {
+                    teamXgData[f.team_h].seasonGames++;
+                    teamXgData[f.team_h].seasonGoals += f.team_h_score || 0;
+                    teamXgData[f.team_h].seasonConceded += f.team_a_score || 0;
+                }
+                if (teamXgData[f.team_a]) {
+                    teamXgData[f.team_a].seasonGames++;
+                    teamXgData[f.team_a].seasonGoals += f.team_a_score || 0;
+                    teamXgData[f.team_a].seasonConceded += f.team_h_score || 0;
+                }
             });
             detail.forEach(player => {
                 const tid = player.team;
@@ -64,7 +83,6 @@
                     const fk = h.fixture;
                     teamXgData[tid].seasonXg += parseFloat(h.expected_goals) || 0;
                     teamXgData[tid].seasonXa += parseFloat(h.expected_assists) || 0;
-                    teamXgData[tid].seasonGoals += h.goals_scored || 0;
                     teamXgData[tid].seasonAssists += h.assists || 0;
                     if (!teamXgData[tid].perGw[gw]) {
                         teamXgData[tid].perGw[gw] = { xG: 0, xA: 0, xGC: 0, goals: 0, assists: 0, conceded: 0, wasHome: null, oppTeam: null, xGC_90min: 0, _fixtures: {} };
