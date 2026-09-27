@@ -53,6 +53,11 @@
        a negative still on it. */
     --lp-track-lead: -0.004em;
     --lp-track-body: 0.005em;
+
+    /* The comparison's own column. Named because on a phone it is painted
+       by four different rules — the header cell, the answer cells, and a
+       gradient across each question row — and they have to agree. */
+    --lp-cmp-tint: color-mix(in srgb, var(--color-primary) 10%, var(--surface-1));
 }
 
 .lp-wrap { max-width: var(--lp-w); margin: 0 auto; padding-inline: var(--lp-gutter); }
@@ -589,76 +594,85 @@ a.lp-cell:hover { background: var(--surface-1); }
 
 /* ---- the same comparison, on a phone ----
 
-   Four columns cannot be four columns at 360px. The table used to keep its
-   700px minimum inside an overflow-x box, which meant the EasyFPL column —
-   the one thing this section exists to show — sat 340px off the right edge
-   of a scroller nobody thinks to swipe. The first thing a phone reader saw
-   was two columns of what other people do not do.
+   Still three columns read down, because that is what a comparison is: the
+   thing you are doing now, the thing everybody else sells, and this. Turning
+   it into one card per question said the same words and lost the shape.
 
-   So below the width where four columns fit, the table is one card per
-   question: the question, then the three answers labelled, ours last and
-   tinted. Same order, same words, same emphasis — the lift the raised column
-   does across a row, done down a card instead.
+   What cannot survive a 360px screen is the fourth column. So the question
+   becomes the full-width row above its own three answers, and the three sit
+   side by side underneath in the same order at every width — ours always the
+   third, always tinted.
 
-   The labels come from data-label on every cell rather than from script, so
-   the markup is one table at every width and the header row is only hidden
-   visually — a screen reader still reads it as a table with column headers. */
+   The mechanism is `display: contents` on each <tr>, which hands the cells
+   straight to a three-track grid on <tbody>: the question spans all three,
+   the answers take one each, and the rows go on stacking in document order.
+   It is still one <table> with one <thead>, so a screen reader reads it as a
+   table with column headers, exactly as it does on a desktop.
+
+   The tint runs unbroken down the third column because every element in that
+   grid paints it: the answer cells flat, the full-width question rows as a
+   gradient that is transparent for two thirds and tinted for the last. No
+   absolutely positioned strip behind the table, so nothing to keep in sync
+   with the column it is meant to be under. */
 @media (max-width: 759.98px) {
-    /* No scroller and no minimum: nothing here is wider than the page now. */
+    /* No scroller and no 700px minimum: nothing here is wider than the page. */
     .lp-cmp { overflow-x: visible; padding: 0; margin-top: 30px; }
-    .lp-cmp-table { display: block; width: 100%; min-width: 0; }
-    .lp-cmp-table thead {
-        position: absolute; width: 1px; height: 1px;
-        overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+    .lp-cmp-table { display: block; width: 100%; min-width: 0; font-size: 12px; }
+    .lp-cmp-table thead,
+    .lp-cmp-table tbody { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .lp-cmp-table tr { display: contents; }
+
+    /* "What you need" labels a column that is now a row, so it has nothing
+       left to label. Hidden rather than removed: the markup stays one table. */
+    .lp-cmp-table thead th:first-child { display: none; }
+    .lp-cmp-table thead th {
+        padding: 0 10px 9px; font-size: 10.5px;
+        letter-spacing: .04em !important;
     }
-    .lp-cmp-table tbody { display: block; }
-    .lp-cmp-table tbody tr {
-        display: block;
-        padding: 18px 18px 15px;
-        border: 1px solid var(--border-emphasis);
-        border-radius: 16px;
-        background: var(--surface-1);
-    }
-    .lp-cmp-table tbody tr + tr { margin-top: 12px; }
-    /* Both selectors, because the base sheet zeroes the last row's border at
-       a specificity this rule would otherwise lose to. */
-    .lp-cmp-table tbody th,
-    .lp-cmp-table tbody tr:last-child th {
-        display: block; padding: 0 0 13px;
-        border-bottom: 1px solid var(--border-subtle);
-        font-size: 15px; line-height: 1.35;
-    }
-    .lp-cmp-table tbody td {
-        display: grid; grid-template-columns: 110px minmax(0, 1fr);
-        gap: 13px; align-items: baseline;
-        padding: 12px 0 0; border-bottom: 0;
-    }
-    /* 110px and 11px: "Other FPL sites" is the longest of the three and has
-       to sit on one line, or the label column reads as a second answer. */
-    .lp-cmp-table tbody td::before {
-        content: attr(data-label);
-        font-family: var(--font-display, 'Space Grotesk', sans-serif);
-        font-size: 11px; font-weight: 650; line-height: 1.5;
-        text-transform: uppercase; letter-spacing: .07em !important;
-        color: var(--text-muted);
-    }
-    /* Ours is the card inside the card. The wide table lifts the column with
-       a shadow down its edges; there is no column to lift here, so the same
-       thing is said with the tint, the border and the accent on the label. */
-    .lp-cmp-table tbody .is-us,
-    .lp-cmp-table tbody tr:last-child .is-us {
-        display: block;
-        margin-top: 14px; padding: 12px 13px 13px;
-        border: 1px solid color-mix(in srgb, var(--color-primary) 26%, transparent);
-        border-radius: 12px;
-        background: color-mix(in srgb, var(--color-primary) 11%, var(--surface-1));
+    .lp-cmp-table thead .is-us {
+        padding: 11px 10px 9px;
+        border-radius: 14px 14px 0 0;
+        background: var(--lp-cmp-tint);
         box-shadow: none;
     }
-    .lp-cmp-table tbody .is-us::before {
-        display: block; margin-bottom: 6px;
-        color: var(--color-primary-text, var(--color-primary));
+    /* The chip would wrap to three lines in a 100px column, and the column is
+       already marked by the tint it is standing on. The name carries it. */
+    .lp-cmp-chip { display: none; }
+    .lp-cmp-us-name { font-size: 13px; color: var(--color-primary-text, var(--color-primary)); }
+
+    /* The question, across all three answers, with the last third kept clear
+       so the text never runs over the tinted column behind it. */
+    .lp-cmp-table tbody th,
+    .lp-cmp-table tbody tr:last-child th {
+        grid-column: 1 / -1;
+        padding: 14px calc(33.3333% + 10px) 9px 10px;
+        font-size: 13.5px; line-height: 1.35;
+        border-top: 1px solid var(--border-subtle);
+        border-bottom: 0;
+        background: linear-gradient(to right,
+            transparent 0 66.6667%, var(--lp-cmp-tint) 66.6667% 100%);
     }
-    .lp-cmp-table tbody .is-us .lp-cmp-yes { font-size: 14.5px; }
+    .lp-cmp-table tbody tr:first-child th { border-top: 0; padding-top: 12px; }
+
+    .lp-cmp-table tbody td,
+    .lp-cmp-table tbody tr:last-child td {
+        padding: 0 10px 14px;
+        vertical-align: top;
+        border-bottom: 0;
+    }
+    .lp-cmp-table tbody .is-us,
+    .lp-cmp-table tbody tr:last-child .is-us {
+        background: var(--lp-cmp-tint);
+        border: 0; border-radius: 0; box-shadow: none;
+    }
+    .lp-cmp-table tbody tr:last-child .is-us {
+        border-radius: 0 0 14px 14px; padding-bottom: 18px;
+    }
+
+    /* A tick drawn for a 20px cell is a third of a 100px one. */
+    .lp-cmp-yes { gap: 6px; }
+    .lp-cmp-yes::before { width: 13px; height: 13px; margin-top: 1px; }
+    .lp-cmp-no { gap: 5px; }
 }
 
 /* ===== Testimonials ===== */
@@ -776,11 +790,19 @@ a.lp-cell:hover { background: var(--surface-1); }
     /* ---- the blocks ----
        Panel padding set for a 400px column is a lot of it once the column is
        the page. The type does not change; only the room around it. */
-    .lp-cell { padding: 22px 18px 24px; }
+    .lp-cell { padding: 18px 14px 20px; }
+    .lp-cell-ico { width: 30px; height: 30px; margin-bottom: 12px; border-radius: 8px; }
+    .lp-cell-ico svg, .lp-cell-ico .icon { width: 15px; height: 15px; }
+    .lp-cell .lp-h3 { font-size: 15px; }
+    .lp-cell p { margin-top: 6px; font-size: 12.5px; line-height: 1.55; }
     .lp-step { padding: 22px 20px 24px; }
     .lp-quote { padding: 22px 20px; gap: 14px; }
     .lp-close { border-radius: 20px; }
-    .lp-grid, .lp-quotes { grid-template-columns: 1fr; }
+    /* Two columns, not a nine-item list. These cells are a title and a line —
+       a table of contents for the product — and read at a glance side by
+       side; one under the other they become a page of their own to scroll
+       past. The odd one out still takes the whole row, from the rule above. */
+    .lp-quotes { grid-template-columns: 1fr; }
     .lp-grid, .lp-steps, .lp-quotes { margin-top: 32px; }
     .lp-section-head .lp-lead { margin-top: 12px; }
 
@@ -1048,9 +1070,6 @@ a.lp-cell:hover { background: var(--surface-1); }
 .lp-btn,
 .lp-bullets li,
 .lp-cmp-table,
-.lp-cmp-table tbody .is-us .lp-cmp-yes,
-.lp-cmp-table tbody th,
-.lp-cmp-table tbody tr:last-child th,
 .lp-quote-text,
 .lp-step-n,
 .lp-wide-points li {
@@ -1059,13 +1078,20 @@ a.lp-cell:hover { background: var(--surface-1); }
 .fw-proof span,
 .lp-badge,
 .lp-cell p,
+.lp-cmp-table tbody th,
+.lp-cmp-table tbody tr:last-child th,
+.lp-cmp-us-name,
 .lp-hero-note,
 .lp-quote-name,
 .lp-trust-inner {
     letter-spacing: 0.01em !important;
 }
+.lp-cmp-table,
 .lp-quote-meta {
     letter-spacing: 0.015em !important;
+}
+.lp-cmp-table thead th {
+    letter-spacing: 0.04em !important;
 }
 .fw-eyebrow {
     letter-spacing: 0.06em !important;
