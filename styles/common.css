@@ -1743,21 +1743,41 @@ body {
 @media (prefers-reduced-motion: reduce) {
     .footer-status-dot::after { animation: none; opacity: 0; }
 }
+/* Two columns all the way down to the narrowest phone, rather than four,
+   then two, then one long list of seventeen links.
+
+   The placement is explicit because auto-placement makes a mess of three
+   groups of very different heights. Brand is a paragraph and a badge, not a
+   column of links, so it takes the full width above the two that are — left
+   as one of two equal columns it set its tagline three words to a line.
+   Features is eight links against four and five, so the other two pair down
+   the second column beside it; given a row each they left Learn with a hole
+   under it and pushed Company below a column of eight.
+
+   Only the landing shell uses this. The app shell replaces .footer-top's
+   layout wholesale from v2-app.css, so none of it reaches a dashboard page. */
 @media (max-width: 768px) {
     .footer-top {
         grid-template-columns: 1fr 1fr;
-        gap: 24px;
+        gap: 26px 20px;
         padding: 32px 20px 24px;
     }
+    .footer-col--brand    { grid-column: 1 / -1; }
+    .footer-col--features { grid-column: 1; grid-row: 2 / span 2; }
+    .footer-col--learn    { grid-column: 2; grid-row: 2; }
+    .footer-col--company  { grid-column: 2; grid-row: 3; }
+    /* 20px under an 11px label is a desktop gap in a column that is now half
+       as wide and twice as close to the next one. */
+    .footer-col-title { margin-bottom: 13px; }
+    .footer-links { gap: 9px; }
     .footer-bottom {
         padding: 16px 20px 72px;
     }
 }
 @media (max-width: 480px) {
     .footer-top {
-        grid-template-columns: 1fr;
-        gap: 28px;
-        padding: 40px 16px 24px;
+        gap: 24px 16px;
+        padding: 32px 16px 24px;
     }
     .footer-bottom {
         flex-direction: column;
