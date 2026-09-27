@@ -58,6 +58,13 @@
        by four different rules — the header cell, the answer cells, and a
        gradient across each question row — and they have to agree. */
     --lp-cmp-tint: color-mix(in srgb, var(--color-primary) 10%, var(--surface-1));
+    --lp-cmp-edge: color-mix(in srgb, var(--color-primary) 24%, transparent);
+    /* Our column's share of the phone table, as one number the three rules
+       that depend on it all read: the track itself, where the tint starts,
+       and how much of the question row has to stay clear of it. Wider than
+       a third because it carries the longest answers and the mark in front
+       of each one — an even split put three of them on three lines. */
+    --lp-cmp-usw: 36%;
 }
 
 .lp-wrap { max-width: var(--lp-w); margin: 0 auto; padding-inline: var(--lp-gutter); }
@@ -563,15 +570,49 @@ a.lp-cell:hover { background: var(--surface-1); }
     letter-spacing: .09em !important; text-transform: uppercase;
 }
 
-/* ---- the answers ---- */
-.lp-cmp-yes {
+/* ---- the answers ----
+
+   Every cell carries a mark, and all three marks are the same 15px disc in
+   the same place. That is what makes the thing readable: you scan a column
+   and see a run of identical shapes — full, half, empty — before you read a
+   word of it. Only one of them used to have a mark, the middle answer had
+   none at all, and the difference between "no" and "not really" was carried
+   entirely by an em-dash appearing or not appearing in front of the text.
+
+   Drawn in CSS rather than fetched: this is twenty-one cells, and a lucide
+   icon in each is twenty-one more nodes for three glyphs. */
+.lp-cmp-yes, .lp-cmp-part, .lp-cmp-no {
     display: inline-flex; align-items: flex-start; gap: 8px;
+}
+.lp-cmp-yes::before, .lp-cmp-part::before, .lp-cmp-no::before {
+    content: '';
+    box-sizing: border-box;
+    flex: none; margin-top: 2px;
+    width: 15px; height: 15px; border-radius: 50%;
+}
+
+/* Half full: the ring says "there is something here", the half says how
+   much. background-clip, so the fill stops at the ring rather than running
+   underneath it. */
+.lp-cmp-part::before {
+    border: 1.5px solid color-mix(in srgb, var(--text-muted) 52%, transparent);
+    background: linear-gradient(90deg,
+        color-mix(in srgb, var(--text-muted) 42%, transparent) 0 50%,
+        transparent 50% 100%) padding-box;
+}
+/* Empty, with a bar through it. Not a red cross: these are other people's
+   products doing less of this one thing, not failures. */
+.lp-cmp-no::before {
+    border: 1.5px solid color-mix(in srgb, var(--text-muted) 30%, transparent);
+    background: linear-gradient(color-mix(in srgb, var(--text-muted) 55%, transparent),
+                                color-mix(in srgb, var(--text-muted) 55%, transparent))
+                center / 6px 1.5px no-repeat;
+}
+
+.lp-cmp-yes {
     color: var(--text-primary); font-weight: 600;
 }
 .lp-cmp-yes::before {
-    content: '';
-    flex: none; margin-top: 3px;
-    width: 15px; height: 15px; border-radius: 50%;
     background: var(--color-primary);
     /* The tick, drawn rather than fetched — this sits in seven cells and a
        lucide icon in each is seven more nodes for one glyph. */
@@ -584,13 +625,7 @@ a.lp-cell:hover { background: var(--surface-1); }
 }
 .lp-cmp-yes a { color: var(--color-primary-text, var(--color-primary)); }
 .lp-cmp-part { color: var(--text-secondary); }
-/* A dash, not a cross. These are not failures — they are other people's
-   products doing less of this one thing, and a red X overstates it. */
-.lp-cmp-no { display: inline-flex; align-items: baseline; gap: 8px; color: var(--text-muted); }
-.lp-cmp-no::before {
-    content: '\2014';
-    color: color-mix(in srgb, var(--text-muted) 60%, transparent);
-}
+.lp-cmp-no { color: var(--text-muted); }
 
 /* ---- the same comparison, on a phone ----
 
@@ -615,64 +650,79 @@ a.lp-cell:hover { background: var(--surface-1); }
    absolutely positioned strip behind the table, so nothing to keep in sync
    with the column it is meant to be under. */
 @media (max-width: 759.98px) {
-    /* No scroller and no 700px minimum: nothing here is wider than the page. */
-    .lp-cmp { overflow-x: visible; padding: 0; margin-top: 30px; }
+    /* One panel, not loose text on the page ground. overflow: hidden is doing
+       real work — it clips the tinted column to the panel's own corners, so
+       the column needs no radius of its own and cannot stick out past it. */
+    .lp-cmp {
+        overflow: hidden; padding: 0; margin-top: 30px;
+        border: 1px solid var(--border-emphasis);
+        border-radius: 18px;
+        background: var(--surface-1);
+    }
     .lp-cmp-table { display: block; width: 100%; min-width: 0; font-size: 12px; }
     .lp-cmp-table thead,
-    .lp-cmp-table tbody { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .lp-cmp-table tbody {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--lp-cmp-usw);
+    }
     .lp-cmp-table tr { display: contents; }
 
     /* "What you need" labels a column that is now a row, so it has nothing
        left to label. Hidden rather than removed: the markup stays one table. */
     .lp-cmp-table thead th:first-child { display: none; }
     .lp-cmp-table thead th {
-        padding: 0 10px 9px; font-size: 10.5px;
+        padding: 13px 9px 11px 14px; font-size: 10.5px;
         letter-spacing: .04em !important;
     }
     .lp-cmp-table thead .is-us {
-        padding: 11px 10px 9px;
-        border-radius: 14px 14px 0 0;
+        padding: 13px 12px 11px;
+        border-radius: 0;
         background: var(--lp-cmp-tint);
-        box-shadow: none;
+        box-shadow: inset 1px 0 0 var(--lp-cmp-edge);
     }
-    /* The chip would wrap to three lines in a 100px column, and the column is
+    /* The chip would wrap to three lines in a 110px column, and the column is
        already marked by the tint it is standing on. The name carries it. */
     .lp-cmp-chip { display: none; }
     .lp-cmp-us-name { font-size: 13px; color: var(--color-primary-text, var(--color-primary)); }
 
     /* The question, across all three answers, with the last third kept clear
-       so the text never runs over the tinted column behind it. */
+       so the text never runs over the tinted column behind it. The gradient
+       is what carries the tint — and the column's edge — through a row that
+       spans all three tracks. */
     .lp-cmp-table tbody th,
     .lp-cmp-table tbody tr:last-child th {
         grid-column: 1 / -1;
-        padding: 14px calc(33.3333% + 10px) 9px 10px;
+        padding: 13px calc(var(--lp-cmp-usw) + 10px) 8px 14px;
         font-size: 13.5px; line-height: 1.35;
         border-top: 1px solid var(--border-subtle);
         border-bottom: 0;
         background: linear-gradient(to right,
-            transparent 0 66.6667%, var(--lp-cmp-tint) 66.6667% 100%);
+            transparent 0 calc(100% - var(--lp-cmp-usw) - 1px),
+            var(--lp-cmp-edge) calc(100% - var(--lp-cmp-usw) - 1px) calc(100% - var(--lp-cmp-usw)),
+            var(--lp-cmp-tint) calc(100% - var(--lp-cmp-usw)) 100%);
     }
-    .lp-cmp-table tbody tr:first-child th { border-top: 0; padding-top: 12px; }
+    .lp-cmp-table tbody tr:first-child th { padding-top: 12px; }
 
     .lp-cmp-table tbody td,
     .lp-cmp-table tbody tr:last-child td {
-        padding: 0 10px 14px;
-        vertical-align: top;
+        padding: 0 9px 13px 14px;
         border-bottom: 0;
     }
     .lp-cmp-table tbody .is-us,
     .lp-cmp-table tbody tr:last-child .is-us {
+        padding: 0 12px 13px;
         background: var(--lp-cmp-tint);
-        border: 0; border-radius: 0; box-shadow: none;
+        border: 0; border-radius: 0;
+        box-shadow: inset 1px 0 0 var(--lp-cmp-edge);
     }
-    .lp-cmp-table tbody tr:last-child .is-us {
-        border-radius: 0 0 14px 14px; padding-bottom: 18px;
-    }
+    .lp-cmp-table tbody tr:last-child .is-us { padding-bottom: 16px; }
 
-    /* A tick drawn for a 20px cell is a third of a 100px one. */
-    .lp-cmp-yes { gap: 6px; }
-    .lp-cmp-yes::before { width: 13px; height: 13px; margin-top: 1px; }
-    .lp-cmp-no { gap: 5px; }
+    /* A mark drawn for a 240px cell is a fifth of a 110px one. */
+    .lp-cmp-yes, .lp-cmp-part, .lp-cmp-no { gap: 6px; }
+    .lp-cmp-yes::before, .lp-cmp-part::before, .lp-cmp-no::before {
+        width: 13px; height: 13px; margin-top: 1px;
+    }
+    .lp-cmp-yes::before { -webkit-mask-size: 10px 10px, auto; mask-size: 10px 10px, auto; }
 }
 
 /* ===== Testimonials ===== */
