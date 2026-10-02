@@ -890,8 +890,26 @@
 @media (max-width: 1100px) {
     .sq-kpis { grid-template-columns: repeat(2, 1fr) auto; }
 }
+/* Two by two, not four stacked. One column put 700px of summary above the
+   pitch — four full-width bars you scroll past to reach the thing the page
+   is about. The reason it was one column was that these cards lead with a
+   38px icon beside the text, which leaves about 80px for a label like
+   "Overall Rank" in a 167px card; so on a phone the icon goes above the text
+   instead of beside it, and the label has the whole card to sit in. */
 @media (max-width: 560px) {
-    .sq-kpis { grid-template-columns: 1fr auto; }
+    .sq-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sq-kpi {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 12px 13px 13px;
+    }
+    .sq-kpi-icon { width: 30px; height: 30px; }
+    .sq-kpi-icon svg { width: 16px; height: 16px; }
+    /* Help and settings are not a fifth figure: they take the row under the
+       grid rather than a quarter of it. */
+    .sq-kpi-tools { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
+    .sq-kpi-tool { height: 38px; flex: 0 0 38px; }
 }
 
 /* ----- Squad status, beside the pitch ----- */
@@ -3495,22 +3513,6 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     color: var(--color-primary);
 }
 
-@media (max-width: 900px) {
-    .sq-row-fixtures,
-    .sq-row-team .swing-badge {
-        display: none;
-    }
-    .sq-row-clickable {
-        gap: 8px;
-    }
-    .sq-row-stats {
-        gap: 8px;
-    }
-    .sq-stat {
-        min-width: 32px;
-    }
-}
-
 /* ===== DARK MODE ===== */
 [data-theme="dark"] .loading-overlay { background: rgba(15, 23, 42, 0.85); }
 /* ============================================
@@ -3753,52 +3755,17 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .team-form-badge.warning { background: rgba(245, 158, 11, 0.12); color: var(--color-warning); }
 .team-form-badge.bad { background: rgba(248, 113, 113, 0.12); color: var(--color-error); }
 
-.sq-row-stats {
-    /* Grid (not flex+space-around): every stat gets an identical share of the
-       row regardless of how wide its label/value text is, so the columns line
-       up across rows even though each position shows different stat labels
-       (GK "CS%" vs MID "XGI/90"). auto-flow:column means adding/removing a
-       stat needs no column-count change here. */
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: 1fr;
-    gap: 8px;
-    flex: 1;
-    min-width: 0;
-}
+/* .sq-row-stats, ditto — see below.
 
-.sq-stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 0;
-}
-
-.sq-stat-label {
-    font-size: 9px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-}
-
-.sq-stat-value {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.sq-row-fixtures {
-    display: flex;
-    gap: 3px;
-    flex-shrink: 0;
-}
-
-.sq-row-fixtures .fixture-chip {
-    padding: 3px 5px;
-    min-width: 34px;
-}
-
+   .sq-stat, .sq-stat-label, .sq-stat-value, .sq-row-fixtures and its chips
+   were all declared again here, word for word, a few hundred lines after
+   their first definitions above. Identical rules, so the page looked the
+   same — but every one of them landed later in the file than the media
+   queries that adapt them, and a plain rule later in a stylesheet beats an
+   earlier @media rule of the same specificity. The narrow-screen layout for
+   this row has been silently reverted by its own stylesheet, which is why
+   two earlier attempts at it appeared to do nothing. One definition each,
+   above. */
 .sq-transfer-btn {
     flex-shrink: 0;
     width: 36px;
@@ -3819,21 +3786,6 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     color: var(--color-primary);
 }
 
-@media (max-width: 900px) {
-    .sq-row-fixtures,
-    .sq-row-team .swing-badge {
-        display: none;
-    }
-    .sq-row-clickable {
-        gap: 8px;
-    }
-    .sq-row-stats {
-        gap: 8px;
-    }
-    .sq-stat {
-        min-width: 32px;
-    }
-}
 
 /* ===== SQUAD ROW — INLINE PLAYER DETAIL (replaces the old right-side panel) ===== */
 .sq-expand-btn {

@@ -574,16 +574,24 @@
    back line ran off both sides. These widths are what actually fits:
    five across, inside the section's padding, with the gap intact. */
 @media (max-width: 768px) {
+    /* 62px is as wide as a card can be with five across a phone, so the only
+       way out of a tall thin box is the height: the card was 62 by 104, a
+       1.67 ratio against the 1.13 it has on a desktop, and a column of eleven
+       of them read as a list of tally sticks rather than a team sheet.
+
+       Nothing is dropped — face, name, score and fixture are all still there.
+       The padding, the gaps and two pixels off the face are what close it up
+       to about 1.35, which is the shape of a player card. */
     .pcard {
         width: 62px;
-        padding: 11px 3px 7px;
-        gap: 2px;
+        padding: 7px 3px 6px;
+        gap: 1px;
         border-width: 1.5px;
     }
-    .pcard .v2-pid-pitch { --v2-pid-face: 26px; --v2-pid-crest: 15px; gap: 3px; }
-    .pcard-name { font-size: 9px; }
+    .pcard .v2-pid-pitch { --v2-pid-face: 24px; --v2-pid-crest: 14px; gap: 2px; }
+    .pcard-name { font-size: 9px; line-height: 1.25; }
     .pcard-score b { font-size: 11px; }
-    .pcard-fixture { font-size: 8px; }
+    .pcard-fixture { font-size: 8px; line-height: 1.25; }
     .pitch-row { gap: 3px; }
     .dugout-cards .pcard { min-width: 58px; max-width: 76px; }
 
@@ -656,35 +664,96 @@
     .sq-row-clickable {
         flex-direction: column;
         align-items: stretch;
-        gap: 9px;
-        padding: 11px 12px 8px;
+        gap: 7px;
+        padding: 10px 12px 7px;
     }
 
     .sq-row-main { width: 100%; }
 
-    /* Eight stats in two rows of four rather than eight columns of 32px,
-       which is narrower than the labels in them. */
-    .sq-row-stats {
-        grid-auto-flow: row;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 8px 6px;
-        width: 100%;
-    }
-    .sq-stat-label { font-size: 9px; }
-    .sq-stat-value { font-size: 12px; }
-
-    .sq-row-fixtures { flex-wrap: wrap; }
+    .sq-row-stats { width: 100%; }
 
     .sq-row-actions {
         justify-content: flex-end;
         gap: 6px;
-        padding: 0 12px 10px;
+        padding: 0 12px 9px;
     }
     .sq-act { width: 32px; height: 32px; }
 }
 
-@media (max-width: 480px) {
-    .sq-row-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* A squad row on a narrow screen.
+
+   Here rather than in my-team.css, and deliberately: that stylesheet sets a
+   fixed 36px fixture chip and a column-flex .sq-stat several hundred lines
+   below the media queries that would adapt them, and a plain rule later in a
+   file beats an earlier @media rule of the same specificity. This one loads
+   after it, so what it says is what the phone gets.
+
+   The eight stats used to be a grid of label-over-value tiles — three
+   columns, so eight came out as 3 + 3 + 2 with the last row stretched across
+   the width. That grid alone was 111px of a 232px row, and fifteen of those
+   is 3,500px of scrolling in which nothing lines up with anything. It read as
+   a form, not as a row.
+
+   They are inline pairs now, label then value, wrapping as one dense line the
+   way a scoreline does: same eight numbers, same order, a third of the
+   height, and they line up across rows again — which is what a table is for.
+
+   The fixture chips come back with the room that frees up. They were hidden
+   below 900px, and the next five opponents are one of the two reasons to read
+   a squad row at all; a row that has dropped them is answering half the
+   question. */
+@media (max-width: 900px) {
+    .sq-row-team .swing-badge { display: none; }
+    .sq-row-clickable { gap: 7px; }
+
+    .sq-row-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px 11px;
+    }
+    .sq-stat {
+        flex-direction: row;
+        align-items: baseline;
+        gap: 4px;
+        min-width: 0;
+    }
+    .sq-stat-label { font-size: 9px; letter-spacing: .04em !important; }
+    .sq-stat-value { font-size: 12.5px; }
+
+    /* Flexible chips, not the fixed 36px the desktop table uses to keep its
+       stat columns from drifting — there are no stat columns to keep still
+       here, and the strip has a phone's width to divide rather than a
+       table's. */
+    .sq-row-fixtures {
+        display: flex; flex-wrap: nowrap; gap: 3px;
+    }
+    .sq-row-fixtures .fixture-chip {
+        flex: 1 1 0; width: auto; min-width: 0;
+        text-align: center;
+    }
+
+    /* The controls keep a line of their own, and both of the alternatives
+       were measured before settling for that. Sharing the fixtures' line
+       leaves the five chips 22px each, which is narrower than "HUL". Standing
+       them in the row's top corner costs 136px of the name block, which
+       ellipsised seven of the fifteen names. A row that has to abbreviate who
+       the player is to make room for a button has the priorities backwards.
+
+       So: the identity, the numbers and the next five opponents each get the
+       full width, and the buttons sit under them. 30px rather than 32, and
+       the line's padding tightened — the row is 149px against the 232px it
+       was, which is what the inline stats and this bought between them. */
+    .sq-act { width: 30px; height: 30px; }
+    .sq-row-actions { padding: 0 12px 9px; gap: 6px; }
+
+    /* The compare checkbox is the row's first child and the row is a column
+       here, so it was taking a full line of its own at the top — a grey
+       square floating above the player with nothing to say it belongs to
+       him. In the corner it reads as the row's own control, and 26px is all
+       the name block has to give up for it. */
+    .sq-row { position: relative; }
+    .sq-compare-checkbox { position: absolute; top: 11px; right: 12px; margin: 0; }
+    .sq-row-main { padding-right: 26px; }
 }
 
 /* The same shape, wherever a row was built the same way. */
@@ -886,10 +955,12 @@
     .pcard { margin-top: 0; }
 }
 
-/* The page's own summary cards: two columns of ~160px, into which a
-   label like "Overall Rank" does not fit, so half of them read "OV…". */
+/* The page's own summary cards: two columns of ~160px, into which a label
+   like "Overall Rank" does not fit beside a 38px icon, so half of them read
+   "OV…". .sq-kpis is no longer one of them — my-team.css stacks its icon
+   above the text on a phone, which gives the label the whole card and lets
+   the four figures sit two by two instead of taking 700px of the page. */
 @media (max-width: 560px) {
-    .sq-kpis,
     .sq-summary-grid,
     .sq-stat-cards,
     .squad-summary { grid-template-columns: minmax(0, 1fr) !important; }
@@ -1048,6 +1119,7 @@
 }
 .dp-score b,
 .page-subtitle,
+.sq-stat-value,
 .v2-page-sub {
     letter-spacing: 0.01em !important;
 }
@@ -1056,7 +1128,6 @@
 .pcard-score b,
 .planner-table,
 .segmented-btn,
-.sq-stat-value,
 .tm-table {
     letter-spacing: 0.015em !important;
 }
@@ -1079,8 +1150,10 @@
 .lw-pitch-node,
 .pcard-fixture,
 .pcard-name,
-.sq-stat-label,
 .v2-pitch-token-name {
     letter-spacing: 0.03em !important;
+}
+.sq-stat-label {
+    letter-spacing: 0.04em !important;
 }
 /* === END GENERATED TRACKING === */
