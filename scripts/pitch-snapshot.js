@@ -307,7 +307,7 @@
 
         function teamBadgeUrl(teamId) {
             const code = teams[teamId]?.code;
-            return code ? `https://resources.premierleague.com/premierleague/badges/50/t${code}.png` : '';
+            return code ? `https://resources.premierleague.com/premierleague/badges/100/t${code}.png` : '';
         }
 
         // A pre-kickoff number is a projection, not a score — showing a bare "2.4 pts"

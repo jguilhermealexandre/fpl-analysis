@@ -3130,9 +3130,15 @@
 
 /* The badge sits in the portrait's slot, centred rather than standing on
    the floor of the hero the way a photo does. */
+/* 84px, not 96. The crest is a PNG from the league's CDN and the largest
+   size it serves is 100 — drawn at 96 from the 50px file this used to ask
+   for, it was a two-times upscale on a plain screen and six on a phone,
+   which is the "very pixelated" of the report. Every crest on the site now
+   comes from the 100px file, and the one place that drew it near full size
+   draws it a little smaller than the pixels it has. */
 .tm-hero-badge { height: 150px; width: 128px; align-items: center; }
 .tm-hero-badge img {
-    width: 96px; height: 96px;
+    width: 84px; height: 84px;
     object-fit: contain;
     filter: drop-shadow(0 8px 20px rgba(0, 0, 0, .38));
 }
@@ -3163,7 +3169,7 @@
 @media (max-width: 640px) {
     .tm-hero { min-height: 118px; padding: 0 14px; }
     .tm-hero-badge { height: 118px; width: 84px; }
-    .tm-hero-badge img { width: 66px; height: 66px; }
+    .tm-hero-badge img { width: 62px; height: 62px; }
 }
 
 /* The two local controls -- how many gameweeks Best Next N ranks over, and
@@ -3345,6 +3351,7 @@
 #scoutReportText,
 .assets-empty,
 .assets-table,
+.calendar-subtitle,
 .calw-empty,
 .calw-mid em,
 .calw-nav-l,
@@ -3364,6 +3371,7 @@
 .swing-delta,
 .swings-run-name,
 .tm-hero-fdr,
+.tm-sec-sub,
 .xgva-act,
 .xgva-exp {
     letter-spacing: 0.01em !important;
@@ -3560,3 +3568,88 @@
     letter-spacing: 0.0909em !important;
 }
 /* === END GENERATED TRACKING === */
+
+/* One section title for the whole page.
+   ============================================
+
+   Five tabs, seven section titles, five sizes: the momentum matrix at 18px,
+   "Every club, ranked" at 17, the swings panels at 15, "Best Next 5 GWs" at
+   14, "Soft Targets" at 20 in one place and 16 in another. Three of them
+   carried an icon inside the title, two carried one in a span beside it, and
+   two had none at all — so the same kind of heading was drawn four
+   different ways on one page, and none of them the way the rest of the site
+   draws it.
+
+   This is .pa-panel-title's spec, which is what Player Analysis and the
+   squad panels use: the display face at 17px, the mark in the brand green at
+   17px, 8px between them. It is written as one list rather than seven edits
+   so the next section added here only has to join the list. */
+.momentum-title,
+.calendar-title,
+.soft-title,
+.soft-section.standalone .soft-title,
+.swings-panel-title,
+.analysis-card-title,
+.stats-sec-title,
+.section-header h2 {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 650;
+    letter-spacing: -0.2px;
+    color: var(--text-primary);
+}
+.momentum-title svg, .momentum-title i,
+.calendar-title svg, .calendar-title i,
+.soft-title svg, .soft-title i,
+.swings-panel-title svg, .swings-panel-title i,
+.analysis-card-title svg, .analysis-card-title i,
+.stats-sec-title svg, .stats-sec-title i,
+.section-header h2 svg, .section-header h2 i {
+    width: 17px;
+    height: 17px;
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+/* And the line under it, where a section has one. Same as .pa-panel-sub. */
+.tm-sec-sub,
+.calendar-subtitle {
+    margin: -2px 0 0;
+    max-width: 78ch;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+.tm-sec-head { display: flex; flex-direction: column; gap: 6px; }
+
+/* The filter bar is the panel's own top bar, the way .apf-bar is on Player
+   Analysis — not a second bordered card inside the first, with its left and
+   right padding zeroed so its contents touched its own border while the
+   table beneath was inset twelve pixels. */
+.stats-compact-toolbar {
+    padding: 14px 12px 12px;
+    margin-bottom: 12px;
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.stats-sec-head { padding: 14px 12px 0; }
+
+/* And one inset for all of them. A section title started at 277px on the
+   stats table, 281 on a swings panel, 283 on the rankings, 285 on a calendar
+   and 289 on the momentum matrix, because the five panels under them were
+   padded 12, 16, 18, 20 and 24 — so the page's headings stepped sideways as
+   you moved through its tabs. 18px is what .v2-section already gives the two
+   that looked right. */
+.momentum-matrix-section { padding: 18px; }
+.calendar-section { padding: 18px; }
+.analysis-card { padding: 18px; }
+.swings-panel-header { padding: 18px; }
+.stats-sec-head { padding: 18px 18px 0; }
+.stats-compact-toolbar { padding: 14px 18px 12px; }

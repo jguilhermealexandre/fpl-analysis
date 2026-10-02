@@ -265,7 +265,7 @@
                image glyph in the middle of the scoreline. */
             return `<img class="md-crest" width="22" height="22" loading="lazy" alt=""
                 onerror="this.remove()"
-                src="https://resources.premierleague.com/premierleague/badges/50/t${team.code}.png">`;
+                src="https://resources.premierleague.com/premierleague/badges/100/t${team.code}.png">`;
         }
 
         function mdMatchCard(f, now) {

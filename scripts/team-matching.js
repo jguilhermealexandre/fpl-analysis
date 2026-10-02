@@ -57,7 +57,7 @@ function matchTeam(label, teamIndex, unmatched) {
 
 function teamBadge(team, size) {
     size = size || 20;
-    return `<img src="https://resources.premierleague.com/premierleague/badges/50/t${team.code}.png"
+    return `<img src="https://resources.premierleague.com/premierleague/badges/100/t${team.code}.png"
         alt="" width="${size}" height="${size}" style="vertical-align:middle;border-radius:3px;"
         onerror="this.style.display='none'">`;
 }

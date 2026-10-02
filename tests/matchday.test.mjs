@@ -169,7 +169,7 @@ const { mdCrest } = md;
 
 test('the crest is built from the team code, not the team id', () => {
     const html = mdCrest({ id: 7, code: 43, short_name: 'MCI' });
-    assert.match(html, /badges\/50\/t43\.png/);
+    assert.match(html, /badges\/100\/t43\.png/);
     assert.doesNotMatch(html, /t7\.png/);
 });
 

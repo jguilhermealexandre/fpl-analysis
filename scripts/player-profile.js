@@ -1998,7 +1998,7 @@
                     ${first ? `<span class="pdm-hero-first">${escHTML(first)}</span>` : ''}
                     <span class="pdm-hero-last">${escHTML(last)}</span>
                     <span class="pdm-hero-meta">
-                        ${code != null ? `<img class="pdm-hero-crest" src="https://resources.premierleague.com/premierleague/badges/50/t${code}.png" alt="" draggable="false" onerror="this.remove()">` : ''}
+                        ${code != null ? `<img class="pdm-hero-crest" src="https://resources.premierleague.com/premierleague/badges/100/t${code}.png" alt="" draggable="false" onerror="this.remove()">` : ''}
                         <span>${escHTML(clubName)}</span>
                         <em>•</em>
                         ${shirtNo != null ? `<span>${shirtNo}</span>` : ''}

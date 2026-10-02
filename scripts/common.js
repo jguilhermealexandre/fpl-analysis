@@ -731,7 +731,7 @@ function v2CrestHTML(player) {
     return `<span class="v2-pid-crest">`
         + `<span class="v2-pid-crest-fallback">${esc((player && player.team) || '')}</span>`
         + (code != null && !CREST_MISSING.has(Number(code))
-            ? `<img src="https://resources.premierleague.com/premierleague/badges/50/t${code}.png"
+            ? `<img src="https://resources.premierleague.com/premierleague/badges/100/t${code}.png"
                  alt="" draggable="false" onerror="crestMissing(${Number(code)}); this.remove()">`
             : '')
         + `</span>`;
@@ -1474,7 +1474,7 @@ function v2PlayerHeroHTML(player, opts) {
             ${first ? `<span class="pdm-hero-first">${esc(first)}</span>` : ''}
             <span class="pdm-hero-last">${esc(last)}</span>
             <span class="pdm-hero-meta">
-                ${code != null ? `<img class="pdm-hero-crest" src="https://resources.premierleague.com/premierleague/badges/50/t${code}.png" alt="" draggable="false" onerror="this.remove()">` : ''}
+                ${code != null ? `<img class="pdm-hero-crest" src="https://resources.premierleague.com/premierleague/badges/100/t${code}.png" alt="" draggable="false" onerror="this.remove()">` : ''}
                 <span>${esc(player.team || '')}</span>
                 ${o.sub ? `<em>•</em><span>${esc(o.sub)}</span>` : ''}
             </span>
@@ -2350,7 +2350,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=397')
+    fetch('/footer.html?v=398')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
