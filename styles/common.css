@@ -1756,6 +1756,42 @@ body {
 
    Only the landing shell uses this. The app shell replaces .footer-top's
    layout wholesale from v2-app.css, so none of it reaches a dashboard page. */
+/* The footer, behind the page, on a phone.
+
+   It used to sit at the end of the document like any block, which on a
+   screen this narrow means the last thing you do on every page is scroll
+   past 700px of links you did not ask for.
+
+   Sticky to the bottom instead, with the page scrolling over the top of it:
+   the footer is pinned to the foot of the viewport the whole way down,
+   .v2-main-content paints over it on its own opaque ground, and it is
+   uncovered only once the content above it runs out. Nothing is hidden —
+   reaching the end of the page still reaches the whole footer — it just
+   stops being something you wade through to get there.
+
+   Sticky rather than fixed, so there is nothing to keep in sync: a fixed
+   footer needs the content padded by exactly its own height, and that height
+   is different on every page. Sticky takes its own space at the end of the
+   document and the browser does the rest. Where the footer is taller than
+   the viewport — a small phone on the marketing pages — sticky simply does
+   not engage and it behaves as it always did, which is the right fallback.
+
+   .v2-main-content needs the z-index and the explicit ground for this: a
+   transparent box cannot cover anything, and without the layer the footer
+   would paint over the page rather than under it. */
+@media (max-width: 768px) {
+    .site-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 0;
+    }
+    .v2-main-content {
+        position: relative;
+        z-index: 1;
+        background-color: var(--v2-ground, var(--surface-bg));
+    }
+}
+
 @media (max-width: 768px) {
     .footer-top {
         grid-template-columns: 1fr 1fr;
