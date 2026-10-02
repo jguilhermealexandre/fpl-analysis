@@ -101,9 +101,19 @@ function collect() {
         }
         return false;
     };
+    /* An element is shown only if everything above it is too. A closed
+       flyout, a collapsed panel, an un-opened sheet: they are parked with
+       opacity 0 and pointer-events none on the container, and the children
+       inside still compute to opacity 1 and a real rectangle. Checking the
+       element alone reported every item in the sidebar's closed flyout as
+       sitting on top of the page — 22 of them, at every width, on every app
+       page, which is a fifth of this run's findings and none of them real. */
     const shown = el => {
-        const s = getComputedStyle(el);
-        if (s.visibility === 'hidden' || s.display === 'none' || Number(s.opacity) < 0.05) return false;
+        for (let n = el; n && n !== document.body; n = n.parentElement) {
+            const s = getComputedStyle(n);
+            if (s.visibility === 'hidden' || s.display === 'none' || Number(s.opacity) < 0.05) return false;
+            if (n !== el && s.pointerEvents === 'none' && s.position !== 'static') return false;
+        }
         const r = el.getBoundingClientRect();
         return r.width > 0 && r.height > 0;
     };

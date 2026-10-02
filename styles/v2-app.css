@@ -1245,8 +1245,18 @@ html.v2-shell-app .footer-mail .icon {
        green and says what it is. */
     border: 1px solid color-mix(in srgb, var(--color-primary) 40%, transparent);
     border-radius: 50%;
-    background: color-mix(in srgb, var(--color-primary) 12%, #fff);
-    color: var(--color-primary);
+    /* Tinted over whatever is behind it, not over #fff. Mixed into white it
+       came out a near-white disc in both themes, and in dark mode that put
+       the bright green glyph on a bright ground: 1.6:1, a "?" you could not
+       read until you hovered it and the fill turned solid. Over transparent
+       the disc is a pale green on a light page and a deep green on a dark
+       one, and the glyph keeps the contrast it has in the theme it is in. */
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    /* The readable half of the brand pair, not the brand green itself: on the
+       pale disc a light page gives it, #10b981 reads at 2:1. --color-primary-text
+       is the same green resolved for text in each theme (#065F46 on light,
+       #00E57D on dark) and clears 6:1 in both. */
+    color: var(--color-primary-text);
     cursor: pointer;
     transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
 }

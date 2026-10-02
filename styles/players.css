@@ -1013,6 +1013,48 @@
     padding: 6px 10px;
     font-size: 12px;
 }
+
+/* One row, one band — the shape the squad table uses, because they are the
+   same thing: a list of players you read one line at a time.
+
+   Six hundred rows divided by hairlines is a wall. The eye needs the row to
+   be an object before it can hold a player's numbers together across a table
+   this wide, and a 1px line between two cells of the same colour does not
+   make one. Separate borders with a gap do: each row becomes its own tile
+   with its own ends, and the position edge at its left reads as that
+   player's, not as the start of a column.
+
+   border-spacing, not margins: rows are table rows and cannot take one. The
+   row's own background comes from --row-bg further up, which the sticky name
+   cell already follows, so hover and the selected state keep working across
+   the whole band. */
+.compact-mode .data-table {
+    border-collapse: separate;
+    border-spacing: 0 5px;
+}
+/* A border all the way round, like the squad row's, not a gap alone: on a
+   light page the row surface and the panel under it are both white, so a gap
+   with no edge separates nothing. */
+.compact-mode .data-table tbody td {
+    border-top: 1px solid var(--border-default);
+    border-bottom: 1px solid var(--border-default);
+}
+.compact-mode .data-table tbody td:first-child {
+    border-left: 1px solid var(--border-default);
+    border-top-left-radius: 9px;
+    border-bottom-left-radius: 9px;
+}
+.compact-mode .data-table tbody td:last-child {
+    border-right: 1px solid var(--border-default);
+    border-top-right-radius: 9px;
+    border-bottom-right-radius: 9px;
+}
+/* The gap would otherwise show between the header and the first row as a
+   stripe of page behind a sticky header that is meant to sit on the table. */
+.compact-mode .data-table thead th { border-bottom: 1px solid var(--border-default); }
+
+/* The section head sits on the panel's own surface, above the filter bar. */
+.apf-head { margin-bottom: 14px; }
 .compact-mode .data-table thead th {
     padding: 8px 10px;
     font-size: 10px;
@@ -1753,7 +1795,19 @@
 .chart-card:hover .chart-expand-hint {
     opacity: 1;
 }
-.chart-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+/* One colour for every chart title, with the mark in the brand green, the
+   way a section title is drawn everywhere else on this page. They used to
+   carry an inline colour each — green, amber, teal, a second green, a blue —
+   thirteen headings in five hues on one tab, which read as five unrelated
+   widgets rather than one set of charts. The hue is still in the chart
+   itself, where it means something. */
+.chart-title {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 14px; font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+.chart-title i, .chart-title svg { color: var(--color-primary); flex-shrink: 0; }
 .chart-subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
 .chart-container { height: 300px; position: relative; }
 
@@ -4551,6 +4605,24 @@ tr.pl-row-click .row-action { cursor: pointer; }
     display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
     justify-content: space-between;
 }
+
+/* The line under a section title that says what the section is for. The
+   Charts tab had one on three of its five groups and nothing on the other
+   two, so half the page explained itself and half did not. One class, used
+   everywhere a panel head wants it. */
+.pa-panel-sub {
+    margin: -4px 0 0;
+    max-width: 78ch;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+/* A panel that is only a head: the Charts tab's own title, its line, and the
+   position filter that governs every group below it. Less air under it than a
+   panel with a body, because what follows is its content. */
+.pa-panel-head-only { padding-bottom: 14px; }
+.pa-panel-head-only .pa-panel-head { margin-bottom: 0; }
 .pa-panel-controls > * { min-width: 0; }
 
 /* ----- Position filter pills -----
@@ -5119,6 +5191,7 @@ tr.pl-row-click .row-action { cursor: pointer; }
 .compare-btn,
 .data-table td,
 .filter-range input,
+.pa-panel-sub,
 .pcell-name,
 .player-chart-title,
 .player-modal-tab,

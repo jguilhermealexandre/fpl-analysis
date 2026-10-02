@@ -482,8 +482,20 @@ function createTable(position, analyses) {
         </div>
     `;
 
+    /* The All Players table is the one section on this page that had no name
+       on it. Every other tab opens with a title and a line saying what it is
+       for; this one opened with a filter bar, so the biggest table on the
+       site was the only thing you had to work out from its contents. The
+       other positions keep their own titled toolbar and do not need this. */
+    const headHtml = position === 'ALL' ? `
+        <div class="pa-panel-head apf-head">
+            <span class="pa-panel-title">${typeof paIcon === 'function' ? paIcon('table') : ''}All players</span>
+            <p class="pa-panel-sub">Every player in the game, sortable on any column. Pick the columns you want, tick two players to compare them, or click a row to open the full profile.</p>
+        </div>` : '';
+
     return `
         <div class="table-section ${position === 'ALL' ? 'compact-mode' : ''}" id="tableSection-${position}">
+            ${headHtml}
             ${toolbarHtml}
             <div class="table-container">
                 <table class="data-table" id="table-${position}">
