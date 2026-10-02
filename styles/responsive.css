@@ -623,6 +623,21 @@
         overscroll-behavior: contain;
     }
 
+    /* Settings is the exception: the whole screen, not a sheet with the page
+       showing above it. It is not a quick confirmation you dismiss back into
+       what you were reading — it is a page of its own with your team, your
+       plan and your preferences on it, and at 92vh the last group sat under
+       the fold with a strip of blurred dashboard above the header. */
+    .v2-settings.modal-overlay { align-items: stretch; }
+    .v2-settings .modal-container {
+        height: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+    .v2-settings .v2-set-body { padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+
     .modal-close, .pdm-close, .help-close {
         top: 10px; right: 10px;
         width: 38px; height: 38px;
@@ -808,7 +823,23 @@
         gap: 6px;
         padding: 0 12px 9px;
     }
-    .sq-act { width: 32px; height: 32px; }
+    /* No outline. Three bordered boxes beside five fixture chips made the
+       bottom of every card eight rectangles in a row; the glyph and a quiet
+       ground say "button" well enough next to text that is not one, and the
+       armband's own yellow still reads when it is on. 32px square and no
+       smaller: they are the only thumb targets in the row, and the
+       coarse-pointer floor further down this file would put them back
+       anyway. Three of them plus their gaps is the 112px the strip leaves. */
+    .sq-act {
+        width: 32px; height: 32px;
+        border-color: transparent;
+        background: var(--surface-2);
+    }
+
+    /* And the compare box recedes until it is used. Unticked it is an empty
+       26px square in the corner of every row, which on fifteen rows is the
+       second thing you see after the names. */
+    .sq-compare-checkbox:not(:checked) { opacity: .45; }
 }
 
 /* A squad row on a narrow screen.
@@ -870,6 +901,29 @@
     .sq-stat-label { font-size: 9px; letter-spacing: .04em !important; }
     .sq-stat-value { font-size: 12.5px; }
 
+    /* The projection is the row's one headline figure, so it stops being the
+       first of four equal pairs and becomes the number in the corner — the
+       thing your eye lands on after the name. It is .sq-stat:first-child and
+       it cannot be moved in the markup without moving it on every screen, so
+       it is lifted out of the line and placed; the row is already
+       position: relative for the checkbox above it. */
+    .sq-row-stats .sq-stat:first-child {
+        position: absolute;
+        top: 9px; right: 44px;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0;
+    }
+    .sq-row-stats .sq-stat:first-child .sq-stat-value {
+        font-size: 19px; font-weight: 800; line-height: 1.05;
+        color: var(--color-primary);
+    }
+    .sq-row-stats .sq-stat:first-child .sq-stat-label { font-size: 8.5px; }
+
+    /* Which leaves three pairs on the stat line, and room for them to be
+       read rather than squeezed. */
+    .sq-row-main { padding-right: 92px; }
+
     /* Flexible chips, not the fixed 36px the desktop table uses to keep its
        stat columns from drifting — there are no stat columns to keep still
        here, and the strip has a phone's width to divide rather than a
@@ -881,6 +935,13 @@
     .sq-row-fixtures .fixture-chip {
         flex: 1 1 0; width: auto; min-width: 0;
         text-align: center;
+        /* A strip, not five blocks. At the table's own 3px/5px padding these
+           were the loudest thing on the card — five saturated rectangles
+           under every player, drawn larger than his name. The colour is the
+           information; the size was not. */
+        padding: 2px 3px;
+        font-size: 9.5px;
+        border-radius: 4px;
     }
 
     /* The three buttons, in the corner the fixture strip has been told to
@@ -1357,6 +1418,7 @@
 .pcard-name,
 .pitch-player-name,
 .pitch-player-node,
+.sq-row-fixtures .fixture-chip,
 .v2-stat-sub {
     letter-spacing: 0.025em !important;
 }
@@ -1373,6 +1435,7 @@
 .pcard-fixture,
 .pcard-name,
 .pdm-hero.is-shrunk .pdm-hero-chip,
+.sq-row-stats .sq-stat:first-child .sq-stat-label,
 .v2-pitch-token-name {
     letter-spacing: 0.03em !important;
 }

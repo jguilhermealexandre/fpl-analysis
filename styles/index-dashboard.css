@@ -1573,6 +1573,54 @@
         }
         .v2-pitch-bench .v2-pitch-token-name { color: var(--text-secondary); text-shadow: none; font-size: 11px; }
 
+        /* The snapshot pitch on a phone.
+           ============================================
+
+           Five tokens across 19% of a 324px pitch is 62px a card, and the card
+           was drawn at its desktop size inside that: a 34px face, a 12.5px
+           name, a 16px score and a two-line fixture pill, 125px tall in all.
+           The four rows are placed at 15, 38, 61 and 84 per cent of the grass,
+           which at the 440px a phone gives it is 101px apart — so every line
+           of the team was drawn through the one in front of it, and every name
+           longer than six letters came out as "Haal...", "Tark...", "De C...".
+
+           Everything in the card steps down with the card, which is what it
+           should have done in the first place: the face, the name, the number
+           and the fixture pill. The minutes drop — how long he played last
+           week is the one thing here you would not look for on a phone, and it
+           was sharing a 54px line with the opponent and the home-or-away.
+           85px a card against a 101px gap, and the names fit.
+
+           These rules live here rather than in responsive.css because this
+           file is appended at runtime, after it: a plain rule in a later sheet
+           beats an earlier @media rule of the same specificity, which is why
+           the 9px name responsive.css asks for never arrived. */
+        @media (max-width: 767px) {
+            .v2-pitch-token {
+                padding: 7px 4px 6px;
+                gap: 1px;
+            }
+            .v2-pitch-token .v2-pid-pitch {
+                --v2-pid-face: 26px; --v2-pid-crest: 17px;
+                gap: 3px; margin-bottom: 1px;
+            }
+            .v2-pitch-token-name { font-size: 10px; }
+            .v2-pitch-token-score b { font-size: 13px; }
+            .v2-pitch-token-score .u { font-size: 8px; }
+            .v2-pitch-token-score b.pos { font-size: 10px; }
+            .v2-pitch-token-opp {
+                font-size: 8.5px; padding: 1px 3px;
+                white-space: nowrap;
+            }
+            .v2-pitch-token-mins { display: none; }
+            .v2-pitch-token-pos { font-size: 7.5px; }
+
+            /* The bench keeps its own, slightly larger card — it is a
+               horizontal strip with room to spare, not a row of five. */
+            .v2-pitch-bench .v2-pitch-token { min-width: 78px; padding: 7px 7px 6px; }
+            .v2-pitch-bench .v2-pitch-token-name { font-size: 10.5px; }
+        }
+
         .v2-quick-actions {
             display: flex;
             flex-direction: column;
@@ -3660,6 +3708,7 @@
 .v2-info-panel .rd-headline,
 .v2-news-head,
 .v2-pitch-token-name,
+.v2-pitch-token-score b,
 .v2-qa-title {
     letter-spacing: 0.01em !important;
 }
@@ -3754,10 +3803,13 @@
 .v2-desk-meta,
 .v2-info-panel .rd-lane.done .rd-check,
 .v2-news-age,
+.v2-pitch-bench .v2-pitch-token-name,
 .v2-pitch-bench-label,
 .v2-pitch-token-badge,
+.v2-pitch-token-name,
 .v2-pitch-token-opp,
-.v2-pitch-token-score .u {
+.v2-pitch-token-score .u,
+.v2-pitch-token-score b.pos {
     letter-spacing: 0.025em !important;
 }
 .fm-step,
@@ -3787,6 +3839,9 @@
 .v2-info-panel .rd-lane.done .rd-mark,
 .v2-pitch-token-flag,
 .v2-pitch-token-mins,
+.v2-pitch-token-opp,
+.v2-pitch-token-pos,
+.v2-pitch-token-score .u,
 .v2-pitch-token-xp .u {
     letter-spacing: 0.03em !important;
 }
