@@ -2042,6 +2042,7 @@
                 </div>
             </div>`;
             pdmLayoutBands(host);
+            pdmWatchHeroScroll(host);
             if (typeof lucide !== 'undefined') lucide.createIcons();
             // Anything a page has to mount rather than render — the players
             // page's Chart.js trends need the canvases to be in the document.
@@ -2104,6 +2105,56 @@
                 });
                 if (wrap.children.length) holder.appendChild(wrap);
             });
+        }
+
+        /* The hero gives way to the card as you read it.
+
+           On a phone the hero is 139px of a 776px card — a fifth of the screen
+           spent on who you are reading about, held there for the whole of a
+           scroll that is mostly prose. It is sticky instead, so the name and
+           the price stay with you, and it draws itself smaller once you are
+           past the top: a narrower portrait, smaller type, and the price back
+           up onto the name's line rather than below it. Nothing is dropped —
+           first name, surname, club, position and price are all still there.
+
+           Two thresholds rather than one. Shrinking the hero shortens the
+           content above the scroll position, which moves the scroll position,
+           which can put it back under a single threshold — and a hero that
+           flips between two heights every frame is worse than one that never
+           moves. 48 down, 16 back up, so there is no width of scroll where
+           both are true.
+
+           rAF-coalesced and passive: this runs on every scroll frame of a long
+           card, and the one thing it must not do is make the card feel heavy. */
+        function pdmWatchHeroScroll(host) {
+            /* .pdm-body, not .modal-container. The card's scroll lives on the
+               body — the container sizes to fit and never scrolls — and the
+               hero is the body's sibling rather than its child, which is why
+               it already stays put while the profile moves under it. All that
+               is missing is the size. */
+            const scroller = host.querySelector('.pdm-body');
+            const hero = host.querySelector('.pdm-hero');
+            if (!scroller || !hero) return;
+
+            const SHRINK_PAST = 48;
+            const GROW_UNDER = 16;
+            let shrunk = false;
+            let queued = false;
+
+            const settle = () => {
+                queued = false;
+                const y = scroller.scrollTop;
+                const want = shrunk ? y > GROW_UNDER : y > SHRINK_PAST;
+                if (want === shrunk) return;
+                shrunk = want;
+                hero.classList.toggle('is-shrunk', want);
+            };
+
+            scroller.addEventListener('scroll', () => {
+                if (queued) return;
+                queued = true;
+                requestAnimationFrame(settle);
+            }, { passive: true });
         }
 
         /* `position` is accepted and ignored. The players page's tables pass the

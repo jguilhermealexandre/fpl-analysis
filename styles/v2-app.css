@@ -1095,8 +1095,16 @@ html.v2-shell-app .footer-mail .icon {
 }
 /* The portrait fails for a player the photo endpoint has never had — the
    <img> removes itself — and a 178px hole where a face was is worse than no
-   face at all, so the column collapses with it. */
-.pdm-hero-photo:empty { width: 0; }
+   face at all, so the column collapses with it.
+
+   :empty alone did not do it. An element with a stray newline in it is not
+   empty, and the markup puts the <img> on its own line, so what the removal
+   leaves behind is whitespace: the hole stayed open for every player without
+   a photo. :has() asks the question that was actually meant — is there a
+   face in here — and :empty is kept for the case where there is not even
+   whitespace left. */
+.pdm-hero-photo:empty,
+.pdm-hero-photo:not(:has(img)) { width: 0; }
 /* A fixed box, and the photo fitted inside it.
  *
  * It was `height: 176px; width: auto`, which sizes the element from the

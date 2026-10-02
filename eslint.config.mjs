@@ -1002,6 +1002,7 @@ export default [
                 pdmPageSections: 'writable',
                 pdmPlayerId: 'writable',
                 pdmUrlWith: 'writable',
+                pdmWatchHeroScroll: 'writable',
                 penaltyPriorXg90: 'writable',
                 pendingTransfers: 'writable',
                 performDraftSwap: 'writable',

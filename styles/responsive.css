@@ -1114,11 +1114,14 @@
 .sq-kpi-value {
     letter-spacing: inherit !important;
 }
+.pdm-hero-first,
+.pdm-hero.is-shrunk .pdm-hero-price,
 .v2-mobile-bar-title {
     letter-spacing: 0.005em !important;
 }
 .dp-score b,
 .page-subtitle,
+.pdm-hero-meta,
 .sq-stat-value,
 .v2-page-sub {
     letter-spacing: 0.01em !important;
@@ -1126,6 +1129,8 @@
 .data-table,
 .dp-score b,
 .pcard-score b,
+.pdm-hero.is-shrunk .pdm-hero-first,
+.pdm-hero.is-shrunk .pdm-hero-meta,
 .planner-table,
 .segmented-btn,
 .tm-table {
@@ -1150,6 +1155,7 @@
 .lw-pitch-node,
 .pcard-fixture,
 .pcard-name,
+.pdm-hero.is-shrunk .pdm-hero-chip,
 .v2-pitch-token-name {
     letter-spacing: 0.03em !important;
 }
@@ -1157,3 +1163,121 @@
     letter-spacing: 0.04em !important;
 }
 /* === END GENERATED TRACKING === */
+
+/* ============================================================
+   The player card's hero, on a phone
+   ============================================================
+
+   Here rather than in player-profile.css, where it used to live and did not
+   work: styles/v2-app.css declares .pdm-hero after that file loads, and a
+   plain rule later in the cascade beats an earlier @media rule of the same
+   specificity. Only the few rules v2-app.css does not also set were getting
+   through, which left a hybrid nobody designed —
+
+     - the grid stayed three columns at the desktop's 178px portrait, so on a
+       390px screen the name had 114px and both lines of it were ellipsised:
+       "Konsta…" over "Tzo…";
+     - .pdm-hero-side did get its grid-column: 2, which put the price in the
+       same column as the name and so onto a second grid row — and the
+       portrait, placed in row one and aligned to the end of row one, ended
+       up 106px short of the bottom of the hero it is supposed to stand on.
+
+   Two columns, a portrait sized for the screen, and the portrait spanning
+   whatever rows the text needs so it is always on the floor of the card. */
+@media (max-width: 760px) {
+    .pdm-hero {
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 0 14px;
+        min-height: 150px;
+        padding: 0 16px;
+    }
+    /* Two rows named explicitly, because the portrait below spans to -1 and
+       -1 is the last line of the *explicit* grid. With rows left implicit
+       there is no such line, the span collapses to a single row, and the
+       portrait goes back to standing on the text's row with the price
+       underneath it — which is the 106px of air this was meant to remove. */
+    .pdm-hero { grid-template-rows: auto auto; }
+
+    /* Every row, so the price dropping onto a line of its own cannot leave
+       the portrait hanging in the air above it. */
+    .pdm-hero-photo {
+        grid-row: 1 / -1;
+        align-self: stretch;
+        height: auto;
+        width: 118px;
+    }
+    .pdm-hero-face { height: 100%; max-width: 118px; }
+
+    .pdm-hero-text { padding: 18px 0 14px; }
+    .pdm-hero-first { font-size: 17px; }
+    .pdm-hero-last { font-size: 29px; }
+    .pdm-hero-meta { margin-top: 6px; font-size: 12.5px; }
+
+    .pdm-hero-side {
+        grid-column: 2;
+        flex-direction: row; align-items: center; gap: 10px;
+        padding: 0 0 16px;
+    }
+    .pdm-hero-chip { margin-bottom: 0; }
+    .pdm-hero-price { font-size: 19px; }
+    .pdm-hero-own { display: none; }
+}
+
+@media (max-width: 480px) {
+    .pdm-hero { min-height: 128px; padding: 0 13px; gap: 0 11px; }
+    .pdm-hero-photo { width: 96px; }
+    .pdm-hero-face { max-width: 96px; }
+    .pdm-hero-last { font-size: 25px; }
+    .pdm-hero-first { font-size: 15px; }
+}
+
+/* ----- The hero gives way to the card as you read it -----
+
+   139px of a 776px card is a fifth of the screen spent on who you are reading
+   about, held there through a scroll that is mostly prose. Sticky, so the
+   name and the price stay with you, and smaller once you are past the top.
+
+   Nothing is dropped. The portrait narrows, the type comes down a step, and
+   the price goes back up onto the name's line — the second grid row the price
+   occupies is most of what makes the tall state tall. First name, surname,
+   club, position and price are all still on screen at 72px.
+
+   pdmWatchHeroScroll() in scripts/player-profile.js adds .is-shrunk. */
+@media (max-width: 760px) {
+    /* No position: sticky needed — the hero is a sibling of .pdm-body, which
+       is what scrolls, so it already stays put while the profile moves under
+       it. Only its size has to change. */
+    .pdm-hero {
+        z-index: 4;
+        transition: min-height 170ms ease, padding 170ms ease;
+    }
+    /* Above the hero at both heights, or it is covered as the hero shrinks. */
+    .pdm-close { z-index: 6; }
+
+    .pdm-hero.is-shrunk {
+        min-height: 72px;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-rows: auto;
+        align-items: center;
+    }
+    .pdm-hero.is-shrunk .pdm-hero-photo { width: 50px; align-self: end; }
+    .pdm-hero.is-shrunk .pdm-hero-face { max-width: 50px; }
+    .pdm-hero.is-shrunk .pdm-hero-text { padding: 9px 0; }
+    .pdm-hero.is-shrunk .pdm-hero-first { font-size: 12px; }
+    .pdm-hero.is-shrunk .pdm-hero-last { font-size: 19px; }
+    .pdm-hero.is-shrunk .pdm-hero-meta { margin-top: 2px; font-size: 11px; }
+    .pdm-hero.is-shrunk .pdm-hero-meta .pdm-hero-crest { width: 15px; height: 15px; }
+    /* Back beside the name, out of a row of its own, with room kept clear of
+       the close button. */
+    .pdm-hero.is-shrunk .pdm-hero-side {
+        grid-column: 3; grid-row: 1;
+        flex-direction: column; align-items: flex-end; gap: 2px;
+        padding: 0 42px 0 0;
+    }
+    .pdm-hero.is-shrunk .pdm-hero-chip { font-size: 9px; padding: 2px 8px; }
+    .pdm-hero.is-shrunk .pdm-hero-price { font-size: 15px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pdm-hero { transition: none; }
+}
