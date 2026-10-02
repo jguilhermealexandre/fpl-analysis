@@ -703,7 +703,16 @@ function heatClass(colKey, value, sortKey) {
 function renderPlayerRow(p, position) {
     const state = tableState[position];
     const isSelected = compareList.some(cp => cp.id === p.id);
-    const cells = state.visibleCols.map(colKey => renderCell(p, colKey, position, isSelected)).join('');
+    /* Each cell carries its column's name. On a phone the table stops being a
+       table — there is no room for a header row over twelve columns — and
+       every cell prints its own label beside its value, the way the squad
+       table's stat line does. The attribute is harmless on a wide screen,
+       where the header is still what names the column. */
+    const cells = state.visibleCols.map(colKey => {
+        const html = renderCell(p, colKey, position, isSelected);
+        const def = COLUMN_DEFS[colKey];
+        return (def && html.startsWith('<td')) ? html.replace('<td', `<td data-label="${escHTML(def.label)}"`) : html;
+    }).join('');
     /* The whole row opens the player, not just his name.
 
        The name cell was the only target — about 120px of a 1200px row — while
@@ -712,7 +721,12 @@ function renderPlayerRow(p, position) {
        now. Everything in the row that does something else of its own stops
        the click: the two action buttons, the compare checkbox and the star. */
     const posName = p.posName || position || 'ALL';
-    return `<tr class="${isSelected ? 'selected-row' : ''} pl-row-click" data-player-id="${p.id}"
+    /* The position's letter in its colour, on the row rather than on the name
+       cell. On a phone the row is a card and the edge runs its whole height,
+       which is what the squad table's rows do; the name cell keeps its own
+       copy for the wide table, where the row is a row. */
+    const rowEdge = typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(p.position) : '';
+    return `<tr class="${isSelected ? 'selected-row' : ''} pl-row-click pl-row-edge ${rowEdge.replace('v2-pos-edge', '').trim()}" data-player-id="${p.id}"
         onclick="openPlayerModal(${p.id}, '${posName}')">${cells}${renderActionsCell(p)}</tr>`;
 }
 

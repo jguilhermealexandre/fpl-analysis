@@ -408,6 +408,133 @@
 }
 
 
+/* All Players on a phone, as the squad table's rows.
+   ============================================
+
+   The other tables on this page scroll sideways under a frozen name column,
+   which works when a table has five or six columns. This one has up to
+   thirty-seven, and seven in its default preset. At 390px the frozen column
+   got 148px of which the checkbox, the star, the portrait and the club crest
+   took 120 — so every name in the table was drawn as "G..", "T..", "B..",
+   and the three columns that fitted beside it were Price, Own% and a strip
+   of empty space. A sortable table you cannot read the names in is not a
+   table, and no amount of sideways scrolling fixes the first column.
+
+   So on a phone it stops being a table and becomes what the squad table is:
+   one card a player, the position's letter down its left edge, his name and
+   club on the first line, the columns you chose as label-and-value pairs on
+   the second, his fixtures and the two row actions on the third. The same
+   three lines in the same order, because they are the same thing — a list of
+   players, read one at a time.
+
+   Every cell prints its own column name, from the data-label that
+   renderPlayerRow puts on it; the header row is hidden because a header over
+   a stack of cards names nothing. Sorting still works from the View and
+   Filters menus above, which is where it belongs on a phone anyway. */
+@media (max-width: 768px) {
+    .compact-mode .table-container { overflow-x: visible; }
+
+    .compact-mode .data-table,
+    .compact-mode .data-table tbody { display: block; width: 100%; }
+    .compact-mode .data-table thead { display: none; }
+
+    .compact-mode .data-table tbody tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 3px 10px;
+        position: relative;
+        margin-bottom: 6px;
+        padding: 8px 10px 7px 24px;
+        background: var(--row-bg);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-md);
+    }
+
+    /* The cells stop being cells. The borders and radii the wide table puts
+       on the first and last of them would otherwise draw a box round the
+       name and another round the last number. */
+    .compact-mode .data-table tbody td,
+    .compact-mode .data-table tbody td:first-child,
+    .compact-mode .data-table tbody td:last-child {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+        position: static;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+        padding: 0;
+        border: none;
+        border-radius: 0;
+        background: none;
+        box-shadow: none;
+    }
+
+    /* The column's name, in the stat line's own small caps. */
+    .compact-mode .data-table tbody td[data-label]::before {
+        content: attr(data-label);
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        white-space: nowrap;
+    }
+
+    /* Identity takes the first line to itself, fixtures the third. Neither
+       wants a label: the name says what it is, and the chips are read as a
+       strip rather than as a value. */
+    .compact-mode .data-table tbody td.col-player,
+    .compact-mode .data-table tbody td.col-fixtures {
+        flex: 0 0 100%;
+        padding: 0;
+    }
+    .compact-mode .data-table tbody td.col-player::before,
+    .compact-mode .data-table tbody td.col-fixtures::before { content: none; }
+    .compact-mode .data-table tbody td.col-fixtures { padding-right: 168px; }
+
+    /* The row's own edge, not the name cell's — it runs the whole card. */
+    .compact-mode .data-table tbody tr.pl-row-edge::before {
+        content: '';
+        position: absolute;
+        left: 0; top: -1px; bottom: -1px;
+        width: 16px;
+        display: flex; align-items: center; justify-content: center;
+        border-radius: var(--radius-md) 0 0 var(--radius-md);
+        background: var(--v2-pos-color, var(--position-mid));
+        color: #FFFFFF;
+        font-size: 10px; font-weight: 800; line-height: 1;
+    }
+    /* Same selector depth as the rule above, or its content: '' wins and the
+       edge is a bar with no letter in it. */
+    .compact-mode .data-table tbody tr.pl-row-edge.pos-gk  { --v2-pos-color: var(--position-gk); }
+    .compact-mode .data-table tbody tr.pl-row-edge.pos-def { --v2-pos-color: var(--position-def); }
+    .compact-mode .data-table tbody tr.pl-row-edge.pos-mid { --v2-pos-color: var(--position-mid); }
+    .compact-mode .data-table tbody tr.pl-row-edge.pos-fwd { --v2-pos-color: var(--position-fwd); }
+    .compact-mode .data-table tbody tr.pl-row-edge.pos-gk::before  { content: 'G'; }
+    .compact-mode .data-table tbody tr.pl-row-edge.pos-def::before { content: 'D'; }
+    .compact-mode .data-table tbody tr.pl-row-edge.pos-mid::before { content: 'M'; }
+    .compact-mode .data-table tbody tr.pl-row-edge.pos-fwd::before { content: 'F'; }
+    .compact-mode .pcell.v2-pos-edge { padding-left: 0; }
+    .compact-mode .pcell.v2-pos-edge::before { display: none; }
+
+    /* Compare and Swap in the corner the fixture strip leaves for them, out
+       of the flow, the way the squad row's buttons sit. */
+    .compact-mode .data-table tbody td.col-actions {
+        position: absolute;
+        right: 10px;
+        bottom: 7px;
+        padding: 0;
+    }
+    .compact-mode .row-actions { opacity: 1; gap: 5px; }
+
+    .compact-mode .pcell { width: 100%; }
+    .compact-mode .pcell-name { font-size: 13px; white-space: normal; }
+    .compact-mode .data-table tbody td { font-size: 12.5px; }
+}
+
+
 /* ============================================================
    7. Tab strips and filter bars
    ============================================================ */
@@ -692,38 +819,39 @@
    file beats an earlier @media rule of the same specificity. This one loads
    after it, so what it says is what the phone gets.
 
-   The eight stats used to be a grid of label-over-value tiles — three
-   columns, so eight came out as 3 + 3 + 2 with the last row stretched across
-   the width. That grid alone was 111px of a 232px row, and fifteen of those
-   is 3,500px of scrolling in which nothing lines up with anything. It read as
-   a form, not as a row.
+   Fifteen rows at 168px was 2,892px of table: four stacked bands per player
+   — identity, eight stats over two wrapped lines, five fixture chips, and
+   four buttons alone on a line of their own. Nothing in it was wrong and all
+   of it was too much; you scrolled a screen and a half to see three players.
 
-   They are inline pairs now, label then value, wrapping as one dense line the
-   way a scoreline does: same eight numbers, same order, a third of the
-   height, and they line up across rows again — which is what a table is for.
+   It is 98px now, in three lines, and the arithmetic is what decided which:
 
-   The fixture chips come back with the room that frees up. They were hidden
-   below 900px, and the next five opponents are one of the two reasons to read
-   a squad row at all; a row that has dropped them is answering half the
-   question.
+   The buttons stop taking a line. They sit in the row's bottom-right corner,
+   over the end of the fixture strip's own line, which is empty there once the
+   strip is told to leave room for them. Three, not four: the fourth opens the
+   player's profile, and tapping the row already does that — .sq-row-clickable
+   carries the same call.
 
-   768px, not 900px, and the two have to agree: this is the stacked row's
-   stat line, and the row stacks at 768. Written at 900 it reached a band
-   where the row is still laid out across — so the eight pairs were squeezed
-   into the 7px the horizontal layout had left for them and ran 182px
-   straight down. Rows were 204px tall at 834 against 69px at 940. */
+   The stats stop taking two. Eight inline pairs are about 440px of text and
+   the row has 274px, so they wrapped. Four of them fit on one line with room
+   to spare, and the four are the ones a phone is for: the projection, form,
+   the position's first stat, and expected minutes. What goes is the FDR
+   average, which is the five chips directly beneath it said as a number; the
+   position's second and third stats; and the season total, which is a record
+   rather than a forecast. All eight are still in the row on any wider screen,
+   and the profile the row opens has every one of them with its explanation.
+
+   Wrap stays on. If a label ever grows past the width this assumes, the line
+   breaks rather than the text being cut off. */
 @media (max-width: 768px) {
     .sq-row-team .swing-badge { display: none; }
-    .sq-row-clickable { gap: 7px; }
+    .sq-row-clickable { gap: 5px; padding: 8px 10px 7px; }
 
     .sq-row-stats {
         display: flex;
         flex-wrap: wrap;
-        gap: 3px 11px;
+        gap: 3px 10px;
     }
-    /* Back to a flex pair here: the strip is a wrapping line of label-value
-       pairs on a phone, not two shared grid rows, so .sq-stat has to stop
-       being a grid before flex-direction means anything to it. */
     .sq-stat {
         display: flex;
         flex-direction: row;
@@ -731,42 +859,52 @@
         gap: 4px;
         min-width: 0;
     }
+    /* 3 is the FDR average, 5 and 6 the position's second and third stats,
+       8 the season total. Order is fixed in squad-table-chart.js:
+       xP, Form, FDR, stat3, stat4, stat5, xMins, stat7. */
+    .sq-row-stats .sq-stat:nth-child(3),
+    .sq-row-stats .sq-stat:nth-child(5),
+    .sq-row-stats .sq-stat:nth-child(6),
+    .sq-row-stats .sq-stat:nth-child(8) { display: none; }
+
     .sq-stat-label { font-size: 9px; letter-spacing: .04em !important; }
     .sq-stat-value { font-size: 12.5px; }
 
     /* Flexible chips, not the fixed 36px the desktop table uses to keep its
        stat columns from drifting — there are no stat columns to keep still
        here, and the strip has a phone's width to divide rather than a
-       table's. */
+       table's. The right-hand gap is the three buttons standing over it. */
     .sq-row-fixtures {
         display: flex; flex-wrap: nowrap; gap: 3px;
+        padding-right: 112px;
     }
     .sq-row-fixtures .fixture-chip {
         flex: 1 1 0; width: auto; min-width: 0;
         text-align: center;
     }
 
-    /* The controls keep a line of their own, and both of the alternatives
-       were measured before settling for that. Sharing the fixtures' line
-       leaves the five chips 22px each, which is narrower than "HUL". Standing
-       them in the row's top corner costs 136px of the name block, which
-       ellipsised seven of the fifteen names. A row that has to abbreviate who
-       the player is to make room for a button has the priorities backwards.
-
-       So: the identity, the numbers and the next five opponents each get the
-       full width, and the buttons sit under them. 30px rather than 32, and
-       the line's padding tightened — the row is 149px against the 232px it
-       was, which is what the inline stats and this bought between them. */
-    .sq-act { width: 30px; height: 30px; }
-    .sq-row-actions { padding: 0 12px 9px; gap: 6px; }
+    /* The three buttons, in the corner the fixture strip has been told to
+       leave empty. Out of the flow, so they cost the row no height at all.
+       The fourth — open the full profile — goes: the row itself is that
+       button, and has been since it got an onclick. */
+    .sq-row { position: relative; }
+    .sq-row-actions {
+        position: absolute; right: 10px; bottom: 6px;
+        padding: 0; gap: 5px;
+        justify-content: flex-end;
+    }
+    .sq-row-actions .sq-act:nth-child(4) { display: none; }
+    /* 32px square and no smaller: they are the only thumb targets in the row,
+       and the coarse-pointer floor further down this file would put them back
+       anyway. Three of them plus their gaps is the 112px the strip leaves. */
+    .sq-act { width: 32px; height: 32px; }
 
     /* The compare checkbox is the row's first child and the row is a column
        here, so it was taking a full line of its own at the top — a grey
        square floating above the player with nothing to say it belongs to
        him. In the corner it reads as the row's own control, and 26px is all
        the name block has to give up for it. */
-    .sq-row { position: relative; }
-    .sq-compare-checkbox { position: absolute; top: 11px; right: 12px; margin: 0; }
+    .sq-compare-checkbox { position: absolute; top: 9px; right: 10px; margin: 0; }
     .sq-row-main { padding-right: 26px; }
 }
 
@@ -1093,12 +1231,27 @@
    44s" became "2d 14h 19…" in a three-across tablet row. It scales with
    the column instead, and is allowed to take a second line. */
 @media (max-width: 1024px) {
-    .sq-kpi-value, .mgr-deadline-value {
+    .sq-kpi-value, .sq-kpi .mgr-deadline-value {
         font-size: clamp(18px, 3.2vw, 30px);
         white-space: normal;
         overflow: visible;
         text-overflow: clip;
         letter-spacing: -0.8px;
+    }
+}
+
+/* On a phone the countdown is smaller than the other three figures, which
+   is the one case where the odd one out is right. The four boxes are a 2x2
+   grid and a grid row is as tall as its tallest cell, so "7d 11h 47m 14s"
+   taking two lines at 18px made the two boxes in the top row 171px against
+   the 123px of the two below them — a strip of four tiles in two different
+   sizes. It is four numbers and three units against a rank's five digits;
+   at 15px it is one line, and the strip is square again. */
+@media (max-width: 560px) {
+    .sq-kpi .mgr-deadline-value {
+        font-size: 15px;
+        letter-spacing: -0.2px;
+        white-space: nowrap;
     }
 }
 
@@ -1171,15 +1324,18 @@
 /* Written by tools/gen-tracking.mjs — do not edit by hand. Every rule in
    this file that sets a font-size under 16px gets the tracking that size
    calls for; one that asked for more air than its band keeps its own. */
-.mgr-deadline-value,
+.sq-kpi .mgr-deadline-value,
 .sq-kpi-value {
     letter-spacing: inherit !important;
 }
 .pdm-hero-first,
 .pdm-hero.is-shrunk .pdm-hero-price,
+.sq-kpi .mgr-deadline-value,
 .v2-mobile-bar-title {
     letter-spacing: 0.005em !important;
 }
+.compact-mode .data-table tbody td,
+.compact-mode .pcell-name,
 .dp-score b,
 .page-subtitle,
 .pdm-hero-meta,
