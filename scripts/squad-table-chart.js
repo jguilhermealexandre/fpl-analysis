@@ -68,8 +68,13 @@
                         ? `Points per game last season (${bandHigh(formValue, FORM_BANDS)}). FPL resets form to zero before the season starts, so last year's rate stands in.`
                         : `Average points over the last 30 days (${bandHigh(formValue, FORM_BANDS)}). Above 4.5 is a player in good touch.`
                 },
+                /* "FDR", like every other stat strip on the site, and not
+                   "Nxt5 FDR": it was the one two-word label among eight
+                   one-word ones, so it wrapped where none of the others did
+                   and made the label line two deep on all fifteen rows. The
+                   tooltip is where "over the next 5 matches" belongs. */
                 fdr: {
-                    label: 'Nxt5 FDR', value: fdrValue.toFixed(1),
+                    label: 'FDR', value: fdrValue.toFixed(1),
                     tip: `Average Fixture Difficulty over ${teamName}'s next 5 matches: ${fdrValue.toFixed(1)} (${bandLow(fdrValue, FDR_BANDS)}). 1 is the easiest fixture, 5 the hardest.`
                 }
             };

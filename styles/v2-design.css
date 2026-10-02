@@ -1066,9 +1066,18 @@ html.v2-theme body {
    would make it unreachable without a mouse. */
 /* Deliberately not positioned: the panel anchors to .v2-landing-inner so it
    centres on the bar's own column. Anchored to the trigger it hung off a
-   centred item and ran past the right edge at 1024. */
-.v2-nav-group { display: flex; align-items: center; }
-.v2-nav-label { display: none; }
+   centred item and ran past the right edge at 1024.
+
+   Scoped to the landing bar, which it was not. .v2-nav-group is also every
+   group in the app's sidebar, so this laid those out as flex rows too — and
+   in the drawer that puts a submenu *beside* its parent item instead of
+   under it. The only reason it was not visible everywhere is the 900px rule
+   below, also unscoped, which set them back to block: so the app's drawer
+   was correct on a phone, correct on a desktop rail, and broken in the band
+   between — 901px to 1024px, where the submenu became a 107px column with
+   every label wrapped in half ("Squad / Analysis", "Lineup / Wizard"). */
+.v2-landing-nav .v2-nav-group { display: flex; align-items: center; }
+.v2-landing-nav .v2-nav-label { display: none; }
 
 /* Same box as the links beside it, so the row has one rhythm and the
    trigger's own hover matches theirs. */
@@ -1243,10 +1252,12 @@ html.v2-theme body {
        with `order`, and the three-track grid above has no place for a burger. */
     .v2-landing-inner { display: flex; gap: 10px; padding-inline: 14px; }
     /* In the mobile sheet there is nothing to drop down from, so the panel
-       stops floating and becomes the section it always was. */
-    .v2-nav-group { display: block; width: 100%; }
+       stops floating and becomes the section it always was. Scoped, like its
+       counterpart above: the app sidebar has its own rules for this and does
+       not want the landing bar's. */
+    .v2-landing-nav .v2-nav-group { display: block; width: 100%; }
     .v2-nav-trigger { display: none; }
-    .v2-nav-label {
+    .v2-landing-nav .v2-nav-label {
         display: block; margin-bottom: 10px;
         font-size: 10.5px; font-weight: 700; letter-spacing: .13em;
         text-transform: uppercase; color: var(--text-muted);
@@ -1598,7 +1609,7 @@ select[data-tooltip]:not([data-tooltip=""]), select[title]:not([title=""]),
 .sd-art-stat {
     letter-spacing: 0.08em !important;
 }
-.v2-nav-label {
+.v2-landing-nav .v2-nav-label {
     letter-spacing: 0.13em !important;
 }
 /* === END GENERATED TRACKING === */

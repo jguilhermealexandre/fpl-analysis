@@ -620,6 +620,10 @@
    cards that set the requirement and they do not care what shape the
    pitch is. Above about 620px wide the ratio already gives more than
    this and the floor never applies. */
+/* Superseded for the squad pitch by the container ladder in my-team.css,
+   which sets this floor from the card size rather than the window. Kept for
+   the pitches that are not inside a .pitch-field — the dashboard's and the
+   wizard's — which still take their card size from the window. */
 @media (max-width: 768px) {
     .pitch-grass, .pitch-container, .v2-pitch { min-height: 460px; }
 }
@@ -701,8 +705,14 @@
    The fixture chips come back with the room that frees up. They were hidden
    below 900px, and the next five opponents are one of the two reasons to read
    a squad row at all; a row that has dropped them is answering half the
-   question. */
-@media (max-width: 900px) {
+   question.
+
+   768px, not 900px, and the two have to agree: this is the stacked row's
+   stat line, and the row stacks at 768. Written at 900 it reached a band
+   where the row is still laid out across — so the eight pairs were squeezed
+   into the 7px the horizontal layout had left for them and ran 182px
+   straight down. Rows were 204px tall at 834 against 69px at 940. */
+@media (max-width: 768px) {
     .sq-row-team .swing-badge { display: none; }
     .sq-row-clickable { gap: 7px; }
 
@@ -711,7 +721,11 @@
         flex-wrap: wrap;
         gap: 3px 11px;
     }
+    /* Back to a flex pair here: the strip is a wrapping line of label-value
+       pairs on a phone, not two shared grid rows, so .sq-stat has to stop
+       being a grid before flex-direction means anything to it. */
     .sq-stat {
+        display: flex;
         flex-direction: row;
         align-items: baseline;
         gap: 4px;
@@ -762,6 +776,53 @@
         flex-wrap: wrap;
     }
     .lo-card-side, .ts-side { min-width: 0; flex: 1 1 44%; }
+}
+
+/* And the squad row between the two: wide enough to stay a row, too narrow
+   to hold everything one.
+
+   Measured, because the numbers are the whole argument. The row's fixed
+   costs are the compare box, the four action buttons and the padding
+   between them — 202px before anything you read. Inside what is left sit a
+   288px identity block, eight stats and a strip of five fixture chips that
+   is 192px and does not shrink. The stats are the only flexible thing in
+   there, so they absorb every pixel of the shortfall: 50px each at 1440,
+   23px at 1280, 17px at 1024, 1px at 900, and 0px at 834 and at 1025 —
+   where the 232px sidebar rail appears and takes the width back. A stat is
+   a 9px label over a 13px number; the widest label is 37px. From about
+   1300px down, every one of them was overflowing its column into its
+   neighbour's, which is what "the table is completely fucked" looks like:
+   labels and values of different stats printed on top of each other.
+
+   Two changes, in the band where the row is still a row.
+
+   The fixture strip goes. It is the one thing in the row that is said
+   twice — the Nxt5 FDR stat is those same five fixtures as a number, and
+   the chips themselves are the whole of the Fixtures section below. 206px
+   with the gap, which is what the eight stats were short of.
+
+   And the identity block yields before the stats do. It was flex-shrink: 0
+   against stats with a zero basis, so the stats could never claim a pixel
+   back from it however little they had, and every missing pixel came out of
+   the numbers. Now the stats ask for 352px — eight 37px columns and their
+   gaps, 37px being the widest thing any of them has to print ("xGC/90") —
+   and the identity shrinks four times as fast as they do, down to a floor of
+   160px. Which column gives way is a choice, and a truncated name you can
+   still recognise beats a number printed over the one beside it.
+
+   What has to hold is the pitch, not the column: the content is centred, so
+   two neighbours only touch when half of each is more than the distance
+   between their centres. Across the eight, the widest adjacent pair needs
+   34px of pitch. A 26px column with the 8px gap is 34, so that is the floor
+   the numbers above are set to clear — and they clear it from 769px up.
+
+   Above 1365px the row is about 1030px wide and everything fits, chips
+   included. Below 769px it stacks, and the chips come back there because a
+   stacked row gives them a line of their own. */
+@media (min-width: 769px) and (max-width: 1365px) {
+    .sq-row-fixtures { display: none; }
+    .sq-row .sq-row-main { flex: 0 4 288px; min-width: 160px; }
+    .sq-row .sq-row-stats { flex: 1 1 352px; }
 }
 
 

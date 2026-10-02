@@ -887,8 +887,17 @@
     color: #DC2626;
 }
 
+/* Two by two, with the tools on a row of their own.
+   `repeat(2, 1fr) auto` is three columns, and there are five things to place:
+   four figures and the help/settings pair. Auto-placement filled row one with
+   two cards and squeezed the third into the trailing `auto` column at 175px,
+   then put the fourth card under it and stretched the 38px tools button
+   across 285px of row two. One card half the width of the others, and a
+   button pretending to be a fifth figure. */
 @media (max-width: 1100px) {
-    .sq-kpis { grid-template-columns: repeat(2, 1fr) auto; }
+    .sq-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sq-kpi-tools { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
+    .sq-kpi-tool { height: 38px; flex: 0 0 38px; }
 }
 /* Two by two, not four stacked. One column put 700px of summary above the
    pitch — four full-width bars you scroll past to reach the thing the page
@@ -1889,7 +1898,10 @@
 
 /* ===== PITCH: FIELD, MARKINGS, DUGOUT ===== */
 .pitch-field {
-    /* The positioning context for .sq-pitch-controls, which sit in its corner. */
+    /* The positioning context for .sq-pitch-controls, which sit in its corner,
+       and the size the cards on the grass are measured against — see the
+       container ladder further down. */
+    container: pitch / inline-size;
     position: relative;
     border-radius: var(--radius-lg);
     overflow: hidden;
@@ -2132,6 +2144,100 @@
     .pcard-name { font-size: 11px; }
     .pcard-score b { font-size: 14px; }
     .pm-circle { width: 72px; height: 72px; }
+}
+
+/* ===== How big a pitch card is =====
+
+   A card is sized by the pitch it stands on, not by the window, because on
+   this page those two numbers have almost nothing to do with each other. The
+   squad overview puts the pitch in the left column of a two-column grid next
+   to a 280px panel, and the sidebar turns from a drawer into a 232px rail at
+   1025px — so the pitch is 728px wide at a 768px window, 639px at 1024px, and
+   433px at 1025px. One pixel of window gained there costs the pitch 206.
+
+   Sized by the window, the card stayed 118px wide across all of that. Five
+   cards of 118 with their gaps need 626px of pitch, so a back five on a
+   1025px screen was 490px of cards in 431px of grass: the outer two clipped
+   off at the edges of the field, the rest overlapping each other and the
+   action buttons above them. That is the "cards are horrible" of the report,
+   and it was never a tablet problem — 1100px and 1200px were just as bad, and
+   768px was wrong in the other direction, drawing 76px cards on a pitch with
+   room for 118.
+
+   So: a container query on the field itself, and a five-step ladder. Each
+   step is the widest card whose five-across row fits in that much grass, with
+   the face, the type and the padding stepped down with it so the card keeps
+   its proportions rather than becoming the tall thin tile a shrunk-only card
+   turns into. The steps match the sizes the window-based rules already used
+   at 90, 76 and 62, so a phone gets exactly what it got before.
+
+   The top step is written out rather than left to the base rules because the
+   window-based rules are still there for the dugout, whose cards are not on a
+   pitch and size themselves by flex; without it a 728px pitch at a 768px
+   window would draw a 118px card with a phone's 10px name on it. */
+@container pitch (min-width: 626px) {
+    .pitch-field .pcard { width: 118px; padding: 14px 8px 9px; gap: 3px; border-width: 2px; }
+    .pitch-field .pcard .v2-pid-pitch { --v2-pid-face: 38px; --v2-pid-crest: 24px; gap: 6px; }
+    .pitch-field .pcard-name { font-size: 12.5px; }
+    .pitch-field .pcard-fixture { font-size: 10px; }
+    .pitch-field .pcard-score b { font-size: 16px; }
+    .pitch-field .pitch-grass, .pitch-field .pitch-container, .pitch-field .v2-pitch { --pitch-min-h: 583px; }
+}
+
+@container pitch (max-width: 625px) {
+    .pitch-field .pcard { width: 104px; padding: 13px 7px 9px; gap: 3px; border-width: 2px; }
+    .pitch-field .pcard .v2-pid-pitch { --v2-pid-face: 35px; --v2-pid-crest: 22px; gap: 5px; }
+    .pitch-field .pcard-name { font-size: 12px; }
+    .pitch-field .pcard-fixture { font-size: 9.5px; }
+    .pitch-field .pcard-score b { font-size: 15px; }
+    .pitch-field .pitch-grass, .pitch-field .pitch-container, .pitch-field .v2-pitch { --pitch-min-h: 558px; }
+}
+
+@container pitch (max-width: 555px) {
+    .pitch-field .pcard { width: 90px; padding: 13px 6px 8px; gap: 2px; border-width: 2px; }
+    .pitch-field .pcard .v2-pid-pitch { --v2-pid-face: 30px; --v2-pid-crest: 19px; gap: 4px; }
+    .pitch-field .pcard-name { font-size: 11px; }
+    .pitch-field .pcard-fixture { font-size: 9px; }
+    .pitch-field .pcard-score b { font-size: 14px; }
+    .pitch-field .pitch-grass, .pitch-field .pitch-container, .pitch-field .v2-pitch { --pitch-min-h: 513px; }
+}
+
+@container pitch (max-width: 485px) {
+    .pitch-field .pcard { width: 76px; padding: 10px 5px 7px; gap: 2px; border-width: 1.5px; }
+    .pitch-field .pcard .v2-pid-pitch { --v2-pid-face: 30px; --v2-pid-crest: 18px; gap: 3px; }
+    .pitch-field .pcard-name { font-size: 10px; }
+    .pitch-field .pcard-fixture { font-size: 8.5px; }
+    .pitch-field .pcard-score b { font-size: 12px; }
+    .pitch-field .pitch-grass, .pitch-field .pitch-container, .pitch-field .v2-pitch { --pitch-min-h: 479px; }
+}
+
+@container pitch (max-width: 415px) {
+    .pitch-field .pcard { width: 62px; padding: 7px 3px 6px; gap: 1px; border-width: 1.5px; }
+    .pitch-field .pcard .v2-pid-pitch { --v2-pid-face: 24px; --v2-pid-crest: 14px; gap: 2px; }
+    .pitch-field .pcard-name { font-size: 9px; }
+    .pitch-field .pcard-fixture { font-size: 8px; }
+    .pitch-field .pcard-score b { font-size: 11px; }
+    .pitch-field .pitch-row { gap: 3px; }
+    .pitch-field .pitch-grass, .pitch-field .pitch-container, .pitch-field .v2-pitch { --pitch-min-h: 396px; }
+}
+
+/* And how tall the grass has to be, for the same reason and out of the same
+   numbers. The four lines of the team are placed down the field by percentage
+   — 14, 38, 62, 86 — so the distance between them is 24 per cent of its
+   height, and a card needs that distance to be taller than it is. It was not,
+   at any width on this page: 120px of card in 78px of gap at 1025px, and
+   still 134px in 120px at 1300px, so every line of the team was drawn through
+   the one in front of it. The field's 16:11.5 ratio only reaches the card's
+   requirement past about 1400px, and the phone had a flat min-height bolted
+   on to cover its own end of that.
+
+   One floor per card size instead, (card height + 6) / 0.24, carried on the
+   same ladder. The 46px on a touch screen is the row of action buttons that
+   stands above every card there — on a mouse it only appears on hover, where
+   the card it would overlap is the one you are already pointing at. */
+.pitch-field .pitch-grass, .pitch-field .pitch-container, .pitch-field .v2-pitch { min-height: var(--pitch-min-h, 0px); }
+@media (pointer: coarse) {
+    .pitch-field .pitch-grass, .pitch-field .pitch-container, .pitch-field .v2-pitch { min-height: calc(var(--pitch-min-h, 0px) + 46px); }
 }
 
 /* Market Tabs */
@@ -3441,15 +3547,29 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
+    grid-template-rows: auto auto;
     gap: 8px;
     flex: 1;
     min-width: 0;
 }
 
+/* Two shared rows, labels in one and values in the other, so the numbers sit
+   on one line across the whole strip. Each stat used to be its own little
+   column that centred whatever it held, which is fine until a label wraps:
+   "Nxt5 FDR" goes to two lines and pushes its 3.0 half a line below every
+   other value in the row. A table whose figures do not line up is doing the
+   one thing a table is for badly.
+
+   Subgrid rather than display: contents on .sq-stat, which would align them
+   just as well but would take the box away — and the box is what carries the
+   tooltip and what the hover state is drawn on. Browsers without subgrid
+   ignore the line and get what they get today. */
 .sq-stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    display: grid;
+    grid-row: span 2;
+    grid-template-rows: subgrid;
+    justify-items: center;
+    align-content: center;
     min-width: 0;
 }
 
