@@ -98,7 +98,7 @@
 /* ===== PLAYER GRID ===== */
 .players-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
     gap: 12px;
 }
 
@@ -5376,9 +5376,15 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .opt-crosslink strong { color: var(--text-secondary); }
 .lw-cap-actions { display: flex; gap: 4px; margin-top: 4px; }
 
+/* minmax(0, 1fr), not 1fr. A 1fr track is min-width:auto underneath, so it
+   cannot shrink below its widest child — and the child here is the pitch,
+   which has a floor of its own. At 360px the single column came out 338px
+   wide inside a 282px panel, pushing the Lineup Wizard 17px past the edge of
+   the screen and taking the whole page sideways with it. Same fault the
+   Transfers tab's .tm-columns had. */
 @media (max-width: 1100px) {
-    .lw-cc-body { grid-template-columns: 1fr; }
-    .lw-cap-grid { grid-template-columns: 1fr; }
+    .lw-cc-body { grid-template-columns: minmax(0, 1fr); }
+    .lw-cap-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* .rc-btn is flex:1 for the paired buttons on a replacement card; used alone in

@@ -450,15 +450,28 @@ html.v2-theme body {
    inflate them visually, an ::after overlay extends the hit area beyond the
    painted box — the control looks identical and the thumb gets a real target.
    Pointer-coarse only, so mouse layouts are untouched. */
+/* Found by tools/audit-mobile.mjs: controls whose hit area is under the 32px
+   a thumb needs. The logo is the way home from every page in the site and was
+   27px tall; the star is the most-pressed thing on a list of players, at 22px.
+   Both are small on purpose — they are marks, not buttons — so the mark stays
+   the size it is and the target grows behind it. */
 @media (pointer: coarse), (max-width: 767px) {
     .nav-tid-change,
     .v2-theme-switch,
     .footer-mail,
+    .v2-sidebar-logo,
+    .v2-landing-logo,
+    .shortlist-star,
+    .shortlist-star-card,
     .footer-links a { position: relative; }
 
     .nav-tid-change::after,
     .v2-theme-switch::after,
     .footer-mail::after,
+    .v2-sidebar-logo::after,
+    .v2-landing-logo::after,
+    .shortlist-star::after,
+    .shortlist-star-card::after,
     .footer-links a::after {
         content: ''; position: absolute; left: 50%; top: 50%;
         transform: translate(-50%, -50%);

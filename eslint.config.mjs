@@ -1937,10 +1937,16 @@ export default [
        localStorage while the file around it is Node. */
     {
         files: ['tools/pl-news-browser.mjs', 'tools/fetch-pl-injuries.mjs', 'tools/capture-lp-shots.mjs',
-            'tools/make-og-cards.mjs'],
+            'tools/make-og-cards.mjs', 'tools/audit-mobile.mjs'],
         languageOptions: {
             ecmaVersion: 2022, sourceType: 'module',
-            globals: { ...globals.node, document: 'readonly', window: 'readonly', localStorage: 'readonly' }
+            globals: {
+                ...globals.node,
+                document: 'readonly', window: 'readonly', localStorage: 'readonly',
+                /* audit-mobile.mjs measures boxes in the page, so its evaluated
+                   half reaches for the geometry globals too. */
+                getComputedStyle: 'readonly', innerHeight: 'readonly', innerWidth: 'readonly'
+            }
         }
     },
     /* Cloudflare Pages Functions — the paywall's edge middleware and the pure

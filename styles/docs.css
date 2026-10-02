@@ -152,6 +152,21 @@
     margin: var(--space-4) 0; color: var(--text-primary);
     overflow-x: auto; overflow-y: hidden; white-space: pre;
 }
+/* A formula is read, not swiped. white-space: pre keeps an equation on one
+   line, which is right where there is a line to keep it on — and on a phone
+   there is not: "p_start = w × (starts / games) + (1 − w) × minutes_signal"
+   runs 131px past the edge of its own box, so the half that says what the
+   answer is sits off-screen behind a horizontal scroll most people will
+   never find. It wraps instead, and the indent says the second line belongs
+   to the first. */
+@media (max-width: 640px) {
+    .doc-formula {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        padding-left: calc(var(--space-5) + 14px);
+        text-indent: -14px;
+    }
+}
 
 /* ---- data table ---- */
 .doc-table-wrap { overflow-x: auto; overflow-y: hidden; margin: var(--space-4) 0; }

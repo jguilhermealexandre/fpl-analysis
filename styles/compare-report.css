@@ -17,6 +17,13 @@
     cursor: pointer;
     accent-color: var(--color-success);
 }
+/* A checkbox is a replaced element, so the ::after that grows every other
+   small control on this site to a 44px target never paints on it — the box
+   itself has to be bigger. 18px is a mark you aim at; 26px is one you can
+   hit while scrolling a list of fifteen players with a thumb. */
+@media (pointer: coarse), (max-width: 767px) {
+    .compare-checkbox { width: 26px; height: 26px; }
+}
 .compare-checkbox:disabled {
     opacity: 0.3;
     cursor: not-allowed;
@@ -501,7 +508,7 @@
 /* — Player Profile Cards — */
 .report-profiles {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
     gap: 16px;
     margin-bottom: 24px;
 }

@@ -1688,6 +1688,13 @@ html.v2-shell-app .footer-mail .icon {
     background: rgba(15, 23, 42, 0.34);
     opacity: 0; visibility: hidden;
     transition: opacity 200ms ease, visibility 200ms ease;
+    /* The panel inside is parked off the right edge with translateX(100%),
+       which is a shape that only stays off-screen if something clips it.
+       my-team.css clips this overlay; this rule replaced that one without
+       carrying it over, so on a 360px screen the parked panel reached 17px
+       past the edge of the document and took the page sideways with it —
+       on every screen that has one of these, closed. */
+    overflow: hidden;
 }
 .detail-overlay.show { opacity: 1; visibility: visible; }
 
