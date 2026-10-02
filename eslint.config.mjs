@@ -1835,6 +1835,7 @@ export default [
                 v2IdentityHTML: 'writable',
                 v2InitNavPanels: 'writable',
                 v2Initials: 'writable',
+                v2IsAppShell: 'writable',
                 v2LogOut: 'writable',
                 v2MarkThemeRow: 'writable',
                 v2MenuCloseAll: 'writable',

@@ -153,12 +153,58 @@ test('the landing bar has one way in, and it is the ID page', () => {
     /* The bar used to carry the Team ID field itself, with a fallback button
        for narrow screens — two ways in, three things to keep in step, and the
        page that explains where to find the number was the third. It is a link
-       now, and this fails if the field comes back without the rest of it. */
+       now, and this fails if the field comes back without the rest of it.
+
+       Matched on the two attributes separately rather than as one literal:
+       the served markup is what matters, not the order an editor left them
+       in, and the previous spelling of this broke when the anchor was given
+       an id so the shell could find it. */
     const nav = fs.readFileSync(path.join(ROOT, 'landing-nav.html'), 'utf8');
-    assert.match(nav, /class="v2-landing-login" href="\/dashboard\/login"/,
-        'the bar should link to the ID page');
+    const bar = nav.match(/<a\b[^>]*class="v2-landing-login"[^>]*>/);
+    assert.ok(bar, 'the bar should still have its way in');
+    assert.match(bar[0], /href="\/dashboard\/login"/, 'the bar should link to the ID page');
     assert.ok(!/v2-landing-id|v2LandingIdInput/.test(nav),
         'the Team ID field should not be back in the bar');
+});
+
+test('the way in becomes a way back for somebody already signed in', () => {
+    /* These pages are reachable from inside the app — the Features menu, the
+       footer and the logo all lead to them — so a manager with a saved Team ID
+       reads "Log in" on a site they are already logged in to, and the bar's
+       only route back into the product is a dead end that asks for a number
+       they entered weeks ago. */
+    const nav = fs.readFileSync(path.join(ROOT, 'landing-nav.html'), 'utf8');
+    const bar = nav.match(/<a\b[^>]*class="v2-landing-login"[^>]*>/);
+    assert.match(bar[0], /id="v2LandingWayIn"/, 'the shell has to be able to find it');
+
+    const sidebar = fs.readFileSync(path.join(ROOT, 'scripts/sidebar-nav.js'), 'utf8');
+    const rewrite = sidebar.slice(sidebar.indexOf('v2LandingWayIn'));
+    assert.match(rewrite, /v2LandingWayIn/);
+    assert.match(rewrite, /'\/dashboard\/'/, 'and point it at the dashboard');
+    assert.ok(/if \(v2HasTeam\(\)\)/.test(sidebar),
+        'only for somebody who has a team saved');
+});
+
+test('the shell a page gets is declared, not inferred from storage', () => {
+    /* Whether somebody is signed in is not the same question as whether the
+       page they are on is part of the app. Deciding the chrome from the Team
+       ID alone put the dashboard's rail down the side of every marketing page
+       for anybody who already used the product — invisible when signed out,
+       which is how those pages get looked at. */
+    const sidebar = fs.readFileSync(path.join(ROOT, 'scripts/sidebar-nav.js'), 'utf8');
+    assert.match(sidebar, /dataset\.shell === 'app'/,
+        'the shell should be read from the page, not from localStorage');
+
+    const pick = sidebar.slice(sidebar.indexOf('function loadSidebarNav'),
+        sidebar.indexOf('function loadSidebarNav') + 240);
+    assert.ok(!/v2HasTeam\(\)/.test(pick),
+        'loadSidebarNav should not ask storage which chrome to draw');
+
+    /* index.html is the one page that is genuinely both, and it says so in
+       the same script that decides which of its two selves to paint. */
+    const index = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    assert.match(index, /data-shell="marketing"/, 'it ships as the marketing page');
+    assert.match(index, /dataset\.shell = 'app'/, 'and becomes the app with a team saved');
 });
 
 test('the bar and the gate send people to the same page', () => {

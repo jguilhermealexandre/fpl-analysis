@@ -7533,6 +7533,26 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     background: var(--border-emphasis, var(--border-default));
 }
 
+/* The rail on a phone. Four steps with "STEP 3 / Compare" under each other
+   need 493px of a 348px bar, so the last step and a half ran off the end —
+   present, scrollable, and invisible, which is the one thing a progress
+   indicator must not be.
+
+   Only the step you are on is named. The other three keep their marks, so
+   the shape of the journey and how far along it you are both still read at
+   a glance; what you are doing right now is the only one that needs a word
+   on it, and it takes the room the other three gave up. */
+@media (max-width: 640px) {
+    .tw-rail { gap: 2px; padding: 7px; }
+    .tw-rail-step { flex: 0 0 auto; gap: 7px; padding: 6px; }
+    .tw-rail-step .tw-rail-text { display: none; }
+    .tw-rail-step.is-here { flex: 1 1 auto; min-width: 0; }
+    .tw-rail-step.is-here .tw-rail-text { display: flex; }
+    .tw-rail-link { flex: 0 0 8px; }
+    .tw-rail-mark { width: 28px; height: 28px; }
+    .tw-rail-step.is-here::after { left: 6px; right: 6px; bottom: -7px; }
+}
+
 /* The step's own panel, and the way on from it. */
 .tw-step-panel .twc-panel-body { padding-top: 2px; }
 
@@ -7700,8 +7720,28 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tw-container[data-tw-step="2"] #twMarketPane { display: block; }
 .tw-container:not([data-tw-step="2"]) #twSquadPane { display: none; }
 /* Four cards across the width they are given, rather than two columns of
-   220px floating in the middle of an empty row. */
-.tw-container[data-tw-step="1"] .tw-plans { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+   220px floating in the middle of an empty row.
+
+   Bounded, which it was not: written open-ended it also applied on a phone,
+   where four columns of a 350px panel are 75px each — a card whose contents
+   need 126px, so every line inside it broke after one word and the page
+   itself scrolled sideways. The base rule below the breakpoints is
+   auto-fit/minmax, which already does the right thing; these only override
+   it where four or two is better than what auto-fit would pick. */
+@media (min-width: 1280px) {
+    .tw-container[data-tw-step="1"] .tw-plans { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+/* Two, not three and an orphan: auto-fit fits three 220px tracks across most
+   of this band and leaves the fourth card alone on a row of its own. */
+@media (min-width: 560px) and (max-width: 1279.98px) {
+    .tw-container[data-tw-step="1"] .tw-plans { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 559.98px) {
+    .tw-container[data-tw-step="1"] .tw-plans { grid-template-columns: minmax(0, 1fr); }
+    /* The spacer that levels four cards in a row is dead weight in a column
+       of one, where each card is as tall as its own sentence. */
+    .tw-plan-what { min-height: 0; }
+}
 /* Both of these say who is being replaced, and the card on the left says it
    with a face on it. Two more copies in text above and beside it is three. */
 .tw-container[data-tw-step="2"] .twc-plan { display: none; }

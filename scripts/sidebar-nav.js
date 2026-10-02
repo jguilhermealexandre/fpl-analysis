@@ -17,18 +17,34 @@ try {
 
    The sidebar is the signed-in one: every item in it leads to a page about
    a squad, and without a saved Team ID every one of those pages opens by
-   asking for it. A first-time visitor was still shown the whole rail. So
-   there are two shells now, and this is the question that picks between
-   them — the same question index.html already answers before first paint
-   to decide whether to draw the landing page or the dashboard. */
+   asking for it.
+
+   It used to be chosen from that alone — is there a Team ID in storage —
+   which answered the wrong question. Whether somebody is signed in is not
+   the same as whether the page they are looking at is part of the app, and
+   twenty of these twenty-seven pages are not: the eight feature pages,
+   pricing, the FAQ, how-it-works, methodology, accuracy, contact, privacy,
+   terms, the changelog and the 404. A signed-in manager opening any of them
+   got the dashboard's rail down the side of a marketing page, with the top
+   nav those pages are designed around nowhere on screen.
+
+   So each page says which it is, on <html>, and this reads only that. A page
+   that says nothing gets the marketing shell, which is the safe default: its
+   top nav works everywhere, where the rail assumes a squad. index.html is the
+   one page that is genuinely both, and it sets the attribute in the same
+   inline script that already decides which of its two selves to paint. */
 function v2HasTeam() {
     try { return !!localStorage.getItem('fpl_team_id'); } catch (e) { return false; }
 }
 
+function v2IsAppShell() {
+    return document.documentElement.dataset.shell === 'app';
+}
+
 function loadSidebarNav() {
-    if (!v2HasTeam()) return loadLandingNav();
+    if (!v2IsAppShell()) return loadLandingNav();
     document.documentElement.classList.add('v2-shell-app');
-    return fetch('/sidebar-nav.html?v=387')
+    return fetch('/sidebar-nav.html?v=388')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -144,7 +160,7 @@ async function revealAdminLink() {
 /* The landing shell: a top bar rather than a rail. */
 function loadLandingNav() {
     document.documentElement.classList.add('v2-shell-landing');
-    return fetch('/landing-nav.html?v=387')
+    return fetch('/landing-nav.html?v=388')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -153,6 +169,18 @@ function loadLandingNav() {
             if (page === '' || page === 'index') page = 'index.html';
             if (!page.endsWith('.html')) page += '.html';
             document.querySelector(`.v2-landing-links a[data-page="${page}"]`)?.classList.add('active');
+
+            /* "Log in" is wrong for somebody who already is. These pages are
+               reachable from inside the app — the Features menu, the footer
+               and the logo all lead to them — so for a manager with a saved
+               Team ID this button is the way back, not the way in. */
+            if (v2HasTeam()) {
+                const wayIn = document.getElementById('v2LandingWayIn');
+                if (wayIn) {
+                    wayIn.href = '/dashboard/';
+                    wayIn.textContent = 'My dashboard';
+                }
+            }
 
             if (window.lucide) lucide.createIcons();
             if (typeof v2ApplySettings === 'function') v2ApplySettings();
@@ -184,6 +212,9 @@ function loadLandingNav() {
    dashboard with no sidebar, and only a reload put it right. */
 function v2EnterAppShell() {
     if (document.querySelector('.v2-sidebar')) return Promise.resolve();
+    /* loadSidebarNav() reads the declaration rather than storage now, so the
+       page has to say it has become the app before asking for its shell. */
+    document.documentElement.dataset.shell = 'app';
     document.documentElement.classList.remove('v2-shell-landing');
     closeLandingNav();
     document.getElementById('v2LandingNav')?.remove();
