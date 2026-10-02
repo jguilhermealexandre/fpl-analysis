@@ -4084,7 +4084,7 @@
                     <button class="tm-pos-btn pos-def ${tmPosFilter === '2' ? 'active' : ''}" onclick="tmFilterPos('2')">DEF</button>
                     <button class="tm-pos-btn pos-mid ${tmPosFilter === '3' ? 'active' : ''}" onclick="tmFilterPos('3')">MID</button>
                     <button class="tm-pos-btn pos-fwd ${tmPosFilter === '4' ? 'active' : ''}" onclick="tmFilterPos('4')">FWD</button>
-                    <span style="width:1px;background:var(--border-default);margin:2px 4px;"></span>
+                    <span class="tm-filter-sep" aria-hidden="true"></span>
                     <button class="tm-pos-btn ${tmPriceFilter === 'premium' ? 'active' : ''}" onclick="tmFilterPrice('premium')">Premium £10m+</button>
                     <button class="tm-pos-btn ${tmPriceFilter === 'budget' ? 'active' : ''}" onclick="tmFilterPrice('budget')">Budget &lt;£5m</button>
                 </div>
@@ -4175,7 +4175,8 @@
                 <div class="tm-tb-col">
                     <div class="tm-tb-col-head ${cls}">
                         <span class="tm-tb-col-title">${icon} ${escHTML(title)}</span>
-                        <span class="tm-tb-col-total">${total.toLocaleString()}<em>total</em></span>
+                        <span class="tm-tb-col-total"
+                            data-tooltip="Every transfer is one player in and one out, so this is the number of transfers made ${season ? 'this season' : 'ahead of this deadline'} across every FPL manager — your own squad included.">${total.toLocaleString()}<em>total</em></span>
                     </div>
                     <div class="tm-tb-rows">
                         ${list.map((p, i) => renderTmTransferRow(p, i + 1, cls, valueOf(p), otherOf(p), topCount, squadIds, season)).join('')}
@@ -4200,10 +4201,11 @@
                         <button class="tm-tb-scope-btn ${season ? 'active' : ''}" onclick="tmSetTransferScope('season')">Season</button>
                     </div>
                 </div>
-                <div class="tm-watch-note">
-                    <strong>${totalIn.toLocaleString()}</strong> transfers made ${season ? 'so far this season' : 'ahead of this deadline'} across every FPL manager.
-                    Counts are the whole game, your own squad included.
-                </div>
+                <!-- The sentence that used to sit here — "7,139,373 transfers made
+                     ahead of this deadline across every FPL manager. Counts are the
+                     whole game, your own squad included." — printed the same figure
+                     the two column totals print, in a paragraph, above the two
+                     column totals. It is the tooltip on them now. -->
                 <div class="tm-tb-cols">
                     ${column('Most bought', v2Icon('inbox'), 'in', bought, totalIn, inOf, outOf)}
                     ${column('Most sold', v2Icon('outbox'), 'out', sold, totalOut, outOf, inOf)}

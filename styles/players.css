@@ -2428,7 +2428,7 @@
 .rising-signals {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 4px;
 }
 /* Stacked, not a row.
  *
@@ -2443,12 +2443,28 @@
  * the card's full width because nothing is beside it. */
 .rising-signal {
     display: grid;
-    gap: 4px;
-    padding: 7px 9px;
+    /* The bar shares the label's line rather than taking one of its own.
+       It used to be a third row because an earlier version had icon, label,
+       bar and value all competing for one line — the label wrapped on some
+       cards and not others and the green detail ran off the end. That was
+       the value's fault, not the bar's: the bar is a fixed 60px and the
+       label has a flexible column beside it, so these two sit together
+       without either pushing the other around. The detail still gets the
+       full width on its own row, which is what it needed.
+
+       Six signals a card, so nine pixels off each is a card that is 55px
+       shorter for free. */
+    grid-template-columns: minmax(0, 1fr) 60px;
+    align-items: center;
+    gap: 3px 9px;
+    padding: 6px 9px;
     background: var(--surface-2);
     border-radius: 7px;
     font-size: 11px;
 }
+.rising-signal-head { grid-column: 1; grid-row: 1; }
+.rising-signal-bar { grid-column: 2; grid-row: 1; }
+.rising-signal-value { grid-column: 1 / -1; grid-row: 2; }
 .rising-signal-head {
     display: flex;
     align-items: center;
@@ -2481,7 +2497,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 .rising-meta-count {
     font-size: 11px;
