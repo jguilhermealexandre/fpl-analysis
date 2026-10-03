@@ -2350,7 +2350,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=402')
+    fetch('/footer.html?v=403')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
@@ -3230,3 +3230,103 @@ function initTocSpy(opts) {
         });
     }, true);
 })();
+
+/* ===== ON-DEMAND TAB SCRIPTS =====
+
+   My Team ships six tabs and 1.2 MB of script, and one of those tabs is open
+   when the page draws. The rest are a click most visits never make — but their
+   files are still fetched, decompressed, parsed and executed before the squad
+   on the default tab can appear, because a classic <script src> blocks on all
+   three. Moving a tab's file to the click costs that click one download and
+   buys every visit the parse.
+
+   Which files belong to which tab is named in a JSON manifest on the page
+   rather than written down here, the same arrangement index.html uses for its
+   dashboard-only scripts and for the same three reasons: `npm run stamp`
+   rewrites the ?v= in markup and would never reach a literal in this file,
+   tools/page-scripts.mjs reads those manifests so check:globals still counts
+   these files as part of the page's one global scope, and a page that has no
+   such tabs says so by having no manifest.
+
+   The one subtlety is order. These files share a global scope, so execution
+   order is correctness rather than taste, and a script element created in
+   script is async by default — which lets two of them run in either order.
+   async = false puts them back in the browser's in-order list while still
+   letting them download in parallel. */
+let v2TabGroups = null;
+
+function v2TabManifest() {
+    if (v2TabGroups) return v2TabGroups;
+    v2TabGroups = {};
+    try {
+        const el = document.getElementById('v2TabScripts');
+        if (el) v2TabGroups = JSON.parse(el.textContent);
+    } catch (e) { /* the list is part of the document; if it is gone, so is the page */ }
+    return v2TabGroups;
+}
+
+const v2ScriptCache = {};
+
+function v2LoadScript(src) {
+    if (v2ScriptCache[src]) return v2ScriptCache[src];
+    v2ScriptCache[src] = new Promise(function (resolve, reject) {
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = false;
+        s.onload = function () { resolve(src); };
+        s.onerror = function () {
+            /* Dropped, so a retry is a fresh request rather than the same
+               rejected promise handed back for the life of the page. Unlike
+               the dashboard's loader, this one rejects: a tab whose only
+               script failed has nothing to draw, and saying so beats an empty
+               panel that looks like a tab with no content. */
+            delete v2ScriptCache[src];
+            reject(new Error('could not load ' + src));
+        };
+        document.head.appendChild(s);
+    });
+    return v2ScriptCache[src];
+}
+
+/* Appended in one pass: every file starts downloading at once, and async =
+   false still runs them in the order the manifest gives. */
+function v2LoadTabGroup(group) {
+    const list = v2TabManifest()[group] || [];
+    return Promise.all(list.map(v2LoadScript));
+}
+
+/* Each key is attempted once. A second click while the first is still in
+   flight joins it rather than running the renderer twice; a failure clears the
+   key so the next click tries again. The key is the renderer, not the group —
+   two tabs can share one group of files and still each need drawing. */
+const v2TabPending = {};
+
+function v2RunWithScripts(key, group, run, host) {
+    if (v2TabPending[key]) return v2TabPending[key];
+
+    /* Only while the files are still outstanding. On a warm cache the promise
+       settles within the same frame, and a spinner that appears and vanishes
+       inside one frame reads as a flicker rather than as progress. */
+    const list = v2TabManifest()[group] || [];
+    const cold = list.some(function (src) { return !v2ScriptCache[src]; });
+    if (cold && host && !host.innerHTML.trim()) {
+        host.innerHTML = '<div class="v2-tab-loading"><div class="spinner spinner-sm"></div> Loading…</div>';
+    }
+
+    v2TabPending[key] = v2LoadTabGroup(group).then(function () {
+        if (host) {
+            const ph = host.querySelector('.v2-tab-loading');
+            if (ph) ph.remove();
+        }
+        run();
+    }).catch(function (err) {
+        delete v2TabPending[key];
+        if (host) {
+            host.innerHTML = '<div class="v2-tab-loading">This tab could not load. '
+                + 'Check your connection and open it again.</div>';
+        }
+        if (window.reportError) window.reportError(err, 'v2RunWithScripts:' + key);
+        else console.error(err);
+    });
+    return v2TabPending[key];
+}

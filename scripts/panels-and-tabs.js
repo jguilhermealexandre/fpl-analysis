@@ -704,7 +704,13 @@
             } else if (tab === 'transfer') {
                 transferDisplay.style.display = '';
                 tabTransfer.classList.add('active');
-                if (!transferRendered) renderTransferWizard();
+                /* The wizard opens on the current draft, so it needs the
+                   planner's state even though it never draws the planner —
+                   see renderTransferWizard(). */
+                if (!transferRendered) {
+                    v2RunWithScripts('mt-transfer', 'draft-planner',
+                        function () { renderTransferWizard(); }, transferDisplay);
+                }
             } else if (tab === 'lineup') {
                 lineupDisplay.style.display = '';
                 tabLineup.classList.add('active');
@@ -712,7 +718,18 @@
             } else if (tab === 'draft') {
                 draftDisplay.style.display = '';
                 tabDraft.classList.add('active');
-                if (!draftTabRendered) renderSquadPlanner();
+                /* draft-planner.js is 100 KB minified and only this tab and
+                   the wizard above read it, so it arrives on the click
+                   instead of blocking the squad the page opens on. The two
+                   keys are per-renderer, not per-file: whichever tab is
+                   opened second shares the one request but still draws. */
+                /* Wrapped, not passed: naming renderSquadPlanner here would
+                   read the global while its file is still in flight, which is
+                   a ReferenceError before the loader is even called. */
+                if (!draftTabRendered) {
+                    v2RunWithScripts('mt-draft', 'draft-planner',
+                        function () { renderSquadPlanner(); }, draftDisplay);
+                }
             }
         }
 
