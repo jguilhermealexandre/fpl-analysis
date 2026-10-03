@@ -454,15 +454,23 @@ html.v2-theme body {
    a thumb needs. The logo is the way home from every page in the site and was
    27px tall; the star is the most-pressed thing on a list of players, at 22px.
    Both are small on purpose — they are marks, not buttons — so the mark stays
-   the size it is and the target grows behind it. */
+   the size it is and the target grows behind it.
+
+   .shortlist-star-card is excluded from the position: relative below, and
+   the exception is the whole point. The card variant carries both classes
+   and is already position: absolute, pinned to the corner of a player card
+   — which is its own containing block, so the pad works against it exactly
+   as well. Made relative it went back into the flow: a full-width band
+   across the top of every card with the star drawn at left: -10px, outside
+   the card and clipped. On a phone, which is the only place this rule
+   applies, the star was invisible on every card on the site. */
 @media (pointer: coarse), (max-width: 767px) {
     .nav-tid-change,
     .v2-theme-switch,
     .footer-mail,
     .v2-sidebar-logo,
     .v2-landing-logo,
-    .shortlist-star,
-    .shortlist-star-card,
+    .shortlist-star:not(.shortlist-star-card),
     .footer-links a { position: relative; }
 
     .nav-tid-change::after,

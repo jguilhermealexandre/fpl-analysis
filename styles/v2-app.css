@@ -1221,9 +1221,10 @@ html.v2-shell-app .footer-mail .icon {
 
 @media (max-width: 520px) {
     .pdm-hero.is-compact { min-height: 80px; }
-    .pdm-hero.is-compact .pdm-hero-photo { height: 80px; width: 66px; }
     .pdm-hero.is-compact .pdm-hero-face { height: 80px; max-width: 66px; }
     .pdm-hero.is-compact .pdm-hero-last { font-size: 17px; }
+
+    .pdm-hero.is-compact .pdm-hero-photo { height: 80px; width: 66px; }
 }
 
 /* ----- "How to use this page", in the heading -----
@@ -1971,7 +1972,28 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
     flex-wrap: wrap; gap: 8px 10px;
     padding: 12px 14px; border-bottom: 1px solid var(--border-subtle);
     font-size: 12.5px; font-weight: 700; color: var(--text-primary);
+    /* The panel scrolls inside itself and can be a screen and a half of
+       events; the way out stays on screen rather than at the top of it. */
+    position: sticky; top: 0; z-index: 1;
+    background: var(--surface-1);
 }
+/* The way out. The title takes the space, the alerts chip and the close
+   button sit at the end of the row together. */
+.nt-head-l { margin-right: auto; }
+.nt-close {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px;
+    padding: 0;
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 19px; line-height: 1;
+    cursor: pointer;
+    transition: color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.nt-close:hover { color: var(--text-primary); border-color: var(--border-emphasis); background: var(--surface-2); }
+
 /* Closed it is a chip beside the title; opened it takes the row under
    it, which is what flex-wrap on the header is for. */
 .nt-head-alerts { display: inline-flex; }

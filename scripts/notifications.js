@@ -396,9 +396,16 @@
            and cannot be asked again — so what the alerts cover is on hover and
            on focus rather than spent as a paragraph nobody reads. */
         function ntHeadHTML() {
+            /* The close button is not decoration. On a phone this panel is a
+               full-height sheet that covers the drawer it was opened from, so
+               the bell that toggles it is behind it — there was no way out
+               except the browser's own back gesture, which leaves the page.
+               On a desktop it is a dropdown and clicking away still closes
+               it; the button costs that case nothing and says so plainly. */
             return `<div class="nt-head">
                 <span class="nt-head-l">Activity</span>
                 <span class="nt-head-alerts" id="pnToggle"></span>
+                <button type="button" class="nt-close" onclick="ntTogglePanel()" aria-label="Close notifications">&times;</button>
             </div>`;
         }
 

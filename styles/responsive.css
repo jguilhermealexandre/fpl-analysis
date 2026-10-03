@@ -438,11 +438,17 @@
     .compact-mode .data-table tbody { display: block; width: 100%; }
     .compact-mode .data-table thead { display: none; }
 
+    /* Three columns, not a wrapping line. Flex-wrapped, the pairs broke
+       wherever they happened to run out of room — four on the first line and
+       one adrift on the second, in a different place on every card because
+       every player's figures are a different width. On a grid they line up
+       down the list, which is the one thing a table of six hundred players
+       is read for. Identity and the fixture strip take the full width. */
     .compact-mode .data-table tbody tr {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         align-items: baseline;
-        gap: 3px 10px;
+        gap: 4px 8px;
         position: relative;
         margin-bottom: 6px;
         padding: 8px 10px 7px 24px;
@@ -487,12 +493,12 @@
        strip rather than as a value. */
     .compact-mode .data-table tbody td.col-player,
     .compact-mode .data-table tbody td.col-fixtures {
-        flex: 0 0 100%;
+        grid-column: 1 / -1;
         padding: 0;
     }
     .compact-mode .data-table tbody td.col-player::before,
     .compact-mode .data-table tbody td.col-fixtures::before { content: none; }
-    .compact-mode .data-table tbody td.col-fixtures { padding-right: 168px; }
+    .compact-mode .data-table tbody td.col-fixtures { margin-top: 2px; }
 
     /* The row's own edge, not the name cell's — it runs the whole card. */
     .compact-mode .data-table tbody tr.pl-row-edge::before {
@@ -519,19 +525,45 @@
     .compact-mode .pcell.v2-pos-edge { padding-left: 0; }
     .compact-mode .pcell.v2-pos-edge::before { display: none; }
 
-    /* Compare and Swap in the corner the fixture strip leaves for them, out
-       of the flow, the way the squad row's buttons sit. */
+    /* Compare and Swap at the top of the row, as two marks rather than two
+       labelled buttons. Spelled out they were 160px of green text repeated
+       on every card, which on a list of six hundred reads as the loudest
+       thing on the page; and down at the bottom they were squeezed against
+       the fixture chips. font-size: 0 is what hides the words without
+       touching the markup — the label survives on the title attribute,
+       which is where the accessible name was already coming from. */
     .compact-mode .data-table tbody td.col-actions {
         position: absolute;
-        right: 10px;
-        bottom: 7px;
+        right: 8px;
+        top: 7px;
         padding: 0;
     }
-    .compact-mode .row-actions { opacity: 1; gap: 5px; }
+    .compact-mode .data-table tbody td.col-actions { grid-column: 1; grid-row: 1; }
+    .compact-mode .row-actions { opacity: 1; gap: 4px; }
+    .compact-mode .row-action {
+        font-size: 0;
+        width: 30px; height: 30px;
+        padding: 0;
+        justify-content: center;
+    }
+    .compact-mode .row-action svg { width: 15px; height: 15px; }
 
-    .compact-mode .pcell { width: 100%; }
+    /* 17px, like the squad row's, and dimmed until it is used. Unticked it
+       is an empty square, and at 26 it was the widest thing on the name
+       line. */
+    .compact-mode .pcell .compare-checkbox { width: 17px; height: 17px; }
+    .compact-mode .pcell .compare-checkbox:not(:checked) { opacity: .45; }
+
+    /* The club, once. v2IdentityHTML already prints the crest with the
+       club's three letters beside the portrait, and the cell printed them
+       again on a line of its own under the name — "T EVE Tarkowski / EVE" —
+       which cost every card a line to say nothing new. */
+    .compact-mode .pcell-sub { display: none; }
+
+    .compact-mode .pcell { width: 100%; padding-right: 72px; }
     .compact-mode .pcell-name { font-size: 13px; white-space: normal; }
     .compact-mode .data-table tbody td { font-size: 12.5px; }
+    .compact-mode .data-table tbody tr { gap: 2px 8px; }
 }
 
 
@@ -1499,6 +1531,38 @@
         width: 118px;
     }
     .pdm-hero-face { height: 100%; max-width: 118px; }
+
+    /* The same for the small hero the player cards carry, which the rule
+       above reaches but could not finish. .pdm-hero.is-compact sets the
+       portrait a fixed height, and a fixed height beats align-self: stretch:
+       the photo spanned both rows as asked and then sat at the top of them,
+       80px tall in a 107px hero, floating 27px above the edge it is drawn to
+       stand on. On Recommendations, Rising Form, Purple Patch and Routes to
+       Points alike — one hero, one fault, four tabs.
+
+       Height auto and the image at 100% of it, so the portrait is as tall as
+       whatever the text beside it needs and its feet are on the floor. */
+    .pdm-hero.is-compact .pdm-hero-photo { height: auto; align-self: stretch; }
+    .pdm-hero.is-compact .pdm-hero-face {
+        height: 100%;
+        object-fit: contain;
+        object-position: bottom center;
+    }
+
+    /* Which leaves the rank where it cannot stay. "#2" is pinned to the
+       hero's top-left corner, on the reasoning that the star has the right
+       one — true on a desktop, where the portrait starts half-way down the
+       hero and the corner above it is empty. With the portrait standing full
+       height it is not: the chip sat across the player's head.
+
+       Back in the flow, on the line with the price, where there is room for
+       it and nothing to collide with. It reads as part of the figure rather
+       than as a sticker on the picture, and the star keeps the one corner it
+       has always had. */
+    .pdm-hero.is-compact .pdm-hero-chip {
+        position: static;
+        align-self: center;
+    }
 
     .pdm-hero-text { padding: 18px 0 14px; }
     .pdm-hero-first { font-size: 17px; }
