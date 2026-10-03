@@ -902,14 +902,14 @@
     .sq-stat-value { font-size: 12.5px; }
 
     /* The projection is the row's one headline figure, so it stops being the
-       first of four equal pairs and becomes the number in the corner — the
-       thing your eye lands on after the name. It is .sq-stat:first-child and
-       it cannot be moved in the markup without moving it on every screen, so
-       it is lifted out of the line and placed; the row is already
-       position: relative for the checkbox above it. */
+       first of four equal pairs and goes to the end of the stat line, hard
+       right, at a size that makes it the thing your eye lands on after the
+       name. order and an auto margin rather than a move in the markup: it is
+       .sq-stat:first-child on every screen, and only the phone wants it
+       there. */
     .sq-row-stats .sq-stat:first-child {
         position: absolute;
-        top: 9px; right: 44px;
+        top: 9px; right: 36px;
         flex-direction: column;
         align-items: flex-end;
         gap: 0;
@@ -922,7 +922,7 @@
 
     /* Which leaves three pairs on the stat line, and room for them to be
        read rather than squeezed. */
-    .sq-row-main { padding-right: 92px; }
+    .sq-row-main { padding-right: 84px; }
 
     /* Flexible chips, not the fixed 36px the desktop table uses to keep its
        stat columns from drifting — there are no stat columns to keep still
@@ -947,7 +947,15 @@
     /* The three buttons, in the corner the fixture strip has been told to
        leave empty. Out of the flow, so they cost the row no height at all.
        The fourth — open the full profile — goes: the row itself is that
-       button, and has been since it got an onclick. */
+       button, and has been since it got an onclick.
+
+       They stay at the bottom and the compare box goes to the top because
+       the two corners cost different things. The top corner is the name's:
+       between the hazard dot, the portrait and the crest, the name block has
+       about 130px there, and three buttons would take 110 of it. The bottom
+       corner is the fixture strip's, which has five chips and can give up a
+       third of its width without any of them becoming unreadable. So the
+       heavy cluster sits where the cheap space is. */
     .sq-row { position: relative; }
     .sq-row-actions {
         position: absolute; right: 10px; bottom: 6px;
@@ -960,12 +968,16 @@
        anyway. Three of them plus their gaps is the 112px the strip leaves. */
     .sq-act { width: 32px; height: 32px; }
 
-    /* The compare checkbox is the row's first child and the row is a column
-       here, so it was taking a full line of its own at the top — a grey
-       square floating above the player with nothing to say it belongs to
-       him. In the corner it reads as the row's own control, and 26px is all
-       the name block has to give up for it. */
-    .sq-compare-checkbox { position: absolute; top: 9px; right: 10px; margin: 0; }
+    /* 17px, not the 26 the coarse-pointer rule gives every checkbox on the
+       site: unticked it is an empty square, and at 26 it was the second
+       thing you saw on a row after the name, fifteen times down the page.
+       What keeps it thumbable is the clearance — the nearest other target is
+       the projection beside it, which is text, and the row itself, which
+       does the same thing wherever you press it. */
+    .sq-compare-checkbox {
+        position: absolute; top: 12px; right: 10px; margin: 0;
+        width: 17px; height: 17px;
+    }
     .sq-row-main { padding-right: 26px; }
 }
 
@@ -1331,7 +1343,7 @@
    under the name already gives the opponent and the venue, and at 60px
    the crest was a smudge on the corner of a face. */
 @media (max-width: 768px) {
-    .dp-row { flex-wrap: nowrap; gap: 4px; }
+    .dp-row { flex-wrap: nowrap; --dp-row-gap: 4px; }
 
     .dp-card {
         --dp-card-w: 74px;

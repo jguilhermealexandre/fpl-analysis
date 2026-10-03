@@ -2350,7 +2350,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=398')
+    fetch('/footer.html?v=399')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
@@ -3180,3 +3180,53 @@ function initTocSpy(opts) {
         current = hash;
     }
 }
+
+/* A tab opens at its top.
+   ============================================
+
+   The tab strip is position: sticky, so it stays on screen wherever you have
+   scrolled to — which means switching tabs half-way down a long one dropped
+   you half-way down the next, looking at the middle of something you had not
+   seen the start of. On a phone, where a tab is several screens long, that
+   reads as the page having jumped rather than changed.
+
+   Only ever upwards: if you are already above the strip the page stays where
+   it is, so clicking a tab from the top of the page does not scroll anything.
+
+   Finding where the strip belongs takes a moment's unsticking. Neither the
+   bounding rect nor offsetTop will say: a pinned sticky element reports the
+   place it is pinned to by both, so the sum comes back as exactly where you
+   already are and nothing moves. Setting position: static for the length of
+   one synchronous read gives the layout position, and nothing paints in
+   between. */
+(function () {
+    if (typeof document === 'undefined') return;
+
+    function v2DocTop(el) {
+        let y = 0;
+        for (let n = el; n; n = n.offsetParent) y += n.offsetTop;
+        return y;
+    }
+
+    document.addEventListener('click', function (e) {
+        const tab = e.target && e.target.closest && e.target.closest('.tab');
+        if (!tab || tab.closest('.modal-overlay, .detail-panel')) return;
+        const strip = tab.closest('.tabs-container') || tab.closest('.tabs');
+        if (!strip) return;
+
+        /* After the handler has swapped the panel, or the measurement is of
+           the tab you are leaving. */
+        requestAnimationFrame(function () {
+            const cs = getComputedStyle(strip);
+            const pinned = cs.position === 'sticky' ? (parseFloat(cs.top) || 0) : 0;
+
+            const was = strip.style.position;
+            if (pinned) strip.style.position = 'static';
+            const natural = v2DocTop(strip);
+            if (pinned) strip.style.position = was;
+
+            const top = Math.max(0, natural - pinned);
+            if (window.scrollY > top + 1) window.scrollTo(0, top);
+        });
+    }, true);
+})();

@@ -2137,7 +2137,35 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
    rules are theirs and stay. */
 .dp-pitch, .dp-bench { position: relative; z-index: 1; }
 .dp-pitch { display: flex; flex-direction: column; gap: 16px; }
-.dp-row { display: flex; justify-content: center; gap: 8px; flex-wrap: nowrap; }
+.dp-row { display: flex; justify-content: center; gap: var(--dp-row-gap, 8px); flex-wrap: nowrap; }
+
+/* Every card on a pitch is the same width.
+   ============================================
+
+   .dp-card is flex: 0 1 <width>, so each row divided what it had between
+   however many players were in it: on a 390px phone the lone striker's card
+   came out 116px, the four midfielders 72px each and the back five 57px —
+   three sizes of the same card on one pitch, and the eye reads that as three
+   kinds of player rather than one team.
+
+   The basis is a share of the row now, not a wish: the row is the same width
+   for every line, so the same fraction of it is the same number of pixels on
+   all four. Which fraction comes from the busiest line, because that is the
+   one with no room to spare — :has() asks whether any row has a fifth card
+   and the whole pitch sizes to four or to five.
+
+   min() keeps the old width as a ceiling, so a wide pitch still draws 116px
+   cards rather than stretching them across a third of the grass, and the
+   flex-shrink stays 1: without :has() a back five falls back to exactly
+   today's behaviour instead of running off the side. */
+.dp-pitch { --dp-cols: 4; }
+.dp-pitch:has(.dp-row > .dp-card:nth-child(5)) { --dp-cols: 5; }
+.dp-pitch .dp-card:not(.pcard) {
+    flex: 0 1 min(
+        var(--dp-card-w),
+        calc((100% - (var(--dp-cols) - 1) * var(--dp-row-gap, 8px)) / var(--dp-cols))
+    );
+}
 
 /* The draft's cards, on the shared .pitch-field. The rows are absolutely
    positioned by that component, so each card takes an equal share of its row
