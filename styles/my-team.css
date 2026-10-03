@@ -2378,13 +2378,11 @@
 .lw-cap-btn:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
 .lw-cap-btn.active-c { background: #F59E0B; border-color: #F59E0B; color: #000; }
 .lw-cap-btn.active-vc { background: #9CA3AF; border-color: #9CA3AF; color: #000; }
-/* This is the last card in the Overview column, and it was drawn to a different
-   scale from every card above it - 16px of padding and 16px of margin against
-   the 9px and 8px of .lw-sum-block - so the stack got heavier as it went down. */
-.lw-final-section { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 9px 10px; margin-bottom: 8px; }
-.lw-final-header { font-weight: 600; font-size: 12px; margin-bottom: 7px; display: flex; align-items: center; gap: 6px; }
-.lw-change-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; border-bottom: 1px solid var(--border-subtle); }
-.lw-change-row:last-child { border-bottom: none; }
+/* The badge survives the Overview rewrite: the grouped IN / OUT / armband rows
+   in .lw-ovc-row use these three colours, and the Auto-optimise report reads
+   the same way because of it. The card and per-player row it used to sit in are
+   gone - one row per player, each repeating in words what its own badge
+   already said. */
 .lw-change-badge { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; }
 .lw-change-badge.promoted { background: rgba(74,222,128,0.12); color: var(--color-success); }
 .lw-change-badge.benched { background: rgba(248,113,113,0.12); color: var(--color-error); }
@@ -5422,56 +5420,131 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-intel-body { padding: 11px; }
 .lw-side-empty { font-size: 12px; color: var(--text-muted); line-height: 1.55; }
 
-/* Above the tabs now rather than inside the Overview, so it carries its own
-   inset instead of borrowing .lw-intel-body's. */
-.lw-sum-hero { text-align: center; padding: 12px 14px; border-bottom: 1px solid var(--border-subtle); }
-.lw-sum-hero-v { font-size: 32px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); line-height: 1.05; }
-.lw-sum-hero-l { font-size: 11px; color: var(--text-muted); }
-
-.lw-sum-block { padding: 9px 10px; margin-bottom: 8px; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface-2); }
-.lw-sum-h { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px; }
-.lw-sum-name { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-.lw-sum-xp { font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
-.lw-sum-note { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin-top: 3px; }
-.lw-sum-note strong { color: var(--verdict-hold); }
-
-/* Two readings of one question, side by side, so the comparison is the card
-   rather than something the reader carries between two of them. auto-fit drops
-   to a single column when the panel is too narrow to seat both - the same rule
-   .lw-cap-grid below already uses. */
-.lw-sum-duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 8px; }
-.lw-sum-duo-i { min-width: 0; }
-.lw-sum-duo-l {
-    display: flex; align-items: center; gap: 4px;
-    font-size: 10px; font-weight: 600; color: var(--text-muted); margin-bottom: 2px;
+/* ===== THE OPTIMISER SUMMARY =====
+   Above the tabs, so it carries its own inset rather than borrowing
+   .lw-intel-body's, and so the three figures are true of all three tabs rather
+   than belonging to one of them. The total leads at display size; the other two
+   are the same size as each other because neither is more important than the
+   other, and both are smaller than the total. */
+.lw-ovs {
+    display: flex; align-items: center; flex-wrap: wrap;
+    gap: 10px 18px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border-subtle);
 }
-.lw-sum-duo-l svg { width: 11px; height: 11px; flex-shrink: 0; }
-/* Long names are common here - Szoboszlai in a half-width column - so the name
-   clips rather than wrapping under its own number. */
-.lw-sum-duo-i .lw-sum-name { display: flex; align-items: center; gap: 5px; min-width: 0; }
-.lw-sum-name-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lw-sum-duo-i .lw-sum-xp { display: block; }
-.lw-sum-duo-i .lw-sum-name.lw-sum-duo-none,
-.lw-sum-duo-i .lw-sum-xp.lw-sum-duo-none { color: var(--text-muted); font-weight: 600; }
-/* The unit reads the same on both sides, so it is said once, under them. */
-.lw-sum-duo-u { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+.lw-ovs-main { min-width: 0; }
+.lw-ovs-v { font-size: 30px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); line-height: 1.05; }
+.lw-ovs-l { font-size: 11px; color: var(--text-muted); }
+/* Pushed to the right edge as a group, so the comparison figures read as a pair
+   against the total rather than trailing it. */
+.lw-ovs-item { margin-left: auto; text-align: right; }
+.lw-ovs-item + .lw-ovs-item { margin-left: 0; }
+.lw-ovs-iv { font-size: 17px; font-weight: 700; font-family: var(--font-mono); color: var(--text-primary); line-height: 1.15; }
+.lw-ovs-iv.is-up { color: var(--color-success); }
+.lw-ovs-iv.is-down { color: var(--color-error); }
+.lw-ovs-iv.is-flat { color: var(--text-muted); }
+.lw-ovs-iv.is-warn { color: var(--verdict-monitor); }
+.lw-ovs-il { font-size: 10px; color: var(--text-muted); }
 
-/* "Nothing to change" is a line, not a card. */
-.lw-sum-quiet {
+/* ===== THE OVERVIEW STACK =====
+   One block treatment, used three times, so the tab reads as a sequence of
+   answers rather than a gallery of cards at different weights. */
+.lw-ov-block {
+    padding: 9px 10px; margin-bottom: 8px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+}
+/* Risk is the only block that gets a colour. It is the one that means "you have
+   something to do", and spending the accent anywhere else would flatten that. */
+.lw-ov-block.is-warn {
+    border-color: color-mix(in srgb, var(--verdict-monitor) 40%, var(--border-subtle));
+    background: color-mix(in srgb, var(--verdict-monitor) 7%, var(--surface-2));
+}
+.lw-ov-h {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 6px;
+}
+.lw-ov-h svg { width: 12px; height: 12px; flex-shrink: 0; color: var(--color-primary); }
+.lw-ov-block.is-warn .lw-ov-h svg { color: var(--verdict-monitor); }
+.lw-ov-h-sub { text-transform: none; letter-spacing: 0; font-weight: 600; opacity: .8; }
+.lw-ov-note { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin-top: 5px; }
+.lw-ov-note strong { color: var(--text-secondary); font-family: var(--font-mono); }
+.lw-ov-foot { font-size: 10px; color: var(--text-muted); line-height: 1.5; margin-top: 4px; }
+
+/* "Nothing to act on" is a line, not a card. */
+.lw-ov-quiet {
     display: flex; align-items: center; gap: 6px;
-    padding: 2px 2px 0;
+    padding: 2px 2px 7px;
     font-size: 11px; color: var(--text-muted); line-height: 1.5;
 }
-.lw-sum-quiet svg { width: 13px; height: 13px; color: var(--color-success); flex-shrink: 0; }
+.lw-ov-quiet svg { width: 13px; height: 13px; color: var(--color-success); flex-shrink: 0; }
 
-.lw-sum-apply {
-    display: inline-block; margin-top: 4px;
+.lw-ov-apply {
+    display: inline-block; margin-top: 5px;
     padding: 3px 9px; border-radius: var(--radius-md);
     border: 1px solid var(--color-primary); background: var(--color-primary);
     color: #fff; font-size: 10px; font-weight: 700; cursor: pointer;
+    font-family: var(--font-body);
 }
 
-.lw-sum-flag { font-size: 11px; color: var(--text-secondary); line-height: 1.55; }
+/* ===== RISKS =====
+   Name, reason, and where he is sitting, on one line each. The where is the
+   part that decides whether you act, so it is pinned to the right where the
+   eye can run down it. */
+.lw-ov-risk {
+    display: flex; align-items: baseline; gap: 5px;
+    font-size: 11px; line-height: 1.6; color: var(--text-muted);
+}
+.lw-ov-risk + .lw-ov-risk { border-top: 1px solid var(--border-subtle); padding-top: 3px; margin-top: 3px; }
+.lw-ov-risk-n { font-weight: 700; color: var(--text-primary); flex-shrink: 0; }
+.lw-ov-risk-w { min-width: 0; flex: 1; }
+.lw-ov-risk-where {
+    flex-shrink: 0; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    padding: 1px 5px; border-radius: 3px; background: var(--surface-3); color: var(--text-muted);
+}
+.lw-ov-risk-where.is-xi { background: color-mix(in srgb, var(--verdict-monitor) 18%, transparent); color: var(--verdict-monitor); }
+
+/* ===== OPTIMISER CHANGES =====
+   One row per kind of change, the players inline. A badge, then names. */
+.lw-ovc-row { display: flex; align-items: center; gap: 7px; font-size: 11px; padding: 3px 0; }
+.lw-ovc-row + .lw-ovc-row { border-top: 1px solid var(--border-subtle); }
+.lw-ovc-row .lw-change-badge { flex-shrink: 0; display: inline-flex; align-items: center; }
+.lw-ovc-row .lw-change-badge svg { width: 11px; height: 11px; }
+.lw-ovc-list { display: flex; flex-wrap: wrap; gap: 4px 9px; min-width: 0; }
+.lw-ovc-p { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+/* The position rides on the name rather than sitting in its own column: at this
+   width a column of three-letter codes costs more than it tells you. */
+.lw-ovc-pos { margin-left: 3px; font-size: 9px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono); }
+.lw-ovc-p.is-new .lw-ovc-pos { color: var(--color-primary); }
+.lw-ovc-same { margin-left: auto; flex-shrink: 0; font-size: 9px; color: var(--text-muted); }
+
+/* ===== THE CLOSEST CALL =====
+   Two readings of one question with the margin between them, so the comparison
+   is the card rather than something the reader carries between two of them.
+   The chosen side is the one that is lit. */
+.lw-ov-call { display: flex; align-items: center; gap: 8px; }
+/* The brighter side is the one projecting more this gameweek, not the one that
+   is starting — "Starting" and "On the bench" already say which is which, and
+   what the reader is here to see is which of the two is better. .7 rather than
+   a heavier dim: the quieter side still has to be readable, because half the
+   comparison is in it. */
+.lw-ov-call-side { flex: 1 1 0; min-width: 0; opacity: .7; }
+.lw-ov-call-side.is-ahead { opacity: 1; }
+.lw-ov-call-l { font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }
+.lw-ov-call-n { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+/* Long names are common here - Szoboszlai in a half-width column - so the name
+   clips rather than wrapping under its own number. */
+.lw-ov-call-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lw-ov-call-v { font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
+.lw-ov-call-u { font-size: 9px; color: var(--text-muted); margin-left: 2px; }
+.lw-ov-call-gap {
+    flex-shrink: 0; align-self: center;
+    font-size: 11px; font-weight: 700; font-family: var(--font-mono);
+    color: var(--text-muted);
+    padding: 2px 6px; border-radius: 999px; background: var(--surface-3);
+}
 
 /* The faces the intel panel names. Small enough to sit in a line of running
    text without setting its own leading, and matched to the pitch beside it so
@@ -5479,17 +5552,38 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-face { --v2-pid-face: 18px; display: inline-flex; vertical-align: -4px; flex-shrink: 0; margin-right: 1px; }
 .lw-face .v2-pid-avatar { width: 18px; height: 18px; }
 .lw-face .v2-pid-initials { font-size: 7.5px; }
-.lw-sum-duo-i .lw-face { --v2-pid-face: 22px; vertical-align: 0; }
-.lw-sum-duo-i .lw-face .v2-pid-avatar { width: 22px; height: 22px; }
-.lw-sum-duo-i .lw-face .v2-pid-initials { font-size: 9px; }
+.lw-ov-call-n .lw-face { --v2-pid-face: 22px; vertical-align: 0; }
+.lw-ov-call-n .lw-face .v2-pid-avatar { width: 22px; height: 22px; }
+.lw-ov-call-n .lw-face .v2-pid-initials { font-size: 9px; }
 
 .lw-cap-card .v2-pid-portrait { --v2-pid-face: 42px; --v2-pid-crest: 18px; margin-bottom: 3px; }
 .lw-cap-card .v2-pid-portrait .v2-pid-initials { font-size: 13px; }
-.lw-sum-hintline { font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 4px; }
+/* ===== CAPTAINCY =====
+   The insight line is the one piece of this tab that reads rather than scans,
+   and it was 11px muted grey above the grid - the weakest thing on screen
+   carrying the single most useful sentence. It is a panel now, with the same
+   accent-tinted treatment .lw-ov-block.is-warn uses for risk, because both are
+   the screen telling you something rather than listing something. */
+.lw-cap-lead {
+    margin-bottom: 9px; padding: 8px 10px;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 32%, var(--border-subtle));
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--surface-2));
+}
+.lw-cap-lead-h {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--color-primary-text, var(--color-primary)); margin-bottom: 4px;
+}
+.lw-cap-lead-h svg { width: 12px; height: 12px; flex-shrink: 0; color: var(--color-primary); }
+.lw-cap-lead-b { font-size: 11.5px; color: var(--text-secondary); line-height: 1.55; }
+.lw-cap-lead-b strong { color: var(--text-primary); }
 
-/* Captaincy matrix */
-.lw-cap-lead { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin-bottom: 9px; }
-.lw-cap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 6px; }
+/* 164px, not 148px. The cards carry four labelled rows now instead of two
+   unlabelled bars, and "Opponent concede 2.0/game" needs the width to stay on
+   one line. Five cards still fit the full-width panel; below that auto-fit
+   drops a column rather than squeezing the text. */
+.lw-cap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(164px, 1fr)); gap: 6px; }
 
 .lw-cap-card {
     position: relative;
@@ -5502,25 +5596,68 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 }
 
 .lw-cap-card.is-cap { border-color: var(--color-captain, #facc15); box-shadow: 0 0 0 1px var(--color-captain, #facc15) inset; }
-.lw-cap-rank { position: absolute; top: 4px; left: 5px; font-size: 9px; font-weight: 800; color: var(--text-muted); }
+
+/* The rank and the badge share the top of the card as one row, so the badge
+   cannot collide with the portrait the way an absolutely-positioned one would.
+   The rank keeps its own small circle: it is the answer to "which of these is
+   the model's first choice", and that is worth more than 9px of grey. */
+.lw-cap-top { display: flex; align-items: center; gap: 5px; width: 100%; min-height: 15px; }
+.lw-cap-rank {
+    flex-shrink: 0;
+    width: 15px; height: 15px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; font-family: var(--font-mono);
+    background: var(--surface-3); color: var(--text-secondary);
+}
+.lw-cap-card.is-cap .lw-cap-rank { background: var(--color-captain, #facc15); color: #000; }
+.lw-cap-badge {
+    margin-left: auto; min-width: 0;
+    font-size: 8px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    padding: 1px 5px; border-radius: 3px;
+    background: var(--surface-3); color: var(--text-muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lw-cap-badge.is-top { background: color-mix(in srgb, var(--color-primary) 16%, transparent); color: var(--color-primary-text, var(--color-primary)); }
 
 .lw-cap-name { font-size: 12px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .lw-cap-team { font-size: 9px; color: var(--text-muted); }
 .lw-cap-xp { font-size: 20px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); line-height: 1.1; }
 .lw-cap-xp-u { font-size: 9px; color: var(--text-muted); margin-left: 1px; }
 
-.lw-cap-bars { width: 100%; display: flex; flex-direction: column; gap: 3px; margin: 4px 0 2px; }
-.lw-cap-bar-row { display: flex; align-items: center; gap: 4px; }
-.lw-cap-bar-l { font-size: 8px; color: var(--text-muted); width: 46px; text-align: left; }
-.lw-cap-bar { flex: 1; height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; position: relative; }
-.lw-cap-bar-f { display: block; height: 100%; border-radius: 3px; }
-.lw-cap-bar-f.threat { background: var(--color-primary); }
-.lw-cap-bar-f.weak { background: var(--verdict-sell); }
-.lw-cap-bar-na { position: absolute; inset: 0; font-size: 7px; color: var(--text-muted); text-align: center; }
-.lw-cap-meta { font-size: 9px; color: var(--text-muted); }
-.lw-cap-meta strong { color: var(--text-secondary); font-family: var(--font-mono); }
-.lw-cap-ctx { margin-top: 3px; font-size: 9px; color: var(--text-muted); line-height: 1.45; }
-.lw-cap-break { margin-top: 5px; }
+/* ===== THE FOUR THINGS THAT DECIDE AN ARMBAND =====
+   Who he plays, how leaky they are, his form, his ownership. Left-aligned
+   inside a centred card on purpose: four values down a common left edge can be
+   compared across five cards at a glance, which is the whole job of this grid.
+   Centred, every row started at a different x and the comparison had to be
+   done one card at a time.
+
+   What was here instead: a six-segment stacked bar of the points breakdown, two
+   unlabelled progress bars called "Threat" and "Opponent", and a nailed-on
+   percentage that read 96% on four cards out of five. At 148px none of it was
+   legible and all of it had to be compared five ways. */
+.lw-cap-rows {
+    width: 100%; margin-top: 5px;
+    display: flex; flex-direction: column; gap: 3px;
+    text-align: left;
+}
+.lw-cap-row { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-muted); line-height: 1.45; min-width: 0; }
+.lw-cap-row-i { flex-shrink: 0; display: inline-flex; }
+.lw-cap-row-i svg { width: 11px; height: 11px; color: var(--text-muted); }
+.lw-cap-row-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lw-cap-row-t strong { color: var(--text-secondary); font-family: var(--font-mono); font-weight: 700; }
+.lw-cap-ha { color: var(--text-muted); }
+/* The FDR chip is the shared .dp-fix swatch carrying a single digit at the end
+   of the fixture row rather than the opponent's name again.
+
+   Two things are needed to hold it at its own width, and the first alone was
+   not enough. .dp-fix is declared flex: 1 1 auto because its home is a row of
+   five fixtures sharing a width, so the shorthand has to be reset rather than
+   flex-shrink alone — and the selector has to carry two classes, because
+   player-profile.css loads AFTER my-team.css and a one-class rule there beats
+   a one-class rule here. Left as it was, the chip grew to fill the row: a wide
+   colour-filled bar with a number in the middle, which is exactly the
+   unlabelled-progress-bar reading this redesign took off these cards. */
+.lw-cap-row .lw-cap-fdr { flex: 0 0 auto; margin-left: auto; font-size: 9px; padding: 0 5px; min-width: 17px; text-align: center; }
 .lw-cap-off { margin-bottom: 8px; padding: 6px 8px; border-radius: var(--radius-md); font-size: 11px; line-height: 1.5; background: color-mix(in srgb, var(--verdict-monitor) 12%, transparent); border-left: 3px solid var(--verdict-monitor); color: var(--text-secondary); }
 .lw-cap-foot { margin-top: 9px; font-size: 10px; color: var(--text-muted); line-height: 1.5; }
 .lw-chg-out { color: var(--verdict-sell); font-weight: 700; }
@@ -5529,7 +5666,13 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-chg-tag { margin-left: 6px; font-size: 8px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 1px 5px; border-radius: 3px; background: var(--surface-3); color: var(--text-muted); }
 .opt-crosslink { font-size: 11px; color: var(--text-muted); line-height: 1.6; }
 .opt-crosslink strong { color: var(--text-secondary); }
-.lw-cap-actions { display: flex; gap: 4px; margin-top: 4px; }
+/* Prominent and equal: the two buttons split the full width of the card, so the
+   armband is a choice you make here rather than a pair of 24px chips you hunt
+   for. The active one carries its full word - Captain / Vice - because at that
+   point the letter is no longer a label for a button, it is a statement of
+   state, and the word says it without a legend. */
+.lw-cap-actions { display: flex; gap: 4px; margin-top: 7px; width: 100%; }
+.lw-cap-actions .lw-cap-btn { flex: 1 1 0; min-width: 0; padding: 5px 4px; font-size: 10.5px; }
 
 /* minmax(0, 1fr), not 1fr. A 1fr track is min-width:auto underneath, so it
    cannot shrink below its widest child — and the child here is the pitch,
@@ -8686,7 +8829,8 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    this file that sets a font-size under 16px gets the tracking that size
    calls for; one that asked for more air than its band keeps its own. */
 .draft-chip-advice-head span,
-.dugout-hint {
+.dugout-hint,
+.lw-ov-h-sub {
     letter-spacing: inherit !important;
 }
 .dpc-net,
@@ -8702,6 +8846,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lo-title,
 .loading-text,
 .lw-ctx-header-name,
+.lw-ov-call-v,
 .mgr-deadline-value,
 .mgr-money .mgr-value,
 .mgr-value,
@@ -8773,10 +8918,9 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-ctx-empty,
 .lw-intro,
 .lw-name,
+.lw-ov-call-n,
 .lw-row-swap-btn,
 .lw-stat-val,
-.lw-sum-name,
-.lw-sum-xp,
 .manager-info,
 .news-card-detail,
 .news-card-hero .news-card-detail,
@@ -8934,19 +9078,23 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lo-card-score,
 .lo-subtitle,
 .lw-cap-btn,
-.lw-cap-lead,
+.lw-cap-lead-b,
 .lw-cap-name,
 .lw-cap-off,
 .lw-captain-meta,
 .lw-captain-rank,
 .lw-cc-gw,
-.lw-change-row,
 .lw-ctx-compare-stat,
 .lw-ctx-compare-stat-val,
 .lw-deep-col-head,
-.lw-final-header,
 .lw-intel-tab,
 .lw-meta,
+.lw-ov-call-gap,
+.lw-ov-note,
+.lw-ov-quiet,
+.lw-ov-risk,
+.lw-ovc-row,
+.lw-ovs-l,
 .lw-pitch-hint,
 .lw-pitch-node,
 .lw-row,
@@ -8956,10 +9104,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-side-empty,
 .lw-step,
 .lw-step-num,
-.lw-sum-flag,
-.lw-sum-hero-l,
-.lw-sum-note,
-.lw-sum-quiet,
 .lw-swap-hint,
 .lw-toggle,
 .manager-stat,
@@ -9188,17 +9332,18 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .h2h-xg-stat-label,
 .insight-move-action,
 .insight-move-do,
+.lw-cap-actions .lw-cap-btn,
 .lw-cap-foot,
+.lw-cap-row,
 .lw-change-badge,
 .lw-ctx-compare-meta,
 .lw-ctx-compare-stat-label,
+.lw-ov-apply,
+.lw-ov-foot,
+.lw-ovs-il,
 .lw-pitch-name,
 .lw-pitch-score,
 .lw-row-player-team,
-.lw-sum-apply,
-.lw-sum-duo-l,
-.lw-sum-duo-u,
-.lw-sum-hintline,
 .market-watch-panel .mw-arrow,
 .market-watch-panel .mw-net,
 .market-watch-panel .mw-price,
@@ -9350,18 +9495,18 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .h2h-power-label-r,
 .hold-stat .lbl,
 .insight-move-face .v2-pid-initials,
-.lw-cap-bar-l,
-.lw-cap-bar-na,
-.lw-cap-ctx,
-.lw-cap-meta,
 .lw-cap-rank,
+.lw-cap-row .lw-cap-fdr,
 .lw-cap-team,
 .lw-cap-xp-u,
 .lw-face .v2-pid-initials,
+.lw-ov-call-n .lw-face .v2-pid-initials,
+.lw-ov-call-u,
+.lw-ovc-pos,
+.lw-ovc-same,
 .lw-pitch-arm,
 .lw-row-stat-label,
 .lw-stat-label,
-.lw-sum-duo-i .lw-face .v2-pid-initials,
 .mgr-est,
 .news-card-team-tag,
 .on-bench-tag,
@@ -9467,7 +9612,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 }
 .dp-tool-all,
 .draft-stat-label,
+.lw-cap-badge,
 .lw-chg-tag,
+.lw-ov-call-l,
+.lw-ov-risk-where,
 .mgr-gw,
 .news-card-category,
 .news-card-squad-badge,
@@ -9513,7 +9661,8 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .dc-diff-label,
 .eo-row-l,
 .fx-matrix-head,
-.lw-sum-h,
+.lw-cap-lead-h,
+.lw-ov-h,
 .lw-summary-label,
 .opt-alt-head,
 .opt-capbreak-head,
