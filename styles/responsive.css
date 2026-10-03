@@ -1467,6 +1467,7 @@
 .pdm-hero-first,
 .pdm-hero.is-shrunk .pdm-hero-price,
 .sq-kpi .mgr-deadline-value,
+.tw-mcta-btn,
 .v2-mobile-bar-title {
     letter-spacing: 0.005em !important;
 }
@@ -1486,7 +1487,8 @@
 .pdm-hero.is-shrunk .pdm-hero-meta,
 .planner-table,
 .segmented-btn,
-.tm-table {
+.tm-table,
+.tw-mcta-n {
     letter-spacing: 0.015em !important;
 }
 .dp-name,
@@ -1575,6 +1577,29 @@
        whatever the text beside it needs and its feet are on the floor. */
     .pdm-hero.is-compact .pdm-hero-photo { height: auto; align-self: stretch; }
     .pdm-hero.is-compact .pdm-hero-face {
+        height: 100%;
+        object-fit: contain;
+        object-position: bottom center;
+    }
+
+    /* The transfer wizard draws the same hero three more times, each with its
+       own pinned photo height — .twf-hero at 82, .tw-outc-hero at 76, the
+       squad column's copy of it at 50, .tw-conf-side and .twh-head at 80 —
+       and a pinned height is exactly what
+       stops the portrait reaching the floor once the text beside it wraps.
+       On step 2 that was a 50px photo in a 77px hero on every card in the
+       column: twelve portraits, all hanging 27px in the air. */
+    .twf-hero .pdm-hero.is-compact .pdm-hero-photo,
+    .tw-outc-hero .pdm-hero-photo,
+    .tw-sqc .tw-outc-hero .is-compact .pdm-hero-photo,
+    .tw-conf-side .pdm-hero-photo,
+    .twh-head .pdm-hero-photo { height: auto; align-self: stretch; }
+
+    .twf-hero .pdm-hero.is-compact .pdm-hero-face,
+    .tw-outc-hero .pdm-hero-face,
+    .tw-sqc .tw-outc-hero .is-compact .pdm-hero-face,
+    .tw-conf-side .pdm-hero-face,
+    .twh-head .pdm-hero-face {
         height: 100%;
         object-fit: contain;
         object-position: bottom center;
@@ -1760,4 +1785,57 @@
     /* Left-aligned, unlike the rest: it is a list of section names, not a row
        of buttons. */
     .doc-toc a { display: flex; align-items: center; }
+}
+
+
+/* The transfer wizard's way on, on a phone.
+   ============================================
+
+   Step 2's two panels sit side by side on a desktop and stack on a phone,
+   which puts the replacement list two thousand pixels under the squad. The
+   button appears at the bottom of the screen as soon as there is somebody to
+   replace, follows you up and down the squad list, and says how many are
+   waiting — so you choose everyone you mean to sell and then go, rather than
+   discovering by scrolling that something happened. */
+@media (max-width: 768px) {
+    .tw-mcta {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        z-index: 60;
+        display: flex;
+        padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+        background: linear-gradient(to top, var(--surface-0) 68%, transparent);
+        pointer-events: none;
+    }
+    .tw-mcta-btn {
+        pointer-events: auto;
+        flex: 1;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        min-height: 46px;
+        padding: 0 18px;
+        border: none;
+        border-radius: 999px;
+        background: var(--color-primary);
+        color: #04120B;
+        font-family: inherit;
+        font-size: 14px; font-weight: 700;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, .34);
+        cursor: pointer;
+    }
+    .tw-mcta-btn svg { width: 17px; height: 17px; }
+    .tw-mcta-n {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 20px; height: 20px; padding: 0 6px;
+        border-radius: 999px;
+        background: rgba(4, 18, 11, .22);
+        font-size: 12px; font-weight: 800;
+    }
+
+    /* Room under the last squad card, so the button is not standing on it. */
+    body.tw-has-cta .twc-pane { padding-bottom: 68px; }
+}
+
+/* Two panels side by side need no bridge between them. */
+@media (min-width: 769px) {
+    .tw-mcta { display: none; }
 }

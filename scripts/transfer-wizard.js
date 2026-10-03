@@ -605,7 +605,7 @@
            Everything below it still reads mode, so nothing else had to move. */
         const TW_STEPS = [
             { n: 1, key: 'plan',    icon: 'sliders', label: 'Plan',    hint: 'How many transfers, and at what cost' },
-            { n: 2, key: 'swap',    icon: 'swap',    label: 'Replacements', hint: 'Your squad on the left, who can replace them on the right' },
+            { n: 2, key: 'swap',    icon: 'swap',    label: 'Replacements', hint: 'Choose who goes out, then who comes in' },
             { n: 3, key: 'compare', icon: 'scales',  label: 'Compare', hint: 'The two of them, side by side' },
             { n: 4, key: 'confirm', icon: 'check',   label: 'Overview', hint: 'The squad this leaves you with, and what it costs' }
         ];
@@ -1138,8 +1138,66 @@
             renderTWBudgetBar();
             renderTWSquadPane();
             renderTWMarketPane();
+            twSyncMobileCTA();
             twPlayStepMove();
             if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        /* The way between the squad and the replacements, on a screen that has
+           no "beside".
+
+           Step 2 is two panels: your squad, and who can replace them. Side by
+           side that explains itself — you tap a player on the left and the
+           right-hand panel fills. Stacked on a phone the second panel is two
+           thousand pixels below the first, so tapping a player appeared to do
+           nothing except dim the other fourteen: the list you were waiting for
+           had rendered, off the bottom of a screen you had no reason to
+           scroll to.
+
+           Two halves. The screen goes to the list when the list opens — and
+           only then: keyed on which slot it opened for, so re-rendering while
+           you read it (a filter, a sort, a price change) does not drag you
+           back to the top. And while you are in it, a button back to the
+           squad, because the next player you want to sell is two thousand
+           pixels up and a plan is often more than one move. */
+        let twLastMarketKey = '';
+
+        function twSyncMobileCTA() {
+            const container = document.getElementById('twContainer');
+            if (!container) return;
+
+            const onStep2 = twStep() === 2;
+            const inMarket = onStep2 && transferState.mode === 'market' && transferState.activeSlot >= 0;
+            const phone = !!(window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+
+            const key = inMarket ? String(transferState.activeSlot) + ':' + (transferState.pending[transferState.activeSlot]?.soldPlayer?.id || '') : '';
+            if (phone && inMarket && key !== twLastMarketKey) {
+                const pane = document.getElementById('twMarketPane');
+                if (pane) {
+                    requestAnimationFrame(() => {
+                        try { pane.scrollIntoView({ block: 'start', behavior: 'auto' }); } catch (e) { /* older engines */ }
+                    });
+                }
+            }
+            twLastMarketKey = key;
+
+            let bar = document.getElementById('twMobileCTA');
+            if (!inMarket) {
+                if (bar) bar.remove();
+                document.body.classList.remove('tw-has-cta');
+                return;
+            }
+            if (!bar) {
+                bar = document.createElement('div');
+                bar.id = 'twMobileCTA';
+                bar.className = 'tw-mcta';
+                container.appendChild(bar);
+            }
+            document.body.classList.add('tw-has-cta');
+            bar.innerHTML = `<button type="button" class="tw-mcta-btn" onclick="event.stopPropagation(); twBackToSquad()">
+                ${typeof v2Icon === 'function' ? v2Icon('up') : ''}
+                Back to your squad
+            </button>`;
         }
 
         /* The movement between steps.
@@ -1867,10 +1925,10 @@
             el.innerHTML = `<div class="twc-panel tw-step-panel">
                 ${twStepHead({
                     icon: 'cart', title: 'Replacements',
-                    hint: 'Pick someone on the left'
+                    hint: 'Pick someone from your squad'
                 })}
                 <div class="twc-panel-body">
-                    <div class="twc-idle">Click any player in your squad and the replacements you can
+                    <div class="twc-idle">Pick a player in your squad and the replacements you can
                     afford for them appear here, ranked, with the reason each one is worth having.</div>
                 </div>
             </div>`;
@@ -3083,6 +3141,15 @@
             transferState.activeSlot = -1;
             transferState.previewPlayer = null;
             twGoStep(2);
+            /* And on a phone, where the squad is a screen and a half above the
+               list you are leaving, take the screen back to it. On a desktop
+               the pane is already in view and this does nothing. */
+            const pane = document.getElementById('twSquadPane');
+            if (pane) {
+                requestAnimationFrame(() => {
+                    try { pane.scrollIntoView({ block: 'start', behavior: 'auto' }); } catch (e) { /* older engines */ }
+                });
+            }
         }
 
         function twConfirmPick() {
