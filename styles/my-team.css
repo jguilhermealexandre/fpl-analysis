@@ -2787,7 +2787,31 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 @media (max-width: 620px) { .planner-lineup-hint .planner-hint-esc { margin-left: 0; width: 100%; } }
 
 /* ===== H2H MATCHUP CARDS ===== */
-.h2h-card { background: var(--surface-1); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
+/* One fixture, one card — the same card every other panel on the site is.
+
+   These had a border and a radius already, and neither was visible: the
+   border was --border-default, which in dark mode is within a shade of the
+   panel behind it, and the card's background was the same --surface-1 as
+   that panel. So nine fixtures ran into each other down the grid with
+   nothing but a header strip to say where one stopped. The card tokens are
+   what the dashboard's panels use, and they are what makes a card read as a
+   card in both themes. */
+.h2h-card {
+    background: var(--surface-1);
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    box-shadow: var(--v2-card-shadow, none);
+    overflow: hidden;
+}
+
+/* And room between them. The grid was written inline in draft-planner.js at
+   a 10px gap, which on cards with no visible edge was the only thing
+   separating two fixtures. */
+.dp-h2h-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+    gap: 14px;
+}
 .h2h-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border-default); }
 .h2h-header-teams { font-family: var(--font-display); font-weight: 600; font-size: 0.85rem; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
 .h2h-header-meta { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--text-muted); }

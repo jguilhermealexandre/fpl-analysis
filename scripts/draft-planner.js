@@ -1453,7 +1453,7 @@
             const draftSquad = getDraftSquad(ds.selectedGW);
             const uniqueTeamIds = [...new Set(draftSquad.map(p => p.teamId))].filter(tid => teamFixtures6[tid] && teamFixtures6[tid].length > 0);
             if (uniqueTeamIds.length > 0) {
-                html += `<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:10px;" id="draftTeamContext">`;
+                html += `<div class="dp-h2h-grid" id="draftTeamContext">`;
                 uniqueTeamIds.forEach(tid => { html += renderTeamContextCard(tid, true); });
                 html += `</div>`;
             } else {

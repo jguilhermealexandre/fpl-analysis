@@ -405,6 +405,24 @@
     .data-table td.col-player { min-width: 148px; max-width: 172px; }
     .tm-player-cell { min-width: 132px; }
     .planner-player { min-width: 120px; }
+
+    /* The GW Draft's table is min-width: 900px so its six gameweek columns
+       have room, and the name column — the only one without a width — took
+       every pixel of the difference: 402px of it on a 302px screen. So the
+       table scrolled, correctly, and what you scrolled through first was
+       four hundred pixels of name. Switching to Projected xP showed a column
+       of players and no projections, which reads as a view with no data in
+       it rather than as a table parked off its own left edge.
+
+       A width, not a min-width, so the name column stops absorbing the slack
+       and the first gameweek is on screen with the player it belongs to. */
+    .planner-table th:first-child,
+    .planner-table td:first-child {
+        width: 150px;
+        min-width: 150px;
+        max-width: 150px;
+    }
+    .planner-table { min-width: 740px; }
 }
 
 
@@ -1391,6 +1409,19 @@
     .dp-card .dp-fix::before { width: 4px; height: 4px; }
     .dp-card .dp-xp-run { font-size: 8px; }
     .dp-card .dp-xp-run-u { font-size: 7px; }
+
+    /* "3.7 xP · 11.5/3" on one nowrap line is 70px of text in a 62px card,
+       so it hung four pixels off each side and the run was cut in half by
+       the card next to it. The run goes under the projection instead: the
+       figure keeps the line it deserves and the line below says what it is
+       across, which is the shape the number already has on the squad
+       page. */
+    .dp-card .pcard-score { flex-wrap: wrap; row-gap: 0; }
+    .dp-card .pcard-when {
+        flex: 0 0 100%;
+        text-align: center;
+        max-width: 100%;
+    }
     .dp-cap { width: 15px; height: 15px; font-size: 8.5px; top: -5px; right: -5px; }
 
     /* The info button is a 20px target on a 74px card, and every card on
