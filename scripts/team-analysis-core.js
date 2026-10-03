@@ -7,9 +7,21 @@
    Extracted from the inline <script> in fpl-my-team-analysis.html.
    These files are plain classic scripts loaded in order, not ES modules:
    every function stays a global, which the inline onclick= handlers
-   throughout the markup depend on. Load order is preserved from the
-   original file — team-analysis-core.js must come first, since the
-   settings IIFE in lineup-wizard.js reads DEFAULT_SETTINGS from it.
+   throughout the markup depend on.
+
+   Four of them are no longer loaded with the page at all — draft-planner,
+   transfer-wizard, transfer-funnel and lineup-wizard arrive when their tab is
+   first opened, named in #v2TabScripts in the markup. So a name declared in
+   one of those four is not there until that click, and anything loaded with
+   the page that needs it has had it moved out: the transfer scoring engine and
+   the clean-sheet and pressure models to transfer-engine.js, the price
+   thresholds to price-watch.js, and the settings drawer, the saved-settings
+   bootstrap and the Team ID handlers to team-analysis-core.js.
+
+   What remains order-dependent is only top-level code. team-analysis-core.js
+   still comes first: it declares the shared state the rest assign to, and it
+   reads the manager's saved settings into userSettings before anything scores
+   with them.
    ============================================ */
 
         // ===== CONFIGURATION =====
@@ -420,13 +432,23 @@
                 document.getElementById('tabBar').classList.add('visible');
                 if (window._pendingTab) {
                     const pending = window._pendingTab;
-                    switchTab(pending); window._pendingTab = null;
-                    // A move handed over from the dashboard loads into the cart
-                    // once the squad is real; the wizard renders it from there.
-                    try {
-                        if (pending === 'transfers' && typeof twApplyDeepLink === 'function') twApplyDeepLink();
-                        else if (typeof applySquadDeepLink === 'function') applySquadDeepLink();
-                    } catch (e) { console.warn('Deep link ignored:', e.message); }
+                    const opening = switchTab(pending);
+                    window._pendingTab = null;
+                    /* A move handed over from the dashboard loads into the cart
+                       once the squad is real; the wizard renders it from there.
+
+                       On the other side of switchTab's promise, because the
+                       tab's script is fetched on arrival now and
+                       twApplyDeepLink() is declared in it. Read as a typeof
+                       guard this would simply have been false and the link
+                       would have been dropped in silence — which is the whole
+                       failure mode of guarding a name that is merely late. */
+                    Promise.resolve(opening).then(function () {
+                        try {
+                            if (pending === 'transfers' && typeof twApplyDeepLink === 'function') twApplyDeepLink();
+                            else if (typeof applySquadDeepLink === 'function') applySquadDeepLink();
+                        } catch (e) { console.warn('Deep link ignored:', e.message); }
+                    });
                 }
                 /* A shared ?player= link. After the squad exists, since this
                    page only holds fifteen and a link naming anybody else should
@@ -1528,3 +1550,109 @@
             </div>`;
         }
 
+
+        /* ===== The analysis settings drawer =====
+
+           The button that opens this sits in the Squad Analysis KPI strip —
+           see renderSquadOverview() above — and its overlay is markup in
+           fpl-my-team-analysis.html with onclick="closeSettings(event)" and
+           three onclick="applyPreset(...)" buttons on it. All four were
+           declared in transfer-wizard.js, so the default tab could not offer
+           its own settings without the wizard in memory. */
+        // ===== SETTINGS =====
+        function openSettings() {
+            // Highlight active preset button
+            ['Aggressive','Balanced','Patient'].forEach(name => {
+                const btn = document.getElementById('preset' + name);
+                btn.classList.toggle('primary', activePreset === name.toLowerCase());
+            });
+            document.getElementById('settingsOverlay').classList.add('show');
+        }
+
+        function closeSettings(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('settingsOverlay').classList.remove('show');
+        }
+
+        function applyPreset(preset) {
+            if (preset === 'aggressive') {
+                userSettings = { sellSensitivity: 1.3, fixtureWeight: 1.4, formWeight: 1.2, valueWeight: 1.3, minutesThreshold: 70, premiumHarshness: 1.3 };
+            } else if (preset === 'balanced') {
+                userSettings = { sellSensitivity: 1.0, fixtureWeight: 1.0, formWeight: 1.0, valueWeight: 1.0, minutesThreshold: 60, premiumHarshness: 1.0 };
+            } else if (preset === 'patient') {
+                userSettings = { sellSensitivity: 0.7, fixtureWeight: 0.6, formWeight: 0.8, valueWeight: 0.8, minutesThreshold: 50, premiumHarshness: 0.7 };
+            }
+
+            activePreset = preset;
+            localStorage.setItem('fpl_analysis_settings', JSON.stringify(userSettings));
+            localStorage.setItem('fpl_active_preset', preset);
+            document.querySelectorAll('.strategy-preset-tab').forEach(button => {
+                button.classList.toggle('active', button.dataset.strategyPreset === preset);
+            });
+            closeSettings();
+
+            /* twSquad() is the wizard's view of the squad — the real one with
+               any planned moves applied — and the wizard is loaded on demand,
+               so ask for it only when it is there. Re-scoring the squad FPL
+               says you own is the right answer either way; the plan only
+               changes which players are in it. */
+            const squad = typeof twSquad === 'function' ? twSquad() : (selectedPlayers || []);
+            if (squad.length > 0) {
+                analyzeTeam();
+            }
+
+            updateStatus(`${preset.charAt(0).toUpperCase() + preset.slice(1)} settings applied`, 'success');
+        }
+
+        /* ===== Saved settings, read before anything scores with them =====
+
+           This block was the tail of lineup-wizard.js, which is a problem of
+           order as much as of placement: it is the only top-level code in that
+           file that has to RUN, and it ran near the end of a twenty-file load
+           while the analysis engine above had already been reading
+           userSettings for most of it. Here it runs before any of that.
+
+           onTeamIdSubmitted/onTeamIdCleared are the page's answer to the Team
+           ID pill in the shared header — common.js calls them when an ID is
+           entered or cleared, guarded by typeof, so with them in a deferred
+           file entering an ID on this page would silently do nothing at all.
+           loadTeamById() is declared above. */
+        const DEFAULT_SETTINGS = {
+            sellSensitivity: 1.0,
+            fixtureWeight: 1.0,
+            formWeight: 1.0,
+            valueWeight: 1.0,
+            minutesThreshold: 60,
+            premiumHarshness: 1.0
+        };
+
+        // Load saved settings immediately (IIFE)
+        (function() {
+            const savedSettings = localStorage.getItem('fpl_analysis_settings');
+            if (savedSettings) {
+                try {
+                    const parsed = JSON.parse(savedSettings);
+                    userSettings = { ...DEFAULT_SETTINGS, ...parsed };
+                    for (const key of Object.keys(DEFAULT_SETTINGS)) {
+                        if (typeof userSettings[key] !== 'number' || isNaN(userSettings[key])) {
+                            userSettings[key] = DEFAULT_SETTINGS[key];
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Invalid saved settings, using defaults');
+                    userSettings = { ...DEFAULT_SETTINGS };
+                }
+            }
+            const savedPreset = localStorage.getItem('fpl_active_preset');
+            if (savedPreset && ['aggressive','balanced','patient'].includes(savedPreset)) {
+                activePreset = savedPreset;
+            }
+        })();
+
+        function onTeamIdSubmitted(teamId) {
+            document.getElementById('teamIdInput').value = teamId;
+            loadTeamById();
+        }
+        function onTeamIdCleared() {
+            document.getElementById('teamIdInput').value = '';
+        }

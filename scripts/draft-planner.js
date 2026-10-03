@@ -7,9 +7,21 @@
    Extracted from the inline <script> in fpl-my-team-analysis.html.
    These files are plain classic scripts loaded in order, not ES modules:
    every function stays a global, which the inline onclick= handlers
-   throughout the markup depend on. Load order is preserved from the
-   original file — team-analysis-core.js must come first, since the
-   settings IIFE in lineup-wizard.js reads DEFAULT_SETTINGS from it.
+   throughout the markup depend on.
+
+   Four of them are no longer loaded with the page at all — draft-planner,
+   transfer-wizard, transfer-funnel and lineup-wizard arrive when their tab is
+   first opened, named in #v2TabScripts in the markup. So a name declared in
+   one of those four is not there until that click, and anything loaded with
+   the page that needs it has had it moved out: the transfer scoring engine and
+   the clean-sheet and pressure models to transfer-engine.js, the price
+   thresholds to price-watch.js, and the settings drawer, the saved-settings
+   bootstrap and the Team ID handlers to team-analysis-core.js.
+
+   What remains order-dependent is only top-level code. team-analysis-core.js
+   still comes first: it declares the shared state the rest assign to, and it
+   reads the manager's saved settings into userSettings before anything scores
+   with them.
    ============================================ */
 
         // ===== GW DRAFT =====

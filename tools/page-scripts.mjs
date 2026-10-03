@@ -27,6 +27,16 @@ export function pages(root = '.') {
         for (const m of html.matchAll(/<script type="application\/json"[^>]*>([\s\S]*?)<\/script>/g)) {
             for (const s of m[1].matchAll(/"\/scripts\/([\w.-]+\.js)\?/g)) scripts.push(`scripts/${s[1]}`);
         }
+        /* A set, not a list. My Team's #v2TabScripts manifest groups files by
+           tab, and two tabs can want the same file — the Transfer Wizard opens
+           on the current draft, so draft-planner is named under both "draft"
+           and "wizard". The browser fetches it once; a page's script list that
+           says it twice makes the smoke tests evaluate it twice, and the second
+           pass dies on `Identifier 'draftStates' has already been declared`. */
+        const seenScript = new Set();
+        const unique = scripts.filter(s => !seenScript.has(s) && seenScript.add(s));
+        scripts.length = 0;
+        scripts.push(...unique);
         const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]).join('\n');
         out[f] = { scripts, inline };
     }

@@ -29,7 +29,10 @@ const XP    = { 1: 30, 2: 20, 3: 10 };
 const SCORE = { 1: 10, 2: 20, 3: 30 };
 
 function findWith({ ready = true, gws = [5, 6, 7, 8, 9], xp = XP } = {}) {
-    return loadFunction('scripts/transfer-wizard.js', 'findTransferCandidates', {
+    /* transfer-engine.js since the split: Squad Analysis orders the Replace
+       panel with this, so it could not stay in the file that only the wizard
+       tab loads. */
+    return loadFunction('scripts/transfer-engine.js', 'findTransferCandidates', {
         allPlayers: POOL,
         minMinutesForCandidate: () => 0,
         calculateTransferScore: p => SCORE[p.id],

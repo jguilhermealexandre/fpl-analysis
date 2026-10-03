@@ -7,9 +7,21 @@
    Extracted from the inline <script> in fpl-my-team-analysis.html.
    These files are plain classic scripts loaded in order, not ES modules:
    every function stays a global, which the inline onclick= handlers
-   throughout the markup depend on. Load order is preserved from the
-   original file — team-analysis-core.js must come first, since the
-   settings IIFE in lineup-wizard.js reads DEFAULT_SETTINGS from it.
+   throughout the markup depend on.
+
+   Four of them are no longer loaded with the page at all — draft-planner,
+   transfer-wizard, transfer-funnel and lineup-wizard arrive when their tab is
+   first opened, named in #v2TabScripts in the markup. So a name declared in
+   one of those four is not there until that click, and anything loaded with
+   the page that needs it has had it moved out: the transfer scoring engine and
+   the clean-sheet and pressure models to transfer-engine.js, the price
+   thresholds to price-watch.js, and the settings drawer, the saved-settings
+   bootstrap and the Team ID handlers to team-analysis-core.js.
+
+   What remains order-dependent is only top-level code. team-analysis-core.js
+   still comes first: it declares the shared state the rest assign to, and it
+   reads the manager's saved settings into userSettings before anything scores
+   with them.
    ============================================ */
 
         // ===== TRANSFER SIDE PANEL (Phase 3) =====
@@ -27,25 +39,35 @@
             if (!out || !candidate) return;
 
             closeDetailPanel();
-            // Open the wizard BEFORE staging: its first render replaces transferState
-            // wholesale, so anything staged ahead of it is silently discarded.
-            switchTab('transfer');
+            /* Open the wizard BEFORE staging: its first render replaces
+               transferState wholesale, so anything staged ahead of it is
+               silently discarded.
 
-            let slotIdx = transferState.pending.findIndex(s => s.soldPlayer.id === outId);
-            if (slotIdx < 0) {
-                if (transferState.pending.length >= 5) {
-                    updateStatus('Your transfer plan already has 5 slots', 'error');
-                    return;
+               And wait for it. The wizard's own file is fetched on this click
+               now, so switchTab() hands back the promise for that load and
+               everything below — renderTWAll() included — has to run on the
+               other side of it. Promise.resolve() because the same call is
+               synchronous once the file is already there. */
+            Promise.resolve(switchTab('transfer')).then(function () {
+                let slotIdx = transferState.pending.findIndex(s => s.soldPlayer.id === outId);
+                if (slotIdx < 0) {
+                    if (transferState.pending.length >= 5) {
+                        updateStatus('Your transfer plan already has 5 slots', 'error');
+                        return;
+                    }
+                    transferState.pending.push({ soldPlayer: out, replacement: null });
+                    slotIdx = transferState.pending.length - 1;
                 }
-                transferState.pending.push({ soldPlayer: out, replacement: null });
-                slotIdx = transferState.pending.length - 1;
-            }
-            transferState.activeSlot = slotIdx;
-            transferState.previewPlayer = candidate;
-            transferState.mode = 'compare';
+                transferState.activeSlot = slotIdx;
+                transferState.previewPlayer = candidate;
+                transferState.mode = 'compare';
 
-            // Staging after the render means these have to be refreshed by hand.
-            renderTWAll();
+                /* Staging after the render means these have to be refreshed by
+                   hand. deferred-ok: renderTWAll is the wizard's, and this
+                   whole block runs on the other side of switchTab's promise,
+                   so the wizard has loaded by the time it is read. */
+                renderTWAll();
+            });
         }
 
         // The three numbers worth reading at a glance for each position: current
@@ -690,13 +712,33 @@
                See v2MountPageHelp() in common.js. */
             if (tab !== 'team' && typeof closeHelpOverlay === 'function') closeHelpOverlay();
 
+            /* Four of the six tabs own a script file that nothing else on
+               the page reads, and together those files are 286 KB minified —
+               fetched, decompressed and executed before the squad on the tab
+               the page actually opens on could appear. Each now arrives on its
+               own first click; #v2TabScripts in the page names the groups and
+               v2RunWithScripts() in common.js does the loading.
+
+               Two rules for the calls below. The renderer is always wrapped in
+               a function: naming it here would read the global while its file
+               is still in flight, which throws before the loader is even
+               entered — a blank tab and nothing fetched. And the key is the
+               renderer, not the group, because the Transfer Wizard and GW
+               Draft share a group and each still has to draw.
+
+               The promise comes back so a caller that stages work into a tab
+               can wait for it — see planTransferFromPanel() above. */
+            let loading = null;
             if (tab === 'team') {
                 teamDisplay.style.display = '';
                 tabTeam.classList.add('active');
             } else if (tab === 'transfers') {
                 transferMarketDisplay.style.display = '';
                 tabTransfers.classList.add('active');
-                if (!transferMarketRendered) renderTransferMarket();
+                if (!transferMarketRendered) {
+                    loading = v2RunWithScripts('mt-transfers', 'transfers',
+                        function () { renderTransferMarket(); }, transferMarketDisplay);
+                }
             } else if (tab === 'news') {
                 newsDisplay.style.display = '';
                 tabNews.classList.add('active');
@@ -704,33 +746,29 @@
             } else if (tab === 'transfer') {
                 transferDisplay.style.display = '';
                 tabTransfer.classList.add('active');
-                /* The wizard opens on the current draft, so it needs the
-                   planner's state even though it never draws the planner —
+                /* The wizard opens on the current draft, so its group carries
+                   draft-planner too even though it never draws the planner —
                    see renderTransferWizard(). */
                 if (!transferRendered) {
-                    v2RunWithScripts('mt-transfer', 'draft-planner',
+                    loading = v2RunWithScripts('mt-transfer', 'wizard',
                         function () { renderTransferWizard(); }, transferDisplay);
                 }
             } else if (tab === 'lineup') {
                 lineupDisplay.style.display = '';
                 tabLineup.classList.add('active');
-                if (!lineupRendered) renderInlineLineupWizard();
+                if (!lineupRendered) {
+                    loading = v2RunWithScripts('mt-lineup', 'lineup',
+                        function () { renderInlineLineupWizard(); }, lineupDisplay);
+                }
             } else if (tab === 'draft') {
                 draftDisplay.style.display = '';
                 tabDraft.classList.add('active');
-                /* draft-planner.js is 100 KB minified and only this tab and
-                   the wizard above read it, so it arrives on the click
-                   instead of blocking the squad the page opens on. The two
-                   keys are per-renderer, not per-file: whichever tab is
-                   opened second shares the one request but still draws. */
-                /* Wrapped, not passed: naming renderSquadPlanner here would
-                   read the global while its file is still in flight, which is
-                   a ReferenceError before the loader is even called. */
                 if (!draftTabRendered) {
-                    v2RunWithScripts('mt-draft', 'draft-planner',
+                    loading = v2RunWithScripts('mt-draft', 'draft',
                         function () { renderSquadPlanner(); }, draftDisplay);
                 }
             }
+            return loading;
         }
 
         // Activate tab from hash on load

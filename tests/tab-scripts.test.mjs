@@ -29,7 +29,11 @@ import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
-const tabs = read('scripts/panels-and-tabs.js');
+/* Comments out, or the scanner finds the prose that explains the calls and
+   reports a bare "v2RunWithScripts()" with no arguments as a call site. */
+const decomment = s => s.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
+const tabs = decomment(read('scripts/panels-and-tabs.js'));
 const page = read('fpl-my-team-analysis.html');
 
 /* Every v2RunWithScripts(...) call in the file, with its arguments. Brace

@@ -5,9 +5,21 @@
    Extracted from the inline <script> in fpl-my-team-analysis.html.
    These files are plain classic scripts loaded in order, not ES modules:
    every function stays a global, which the inline onclick= handlers
-   throughout the markup depend on. Load order is preserved from the
-   original file — team-analysis-core.js must come first, since the
-   settings IIFE in lineup-wizard.js reads DEFAULT_SETTINGS from it.
+   throughout the markup depend on.
+
+   Four of them are no longer loaded with the page at all — draft-planner,
+   transfer-wizard, transfer-funnel and lineup-wizard arrive when their tab is
+   first opened, named in #v2TabScripts in the markup. So a name declared in
+   one of those four is not there until that click, and anything loaded with
+   the page that needs it has had it moved out: the transfer scoring engine and
+   the clean-sheet and pressure models to transfer-engine.js, the price
+   thresholds to price-watch.js, and the settings drawer, the saved-settings
+   bootstrap and the Team ID handlers to team-analysis-core.js.
+
+   What remains order-dependent is only top-level code. team-analysis-core.js
+   still comes first: it declares the shared state the rest assign to, and it
+   reads the manager's saved settings into userSettings before anything scores
+   with them.
    ============================================ */
 
         // ===== LINEUP WIZARD ENGINE (3-Step Interactive) =====
@@ -1038,41 +1050,6 @@
         // solveQuickLineup now lives in scripts/transfer-engine.js — the transfer
         // recommender needs it too, and two copies would drift.
 
-        // ── LINEUP WIZARD: Detailed Score Breakdown ──
-        function computeQuickLineupScoreDetailed(p) {
-            const result = { total: 0, ep: 0, form: 0, fixture: 0, home: 0, xgi: 0, minutes: 0, ppg: 0, doubtful: 0, matchup: 0 };
-            if (p.status === 'i' || p.status === 'u' || p.status === 's') { result.total = -100; return result; }
-            if (p.status === 'd') result.doubtful = -20;
-            result.ep = Math.round((p.epNext || 0) * 3 * 10) / 10;
-            // Preseason: FPL resets form to 0.0, fall back to last season's PPG —
-            // same pattern as analyzePlayer's effectiveForm
-            const effectiveForm = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
-            result.form = Math.round(effectiveForm * 2 * 10) / 10;
-            const fx = p.fixtures || [];
-            if (fx.length > 0) { result.fixture = Math.round((3 - fx[0].difficulty) * 5 * 10) / 10; if (fx[0].isHome) result.home = 2; }
-            const mins = p.minutes || 0;
-            if (mins > 200) { result.xgi = Math.round(((p.xGI / mins) * 90) * 10 * 10) / 10; }
-            // computePlayerGamesPlayed already handles the preseason case — last
-            // season's starts/minutes instead of dividing by 0 completed GWs
-            const mpg = mins / computePlayerGamesPlayed(p);
-            if (mpg >= 85) result.minutes = 3;
-            else if (mpg < 45) result.minutes = -5;
-            // FPL's own points-per-game — already correct pre- and in-season, unlike
-            // dividing the raw season total by (currentGW - 1), which blows up to
-            // hundreds of "points" during preseason when currentGW - 1 is 0.
-            result.ppg = Math.round((p.ppg || 0) * 1.5 * 10) / 10;
-            // Team Attack/Defense power vs. the next opponent's respective rating — the
-            // explicit team-context matchup factor section 9 asks for, on top of the
-            // generic FDR-based `fixture` term above. Same teamAnalysis data already used
-            // everywhere else on this page (detail panel, calculateTransferScore, etc.).
-            if (fx.length > 0 && fx[0].opponentId && teamAnalysis[fx[0].opponentId]) {
-                const opp = teamAnalysis[fx[0].opponentId];
-                const relevantOppPower = (p.position <= 2) ? (opp.attackPower || 50) : (opp.defensePower || 50);
-                result.matchup = Math.round(((50 - relevantOppPower) / 50) * 6 * 10) / 10;
-            }
-            result.total = Math.round(result.ep + result.form + result.fixture + result.home + result.xgi + result.minutes + result.ppg + result.doubtful + result.matchup);
-            return result;
-        }
 
         // ── LINEUP WIZARD: Context Panel Rendering ──
         function renderLWContextEmpty() {
@@ -1330,45 +1307,4 @@
                 lineupState.selectedPlayers.push(playerId);
             }
             updateLWContextPanel();
-        }
-
-        // ===== INITIALIZATION =====
-        const DEFAULT_SETTINGS = {
-            sellSensitivity: 1.0,
-            fixtureWeight: 1.0,
-            formWeight: 1.0,
-            valueWeight: 1.0,
-            minutesThreshold: 60,
-            premiumHarshness: 1.0
-        };
-
-        // Load saved settings immediately (IIFE)
-        (function() {
-            const savedSettings = localStorage.getItem('fpl_analysis_settings');
-            if (savedSettings) {
-                try {
-                    const parsed = JSON.parse(savedSettings);
-                    userSettings = { ...DEFAULT_SETTINGS, ...parsed };
-                    for (const key of Object.keys(DEFAULT_SETTINGS)) {
-                        if (typeof userSettings[key] !== 'number' || isNaN(userSettings[key])) {
-                            userSettings[key] = DEFAULT_SETTINGS[key];
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Invalid saved settings, using defaults');
-                    userSettings = { ...DEFAULT_SETTINGS };
-                }
-            }
-            const savedPreset = localStorage.getItem('fpl_active_preset');
-            if (savedPreset && ['aggressive','balanced','patient'].includes(savedPreset)) {
-                activePreset = savedPreset;
-            }
-        })();
-
-        function onTeamIdSubmitted(teamId) {
-            document.getElementById('teamIdInput').value = teamId;
-            loadTeamById();
-        }
-        function onTeamIdCleared() {
-            document.getElementById('teamIdInput').value = '';
         }

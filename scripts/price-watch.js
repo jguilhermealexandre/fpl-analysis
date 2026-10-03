@@ -218,3 +218,118 @@
         function pwEngineReady() {
             return typeof pwClassify === 'function';
         }
+
+        /* ===== How close a player is to a price change =====
+
+           These came out of transfer-wizard.js, where they had no business
+           being: the comment below already says "the same tiers price-watch.js
+           uses at the top and bottom, so the two panels cannot describe one
+           player differently" — and the squad page reads them on the default
+           tab, from the price panel in team-analysis-core.js. One model, one
+           file, and the wizard no longer has to be in memory for Squad
+           Analysis to say who is about to drop. */
+        // ===== TRANSFER MARKET =====
+        /* When FPL changes prices.
+
+           It moved for 2026/27. The Premier League's own announcement of the
+           Price Change Predictor says the tool indicates who will rise and fall
+           "each day at 00:00 UK time"; this used to be hard-coded at 01:30 UTC,
+           which is now up to an hour and a half late and, through British
+           Summer Time, on the wrong day entirely.
+
+           UK time rather than UTC, so it cannot be a constant: midnight in
+           London is 23:00 UTC in summer and 00:00 UTC in winter. */
+        const PRICE_LOCK_TZ = 'Europe/London';
+
+        // A player's distance to a price change, as a signed percentage: +100 means
+        // on track to rise, -100 on track to drop. This is the same transfer-velocity
+        // model behind the pitch badge (net transfers over the current owner base),
+        // scaled so the thresholds land at ±100 — NOT FPL's own published figure,
+        // which does not exist publicly.
+        /* How far along the meter a player is, from FPL's own figure.
+
+           This used to be a model: net transfers over the owner base, times
+           five hundred, clamped. It was written before the game published
+           anything, and it was left in place after it did — so this page and
+           the dashboard answered the same question from different numbers and
+           disagreed in public. Ballard sat at −92.5 on the game's meter and
+           −11.5 on the model, so the dashboard called him a near-certain drop
+           while this page said no squad player was close to one.
+
+           The model was not merely miscalibrated, it was noise. Dividing net
+           transfers by a tiny owner base saturates the clamp on a handful of
+           moves: Matusiwa, three in and two out at 0.0% ownership, scored a
+           maximum +100 rise while the game's meter had him at −90.3.
+
+           price_change_percent is what the official Price Change Predictor is
+           built on, so there is nothing left to model. One number, read the
+           same way here as in scripts/price-watch.js. */
+        function priceThresholdPct(p) {
+            const v = p && p.priceProgress;
+            return typeof v === 'number' && isFinite(v) ? v : 0;
+        }
+
+        /* The same tiers price-watch.js uses at the top and bottom, so the two
+           panels cannot describe one player differently. Anything past the line
+           is due tonight; PW_CLOSE short of it is a watch item and deliberately
+           not a forecast.
+
+           Between those lines this used to say one word — "Safe" — for every
+           player, and the meter runs from -100 to +100. So a player 60% of the
+           way to a DROP was labelled safe, and so was one 60% of the way to a
+           rise, and so was one who had not moved at all. Measured on the live
+           feed that is 605 of 659 players sharing a single label: 300 being
+           sold, 164 being bought, 141 genuinely still. The one thing an owner
+           wants from this column — which way is my player going — was the thing
+           it threw away.
+
+           price-watch.js does not disagree with what follows, because it says
+           nothing here at all: below PW_CLOSE it returns null and the player is
+           simply left out of that panel. The shared vocabulary is the four outer
+           tiers, and those are untouched.
+
+           "Drifting" rather than "rising" or "falling" on purpose. The meter is
+           progress, not a prediction — the column's own header says so — and a
+           player at +30 is not on his way anywhere in particular. Direction is a
+           fact about the number; arrival is not. */
+        function thresholdState(pct) {
+            const due = typeof PW_DUE === 'number' ? PW_DUE : 100;
+            const close = typeof PW_CLOSE === 'number' ? PW_CLOSE : 80;
+            if (pct >= due) return { cls: 'rise-imminent', text: 'Rises tonight', short: 'Rising' };
+            if (pct >= close) return { cls: 'rise', text: 'Climbing', short: 'Climbing' };
+            if (pct <= -due) return { cls: 'drop-imminent', text: 'Drops tonight', short: 'Dropping' };
+            if (pct <= -close) return { cls: 'drop', text: 'Sliding', short: 'Sliding' };
+            /* Zero is its own answer and a common one — a fifth of the league sits
+               exactly there. Everything else takes the sign it actually has; no
+               dead zone, because any width for one would be invented. */
+            if (pct > 0) return { cls: 'drift-up', text: 'Drifting up', short: 'Up' };
+            if (pct < 0) return { cls: 'drift-down', text: 'Drifting down', short: 'Down' };
+            return { cls: 'stable', text: 'Not moving', short: 'Flat' };
+        }
+
+        // How far London is ahead of UTC at a given instant, in milliseconds.
+        function londonOffsetMs(at) {
+            const parts = {};
+            new Intl.DateTimeFormat('en-GB', {
+                timeZone: PRICE_LOCK_TZ, hour12: false,
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            }).formatToParts(at).forEach(x => { if (x.type !== 'literal') parts[x.type] = x.value; });
+            const hour = Number(parts.hour) === 24 ? 0 : Number(parts.hour);
+            const asIfUTC = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+                hour, Number(parts.minute), Number(parts.second));
+            return asIfUTC - Math.floor(at.getTime() / 1000) * 1000;
+        }
+
+        /* The next midnight in London, as a real instant.
+
+           The offset is recomputed at the target rather than reused from now,
+           so the one night a year the clocks change does not move the deadline
+           by an hour. */
+        function nextPriceLock(now) {
+            const at = now != null ? new Date(now) : new Date();
+            const wall = new Date(at.getTime() + londonOffsetMs(at));
+            const nextMidnightWall = Date.UTC(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate()) + 86400000;
+            const firstGuess = new Date(nextMidnightWall - londonOffsetMs(at));
+            return new Date(nextMidnightWall - londonOffsetMs(firstGuess));
+        }

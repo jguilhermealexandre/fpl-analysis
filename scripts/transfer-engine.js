@@ -603,3 +603,404 @@
             else if (priceDiff >= 0.4) bits.push(`costs £${priceDiff.toFixed(1)}m more`);
             return bits.join(' · ');
         }
+
+        /* ===== Scoring a swap, and the three models behind it =====
+
+           Lifted out of transfer-wizard.js for exactly the reason the rest of
+           this file was: Squad Analysis scores with all of it on the default
+           tab. pitch-snapshot.js ranks the Replace panel with
+           findTransferCandidates(), panels-and-tabs.js prices the shortlist
+           with it, team-analysis-core.js draws the momentum panel from
+           getTransferPressure(), and compare-report.js asks
+           getCleanSheetProb() for every defender it compares. None of it is
+           the wizard's, and leaving it there is what kept 133KB of wizard on
+           the critical path of a screen it has nothing to do with.
+
+           The dashboard loads this file and calls none of these six, so the
+           dependency note at the top still describes what twBuildRecommendation()
+           needs; these six additionally want teamAnalysis, userSettings and
+           isPreseason, which only the squad page provides. */
+        // Recency-weighted average, Transfer Wizard flavor: pre-filters to played-minutes
+        // games before windowing. Named distinctly from the shared recencyWeightedAvg() in
+        // scripts/compare-report.js (which windows raw, unfiltered history) to avoid the two
+        // same-named function declarations silently overriding each other at global scope.
+        function twRecencyWeightedAvg(history, key, n = 5) {
+            if (!history || history.length === 0) return 0;
+            const played = history.filter(h => h.minutes > 0);
+            const window = played.slice(-n);
+            if (window.length === 0) return 0;
+            const weights = window.map((_, i) => i + 1);
+            const wSum = weights.reduce((a, b) => a + b, 0);
+            let total = 0;
+            window.forEach((h, i) => { total += (parseFloat(h[key]) || 0) * weights[i]; });
+            return total / wSum;
+        }
+
+        function getCleanSheetProb(teamId, opponentId, isHome) {
+            const tp = teamAnalysis[teamId], op = teamAnalysis[opponentId];
+            if (!tp || !op) return 0.25;
+            let base = isHome ? 0.35 : 0.25;
+            const teamDef = tp.defensePower || 50;
+            const oppAtk = op.attackPower || 50;
+            base += (teamDef - 50) * 0.003;
+            base -= (oppAtk - 50) * 0.0025;
+            const avgLeagueGApg = 1.3;
+            base += (avgLeagueGApg - (tp.avgConceded || 1.3)) * 0.04;
+            return Math.max(0.05, Math.min(0.65, base));
+        }
+
+        // Transfer Score — multi-factor ranking for replacement candidates
+        // (Aligned with players-analysis calculatePositionScore for consistent recommendations)
+        function calculateTransferScore(player, pos) {
+            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
+            const posName = posNames[pos] || 'MID';
+
+            // Get player history for recency weighting
+            const pd = playersDetailData?.players?.find(p => p.id === player.id);
+            const history = pd?.history?.filter(h => h.minutes > 0) || [];
+            const recent = getPlayerRecentStats(player.id, 5);
+
+            const seasonGames = Math.max(currentGW - 1, 1);
+            const recentGames = recent?.games || 1;
+            const minsPerGame = recent ? (recent.minutes / recentGames) : (player.minutes / seasonGames);
+            const nailedBonus = Math.min(5, Math.max(0, (minsPerGame - 60) / 4));
+
+            // ── Recency-weighted per-game stats (most recent games count more) ──
+            const rwPtsPerGame = history.length > 0 ? twRecencyWeightedAvg(history, 'total_points') : (recent ? recent.ppg : player.ppg);
+            const rwXGI = history.length > 0 ? twRecencyWeightedAvg(history, 'expected_goal_involvements') : (recent ? recent.xGIPer90 : (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0));
+            const rwXG = history.length > 0 ? twRecencyWeightedAvg(history, 'expected_goals') : (recent ? recent.xGPer90 : (player.minutes > 0 ? (player.xG / player.minutes) * 90 : 0));
+            const rwXA = history.length > 0 ? twRecencyWeightedAvg(history, 'expected_assists') : (recent ? recent.xAPer90 : (player.minutes > 0 ? (player.xA / player.minutes) * 90 : 0));
+            const rwBonus = history.length > 0 ? twRecencyWeightedAvg(history, 'bonus') : (recent ? (recent.bonus / recentGames) : (player.bonus / seasonGames));
+            const csPerGame = recent ? (recent.cs / recentGames) : (player.cleanSheets / Math.max(player.starts || seasonGames, 1));
+
+            const value = rwPtsPerGame / Math.max(player.price, 3.5);
+
+            // Season phase for value weight adjustment
+            const phase = currentGW >= 30 ? 'late' : (currentGW >= 15 ? 'mid' : 'early');
+            const valueWeight = phase === 'late' ? (posName === 'GK' ? 8 : 6) : (posName === 'GK' || posName === 'DEF') ? 10 : 12;
+
+            // ── Fixture factor — weighted next 3 fixtures (3/2/1) with opponent quality ──
+            const fixtures = player.fixtures || teamFixtures[player.teamId] || [];
+            const fixtureWeights = [3, 2, 1];
+            let fixtureFactor = 0;
+            let venueMultiplier = 1.0;
+
+            if (fixtures.length > 0) {
+                let totalWeight = 0, weightedFixture = 0;
+                fixtures.slice(0, 3).forEach((f, idx) => {
+                    const w = fixtureWeights[idx] || 1;
+                    const opp = f.opponentId;
+                    const isHome = f.isHome;
+                    let ff = 0;
+                    if (opp && teamAnalysis[opp]) {
+                        const oppAttack = teamAnalysis[opp].attackPower || 50;
+                        const oppDefense = teamAnalysis[opp].defensePower || 50;
+                        const relevantOpp = (pos <= 2) ? oppAttack : oppDefense;
+                        ff = ((50 - relevantOpp) / 50) * 10;
+                        if (isHome) ff += 1.5;
+                    } else {
+                        const fdr = f.difficulty || 3;
+                        ff = Math.max(-10, (3.5 - fdr) * 8);
+                    }
+                    weightedFixture += ff * w;
+                    totalWeight += w;
+                });
+                fixtureFactor = totalWeight > 0 ? weightedFixture / totalWeight : 0;
+
+                // ── Dynamic venue multiplier based on home/away splits ──
+                const nextIsHome = fixtures[0]?.isHome ?? null;
+                if (nextIsHome !== null && history.length >= 4) {
+                    const recentWindow = history.slice(-5);
+                    const splitGames = recentWindow.filter(h => h.was_home === nextIsHome);
+                    if (splitGames.length >= 2) {
+                        const splitPts = splitGames.reduce((s, h) => s + (h.total_points || 0), 0) / splitGames.length;
+                        const overallPts = recentWindow.reduce((s, h) => s + (h.total_points || 0), 0) / recentWindow.length;
+                        if (overallPts > 0) {
+                            venueMultiplier = 0.7 + 0.3 * (splitPts / overallPts);
+                            venueMultiplier = Math.max(0.8, Math.min(1.25, venueMultiplier));
+                        }
+                    } else {
+                        venueMultiplier = nextIsHome ? 1.05 : 0.95;
+                    }
+                } else {
+                    venueMultiplier = (fixtures[0]?.isHome) ? 1.05 : 0.95;
+                }
+            }
+
+            // ── Team context factors ──
+            const ta = teamAnalysis[player.teamId];
+            let teamFormFactor = 0, teamQualityFactor = 0;
+            if (ta) {
+                teamFormFactor = ((ta.formRating || 50) - 50) / 50 * 3;
+                teamQualityFactor = pos <= 2
+                    ? ((ta.defensePower || 50) - 50) / 50 * 4
+                    : ((ta.attackPower || 50) - 50) / 50 * 4;
+            }
+
+            // ── CS Probability factor (GK/DEF) — weighted across next 3 fixtures ──
+            let csProbFactor = 0;
+            if (pos <= 2 && fixtures.length > 0) {
+                let csTotal = 0, csWeightTotal = 0;
+                fixtures.slice(0, 3).forEach((f, idx) => {
+                    const w = fixtureWeights[idx] || 1;
+                    if (f.opponentId) {
+                        const prob = getCleanSheetProb(player.teamId, f.opponentId, f.isHome);
+                        csTotal += prob * w;
+                        csWeightTotal += w;
+                    }
+                });
+                if (csWeightTotal > 0) {
+                    const avgProb = csTotal / csWeightTotal;
+                    csProbFactor = (avgProb - 0.28) * 35;
+                }
+            }
+
+            // ── Advanced penalty taker detection ──
+            let penTakerBonus = 0;
+            if (pos >= 2) {
+                const totalGoals = player.goals || 0;
+                const seasonPenGoals = Math.max(0, totalGoals - (player.xG || 0));
+                const penMissed = 0; // not available in bootstrap data
+                const penThreshold = { DEF: 0.5, MID: 1.0, FWD: 1.5 }[posName] || 1.0;
+                const penAttempts = (seasonPenGoals >= penThreshold || penMissed > 0)
+                    ? Math.round(seasonPenGoals + penMissed) : 0;
+                const penRatio = totalGoals > 0 ? seasonPenGoals / totalGoals : 1;
+                if (penAttempts >= 2 && penRatio > 0.25) {
+                    penTakerBonus = Math.min(6, penAttempts * 1.5);
+                } else if (seasonGames >= 10 && penAttempts >= 1 && penRatio > 0.25) {
+                    penTakerBonus = Math.min(4, penAttempts * 1.5);
+                }
+            }
+
+            // ── Rotation risk penalty ──
+            let rotationPenalty = 0;
+            if (player.teamId && teamFixtures[player.teamId]) {
+                const upcomingFixtures = teamFixtures[player.teamId].slice(0, 4);
+                const hasCongestion = upcomingFixtures.length >= 3;
+                if (hasCongestion && minsPerGame < 85) {
+                    rotationPenalty = -2;
+                }
+            }
+
+            // ── Enhancement bonuses (inspired by players-analysis calculatePositionScore) ──
+            // Rising form: compare L3 ppg vs season ppg
+            let risingFormBonus = 0;
+            const recentPpg = recent ? recent.ppg : 0;
+            const seasonPpg = player.ppg || 0;
+            if (seasonPpg > 1) {
+                const formRatio = recentPpg / seasonPpg;
+                if (formRatio > 1.3) risingFormBonus = 3;
+                else if (formRatio > 1.15) risingFormBonus = 1.5;
+            }
+
+            // Routes-to-points diversity
+            let routeCount = 0;
+            if (rwXG > 0.1) routeCount++;
+            if (rwXA > 0.1) routeCount++;
+            if (rwBonus > 0.3) routeCount++;
+            if (pos <= 2 && csPerGame > 0.2) routeCount++;
+            const routeBonus = Math.max(0, (routeCount - 1) * 1.5);
+
+            // Reliability (low variance in recent scores)
+            let reliabilityBonus = 0;
+            if (history.length >= 4) {
+                const recentScores = history.slice(-5).map(h => h.total_points || 0);
+                const avg = recentScores.reduce((a, b) => a + b, 0) / recentScores.length;
+                if (avg > 3) {
+                    const variance = recentScores.reduce((s, v) => s + (v - avg) ** 2, 0) / recentScores.length;
+                    reliabilityBonus = Math.max(0, 3 - Math.sqrt(variance) * 0.5);
+                }
+            }
+
+            const commonBonuses = risingFormBonus + routeBonus + reliabilityBonus;
+
+            // ── Position-specific scoring formulas ──
+            if (posName === 'GK') {
+                const savesPer90 = recent ? recent.savesPer90 : (player.minutes > 0 ? (player.saves / player.minutes) * 90 : 0);
+                const xGCPerGame = recent ? (recent.xGC / recentGames) : (player.minutes > 0 ? (player.xGC / player.minutes) * 90 : 0);
+                const defScore = Math.max(0, (2 - xGCPerGame)) * 8;
+
+                return ((csPerGame * 30) +
+                       (savesPer90 * 2) +
+                       defScore +
+                       (rwPtsPerGame * 3) +
+                       (value * valueWeight) +
+                       fixtureFactor +
+                       teamQualityFactor +
+                       teamFormFactor +
+                       csProbFactor +
+                       rotationPenalty +
+                       nailedBonus +
+                       commonBonuses) * venueMultiplier;
+            }
+
+            if (posName === 'DEF') {
+                const xGCPerGame = recent ? (recent.xGC / recentGames) : (player.minutes > 0 ? (player.xGC / player.minutes) * 90 : 0);
+                const defScore = Math.max(0, (2 - xGCPerGame)) * 8;
+
+                return ((csPerGame * 25) +
+                       defScore +
+                       (rwXGI * 12) +
+                       (rwPtsPerGame * 3) +
+                       (value * valueWeight) +
+                       fixtureFactor +
+                       teamQualityFactor +
+                       teamFormFactor +
+                       csProbFactor +
+                       rotationPenalty +
+                       penTakerBonus +
+                       nailedBonus +
+                       commonBonuses) * venueMultiplier;
+            }
+
+            if (posName === 'MID') {
+                const actualGI = recent ? ((recent.goals + recent.assists) / recentGames) : 0;
+                const overPerf = actualGI - rwXGI;
+                const regressionAdj = overPerf > 0 ? overPerf * -3 : overPerf * -2;
+
+                return ((rwXGI * 40) +
+                       regressionAdj +
+                       (csPerGame * 3) +
+                       (rwPtsPerGame * 3) +
+                       (rwBonus * 2) +
+                       (value * valueWeight) +
+                       fixtureFactor +
+                       teamQualityFactor +
+                       teamFormFactor +
+                       rotationPenalty +
+                       penTakerBonus +
+                       nailedBonus +
+                       commonBonuses) * venueMultiplier;
+            }
+
+            // FWD
+            const actualGoals = recent ? (recent.goals / recentGames) : 0;
+            const overPerf = actualGoals - rwXG;
+            const regrCoeff = (overPerf > 0 && seasonGames >= 15 && (player.goals / seasonGames) > (player.xG / seasonGames)) ? -2 : -4;
+            const regressionAdj = overPerf > 0 ? overPerf * regrCoeff : overPerf * -2;
+
+            return ((rwXG * 40) +
+                   (rwXA * 15) +
+                   regressionAdj +
+                   (rwPtsPerGame * 3) +
+                   (rwBonus * 2) +
+                   (value * valueWeight) +
+                   fixtureFactor +
+                   teamQualityFactor +
+                   teamFormFactor +
+                   rotationPenalty +
+                   penTakerBonus +
+                   nailedBonus +
+                   commonBonuses) * venueMultiplier;
+        }
+
+        // Find replacement candidates for a position within budget
+        // blockedClubs is optional and only the Control Room market passes it: teams
+        // you already hold three of. Filtering here rather than after the slice(0, 30)
+        // below matters — a full club can own a lot of the top of the list, and
+        // trimming afterwards would silently shorten the recommendations.
+        function findTransferCandidates(position, maxPrice, excludeIds, blockedClubs) {
+            const candidates = allPlayers.filter(p =>
+                p.position === position &&
+                p.price <= maxPrice &&
+                !excludeIds.has(p.id) &&
+                !(blockedClubs && blockedClubs.has(p.teamId)) &&
+                (p.status === 'a' || p.status === 'd') &&
+                p.minutes >= minMinutesForCandidate()
+            );
+
+            /* Ranked on projected points, not on the transfer score.
+
+               calculateTransferScore returns a number in units of its own, and
+               every surface that consumes this list then labels the rows with the
+               xP engine — so the order and the figure printed on it came out of
+               two different models and could contradict each other outright. The
+               players page hit the same thing and fixed it there: across 200
+               players the ratio between its two models ran from 0.0 to 23.9, which
+               put cards on screen in an order their own badge disagreed with.
+               buildSuggestedMoves in pitch-snapshot.js is worse off still — it
+               says "ranked by xP gained per transfer" and then takes [0] off a
+               list that was not, so a better candidate two rows down was never
+               even looked at.
+
+               _transferScore is still computed and still on the object. The
+               package strategies below blend it against price and ownership on its
+               own scale, and the card prints it as a second reading; here it
+               breaks ties between candidates that project identically. */
+            const runGWs = typeof twRunGWs === 'function' ? twRunGWs() : [];
+            const canProject = runGWs.length > 0
+                && typeof xpEngineReady === 'function' && xpEngineReady();
+
+            candidates.forEach(c => {
+                c._transferScore = calculateTransferScore(c, c.position);
+                c._xpRun = canProject ? twXPOver(c, runGWs) : null;
+                // Get recent stats for display
+                c._recentStats = getPlayerRecentStats(c.id, 5);
+            });
+
+            /* No engine, no fixtures left to project, or the globals it reads not
+               loaded yet: fall back to the old ordering whole. Sorting everyone by
+               an identical zero would be worse than the score this replaces. */
+            candidates.sort(canProject
+                ? (a, b) => (b._xpRun - a._xpRun) || (b._transferScore - a._transferScore)
+                : (a, b) => b._transferScore - a._transferScore);
+
+            return candidates.slice(0, 30); // Top 30 per slot
+        }
+
+        function getTransferPressure(player) {
+            const owners = Math.max(totalFplPlayers * (player.ownership / 100), 1);
+            const net = player.transfersIn - player.transfersOut;
+            return net / owners;
+        }
+
+        function getPressureLabel(pressure) {
+            if (pressure > 0.04) return { text: 'Hot', cls: 'rise' };
+            if (pressure > 0.015) return { text: 'Rising', cls: 'rise' };
+            if (pressure < -0.04) return { text: 'Dropping', cls: 'fall' };
+            if (pressure < -0.015) return { text: 'Cooling', cls: 'fall' };
+            return { text: 'Stable', cls: 'stable' };
+        }
+
+        /* ===== The number solveQuickLineup() above sorts on =====
+
+           solveQuickLineup() picks an XI by p.lwScore; this is what produces
+           it, and it was in lineup-wizard.js — so the two halves of one
+           calculation sat in different files, and the half Squad Analysis
+           needs was in the half that only the Lineup Wizard tab loads.
+           pitch-snapshot.js calls it for every player on the default tab. */
+        // ── LINEUP WIZARD: Detailed Score Breakdown ──
+        function computeQuickLineupScoreDetailed(p) {
+            const result = { total: 0, ep: 0, form: 0, fixture: 0, home: 0, xgi: 0, minutes: 0, ppg: 0, doubtful: 0, matchup: 0 };
+            if (p.status === 'i' || p.status === 'u' || p.status === 's') { result.total = -100; return result; }
+            if (p.status === 'd') result.doubtful = -20;
+            result.ep = Math.round((p.epNext || 0) * 3 * 10) / 10;
+            // Preseason: FPL resets form to 0.0, fall back to last season's PPG —
+            // same pattern as analyzePlayer's effectiveForm
+            const effectiveForm = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
+            result.form = Math.round(effectiveForm * 2 * 10) / 10;
+            const fx = p.fixtures || [];
+            if (fx.length > 0) { result.fixture = Math.round((3 - fx[0].difficulty) * 5 * 10) / 10; if (fx[0].isHome) result.home = 2; }
+            const mins = p.minutes || 0;
+            if (mins > 200) { result.xgi = Math.round(((p.xGI / mins) * 90) * 10 * 10) / 10; }
+            // computePlayerGamesPlayed already handles the preseason case — last
+            // season's starts/minutes instead of dividing by 0 completed GWs
+            const mpg = mins / computePlayerGamesPlayed(p);
+            if (mpg >= 85) result.minutes = 3;
+            else if (mpg < 45) result.minutes = -5;
+            // FPL's own points-per-game — already correct pre- and in-season, unlike
+            // dividing the raw season total by (currentGW - 1), which blows up to
+            // hundreds of "points" during preseason when currentGW - 1 is 0.
+            result.ppg = Math.round((p.ppg || 0) * 1.5 * 10) / 10;
+            // Team Attack/Defense power vs. the next opponent's respective rating — the
+            // explicit team-context matchup factor section 9 asks for, on top of the
+            // generic FDR-based `fixture` term above. Same teamAnalysis data already used
+            // everywhere else on this page (detail panel, calculateTransferScore, etc.).
+            if (fx.length > 0 && fx[0].opponentId && teamAnalysis[fx[0].opponentId]) {
+                const opp = teamAnalysis[fx[0].opponentId];
+                const relevantOppPower = (p.position <= 2) ? (opp.attackPower || 50) : (opp.defensePower || 50);
+                result.matchup = Math.round(((50 - relevantOppPower) / 50) * 6 * 10) / 10;
+            }
+            result.total = Math.round(result.ep + result.form + result.fixture + result.home + result.xgi + result.minutes + result.ppg + result.doubtful + result.matchup);
+            return result;
+        }

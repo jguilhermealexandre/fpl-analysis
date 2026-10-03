@@ -6,9 +6,21 @@
    Extracted from the inline <script> in fpl-my-team-analysis.html.
    These files are plain classic scripts loaded in order, not ES modules:
    every function stays a global, which the inline onclick= handlers
-   throughout the markup depend on. Load order is preserved from the
-   original file — team-analysis-core.js must come first, since the
-   settings IIFE in lineup-wizard.js reads DEFAULT_SETTINGS from it.
+   throughout the markup depend on.
+
+   Four of them are no longer loaded with the page at all — draft-planner,
+   transfer-wizard, transfer-funnel and lineup-wizard arrive when their tab is
+   first opened, named in #v2TabScripts in the markup. So a name declared in
+   one of those four is not there until that click, and anything loaded with
+   the page that needs it has had it moved out: the transfer scoring engine and
+   the clean-sheet and pressure models to transfer-engine.js, the price
+   thresholds to price-watch.js, and the settings drawer, the saved-settings
+   bootstrap and the Team ID handlers to team-analysis-core.js.
+
+   What remains order-dependent is only top-level code. team-analysis-core.js
+   still comes first: it declares the shared state the rest assign to, and it
+   reads the manager's saved settings into userSettings before anything scores
+   with them.
    ============================================ */
 
         // ===== TRANSFER WIZARD ENGINE =====
@@ -44,23 +56,7 @@
             return parts.length ? parts.join('; ') + '.' : '';
         }
 
-        // Recency-weighted average, Transfer Wizard flavor: pre-filters to played-minutes
-        // games before windowing. Named distinctly from the shared recencyWeightedAvg() in
-        // scripts/compare-report.js (which windows raw, unfiltered history) to avoid the two
-        // same-named function declarations silently overriding each other at global scope.
-        function twRecencyWeightedAvg(history, key, n = 5) {
-            if (!history || history.length === 0) return 0;
-            const played = history.filter(h => h.minutes > 0);
-            const window = played.slice(-n);
-            if (window.length === 0) return 0;
-            const weights = window.map((_, i) => i + 1);
-            const wSum = weights.reduce((a, b) => a + b, 0);
-            let total = 0;
-            window.forEach((h, i) => { total += (parseFloat(h[key]) || 0) * weights[i]; });
-            return total / wSum;
-        }
 
-        // Clean sheet probability model (ported from lineup wizard)
         /* Drawn rather than typed. The emoji rendered as a different glyph
            at a different weight on every platform — full colour on one, a thin
            outline on another — and could take neither the button's text colour
@@ -70,317 +66,6 @@
             '<path d="M16 3h5v5"/><path d="M21 3l-7 7"/>' +
             '<path d="M8 21H3v-5"/><path d="M3 21l7-7"/></svg>';
 
-        function getCleanSheetProb(teamId, opponentId, isHome) {
-            const tp = teamAnalysis[teamId], op = teamAnalysis[opponentId];
-            if (!tp || !op) return 0.25;
-            let base = isHome ? 0.35 : 0.25;
-            const teamDef = tp.defensePower || 50;
-            const oppAtk = op.attackPower || 50;
-            base += (teamDef - 50) * 0.003;
-            base -= (oppAtk - 50) * 0.0025;
-            const avgLeagueGApg = 1.3;
-            base += (avgLeagueGApg - (tp.avgConceded || 1.3)) * 0.04;
-            return Math.max(0.05, Math.min(0.65, base));
-        }
-
-        // Transfer Score — multi-factor ranking for replacement candidates
-        // (Aligned with players-analysis calculatePositionScore for consistent recommendations)
-        function calculateTransferScore(player, pos) {
-            const posNames = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const posName = posNames[pos] || 'MID';
-
-            // Get player history for recency weighting
-            const pd = playersDetailData?.players?.find(p => p.id === player.id);
-            const history = pd?.history?.filter(h => h.minutes > 0) || [];
-            const recent = getPlayerRecentStats(player.id, 5);
-
-            const seasonGames = Math.max(currentGW - 1, 1);
-            const recentGames = recent?.games || 1;
-            const minsPerGame = recent ? (recent.minutes / recentGames) : (player.minutes / seasonGames);
-            const nailedBonus = Math.min(5, Math.max(0, (minsPerGame - 60) / 4));
-
-            // ── Recency-weighted per-game stats (most recent games count more) ──
-            const rwPtsPerGame = history.length > 0 ? twRecencyWeightedAvg(history, 'total_points') : (recent ? recent.ppg : player.ppg);
-            const rwXGI = history.length > 0 ? twRecencyWeightedAvg(history, 'expected_goal_involvements') : (recent ? recent.xGIPer90 : (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0));
-            const rwXG = history.length > 0 ? twRecencyWeightedAvg(history, 'expected_goals') : (recent ? recent.xGPer90 : (player.minutes > 0 ? (player.xG / player.minutes) * 90 : 0));
-            const rwXA = history.length > 0 ? twRecencyWeightedAvg(history, 'expected_assists') : (recent ? recent.xAPer90 : (player.minutes > 0 ? (player.xA / player.minutes) * 90 : 0));
-            const rwBonus = history.length > 0 ? twRecencyWeightedAvg(history, 'bonus') : (recent ? (recent.bonus / recentGames) : (player.bonus / seasonGames));
-            const csPerGame = recent ? (recent.cs / recentGames) : (player.cleanSheets / Math.max(player.starts || seasonGames, 1));
-
-            const value = rwPtsPerGame / Math.max(player.price, 3.5);
-
-            // Season phase for value weight adjustment
-            const phase = currentGW >= 30 ? 'late' : (currentGW >= 15 ? 'mid' : 'early');
-            const valueWeight = phase === 'late' ? (posName === 'GK' ? 8 : 6) : (posName === 'GK' || posName === 'DEF') ? 10 : 12;
-
-            // ── Fixture factor — weighted next 3 fixtures (3/2/1) with opponent quality ──
-            const fixtures = player.fixtures || teamFixtures[player.teamId] || [];
-            const fixtureWeights = [3, 2, 1];
-            let fixtureFactor = 0;
-            let venueMultiplier = 1.0;
-
-            if (fixtures.length > 0) {
-                let totalWeight = 0, weightedFixture = 0;
-                fixtures.slice(0, 3).forEach((f, idx) => {
-                    const w = fixtureWeights[idx] || 1;
-                    const opp = f.opponentId;
-                    const isHome = f.isHome;
-                    let ff = 0;
-                    if (opp && teamAnalysis[opp]) {
-                        const oppAttack = teamAnalysis[opp].attackPower || 50;
-                        const oppDefense = teamAnalysis[opp].defensePower || 50;
-                        const relevantOpp = (pos <= 2) ? oppAttack : oppDefense;
-                        ff = ((50 - relevantOpp) / 50) * 10;
-                        if (isHome) ff += 1.5;
-                    } else {
-                        const fdr = f.difficulty || 3;
-                        ff = Math.max(-10, (3.5 - fdr) * 8);
-                    }
-                    weightedFixture += ff * w;
-                    totalWeight += w;
-                });
-                fixtureFactor = totalWeight > 0 ? weightedFixture / totalWeight : 0;
-
-                // ── Dynamic venue multiplier based on home/away splits ──
-                const nextIsHome = fixtures[0]?.isHome ?? null;
-                if (nextIsHome !== null && history.length >= 4) {
-                    const recentWindow = history.slice(-5);
-                    const splitGames = recentWindow.filter(h => h.was_home === nextIsHome);
-                    if (splitGames.length >= 2) {
-                        const splitPts = splitGames.reduce((s, h) => s + (h.total_points || 0), 0) / splitGames.length;
-                        const overallPts = recentWindow.reduce((s, h) => s + (h.total_points || 0), 0) / recentWindow.length;
-                        if (overallPts > 0) {
-                            venueMultiplier = 0.7 + 0.3 * (splitPts / overallPts);
-                            venueMultiplier = Math.max(0.8, Math.min(1.25, venueMultiplier));
-                        }
-                    } else {
-                        venueMultiplier = nextIsHome ? 1.05 : 0.95;
-                    }
-                } else {
-                    venueMultiplier = (fixtures[0]?.isHome) ? 1.05 : 0.95;
-                }
-            }
-
-            // ── Team context factors ──
-            const ta = teamAnalysis[player.teamId];
-            let teamFormFactor = 0, teamQualityFactor = 0;
-            if (ta) {
-                teamFormFactor = ((ta.formRating || 50) - 50) / 50 * 3;
-                teamQualityFactor = pos <= 2
-                    ? ((ta.defensePower || 50) - 50) / 50 * 4
-                    : ((ta.attackPower || 50) - 50) / 50 * 4;
-            }
-
-            // ── CS Probability factor (GK/DEF) — weighted across next 3 fixtures ──
-            let csProbFactor = 0;
-            if (pos <= 2 && fixtures.length > 0) {
-                let csTotal = 0, csWeightTotal = 0;
-                fixtures.slice(0, 3).forEach((f, idx) => {
-                    const w = fixtureWeights[idx] || 1;
-                    if (f.opponentId) {
-                        const prob = getCleanSheetProb(player.teamId, f.opponentId, f.isHome);
-                        csTotal += prob * w;
-                        csWeightTotal += w;
-                    }
-                });
-                if (csWeightTotal > 0) {
-                    const avgProb = csTotal / csWeightTotal;
-                    csProbFactor = (avgProb - 0.28) * 35;
-                }
-            }
-
-            // ── Advanced penalty taker detection ──
-            let penTakerBonus = 0;
-            if (pos >= 2) {
-                const totalGoals = player.goals || 0;
-                const seasonPenGoals = Math.max(0, totalGoals - (player.xG || 0));
-                const penMissed = 0; // not available in bootstrap data
-                const penThreshold = { DEF: 0.5, MID: 1.0, FWD: 1.5 }[posName] || 1.0;
-                const penAttempts = (seasonPenGoals >= penThreshold || penMissed > 0)
-                    ? Math.round(seasonPenGoals + penMissed) : 0;
-                const penRatio = totalGoals > 0 ? seasonPenGoals / totalGoals : 1;
-                if (penAttempts >= 2 && penRatio > 0.25) {
-                    penTakerBonus = Math.min(6, penAttempts * 1.5);
-                } else if (seasonGames >= 10 && penAttempts >= 1 && penRatio > 0.25) {
-                    penTakerBonus = Math.min(4, penAttempts * 1.5);
-                }
-            }
-
-            // ── Rotation risk penalty ──
-            let rotationPenalty = 0;
-            if (player.teamId && teamFixtures[player.teamId]) {
-                const upcomingFixtures = teamFixtures[player.teamId].slice(0, 4);
-                const hasCongestion = upcomingFixtures.length >= 3;
-                if (hasCongestion && minsPerGame < 85) {
-                    rotationPenalty = -2;
-                }
-            }
-
-            // ── Enhancement bonuses (inspired by players-analysis calculatePositionScore) ──
-            // Rising form: compare L3 ppg vs season ppg
-            let risingFormBonus = 0;
-            const recentPpg = recent ? recent.ppg : 0;
-            const seasonPpg = player.ppg || 0;
-            if (seasonPpg > 1) {
-                const formRatio = recentPpg / seasonPpg;
-                if (formRatio > 1.3) risingFormBonus = 3;
-                else if (formRatio > 1.15) risingFormBonus = 1.5;
-            }
-
-            // Routes-to-points diversity
-            let routeCount = 0;
-            if (rwXG > 0.1) routeCount++;
-            if (rwXA > 0.1) routeCount++;
-            if (rwBonus > 0.3) routeCount++;
-            if (pos <= 2 && csPerGame > 0.2) routeCount++;
-            const routeBonus = Math.max(0, (routeCount - 1) * 1.5);
-
-            // Reliability (low variance in recent scores)
-            let reliabilityBonus = 0;
-            if (history.length >= 4) {
-                const recentScores = history.slice(-5).map(h => h.total_points || 0);
-                const avg = recentScores.reduce((a, b) => a + b, 0) / recentScores.length;
-                if (avg > 3) {
-                    const variance = recentScores.reduce((s, v) => s + (v - avg) ** 2, 0) / recentScores.length;
-                    reliabilityBonus = Math.max(0, 3 - Math.sqrt(variance) * 0.5);
-                }
-            }
-
-            const commonBonuses = risingFormBonus + routeBonus + reliabilityBonus;
-
-            // ── Position-specific scoring formulas ──
-            if (posName === 'GK') {
-                const savesPer90 = recent ? recent.savesPer90 : (player.minutes > 0 ? (player.saves / player.minutes) * 90 : 0);
-                const xGCPerGame = recent ? (recent.xGC / recentGames) : (player.minutes > 0 ? (player.xGC / player.minutes) * 90 : 0);
-                const defScore = Math.max(0, (2 - xGCPerGame)) * 8;
-
-                return ((csPerGame * 30) +
-                       (savesPer90 * 2) +
-                       defScore +
-                       (rwPtsPerGame * 3) +
-                       (value * valueWeight) +
-                       fixtureFactor +
-                       teamQualityFactor +
-                       teamFormFactor +
-                       csProbFactor +
-                       rotationPenalty +
-                       nailedBonus +
-                       commonBonuses) * venueMultiplier;
-            }
-
-            if (posName === 'DEF') {
-                const xGCPerGame = recent ? (recent.xGC / recentGames) : (player.minutes > 0 ? (player.xGC / player.minutes) * 90 : 0);
-                const defScore = Math.max(0, (2 - xGCPerGame)) * 8;
-
-                return ((csPerGame * 25) +
-                       defScore +
-                       (rwXGI * 12) +
-                       (rwPtsPerGame * 3) +
-                       (value * valueWeight) +
-                       fixtureFactor +
-                       teamQualityFactor +
-                       teamFormFactor +
-                       csProbFactor +
-                       rotationPenalty +
-                       penTakerBonus +
-                       nailedBonus +
-                       commonBonuses) * venueMultiplier;
-            }
-
-            if (posName === 'MID') {
-                const actualGI = recent ? ((recent.goals + recent.assists) / recentGames) : 0;
-                const overPerf = actualGI - rwXGI;
-                const regressionAdj = overPerf > 0 ? overPerf * -3 : overPerf * -2;
-
-                return ((rwXGI * 40) +
-                       regressionAdj +
-                       (csPerGame * 3) +
-                       (rwPtsPerGame * 3) +
-                       (rwBonus * 2) +
-                       (value * valueWeight) +
-                       fixtureFactor +
-                       teamQualityFactor +
-                       teamFormFactor +
-                       rotationPenalty +
-                       penTakerBonus +
-                       nailedBonus +
-                       commonBonuses) * venueMultiplier;
-            }
-
-            // FWD
-            const actualGoals = recent ? (recent.goals / recentGames) : 0;
-            const overPerf = actualGoals - rwXG;
-            const regrCoeff = (overPerf > 0 && seasonGames >= 15 && (player.goals / seasonGames) > (player.xG / seasonGames)) ? -2 : -4;
-            const regressionAdj = overPerf > 0 ? overPerf * regrCoeff : overPerf * -2;
-
-            return ((rwXG * 40) +
-                   (rwXA * 15) +
-                   regressionAdj +
-                   (rwPtsPerGame * 3) +
-                   (rwBonus * 2) +
-                   (value * valueWeight) +
-                   fixtureFactor +
-                   teamQualityFactor +
-                   teamFormFactor +
-                   rotationPenalty +
-                   penTakerBonus +
-                   nailedBonus +
-                   commonBonuses) * venueMultiplier;
-        }
-
-        // Find replacement candidates for a position within budget
-        // blockedClubs is optional and only the Control Room market passes it: teams
-        // you already hold three of. Filtering here rather than after the slice(0, 30)
-        // below matters — a full club can own a lot of the top of the list, and
-        // trimming afterwards would silently shorten the recommendations.
-        function findTransferCandidates(position, maxPrice, excludeIds, blockedClubs) {
-            const candidates = allPlayers.filter(p =>
-                p.position === position &&
-                p.price <= maxPrice &&
-                !excludeIds.has(p.id) &&
-                !(blockedClubs && blockedClubs.has(p.teamId)) &&
-                (p.status === 'a' || p.status === 'd') &&
-                p.minutes >= minMinutesForCandidate()
-            );
-
-            /* Ranked on projected points, not on the transfer score.
-
-               calculateTransferScore returns a number in units of its own, and
-               every surface that consumes this list then labels the rows with the
-               xP engine — so the order and the figure printed on it came out of
-               two different models and could contradict each other outright. The
-               players page hit the same thing and fixed it there: across 200
-               players the ratio between its two models ran from 0.0 to 23.9, which
-               put cards on screen in an order their own badge disagreed with.
-               buildSuggestedMoves in pitch-snapshot.js is worse off still — it
-               says "ranked by xP gained per transfer" and then takes [0] off a
-               list that was not, so a better candidate two rows down was never
-               even looked at.
-
-               _transferScore is still computed and still on the object. The
-               package strategies below blend it against price and ownership on its
-               own scale, and the card prints it as a second reading; here it
-               breaks ties between candidates that project identically. */
-            const runGWs = typeof twRunGWs === 'function' ? twRunGWs() : [];
-            const canProject = runGWs.length > 0
-                && typeof xpEngineReady === 'function' && xpEngineReady();
-
-            candidates.forEach(c => {
-                c._transferScore = calculateTransferScore(c, c.position);
-                c._xpRun = canProject ? twXPOver(c, runGWs) : null;
-                // Get recent stats for display
-                c._recentStats = getPlayerRecentStats(c.id, 5);
-            });
-
-            /* No engine, no fixtures left to project, or the globals it reads not
-               loaded yet: fall back to the old ordering whole. Sorting everyone by
-               an identical zero would be worse than the score this replaces. */
-            candidates.sort(canProject
-                ? (a, b) => (b._xpRun - a._xpRun) || (b._transferScore - a._transferScore)
-                : (a, b) => b._transferScore - a._transferScore);
-
-            return candidates.slice(0, 30); // Top 30 per slot
-        }
 
         // Generate curated transfer packages
         function generateTransferPackages() {
@@ -3738,20 +3423,6 @@
             transferRendered = false;
         }
 
-        // ===== SETTINGS =====
-        function openSettings() {
-            // Highlight active preset button
-            ['Aggressive','Balanced','Patient'].forEach(name => {
-                const btn = document.getElementById('preset' + name);
-                btn.classList.toggle('primary', activePreset === name.toLowerCase());
-            });
-            document.getElementById('settingsOverlay').classList.add('show');
-        }
-
-        function closeSettings(event) {
-            if (event && event.target !== event.currentTarget) return;
-            document.getElementById('settingsOverlay').classList.remove('show');
-        }
 
         /* openHelpOverlay / closeHelpOverlay moved to scripts/common.js.
 
@@ -3759,108 +3430,6 @@
            them got a ReferenceError — and four pages now have a help drawer of
            their own. */
 
-        function applyPreset(preset) {
-            if (preset === 'aggressive') {
-                userSettings = { sellSensitivity: 1.3, fixtureWeight: 1.4, formWeight: 1.2, valueWeight: 1.3, minutesThreshold: 70, premiumHarshness: 1.3 };
-            } else if (preset === 'balanced') {
-                userSettings = { sellSensitivity: 1.0, fixtureWeight: 1.0, formWeight: 1.0, valueWeight: 1.0, minutesThreshold: 60, premiumHarshness: 1.0 };
-            } else if (preset === 'patient') {
-                userSettings = { sellSensitivity: 0.7, fixtureWeight: 0.6, formWeight: 0.8, valueWeight: 0.8, minutesThreshold: 50, premiumHarshness: 0.7 };
-            }
-
-            activePreset = preset;
-            localStorage.setItem('fpl_analysis_settings', JSON.stringify(userSettings));
-            localStorage.setItem('fpl_active_preset', preset);
-            document.querySelectorAll('.strategy-preset-tab').forEach(button => {
-                button.classList.toggle('active', button.dataset.strategyPreset === preset);
-            });
-            closeSettings();
-            
-            if (twSquad().length > 0) {
-                analyzeTeam();
-            }
-
-            updateStatus(`${preset.charAt(0).toUpperCase() + preset.slice(1)} settings applied`, 'success');
-        }
-
-        // ===== TRANSFER MARKET =====
-        /* When FPL changes prices.
-
-           It moved for 2026/27. The Premier League's own announcement of the
-           Price Change Predictor says the tool indicates who will rise and fall
-           "each day at 00:00 UK time"; this used to be hard-coded at 01:30 UTC,
-           which is now up to an hour and a half late and, through British
-           Summer Time, on the wrong day entirely.
-
-           UK time rather than UTC, so it cannot be a constant: midnight in
-           London is 23:00 UTC in summer and 00:00 UTC in winter. */
-        const PRICE_LOCK_TZ = 'Europe/London';
-
-        // A player's distance to a price change, as a signed percentage: +100 means
-        // on track to rise, -100 on track to drop. This is the same transfer-velocity
-        // model behind the pitch badge (net transfers over the current owner base),
-        // scaled so the thresholds land at ±100 — NOT FPL's own published figure,
-        // which does not exist publicly.
-        /* How far along the meter a player is, from FPL's own figure.
-
-           This used to be a model: net transfers over the owner base, times
-           five hundred, clamped. It was written before the game published
-           anything, and it was left in place after it did — so this page and
-           the dashboard answered the same question from different numbers and
-           disagreed in public. Ballard sat at −92.5 on the game's meter and
-           −11.5 on the model, so the dashboard called him a near-certain drop
-           while this page said no squad player was close to one.
-
-           The model was not merely miscalibrated, it was noise. Dividing net
-           transfers by a tiny owner base saturates the clamp on a handful of
-           moves: Matusiwa, three in and two out at 0.0% ownership, scored a
-           maximum +100 rise while the game's meter had him at −90.3.
-
-           price_change_percent is what the official Price Change Predictor is
-           built on, so there is nothing left to model. One number, read the
-           same way here as in scripts/price-watch.js. */
-        function priceThresholdPct(p) {
-            const v = p && p.priceProgress;
-            return typeof v === 'number' && isFinite(v) ? v : 0;
-        }
-
-        /* The same tiers price-watch.js uses at the top and bottom, so the two
-           panels cannot describe one player differently. Anything past the line
-           is due tonight; PW_CLOSE short of it is a watch item and deliberately
-           not a forecast.
-
-           Between those lines this used to say one word — "Safe" — for every
-           player, and the meter runs from -100 to +100. So a player 60% of the
-           way to a DROP was labelled safe, and so was one 60% of the way to a
-           rise, and so was one who had not moved at all. Measured on the live
-           feed that is 605 of 659 players sharing a single label: 300 being
-           sold, 164 being bought, 141 genuinely still. The one thing an owner
-           wants from this column — which way is my player going — was the thing
-           it threw away.
-
-           price-watch.js does not disagree with what follows, because it says
-           nothing here at all: below PW_CLOSE it returns null and the player is
-           simply left out of that panel. The shared vocabulary is the four outer
-           tiers, and those are untouched.
-
-           "Drifting" rather than "rising" or "falling" on purpose. The meter is
-           progress, not a prediction — the column's own header says so — and a
-           player at +30 is not on his way anywhere in particular. Direction is a
-           fact about the number; arrival is not. */
-        function thresholdState(pct) {
-            const due = typeof PW_DUE === 'number' ? PW_DUE : 100;
-            const close = typeof PW_CLOSE === 'number' ? PW_CLOSE : 80;
-            if (pct >= due) return { cls: 'rise-imminent', text: 'Rises tonight', short: 'Rising' };
-            if (pct >= close) return { cls: 'rise', text: 'Climbing', short: 'Climbing' };
-            if (pct <= -due) return { cls: 'drop-imminent', text: 'Drops tonight', short: 'Dropping' };
-            if (pct <= -close) return { cls: 'drop', text: 'Sliding', short: 'Sliding' };
-            /* Zero is its own answer and a common one — a fifth of the league sits
-               exactly there. Everything else takes the sign it actually has; no
-               dead zone, because any width for one would be invented. */
-            if (pct > 0) return { cls: 'drift-up', text: 'Drifting up', short: 'Up' };
-            if (pct < 0) return { cls: 'drift-down', text: 'Drifting down', short: 'Down' };
-            return { cls: 'stable', text: 'Not moving', short: 'Flat' };
-        }
 
         const THRESHOLD_TIP = "FPL's own progress meter towards a price change. At 100% the change happens at the next daily update; below that it is how far along he is, not a forecast that he gets there.";
 
@@ -3880,32 +3449,6 @@
             </div>`;
         }
 
-        // How far London is ahead of UTC at a given instant, in milliseconds.
-        function londonOffsetMs(at) {
-            const parts = {};
-            new Intl.DateTimeFormat('en-GB', {
-                timeZone: PRICE_LOCK_TZ, hour12: false,
-                year: 'numeric', month: '2-digit', day: '2-digit',
-                hour: '2-digit', minute: '2-digit', second: '2-digit'
-            }).formatToParts(at).forEach(x => { if (x.type !== 'literal') parts[x.type] = x.value; });
-            const hour = Number(parts.hour) === 24 ? 0 : Number(parts.hour);
-            const asIfUTC = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day),
-                hour, Number(parts.minute), Number(parts.second));
-            return asIfUTC - Math.floor(at.getTime() / 1000) * 1000;
-        }
-
-        /* The next midnight in London, as a real instant.
-
-           The offset is recomputed at the target rather than reused from now,
-           so the one night a year the clocks change does not move the deadline
-           by an hour. */
-        function nextPriceLock(now) {
-            const at = now != null ? new Date(now) : new Date();
-            const wall = new Date(at.getTime() + londonOffsetMs(at));
-            const nextMidnightWall = Date.UTC(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate()) + 86400000;
-            const firstGuess = new Date(nextMidnightWall - londonOffsetMs(at));
-            return new Date(nextMidnightWall - londonOffsetMs(firstGuess));
-        }
 
         // One timer, cleared and restarted on every render, stopping itself once the
         // element it writes into is gone — same pattern as the deadline countdown.
@@ -3963,19 +3506,7 @@
         let tmSquadSort = { col: 'pressure', asc: false };
         let tmRisingSort = { col: 'netTransfers', asc: false };
         let tmFallingSort = { col: 'netTransfers', asc: true };
-        function getTransferPressure(player) {
-            const owners = Math.max(totalFplPlayers * (player.ownership / 100), 1);
-            const net = player.transfersIn - player.transfersOut;
-            return net / owners;
-        }
 
-        function getPressureLabel(pressure) {
-            if (pressure > 0.04) return { text: 'Hot', cls: 'rise' };
-            if (pressure > 0.015) return { text: 'Rising', cls: 'rise' };
-            if (pressure < -0.04) return { text: 'Dropping', cls: 'fall' };
-            if (pressure < -0.015) return { text: 'Cooling', cls: 'fall' };
-            return { text: 'Stable', cls: 'stable' };
-        }
 
         function ownershipRingSVG(pct) {
             const r = 9, cx = 12, cy = 12, sw = 3;
