@@ -392,7 +392,12 @@ jobs:
               players: playerData
             };
             
-            fs.writeFileSync('data/players-data.json', JSON.stringify(output, null, 2));
+            /* No indentation. This file is read by machines only, and the two
+               spaces a line were 1.8MB of the 4.5MB it ships — 40% of every
+               byte a phone downloads, decompresses and parses before My Team,
+               Players or Teams can draw anything. Gzip hides most of it on the
+               wire; the parse does not care how well whitespace compresses. */
+            fs.writeFileSync('data/players-data.json', JSON.stringify(output));
             console.log(`Saved ${playerData.length} players to data/players-data.json (${processed} freshly fetched)`);
             console.log(`File size: ${(fs.statSync('data/players-data.json').size / 1024 / 1024).toFixed(2)} MB`);
           }
