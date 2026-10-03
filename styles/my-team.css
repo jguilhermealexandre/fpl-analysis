@@ -5404,7 +5404,16 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-cc-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; align-items: start; }
 .lw-pitch-hint { margin-top: 8px; font-size: 11px; color: var(--text-muted); line-height: 1.5; }
 
-.lw-intel { border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--surface-1); overflow: hidden; }
+/* A container, because everything inside it has to lay itself out against the
+   width of this panel and not the width of the screen. The two are barely
+   related here: the panel is 530px on a 1920 monitor, 334px at 1180 where the
+   body is still two columns, and 922px at 1024 where it has just stacked. A
+   viewport media query asked the wrong question at all three. */
+.lw-intel {
+    container: lwintel / inline-size;
+    border: 1px solid var(--border-default); border-radius: var(--radius-xl);
+    background: var(--surface-1); overflow: hidden;
+}
 .lw-intel-tabs { display: flex; border-bottom: 1px solid var(--border-default); }
 
 .lw-intel-tab {
@@ -5445,6 +5454,25 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-ovs-iv.is-flat { color: var(--text-muted); }
 .lw-ovs-iv.is-warn { color: var(--verdict-monitor); }
 .lw-ovs-il { font-size: 10px; color: var(--text-muted); }
+
+/* Once the three figures stop fitting on one line.
+
+   On a wide panel the total leads and the two comparisons sit together at the
+   right edge, which is what .lw-ovs-item's margin-left: auto does. When it
+   wraps, that rule has already been spent on the first of the two — so the
+   second came back to the left margin while its neighbour stayed right, and the
+   pair read as two unrelated figures. Measured at 1180 the wrapped item's left
+   edge was 238px to the LEFT of the item above it.
+
+   Below this the total takes a line of its own and the two sit side by side
+   beneath it, left-aligned, sharing the width. 420px because the bar still fits
+   one line at 438, the panel's width on a 1440 screen. */
+@container lwintel (max-width: 420px) {
+    .lw-ovs { gap: 8px 14px; padding: 10px 12px; }
+    .lw-ovs-main { flex: 1 0 100%; }
+    .lw-ovs-item,
+    .lw-ovs-item + .lw-ovs-item { flex: 1 1 0; min-width: 0; margin-left: 0; text-align: left; }
+}
 
 /* ===== THE OVERVIEW STACK =====
    One block treatment, used three times, so the tab reads as a sequence of
@@ -5679,10 +5707,16 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    which has a floor of its own. At 360px the single column came out 338px
    wide inside a 282px panel, pushing the Lineup Wizard 17px past the edge of
    the screen and taking the whole page sideways with it. Same fault the
-   Transfers tab's .tm-columns had. */
+   Transfers tab's .tm-columns had.
+
+   .lw-cap-grid used to be pinned to one column here too, and it was backwards.
+   Stacking the body does not make the intel panel narrower, it makes it the
+   width of the page: at 1024 the panel is 922px and the captaincy grid spent
+   all of it on a single 898px card. Its own auto-fit already collapses to one
+   column when there is no room for two, at every width, which is the whole
+   point of auto-fit — so it needs no help here. */
 @media (max-width: 1100px) {
     .lw-cc-body { grid-template-columns: minmax(0, 1fr); }
-    .lw-cap-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* .rc-btn is flex:1 for the paired buttons on a replacement card; used alone in
