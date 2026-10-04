@@ -454,7 +454,7 @@
                 <span class="lwm-ex-i" data-tooltip="Chance of three or more goals in the match."><em>Over 2.5</em><b>${pc(o.over25)}</b></span>
                 <span class="lwm-ex-i" data-tooltip="Chance both teams score."><em>BTTS</em><b>${pc(o.bttsYes)}</b></span>
                 ${top ? `<span class="lwm-ex-i" data-tooltip="${escHTML(`The single likeliest scoreline, at ${pc(top.p)}.`)}"><em>Likeliest</em><b>${top.h}–${top.a}</b></span>` : ''}
-            </div>` : '';
+            </div>` : `<div class="lwm-ex is-none" data-tooltip="The betting feed has not priced this fixture yet. Your players and EasyFPL's own clean-sheet model are unaffected.">No market price yet</div>`;
 
             return `<article class="lwm-fix${row.mine.length >= 3 ? ' is-key' : ''}">
                 <div class="lwm-top">
@@ -474,7 +474,6 @@
                 <div class="lwm-players">${row.mine.map(lwMatchPlayer).join('')}</div>
                 <div class="lwm-stats">
                     ${lwTeamStats(home, f.team_h, f.team_a, true, o)}
-                    ${o ? '' : '<span class="lwm-unpriced" data-tooltip="The betting feed has not priced this fixture yet, so there is no market line for it. Your players and EasyFPL\'s own clean-sheet model are unaffected.">no market price</span>'}
                     ${lwTeamStats(away, f.team_a, f.team_h, false, o)}
                 </div>
                 ${shape}
@@ -600,7 +599,7 @@
            the other four is not a figure, it is a puzzle. What is left is
            form, ownership and how many the opponent concedes a game, which is
            what you would ask a friend. */
-        function lwCaptainRow(p, ranks) {
+        function lwCaptainRow(p, i, ranks) {
             const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
             const ctx = fx && typeof opponentContext === 'function' ? opponentContext(p.teamId, fx, ranks) : null;
             const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
@@ -626,12 +625,16 @@
                Built like the cards on the pitch: the portrait with its club
                badge on the corner, the name under it, then the figure. Same
                object, so the player you are looking at here is recognisably
-               the one you just clicked there. No rank number — the order of
-               the cards is the ranking, and a numeral in the corner of a
-               player card is a label the card does not need. */
+               the one you just clicked there.
+
+               The rank sits in the top-left corner, out of the card's centred
+               column entirely — it labels the card rather than being one more
+               thing on it, so it reads as a corner mark and does not compete
+               with the points for the same glance. */
             const capIdent = { name: p.web_name, code: p.code, teamId: p.teamId, team: p.team };
             return `<li class="lwc-row${isCap ? ' is-cap' : ''}${isVC ? ' is-vc' : ''}" data-tooltip="${escHTML(
                 `${p.web_name} — ${lwCaptainReason(p).replace(/<[^>]+>/g, '')}. ${p.gwScore.toFixed(1)} projected, ${(p.gwScore * 2).toFixed(1)} with the armband.`)}">
+                <span class="lwc-rank">${i + 1}</span>
                 ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(capIdent, 'v2-pid-portrait') : lwFace(p)}
                 <span class="lwc-name">${escHTML(p.web_name)}</span>
                 <span class="lwc-team">${escHTML(p.team || '')} · ${escHTML(lwPosShort(p))}</span>
@@ -729,7 +732,7 @@
                     <h2>${v2Icon('crown')} Captaincy</h2>
                     <span class="lwc-sub">Ranked on this gameweek alone — the armband only ever pays out once.</span>
                 </div>
-                <ol class="lwc-cards">${candidates.map(p => lwCaptainRow(p, ranks)).join('')}</ol>
+                <ol class="lwc-cards">${candidates.map((p, i) => lwCaptainRow(p, i, ranks)).join('')}</ol>
             </section>`;
         }
 

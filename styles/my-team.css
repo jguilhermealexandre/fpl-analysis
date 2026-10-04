@@ -9166,7 +9166,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-intel-tab,
 .lw-meta,
 .lw-opt-strip,
-.lw-ov .sq-kpi-sub,
 .lw-ov-call-gap,
 .lw-ov-note,
 .lw-ov-quiet,
@@ -9439,8 +9438,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-ctx-compare-meta,
 .lw-ctx-compare-stat-label,
 .lw-opt-report,
-.lw-ov .sq-kpi-label,
-.lw-ov .sq-kpi-sub,
 .lw-ov-apply,
 .lw-ov-foot,
 .lw-ovs-il,
@@ -9459,6 +9456,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwc-ctx,
 .lwc-foot,
 .lwc-insight-h,
+.lwc-rank,
 .lwc-stat b,
 .lwc-stat em,
 .lwc-sub,
@@ -9467,6 +9465,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwm-blend,
 .lwm-cs-n em,
 .lwm-ex-i em,
+.lwm-ex.is-none,
 .lwm-foot,
 .lwm-ha,
 .lwm-key,
@@ -9637,7 +9636,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-cap-xp-u,
 .lw-chg-p em,
 .lw-face .v2-pid-initials,
-.lw-ov .sq-kpi-label,
 .lw-ov-call-n .lw-face .v2-pid-initials,
 .lw-ov-call-u,
 .lw-ovc-pos,
@@ -9656,7 +9654,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwm-m em,
 .lwm-mine-n em,
 .lwm-p-pos,
-.lwm-unpriced,
 .mgr-est,
 .news-card-team-tag,
 .on-bench-tag,
@@ -9953,32 +9950,16 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    the order you act on it. Cut to four tiles once on the grounds that the rest
    was true but not a decision — which was wrong, because "0 flagged" cannot
    tell you the eleven is three-deep on one club. */
-/* Compact, because the overview shares its row with captaincy now. The tiles
-   are the same object Squad Analysis uses — just dialled down a step. */
 .lw-ov { container: lwov / inline-size; }
-.lw-ov .lw-kpis { margin-bottom: 12px; gap: 8px; }
-.lw-ov .sq-kpi { padding: 10px 11px; gap: 9px; }
-.lw-ov .sq-kpi-icon { width: 30px; height: 30px; }
-.lw-ov .sq-kpi-icon svg { width: 15px; height: 15px; }
-.lw-ov .sq-kpi-label { font-size: 9px; }
-.lw-ov .sq-kpi-value { font-size: 21px; }
-.lw-ov .sq-kpi-sub { font-size: 9.5px; }
+.lw-ov .lw-kpis { margin-bottom: 12px; }
+.lw-kpis.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .lw-kpis.is-three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px)  { .lw-kpis.is-three { grid-template-columns: minmax(0, 1fr); } }
 /* The blocks go one-up when the column cannot carry two. */
 @container lwov (max-width: 460px) {
     .lw-ov .lw-kpis.is-three { grid-template-columns: minmax(0, 1fr); }
 }
-/* Full width again, so nothing to make room for. */
-@media (max-width: 1250px) {
-    .lw-ov .sq-kpi { padding: 14px; gap: 12px; }
-    .lw-ov .sq-kpi-icon { width: 36px; height: 36px; }
-    .lw-ov .sq-kpi-icon svg { width: 18px; height: 18px; }
-    .lw-ov .sq-kpi-label { font-size: 10.5px; }
-    .lw-ov .sq-kpi-value { font-size: 26px; }
-    .lw-ov .sq-kpi-sub { font-size: 11px; }
-}
-.lw-kpis.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 1100px) { .lw-kpis.is-three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 520px)  { .lw-kpis.is-three { grid-template-columns: minmax(0, 1fr); } }
+
 /* Three across. Risks, what the optimiser moved, and the call it nearly got
    the other way round are three answers to one question — "is this eleven
    right?" — so they are read together rather than scrolled through. */
@@ -9986,9 +9967,9 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* The closest call stacks its two players once the block is this narrow. */
 .lw-ov-blocks .lw-call { flex-direction: column; align-items: stretch; gap: 5px; }
 .lw-ov-blocks .lw-call-v { align-self: flex-start; }
-/* Keyed to the panel, not the window — the overview is a seven-column slot on
-   a wide screen and the whole width on a narrow one, and the viewport cannot
-   tell those apart. These follow the base rule because a container query
+/* Keyed to the panel, not the window — the overview is full width on a wide
+   screen and a stacked panel on a narrow one, and the viewport cannot tell
+   those apart on its own. These follow the base rule because a container query
    carries no extra specificity: source order is what decides. */
 @container lwov (max-width: 700px) { .lw-ov-blocks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @container lwov (max-width: 470px) { .lw-ov-blocks { grid-template-columns: minmax(0, 1fr); } }
@@ -10085,14 +10066,14 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 
    Four panels, two rows, on a twelve-column grid.
 
-       ┌──────────────── overview ────────────────┬──── captaincy ────┐
-       ├───────── lineup ─────────┬───────── matchday ────────────────┤
+       ┌─────────── overview ───────────┬──── captaincy ────┐
+       ├─────────── lineup ─────────────┼──── matchday ─────┤
 
-   The decision sits above the evidence: what the eleven is worth and who
-   wears the armband on top, then the pitch you change and the matches you
-   change it for, side by side at equal weight because neither answers
-   without the other. Overview takes seven columns to captaincy's five — it
-   carries three figures and three blocks, where captaincy is one ranked list.
+   Two thirds and a third. The left column is the thing itself — what the
+   eleven is worth, and the eleven — and the right column is what you check
+   it against. A pitch needs five cards across and will not go below about
+   500px without cutting names in half, so it takes the wide side; captaincy
+   is five small cards and matchday a list, and both read fine in a third.
 
    One arrangement, not two. The A/C switch this replaces stored a preference
    in localStorage, which meant no two people were looking at the same screen
@@ -10109,10 +10090,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     align-items: start;
 }
 .lw-main > div { min-width: 0; }
-.lw-slot-ov     { grid-column: span 7; }
-.lw-slot-cap    { grid-column: span 5; }
-.lw-slot-lineup { grid-column: span 6; }
-.lw-slot-md     { grid-column: span 6; }
+.lw-slot-ov     { grid-column: span 8; }
+.lw-slot-cap    { grid-column: span 4; }
+.lw-slot-lineup { grid-column: span 8; }
+.lw-slot-md     { grid-column: span 4; }
 /* The grid's gap is the spacing between panels; .v2-section's own bottom
    margin would add a second, unequal one. */
 .lw-main > div > .v2-section { margin-bottom: 0; }
@@ -10298,7 +10279,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    closing up. Each fixture is self-contained — clubs, odds, your players, the
    market line — so two of them side by side read as two matches rather than as
    one wrapped one, and a seven-match round stops being a scroll. */
-.lwm-day { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; align-items: start; }
+.lwm-day { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; align-items: stretch; }
 .lwm-day-h { grid-column: 1 / -1; }
 @container lwm (max-width: 520px) { .lwm-day { grid-template-columns: minmax(0, 1fr); } }
 .lwm-day-h {
@@ -10309,8 +10290,18 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwm-day-h::after { content: ''; flex: 1 1 auto; height: 1px; background: var(--border-subtle); }
 .lwm-day-h span { order: 3; flex-shrink: 0; font-weight: 600; letter-spacing: .02em; text-transform: none; }
 
+/* Every match draws the same four bands in the same order, whatever is in it:
+   the clubs, your players, the two sides' numbers, the market line. A card
+   used to change shape with its content — one player or four, priced or not —
+   so a round of seven looked like seven different components rather than one
+   component seven times. The players band is the 1fr, so it absorbs the
+   difference and every other band stays where the eye expects it. */
 .lwm-fix {
     container: lwfix / inline-size;
+    /* Four bands for four children. Five rows put the 1fr on the stats line
+       instead of the players, which is why a one-player match was opening a
+       gap under its own numbers rather than under its pill. */
+    display: grid; grid-template-rows: auto 1fr auto auto;
     padding: 8px 10px; border-radius: var(--radius-lg);
     border: 1px solid var(--border-subtle); background: var(--surface-2);
 }
@@ -10364,11 +10355,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwm-m { display: inline-flex; align-items: baseline; gap: 4px; cursor: help; }
 .lwm-m em { font-style: normal; font-size: 9px; font-weight: 600; color: var(--text-muted); }
 .lwm-m b { font-size: 11.5px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
-.lwm-unpriced {
-    flex-shrink: 0; cursor: help;
-    font-size: 9px; font-weight: 600; color: var(--text-muted);
-    padding: 2px 7px; border-radius: var(--radius-full); background: var(--surface-3);
-}
 
 /* Goals, over 2.5, both teams to score, likeliest scoreline — the shape of the
    match rather than who wins it, which is the question a defender's owner asks. */
@@ -10376,6 +10362,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwm-ex-i { display: inline-flex; align-items: baseline; gap: 4px; cursor: help; min-width: 0; }
 .lwm-ex-i em { font-style: normal; font-size: 9px; font-weight: 600; color: var(--text-muted); }
 .lwm-ex-i b { font-size: 11px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
+/* The band stays even when the feed has nothing for it. A card that drops a
+   whole row when the odds have not landed is a different shape from the one
+   beside it, which is the inconsistency this grid exists to stop. */
+.lwm-ex.is-none { display: block; font-size: 10px; font-weight: 600; color: var(--text-muted); cursor: help; }
 
 /* Market first, ours second, each under its own word. They were "62% vs 55%"
    with the difference explained only on hover. */
@@ -10443,10 +10433,11 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
        is the same nothing said three times. The tag survives; the dashes do
        not. Nothing is hidden that carries a value. */
     .lwm-cs-n.is-none { display: none; }
-    .lwm-unpriced { order: 3; }
 }
 
-.lwm-players { display: flex; flex-wrap: wrap; gap: 4px; }
+/* Two rows of pills deep whether you own one player in the match or four, so
+   the band below it does not move from card to card. */
+.lwm-players { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px; min-height: 26px; padding-bottom: 2px; }
 .lwm-p {
     display: inline-flex; align-items: center; gap: 5px; min-width: 0;
     padding: 3px 8px 3px 4px; border-radius: var(--radius-full);
@@ -10529,10 +10520,21 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    the ranking, and a number in the corner is a label a player card does not
    need. */
 .lwc-row {
+    position: relative;
     display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0;
     padding: 12px 10px 10px; border-radius: var(--radius-lg); text-align: center;
     border: 1px solid var(--border-subtle); background: var(--surface-2);
 }
+/* Out of the centred column entirely: the rank labels the card rather than
+   being one of the things on it. */
+.lwc-rank {
+    position: absolute; top: 7px; left: 7px;
+    width: 18px; height: 18px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 9.5px; font-weight: 800; font-family: var(--font-mono);
+    background: var(--surface-3); color: var(--text-secondary);
+}
+.lwc-row.is-cap .lwc-rank { background: var(--color-captain, #facc15); color: #000; }
 .lwc-row.is-cap {
     border-color: var(--color-captain, #facc15);
     background: color-mix(in srgb, var(--color-captain, #facc15) 10%, var(--surface-2));
@@ -10602,7 +10604,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 @media (max-width: 768px) {
     .lw-sum-note, .lw-sum-flag, .lw-sum-quiet { font-size: 11px; }
     .lwc-stat em, .lwc-stat b { font-size: 10.5px; }
-    .lwc-insight-h, .lwc-team, .lwc-xp em, .lwc-btn { font-size: 10px; }
+    .lwc-insight-h, .lwc-team, .lwc-xp em, .lwc-btn, .lwc-rank { font-size: 10px; }
     .lwc-chips .lw-cap-fdr, .lwc-chips .dp-fix-ha { font-size: 10px; }
     .lwc-name { font-size: 12.5px; }
     /* Wider cards on a phone: two across at 390 would be 165px each, which is

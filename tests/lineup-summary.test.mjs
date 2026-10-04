@@ -355,9 +355,10 @@ test('captaincy is five player cards, each able to set the armband', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderCaptaincy();
     assert.equal((html.match(/lwc-row/g) || []).length, 5, 'five candidates');
     assert.match(html, /lwc-cards/, 'laid out as a card grid, not a stack of rows');
-    /* No rank numeral: the order of the cards is the ranking, and a number in
-       the corner is a label a player card does not need. */
-    assert.ok(!html.includes('lwc-rank'), 'and no rank badge');
+    /* The rank is a corner mark on the card, outside its centred column, so it
+       labels the card rather than competing with the points. */
+    assert.equal((html.match(/lwc-rank/g) || []).length, 5, 'each card ranked');
+    assert.match(html, /<span class="lwc-rank">1<\/span>/);
     assert.match(html, /lwc-line[\s\S]*?lwc-xp[\s\S]*?lwc-acts/, 'the figure and the armband share a line');
     assert.match(html, /setLWCaptain/);
     assert.match(html, /setLWViceCaptain/);
