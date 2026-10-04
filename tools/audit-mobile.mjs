@@ -53,6 +53,14 @@ const CHROME = process.env.AUDIT_CHROME || '/opt/pw-browsers/chromium-1194/chrom
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
 const widthArg = args.indexOf('--width');
+/* --pages app  limits the sweep to the signed-in screens, which are the ones
+   built out of panels that resize independently of the window. The marketing
+   pages are a single column of prose and behave much the same at every width,
+   and sweeping all 28 of them at six widths takes long enough that the run
+   tends not to get finished — a check nobody waits for is not a check. */
+const pagesArg = args.indexOf('--pages');
+const PAGE_FILTER = pagesArg !== -1 ? String(args[pagesArg + 1]) : null;
+
 const WIDTHS = widthArg !== -1
     ? String(args[widthArg + 1]).split(',').map(n => Number(n.trim())).filter(Boolean)
     : [390, 360];
@@ -300,7 +308,12 @@ for (const width of WIDTHS) {
     await ctx.addInitScript(() => { try { localStorage.setItem('fpl_team_id', '0'); } catch { /* private mode */ } });
     const page = await ctx.newPage();
 
-    for (const [path, label] of PAGES) {
+    const pages = PAGE_FILTER === 'app'
+        ? PAGES.filter(([path]) => path.startsWith('/dashboard/'))
+        : PAGE_FILTER
+            ? PAGES.filter(([, label]) => label.includes(PAGE_FILTER))
+            : PAGES;
+    for (const [path, label] of pages) {
         try {
             await page.goto(BASE + path, { waitUntil: 'domcontentloaded', timeout: 25000 });
         } catch {
@@ -319,7 +332,21 @@ for (const width of WIDTHS) {
             try { found = await page.evaluate(collect); } catch { continue; }
             // A small control is a fault for a thumb, not for a cursor.
             if (!isTouch(width)) found.tiny = [];
-            report.push({ width, page: label, section: stop.label, ...found });
+            const row = { width, page: label, section: stop.label, ...found };
+            report.push(row);
+            /* Progress on stderr as each stop is measured. The findings are
+               summarised at the end, which is right — but the run takes
+               minutes, and printing nothing until then means an interrupted
+               run yields nothing at all and a long one looks hung. stderr so
+               --json stays a clean document on stdout. */
+            if (!asJson) {
+                const n = row.pageScroll > 0 ? 1 : 0;
+                const counts = ['escapes', 'overlap', 'clipped', 'tiny', 'small']
+                    .reduce((a, k) => a + (row[k] ? row[k].length : 0), n);
+                process.stderr.write(`  ${String(width).padStart(4)}  ${label}`
+                    + `${stop.label ? ' · ' + stop.label : ''}`
+                    + `${counts ? '  — ' + counts : '  — clean'}\n`);
+            }
         }
     }
     await ctx.close();
