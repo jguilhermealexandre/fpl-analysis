@@ -37,6 +37,8 @@ const FIXTURES = [
 const PRICED = [
     { fixtureId: 101, event: 5, homeId: 1, awayId: 2, home: 'ARS', away: 'CHE',
       lambdaHome: 1.8, lambdaAway: 0.9, csHome: 0.42, csAway: 0.18,
+      over25: 0.54, under25: 0.46, bttsYes: 0.51,
+      scorelines: [{ h: 2, a: 0, p: 0.12 }, { h: 1, a: 0, p: 0.11 }],
       market: { home: 0.6, draw: 0.23, away: 0.17 } }
 ];
 
@@ -95,7 +97,8 @@ function wizard(state) {
            is the bookmaker feed, deliberately covering only SOME of it, which
            is the condition the old panel could not survive. */
         allFixtures: FIXTURES,
-        boOdds: { matches: PRICED },
+        boOdds: { matches: PRICED, metadata: { lastUpdated: new Date().toISOString(), source: 'football-data.co.uk' } },
+        boBlendInfo: () => ({ active: true, event: 5, weight: 0.4, matchesPlayed: 5, priced: 1 }),
         boKickoff: () => 'Sat 15:00',
         boLoadOdds: () => Promise.resolve(null),
         getCleanSheetProb: () => 0.3,
@@ -244,13 +247,71 @@ test('the section carries a legend, so the two numbers need no hover', () => {
     assert.match(html, /Bench/);
 });
 
+/* ===== EVERY MARKET NUMBER THE OLD PANEL CARRIED =====
+
+   The redesign kept the clean-sheet pair and the result bar and dropped the
+   rest. They are back: a defender's owner is asking about the shape of the
+   match, and "Over 2.5 54%, BTTS 51%, likeliest 2-0" is that question
+   answered. */
+
+test('a priced fixture shows each side its own expected goals', () => {
+    const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderMatchday();
+    assert.match(html, /lwm-sides/, 'a column per club');
+    assert.match(html, /1\.80/, "the home side's goal expectation");
+    assert.match(html, /0\.90/, "and the away side's");
+    assert.match(html, /lwm-m-l">xG/, 'labelled, not left as a bare number');
+});
+
+test('the shape of the match is shown, not only the result', () => {
+    const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderMatchday();
+    assert.match(html, /Over 2\.5<\/em><b>54%/);
+    assert.match(html, /BTTS<\/em><b>51%/);
+    assert.match(html, /Likeliest<\/em><b>2\u20130/, 'and the single likeliest scoreline');
+    assert.match(html, /Goals<\/em><b>2\.70/, 'with the total the two lambdas make');
+});
+
+test('an unpriced fixture says so rather than showing a blank row', () => {
+    // One starter moved to a club whose GW5 fixture the feed has not priced.
+    const xi = XI_442.map((p, i) => i === 5 ? { ...p, teamId: 3, team: 'LIV' } : p);
+    const html = wizard(state(xi, STRONG_BENCH)).lwRenderMatchday();
+    assert.match(html, /Not priced yet/);
+    assert.match(html, /lwm-players/, 'and his name is still on the card');
+});
+
+test('the section says where its numbers come from and whether they are blended', () => {
+    const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderMatchday();
+    assert.match(html, /market weight 40%/, 'the blend is stated, not silent');
+    assert.match(html, /Odds updated/);
+    assert.match(html, /football-data\.co\.uk/, 'and the source is named');
+});
+
 /* ===== THE OVERVIEW ROW ===== */
 
-test('the overview is the Squad Analysis KPI row, not a section', () => {
+test('the overview leads with the Squad Analysis KPI row', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderOverviewRow();
     assert.equal((html.match(/class="sq-kpi"/g) || []).length, 4, 'four tiles, same object as Squad Analysis');
     assert.match(html, /sq-kpi-icon tone-/);
-    assert.ok(!html.includes('lw-ov-block'), 'and none of the old stacked blocks');
+});
+
+/* The Overview was cut to four tiles once. These are the figures that went
+   with them, and they are back: a tile reading "0 flagged" cannot tell you the
+   eleven is three-deep on one club, or where half its points come from. */
+test('the overview keeps every figure that described the eleven', () => {
+    const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderOverviewRow();
+    assert.match(html, /Nailed on/, 'how many starters are nailed on');
+    assert.match(html, /Expected absent/);
+    assert.match(html, /Avg FDR/);
+    assert.match(html, /XI xP/);
+    assert.match(html, /What the eleven face/, 'the fixture read');
+    assert.match(html, /Key player decisions/, 'weakest starter against best substitute');
+    assert.match(html, /Changes against your saved lineup/);
+});
+
+test('the swap offer only appears when the shape survives it', () => {
+    // STRONG_BENCH holds a substitute who out-projects a starter in a legal shape.
+    const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderOverviewRow();
+    if (html.includes('lw-sum-apply')) assert.match(html, /lwApplySwap\(\d+, \d+\)/, 'the button names both players');
+    else assert.match(html, /no legal formation|as good as the eleven gets|no swap to make/, 'or says why there is none');
 });
 
 test('the overview reports the gain against the live FPL eleven', () => {
@@ -262,8 +323,11 @@ test('the overview reports the gain against the live FPL eleven', () => {
     assert.match(ctx.lwRenderOverviewRow(), /vs your live team/);
 });
 
-test('no squad, no overview row', () => {
-    assert.equal(wizard(state([], [])).lwRenderOverviewRow(), '');
+test('no squad, no overview content', () => {
+    // The mount point survives so refreshLWView() can find it; nothing else does.
+    const html = wizard(state([], [])).lwRenderOverviewRow();
+    assert.match(html, /id="lwKpis"/, 'the anchor the refresh replaces');
+    assert.ok(!html.includes('sq-kpi'), 'and no tiles describing a squad that is not loaded');
 });
 
 /* ===== CAPTAINCY ===== */
@@ -290,6 +354,78 @@ test('selecting players turns the captaincy column into the comparison', () => {
     assert.ok(!one.includes('lwc-row'), 'the ranked list stands aside');
     const two = wizard(state(XI_442, STRONG_BENCH, { selectedPlayers: [1, 10] })).lwRenderCaptaincy();
     assert.match(two, /Compare/);
+});
+
+/* The captaincy matrix was five cards wide and was cut to a bare list. The
+   width was the problem, not the numbers — all of them are back, read down a
+   column instead of across a grid. */
+test('each candidate carries the numbers the armband is decided on', () => {
+    const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderCaptaincy();
+    assert.match(html, /Threat/, 'how dangerous he is');
+    assert.match(html, /Opponent/, 'and how leaky the defence he faces is');
+    assert.match(html, /Form<\/em>/);
+    assert.match(html, /Owned<\/em>/);
+    assert.match(html, /Starts<\/em><b>95%/, 'minutes risk, as a number');
+    assert.match(html, /concede 1\.4 a game/, 'the opponent in goals');
+    assert.match(html, /lw-cap-fdr/, 'and the fixture, coloured by difficulty');
+});
+
+/* A pick the dataset does not know used to vanish without trace: map()
+   returned null, filter(Boolean) swept it up, and a fifteen-man squad quietly
+   became fourteen with no way to tell which man was gone. */
+test('a pick missing from the dataset is reported, not swallowed', () => {
+    const ctx = wizard(state(XI_442, STRONG_BENCH, { missingPicks: [31] }));
+    const html = ctx.lwRenderOverviewRow();
+    assert.match(html, /missing from the player dataset/);
+    assert.match(html, /element 31/, 'and names which pick it was');
+});
+
+/* ===== SWAPPING, BY CLICK OR BY DRAG ===== */
+
+test('a swap never loses a player', () => {
+    const ctx = wizard(state(XI_442, STRONG_BENCH));
+    const before = ctx.lineupState.squad.length;
+    // Every pair, both directions.
+    const all = [...XI_442, ...STRONG_BENCH].map(p => p.id);
+    for (const a of all) for (const b of all) {
+        ctx.lwSwapPlayers(a, b);
+        const ids = new Set([...ctx.lineupState.xi, ...ctx.lineupState.bench].map(p => p.id));
+        assert.equal(ctx.lineupState.xi.length, 11, `eleven starters after ${a}/${b}`);
+        assert.equal(ids.size, before, `all ${before} still placed after ${a}/${b}`);
+    }
+});
+
+test('an illegal shape is refused rather than half-applied', () => {
+    // Swapping the only keeper out for an outfield substitute leaves no keeper.
+    const ctx = wizard(state(XI_442, STRONG_BENCH));
+    const gk = XI_442[0].id, sub = STRONG_BENCH.find(p => p.pos !== 1).id;
+    assert.equal(ctx.lwSwapPlayers(gk, sub), 'illegal');
+    assert.equal(ctx.lineupState.xi[0].id, gk, 'the keeper is still in the eleven');
+});
+
+/* The drag is pointer-based, not HTML5 drag-and-drop: that API never fires
+   from a touchscreen, which would have put the feature out of reach of half
+   the people using the page. */
+test('the pitch offers drag as well as click, and says which drops are legal', () => {
+    const ctx = wizard(state(XI_442, STRONG_BENCH));
+    const card = ctx.lwCard(XI_442[5]);
+    assert.match(card, /data-lw-id="\d+"/, 'so a drag can identify what it is over');
+    assert.ok(!card.includes('draggable="true"'), 'not HTML5 drag-and-drop');
+    assert.match(card, /onclick="handleLWSwapClick/, 'and clicking still swaps');
+    // A midfielder for the bench midfielder keeps the shape; the keeper does not.
+    const mid = XI_442.find(p => p.pos === 3).id;
+    const benchMid = STRONG_BENCH.find(p => p.pos === 3);
+    if (benchMid) assert.equal(ctx.lwSwapWouldWork(mid, benchMid.id), true);
+    assert.equal(ctx.lwSwapWouldWork(XI_442[0].id, STRONG_BENCH.find(p => p.pos !== 1).id), false);
+});
+
+test('a drag that just ended does not also count as a click', () => {
+    const ctx = wizard(state(XI_442, STRONG_BENCH, { dragJustEnded: true }));
+    ctx.handleLWSwapClick(XI_442[3].id);
+    assert.equal(ctx.lineupState.swapSource, null, 'the click is swallowed');
+    assert.equal(ctx.lineupState.dragJustEnded, false, 'and the flag is spent');
+    ctx.handleLWSwapClick(XI_442[3].id);
+    assert.equal(ctx.lineupState.swapSource, XI_442[3].id, 'the next one is a real selection');
 });
 
 /* ===== THE PAGE ===== */

@@ -115,6 +115,8 @@
             bench: [],             // current bench
             formation: '',         // current formation string
             swapSource: null,      // player ID selected for swap (first click)
+            dragId: null,          // player ID being dragged across the pitch
+            dragJustEnded: false,  // a click that closes a drag is the drag's, not a selection
             selectedPlayers: [],   // up to 2 player IDs for context panel
             captain: null,         // captain player ID
             viceCaptain: null,     // vice-captain player ID
