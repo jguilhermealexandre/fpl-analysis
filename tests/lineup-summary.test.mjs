@@ -351,11 +351,14 @@ test('no squad, no overview content', () => {
 
 /* ===== CAPTAINCY ===== */
 
-test('captaincy is five small cards, ranked, each able to set the armband', () => {
+test('captaincy is five player cards, each able to set the armband', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderCaptaincy();
     assert.equal((html.match(/lwc-row/g) || []).length, 5, 'five candidates');
     assert.match(html, /lwc-cards/, 'laid out as a card grid, not a stack of rows');
-    assert.match(html, /lwc-rank/);
+    /* No rank numeral: the order of the cards is the ranking, and a number in
+       the corner is a label a player card does not need. */
+    assert.ok(!html.includes('lwc-rank'), 'and no rank badge');
+    assert.match(html, /lwc-line[\s\S]*?lwc-xp[\s\S]*?lwc-acts/, 'the figure and the armband share a line');
     assert.match(html, /setLWCaptain/);
     assert.match(html, /setLWViceCaptain/);
     /* The sentence of reasoning does not fit on a card this size, so it is the

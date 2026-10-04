@@ -148,10 +148,9 @@
                looking at the same screen. */
             container.innerHTML = `
                 <div class="lw-cc">
-                    <div class="lw-cc-head">
-                        <div class="lw-cc-title">${v2Icon('sliders')} Lineup command centre
-                            <span class="lw-cc-gw">GW${planningGW}</span></div>
-                    </div>
+                    <!-- No page title here: every panel below already says what
+                         it is and carries the gameweek, and the tab you clicked
+                         to get here is called Lineup Wizard. -->
                     <div class="lw-main" id="lwMain">
                         <div class="lw-slot-ov" id="lwOverviewPane">${lwRenderOverviewRow()}</div>
                         <div class="lw-slot-cap" id="lwCaptaincyPane">${lwRenderCaptaincy()}</div>
@@ -601,7 +600,7 @@
            the other four is not a figure, it is a puzzle. What is left is
            form, ownership and how many the opponent concedes a game, which is
            what you would ask a friend. */
-        function lwCaptainRow(p, i, ranks) {
+        function lwCaptainRow(p, ranks) {
             const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
             const ctx = fx && typeof opponentContext === 'function' ? opponentContext(p.teamId, fx, ranks) : null;
             const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
@@ -622,20 +621,26 @@
             /* The reason this candidate is where he is — who he faces and what
                the market expects of his side — reads as a sentence and a
                sentence does not fit on a card this size. It is the card's own
-               tooltip instead, so nothing is lost and nothing is crammed. */
-            return `<li class="lwc-row${isCap ? ' is-cap' : ''}" data-tooltip="${escHTML(
+               tooltip instead, so nothing is lost and nothing is crammed.
+
+               Built like the cards on the pitch: the portrait with its club
+               badge on the corner, the name under it, then the figure. Same
+               object, so the player you are looking at here is recognisably
+               the one you just clicked there. No rank number — the order of
+               the cards is the ranking, and a numeral in the corner of a
+               player card is a label the card does not need. */
+            const capIdent = { name: p.web_name, code: p.code, teamId: p.teamId, team: p.team };
+            return `<li class="lwc-row${isCap ? ' is-cap' : ''}${isVC ? ' is-vc' : ''}" data-tooltip="${escHTML(
                 `${p.web_name} — ${lwCaptainReason(p).replace(/<[^>]+>/g, '')}. ${p.gwScore.toFixed(1)} projected, ${(p.gwScore * 2).toFixed(1)} with the armband.`)}">
-                <span class="lwc-head">
-                    <span class="lwc-rank">${i + 1}</span>
+                ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(capIdent, 'v2-pid-portrait') : lwFace(p)}
+                <span class="lwc-name">${escHTML(p.web_name)}</span>
+                <span class="lwc-team">${escHTML(p.team || '')} · ${escHTML(lwPosShort(p))}</span>
+                <span class="lwc-line">
+                    <span class="lwc-xp">${(p.gwScore * 2).toFixed(1)}<em>pts</em></span>
                     <span class="lwc-acts">
                         <button class="lwc-btn${isCap ? ' on-c' : ''}" onclick="setLWCaptain(${p.id})" data-tooltip="Give ${escHTML(p.web_name)} the armband">C</button>
                         <button class="lwc-btn${isVC ? ' on-v' : ''}" onclick="setLWViceCaptain(${p.id})" data-tooltip="Make ${escHTML(p.web_name)} vice-captain">VC</button>
                     </span>
-                    <span class="lwc-xp">${(p.gwScore * 2).toFixed(1)}<em>pts</em></span>
-                </span>
-                <span class="lwc-id">
-                    ${lwFace(p)}
-                    <span class="lwc-name">${escHTML(p.web_name)}<span class="lwc-team">${escHTML(p.team || '')} · ${escHTML(lwPosShort(p))}</span></span>
                 </span>
                 <span class="lwc-chips">
                     ${fixChip}
@@ -710,7 +715,7 @@
                     <p class="lwc-insight-t">${verdict}${topRisk && topRisk.pct < 80 ? ` Worth noting he is only ${topRisk.pct}% likely to start.` : ''}</p>
                 </div>
                 ${off}
-                <ol class="lwc-cards">${candidates.map((p, i) => lwCaptainRow(p, i, ranks)).join('')}</ol>
+                <ol class="lwc-cards">${candidates.map(p => lwCaptainRow(p, ranks)).join('')}</ol>
                 <p class="lwc-foot">Ranked on this gameweek alone — the armband only ever pays out once.</p>
             </section>`;
         }
@@ -1300,6 +1305,17 @@
             const r = d.card.getBoundingClientRect();
             const ghost = d.card.cloneNode(true);
             ghost.className = d.card.className.replace('is-dragging', '') + ' lw-drag-ghost';
+            /* Positioned inline, not from the stylesheet. .dp-card takes
+               position: relative from a rule that outranks a single class, so
+               a .lw-drag-ghost { position: fixed } lost the cascade and the
+               copy was laid out in the document flow — present in the DOM,
+               1700px down the page, never under the cursor. Inline beats
+               everything short of !important, and where a dragged thing is on
+               screen is behaviour rather than theme. */
+            ghost.style.position = 'fixed';
+            ghost.style.margin = '0';
+            ghost.style.zIndex = '400';
+            ghost.style.pointerEvents = 'none';
             ghost.style.width = r.width + 'px';
             ghost.style.height = r.height + 'px';
             d.gx = d.x0 - r.left; d.gy = d.y0 - r.top;

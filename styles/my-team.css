@@ -5401,26 +5401,11 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     box-shadow: none;
     padding: 0;
 }
-.lw-cc-head {
-    display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px;
-    margin-bottom: 14px; padding-bottom: 12px;
-    border-bottom: 1px solid var(--border-subtle);
-}
-/* What the lineup is, beside the title. The gameweek and the formation used to
-   sit at the far right of the row inside .lw-cc-stat boxes built from the same
-   border, surface and radius as .rc-btn - so two read-only figures were drawn as
-   the same object as the two buttons beside them, and the whole cluster sat a
-   screen's width from the heading. A chip with no border is a tag; a button has
-   an edge. Only the actions keep the margin-left that pushes them right. */
-.lw-cc-title {
-    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
-    font-size: 17px; font-weight: 700; font-family: var(--font-display); color: var(--text-primary);
-}
-.lw-cc-gw {
-    font-size: 11px; font-weight: 600; font-family: var(--font-mono); color: var(--text-muted);
-    padding: 2px 8px; border-radius: var(--radius-full); background: var(--surface-2);
-}
-.lw-cc-actions { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+/* .rc-btn is flex:1 by default, which is right where it fills a toolbar and
+   wrong here: with Undo beside it, Auto-optimise was being squeezed to share
+   the space instead of keeping its own width. */
+.lw-cc-actions { display: flex; gap: 8px; margin-left: auto; flex-wrap: nowrap; }
+.lw-cc-actions .rc-btn { flex: 0 0 auto; white-space: nowrap; }
 
 /* 60/40, the pitch getting the larger share. */
 .lw-cc-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; align-items: start; }
@@ -5743,7 +5728,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 
 /* .rc-btn is flex:1 for the paired buttons on a replacement card; used alone in
    the command-centre header it stretched across the whole row. */
-.lw-cc-head .rc-btn { flex: 0 0 auto; }
 
 /* ===== Transfer Command Centre ===== */
 /* The plan's running state. It was one bordered strip with three
@@ -8911,7 +8895,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-ctx-header-name,
 .lw-ov-call-v,
 .lwc-title,
-.lwc-xp,
 .mgr-deadline-value,
 .mgr-money .mgr-value,
 .mgr-value,
@@ -9153,7 +9136,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-cap-off,
 .lw-captain-meta,
 .lw-captain-rank,
-.lw-cc-gw,
 .lw-chg-p,
 .lw-ctx-compare-stat,
 .lw-ctx-compare-stat-val,
@@ -9183,7 +9165,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-swap-hint,
 .lw-toggle,
 .lwc-insight-t,
-.lwc-name,
 .lwc-off,
 .lwc-stat b,
 .lwc-verdict,
@@ -9455,7 +9436,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwc-ctx,
 .lwc-foot,
 .lwc-insight-h,
-.lwc-rank,
 .lwc-stat b,
 .lwc-stat em,
 .lwc-sub,
@@ -9643,9 +9623,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-row-stat-label,
 .lw-stat-label,
 .lw-sum-flag-x,
-.lwc-rank,
 .lwc-stat em,
-.lwc-team,
 .lwc-xp em,
 .lwm-arm,
 .lwm-cs > .lwm-m-l,
@@ -9978,10 +9956,19 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-kpis.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 1100px) { .lw-kpis.is-three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px)  { .lw-kpis.is-three { grid-template-columns: minmax(0, 1fr); } }
-/* One column. These are reading blocks and the overview is a column now, not
-   a full-width band — and stacked they bring the panel close enough in height
-   to captaincy beside it that the row has no dead space in it. */
-.lw-ov-blocks { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: start; }
+/* Three across. Risks, what the optimiser moved, and the call it nearly got
+   the other way round are three answers to one question — "is this eleven
+   right?" — so they are read together rather than scrolled through. */
+.lw-ov-blocks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: start; }
+/* The closest call stacks its two players once the block is this narrow. */
+.lw-ov-blocks .lw-call { flex-direction: column; align-items: stretch; gap: 5px; }
+.lw-ov-blocks .lw-call-v { align-self: flex-start; }
+/* Keyed to the panel, not the window — the overview is a seven-column slot on
+   a wide screen and the whole width on a narrow one, and the viewport cannot
+   tell those apart. These follow the base rule because a container query
+   carries no extra specificity: source order is what decides. */
+@container lwov (max-width: 700px) { .lw-ov-blocks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container lwov (max-width: 470px) { .lw-ov-blocks { grid-template-columns: minmax(0, 1fr); } }
 
 
 .lw-sum-block {
@@ -9990,7 +9977,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     border: 1px solid var(--border-subtle); background: var(--surface-2);
 }
 .lw-sum-h {
-    display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin-bottom: 8px;
     font-size: 11.5px; font-weight: 700; letter-spacing: .02em;
     color: var(--text-primary);
 }
@@ -10000,7 +9987,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     background: color-mix(in srgb, var(--verdict-monitor) 8%, transparent);
 }
 .lw-sum-block.is-alert .lw-sum-h svg { color: var(--verdict-monitor); }
-.lw-sum-sub { font-size: 9.5px; font-weight: 600; color: var(--text-muted); }
+.lw-sum-sub { flex-basis: 100%; order: 3; font-size: 9.5px; font-weight: 600; color: var(--text-muted); }
 .lw-sum-n {
     margin-left: auto; padding: 1px 7px; border-radius: var(--radius-full);
     font-size: 9.5px; font-weight: 700; font-family: var(--font-mono);
@@ -10050,10 +10037,16 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* The closest bench call: two players side by side, and which way it went. */
 .lw-call { display: flex; align-items: stretch; gap: 8px; margin-bottom: 7px; }
 .lw-call-i {
-    flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 1px;
-    padding: 8px; border-radius: var(--radius-md); background: var(--surface-3);
+    flex: 1 1 0; min-width: 0;
+    display: grid; grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-areas: 'face name name' 'face xp label';
+    align-items: center; gap: 0 7px;
+    padding: 7px 8px; border-radius: var(--radius-md); background: var(--surface-3);
 }
-.lw-call-i .lw-face { --v2-pid-face: 22px; margin-bottom: 3px; }
+.lw-call-i .lw-face { grid-area: face; --v2-pid-face: 26px; }
+.lw-call-i b { grid-area: name; min-width: 0; }
+.lw-call-i em { grid-area: xp; }
+.lw-call-i i { grid-area: label; }
 .lw-call-i b { font-size: 12px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lw-call-i em { font-style: normal; font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); }
 .lw-call-i i {
@@ -10140,20 +10133,33 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    page. Before that the pitch scrolls under a finger exactly as it always did. */
 #lwPitchField.is-lw-dragging { touch-action: none; user-select: none; cursor: grabbing; }
 #lwPitchField.is-lw-dragging .dp-card { cursor: grabbing; }
-/* The card itself follows the pointer, so what is being moved is visible
-   rather than implied. */
-.lw-drag-ghost {
-    position: fixed; z-index: 9999; pointer-events: none;
-    opacity: .92; transform: rotate(-2deg) scale(1.04);
-    box-shadow: 0 10px 24px rgba(0, 0, 0, .45);
+/* A copy of the card follows the pointer, exactly as the Squad Analysis pitch
+   does it — same tilt, same lift, same shadow, so the two pitches behave like
+   one thing. Where it sits on screen is set inline from JS: .dp-card takes
+   position: relative from a rule that outranks a single class, so a
+   `.lw-drag-ghost { position: fixed }` here would silently lose and the copy
+   would be laid out in the document flow instead of under the cursor. */
+.dp-card.lw-drag-ghost {
+    opacity: .92;
+    transform: rotate(-2deg) scale(1.03);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, .32);
+    transition: none;
 }
-.lw-pane-lineup .dp-card.is-dragging { opacity: .45; cursor: grabbing; }
-.lw-pane-lineup .dp-card.is-drop-ok { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-success) 55%, transparent); }
-.lw-pane-lineup .dp-card.is-drop-no { opacity: .4; }
+/* The original stays in the layout — removing it would reflow the whole pitch
+   the instant the drag began. */
+.lw-pane-lineup .dp-card.is-dragging { opacity: .35; cursor: grabbing; }
+.lw-pane-lineup .dp-card.is-drop-ok {
+    outline: 2px dashed color-mix(in srgb, var(--color-primary) 55%, transparent);
+    outline-offset: 2px;
+}
+.lw-pane-lineup .dp-card.is-drop-no { opacity: .35; cursor: not-allowed; }
+/* The destination under the cursor, distinct from the other legal ones. */
 .lw-pane-lineup .dp-card.is-drop-over {
-    box-shadow: 0 0 0 3px var(--color-success);
-    transform: translateY(-2px);
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    transform: translateY(-3px) scale(1.03);
 }
+.lw-pane-lineup .dp-card { transition: transform 120ms ease, opacity 120ms ease; }
 .lw-pane-lineup .dp-card .dp-transfer,
 .lw-pane-lineup .dp-card .dp-arm,
 .lw-pane-lineup .dp-card .dp-arm-set { cursor: pointer; }
@@ -10478,61 +10484,60 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    tooltip now; nothing is lost and nothing is crammed. */
 .lwc-cards {
     list-style: none; margin: 0; padding: 0;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); gap: 7px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); gap: 8px;
 }
+/* The same object the pitch draws: portrait with the club badge on its corner,
+   name under it, then the figure. No rank numeral — the order of the cards is
+   the ranking, and a number in the corner is a label a player card does not
+   need. */
 .lwc-row {
-    display: flex; flex-direction: column; gap: 5px; min-width: 0;
-    padding: 8px 9px; border-radius: var(--radius-lg);
+    display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0;
+    padding: 12px 10px 10px; border-radius: var(--radius-lg); text-align: center;
     border: 1px solid var(--border-subtle); background: var(--surface-2);
 }
 .lwc-row.is-cap {
     border-color: var(--color-captain, #facc15);
-    background: color-mix(in srgb, var(--color-captain, #facc15) 9%, var(--surface-2));
+    background: color-mix(in srgb, var(--color-captain, #facc15) 10%, var(--surface-2));
 }
+.lwc-row.is-vc { border-color: var(--border-emphasis); }
+.lwc-row .v2-pid { margin-bottom: 3px; }
+.lwc-row .v2-pid-portrait { --v2-pid-face: 54px; }
+.lwc-row .v2-pid-portrait .v2-pid-avatar { width: 54px; height: 54px; }
 
-.lwc-head { display: flex; align-items: center; gap: 6px; }
-.lwc-rank {
-    flex-shrink: 0; width: 17px; height: 17px; border-radius: 50%;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 9px; font-weight: 800; font-family: var(--font-mono);
-    background: var(--surface-3); color: var(--text-secondary);
+.lwc-name {
+    font-size: 13px; font-weight: 700; color: var(--text-primary);
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.lwc-row.is-cap .lwc-rank { background: var(--color-captain, #facc15); color: #000; }
-.lwc-xp {
-    margin-left: auto; flex-shrink: 0;
-    font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary);
-}
-.lwc-xp em { font-style: normal; margin-left: 2px; font-size: 8.5px; font-weight: 600; color: var(--text-muted); }
+.lwc-team { font-size: 9.5px; font-weight: 600; color: var(--text-muted); font-family: var(--font-mono); }
 
-.lwc-id { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.lwc-id .lw-face { flex-shrink: 0; --v2-pid-face: 24px; }
-.lwc-id .lw-face .v2-pid-avatar { width: 24px; height: 24px; }
-.lwc-name { display: flex; flex-direction: column; min-width: 0; font-size: 12px; font-weight: 700; color: var(--text-primary); }
-.lwc-name > span { margin: 0; }
-.lwc-team { font-size: 9px; font-weight: 600; color: var(--text-muted); font-family: var(--font-mono); }
-
-.lwc-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; min-width: 0; }
-/* The chip is a chip, not a bar: .dp-fix carries flex: 1 1 auto from the pitch,
-   and player-profile.css loads after this file, so it takes two classes to win. */
-.lwc-chips .lw-cap-fdr { flex: 0 0 auto; }
-.lwc-stat { display: inline-flex; align-items: baseline; gap: 3px; cursor: help; }
-.lwc-stat em { font-style: normal; font-size: 9px; font-weight: 600; color: var(--text-muted); }
-.lwc-stat b { font-size: 11px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
+/* What it is worth, and the button that makes it so, on one line — the two
+   halves of the only decision this card exists for. */
+.lwc-line { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 2px; }
+.lwc-xp { font-size: 17px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); }
+.lwc-xp em { font-style: normal; margin-left: 2px; font-size: 9px; font-weight: 600; color: var(--text-muted); }
 
 .lwc-acts { display: flex; gap: 3px; }
 /* The armband buttons have to look pressable at rest. On a transparent ground
    with only --border-default under them they read as two stray letters, and
-   the one control on this card is the thing you came to use. */
+   the one control on this card is the thing the card exists for. */
 .lwc-btn {
-    min-width: 26px; padding: 2px 6px; border-radius: var(--radius-md);
+    min-width: 26px; padding: 3px 7px; border-radius: var(--radius-md);
     border: 1px solid var(--border-emphasis); background: var(--surface-3);
-    font-size: 9.5px; font-weight: 700; color: var(--text-secondary);
+    font-size: 10px; font-weight: 700; color: var(--text-secondary);
     cursor: pointer; font-family: var(--font-body);
     transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
 }
 .lwc-btn:hover { border-color: var(--color-primary); color: var(--text-primary); }
 .lwc-btn.on-c { background: var(--color-captain, #facc15); border-color: var(--color-captain, #facc15); color: #000; }
 .lwc-btn.on-v { background: var(--surface-4, var(--border-emphasis)); border-color: var(--text-muted); color: var(--text-primary); }
+
+.lwc-chips { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 3px 8px; min-width: 0; }
+/* The chip is a chip, not a bar: .dp-fix carries flex: 1 1 auto from the pitch,
+   and player-profile.css loads after this file, so it takes two classes to win. */
+.lwc-chips .lw-cap-fdr { flex: 0 0 auto; }
+.lwc-stat { display: inline-flex; align-items: baseline; gap: 3px; cursor: help; }
+.lwc-stat em { font-style: normal; font-size: 9px; font-weight: 600; color: var(--text-muted); }
+.lwc-stat b { font-size: 11px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
 
 .lwc-ctx { font-size: 10.5px; line-height: 1.45; color: var(--text-muted); overflow-wrap: anywhere; }
 .lwc-ctx b { font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
@@ -10559,12 +10564,12 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 @media (max-width: 768px) {
     .lw-sum-note, .lw-sum-flag, .lw-sum-quiet { font-size: 11px; }
     .lwc-stat em, .lwc-stat b { font-size: 10.5px; }
-    .lwc-insight-h, .lwc-rank, .lwc-team, .lwc-xp em, .lwc-btn { font-size: 10px; }
+    .lwc-insight-h, .lwc-team, .lwc-xp em, .lwc-btn { font-size: 10px; }
     .lwc-chips .lw-cap-fdr, .lwc-chips .dp-fix-ha { font-size: 10px; }
     .lwc-name { font-size: 12.5px; }
     /* Wider cards on a phone: two across at 390 would be 165px each, which is
        narrower than the name they have to carry. */
-    .lwc-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .lwc-cards { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); }
     .lwm-m-l, .lwm-cs-n em, .lwm-ex-i em { font-size: 10px; }
     .lwm-m-l { width: 26px; }
     .lw-sum-n, .lw-sum-sub, .lw-chg-badge, .lw-chg-p em, .lw-call-v { font-size: 10px; }
