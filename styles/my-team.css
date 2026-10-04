@@ -9183,6 +9183,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-swap-hint,
 .lw-toggle,
 .lwc-insight-t,
+.lwc-name,
 .lwc-off,
 .lwc-stat b,
 .lwc-verdict,
@@ -9459,7 +9460,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwc-stat em,
 .lwc-sub,
 .lwc-team,
-.lwc-why,
 .lwc-xp em,
 .lwm-blend,
 .lwm-cs-n em,
@@ -10464,56 +10464,76 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     border-left: 3px solid var(--verdict-monitor);
     font-size: 11px; color: var(--text-secondary);
 }
-.lwc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+/* ===== CAPTAINCY, AS SMALL CARDS =====
+
+   Five full-width rows, each carrying a sentence of reasoning and a strip of
+   detail, took most of a column to answer a question with five possible
+   answers. The armband is a comparison, and a comparison wants the options
+   next to each other, not stacked a screen apart.
+
+   So: small cards, auto-filled across whatever width the column has. The rank
+   and the two armband buttons share the top line with the doubled points —
+   the three things you came for — and the three facts that decide it sit
+   underneath. The sentence that used to run across each row is the card's
+   tooltip now; nothing is lost and nothing is crammed. */
+.lwc-cards {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(178px, 1fr)); gap: 7px;
+}
 .lwc-row {
-    display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
-    grid-template-areas: 'rank face body xp acts' 'detail detail detail detail detail';
-    align-items: center; gap: 3px 7px;
-    padding: 7px 8px; border-radius: var(--radius-lg);
+    display: flex; flex-direction: column; gap: 5px; min-width: 0;
+    padding: 8px 9px; border-radius: var(--radius-lg);
     border: 1px solid var(--border-subtle); background: var(--surface-2);
 }
-.lwc-row.is-cap { border-color: var(--color-captain, #facc15); background: color-mix(in srgb, var(--color-captain, #facc15) 9%, var(--surface-2)); }
+.lwc-row.is-cap {
+    border-color: var(--color-captain, #facc15);
+    background: color-mix(in srgb, var(--color-captain, #facc15) 9%, var(--surface-2));
+}
+
+.lwc-head { display: flex; align-items: center; gap: 6px; }
 .lwc-rank {
-    grid-area: rank; width: 17px; height: 17px; border-radius: 50%;
+    flex-shrink: 0; width: 17px; height: 17px; border-radius: 50%;
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 9px; font-weight: 800; font-family: var(--font-mono);
     background: var(--surface-3); color: var(--text-secondary);
 }
 .lwc-row.is-cap .lwc-rank { background: var(--color-captain, #facc15); color: #000; }
-.lwc-row .lw-face { grid-area: face; --v2-pid-face: 26px; }
-.lwc-row .lw-face .v2-pid-avatar { width: 26px; height: 26px; }
-.lwc-body { grid-area: body; display: flex; flex-direction: column; min-width: 0; }
-.lwc-name { font-size: 12.5px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lwc-team { margin-left: 5px; font-size: 9px; font-weight: 600; color: var(--text-muted); font-family: var(--font-mono); }
-.lwc-why { font-size: 10px; color: var(--text-muted); line-height: 1.4; overflow-wrap: anywhere; }
-.lwc-xp { grid-area: xp; font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); text-align: right; }
-.lwc-xp em { display: block; font-style: normal; font-size: 8.5px; font-weight: 600; color: var(--text-muted); }
-.lwc-acts { grid-area: acts; display: flex; gap: 4px; justify-self: end; }
-.lwc-btn {
-    min-width: 34px; padding: 3px 8px; border-radius: var(--radius-md);
-    border: 1px solid var(--border-default); background: transparent;
-    font-size: 10px; font-weight: 700; color: var(--text-secondary);
-    cursor: pointer; font-family: var(--font-body);
-    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+.lwc-xp {
+    margin-left: auto; flex-shrink: 0;
+    font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary);
 }
-.lwc-btn:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
-.lwc-btn.on-c { background: var(--color-captain, #facc15); border-color: var(--color-captain, #facc15); color: #000; }
-.lwc-btn.on-v { background: var(--surface-3); border-color: var(--border-emphasis); color: var(--text-primary); }
+.lwc-xp em { font-style: normal; margin-left: 2px; font-size: 8.5px; font-weight: 600; color: var(--text-muted); }
 
-/* The matrix's numbers, kept. Five wide cards competed with Matchday for the
-   eye; the same figures read fine stacked under the name they belong to. */
-.lwc-detail {
-    grid-area: detail; display: flex; flex-direction: column; gap: 6px; min-width: 0;
-    margin-top: 6px; padding-top: 7px; border-top: 1px solid var(--border-subtle);
-}
-.lwc-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.lwc-id { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.lwc-id .lw-face { flex-shrink: 0; --v2-pid-face: 24px; }
+.lwc-id .lw-face .v2-pid-avatar { width: 24px; height: 24px; }
+.lwc-name { display: flex; flex-direction: column; min-width: 0; font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.lwc-name > span { margin: 0; }
+.lwc-team { font-size: 9px; font-weight: 600; color: var(--text-muted); font-family: var(--font-mono); }
+
+.lwc-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; min-width: 0; }
 /* The chip is a chip, not a bar: .dp-fix carries flex: 1 1 auto from the pitch,
    and player-profile.css loads after this file, so it takes two classes to win. */
 .lwc-chips .lw-cap-fdr { flex: 0 0 auto; }
-.lwc-stat { display: inline-flex; align-items: baseline; gap: 4px; cursor: help; }
+.lwc-stat { display: inline-flex; align-items: baseline; gap: 3px; cursor: help; }
 .lwc-stat em { font-style: normal; font-size: 9px; font-weight: 600; color: var(--text-muted); }
 .lwc-stat b { font-size: 11px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
+
+.lwc-acts { display: flex; gap: 3px; }
+/* The armband buttons have to look pressable at rest. On a transparent ground
+   with only --border-default under them they read as two stray letters, and
+   the one control on this card is the thing you came to use. */
+.lwc-btn {
+    min-width: 26px; padding: 2px 6px; border-radius: var(--radius-md);
+    border: 1px solid var(--border-emphasis); background: var(--surface-3);
+    font-size: 9.5px; font-weight: 700; color: var(--text-secondary);
+    cursor: pointer; font-family: var(--font-body);
+    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.lwc-btn:hover { border-color: var(--color-primary); color: var(--text-primary); }
+.lwc-btn.on-c { background: var(--color-captain, #facc15); border-color: var(--color-captain, #facc15); color: #000; }
+.lwc-btn.on-v { background: var(--surface-4, var(--border-emphasis)); border-color: var(--text-muted); color: var(--text-primary); }
+
 .lwc-ctx { font-size: 10.5px; line-height: 1.45; color: var(--text-muted); overflow-wrap: anywhere; }
 .lwc-ctx b { font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
 
@@ -10538,18 +10558,15 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    the site: nothing under 10px, because nothing under 10px is read. */
 @media (max-width: 768px) {
     .lw-sum-note, .lw-sum-flag, .lw-sum-quiet { font-size: 11px; }
-    .lwc-stat em, .lwc-stat b, .lwc-why { font-size: 10.5px; }
-    .lwc-insight-h, .lwc-rank, .lwc-team, .lwc-xp em { font-size: 10px; }
+    .lwc-stat em, .lwc-stat b { font-size: 10.5px; }
+    .lwc-insight-h, .lwc-rank, .lwc-team, .lwc-xp em, .lwc-btn { font-size: 10px; }
     .lwc-chips .lw-cap-fdr, .lwc-chips .dp-fix-ha { font-size: 10px; }
+    .lwc-name { font-size: 12.5px; }
+    /* Wider cards on a phone: two across at 390 would be 165px each, which is
+       narrower than the name they have to carry. */
+    .lwc-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
     .lwm-m-l, .lwm-cs-n em, .lwm-ex-i em { font-size: 10px; }
     .lwm-m-l { width: 26px; }
-    /* The armband buttons drop under the figure rather than squeezing the
-       name off the end of its own line. */
-    .lwc-row {
-        grid-template-columns: auto auto minmax(0, 1fr) auto;
-        grid-template-areas: 'rank face body xp' '. . acts acts' 'detail detail detail detail';
-    }
-    .lwc-name { white-space: normal; overflow: visible; }
     .lw-sum-n, .lw-sum-sub, .lw-chg-badge, .lw-chg-p em, .lw-call-v { font-size: 10px; }
     .lw-chg-p { font-size: 12px; }
     .lw-call-i i { font-size: 10px; }

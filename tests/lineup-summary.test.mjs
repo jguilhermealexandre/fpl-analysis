@@ -351,13 +351,16 @@ test('no squad, no overview content', () => {
 
 /* ===== CAPTAINCY ===== */
 
-test('captaincy is a ranked list with a reason tied to the fixture', () => {
+test('captaincy is five small cards, ranked, each able to set the armband', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderCaptaincy();
     assert.equal((html.match(/lwc-row/g) || []).length, 5, 'five candidates');
+    assert.match(html, /lwc-cards/, 'laid out as a card grid, not a stack of rows');
     assert.match(html, /lwc-rank/);
-    assert.match(html, /lwc-why/, 'each carries its reason');
     assert.match(html, /setLWCaptain/);
     assert.match(html, /setLWViceCaptain/);
+    /* The sentence of reasoning does not fit on a card this size, so it is the
+       card's tooltip. Nothing is lost and nothing is crammed. */
+    assert.match(html, /data-tooltip="[^"]*market has/, 'the reason is still there, on hover');
 });
 
 test('the doubled figure is this gameweek doubled', () => {
@@ -382,7 +385,7 @@ test('selecting players turns the captaincy column into the comparison', () => {
 test('a candidate carries form, ownership and what the opponent concedes', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderCaptaincy();
     assert.match(html, /Form<\/em>/);
-    assert.match(html, /Owned<\/em>/);
+    assert.match(html, /Own<\/em>/);
     assert.match(html, /concede <b>1\.4<\/b> a game/, 'the one fixture stat worth the space');
     assert.match(html, /lw-cap-fdr/, 'and the fixture, coloured by difficulty');
 });

@@ -619,29 +619,33 @@
                 ? `<span class="dp-fix lw-cap-fdr fdr-${fx.difficulty || 3}" data-tooltip="${escHTML(`${fx.isHome ? 'Home to' : 'Away at'} ${fx.opponent || '?'} — FDR ${fx.difficulty || 3}`)}">${escHTML(fx.opponent || '?')} <span class="dp-fix-ha">(${fx.isHome ? 'H' : 'A'})</span></span>`
                 : `<span class="dp-fix dp-fix-blank lw-cap-fdr" data-tooltip="No fixture this gameweek.">Blank</span>`;
 
-            return `<li class="lwc-row${isCap ? ' is-cap' : ''}">
-                <span class="lwc-rank">${i + 1}</span>
-                ${lwFace(p)}
-                <span class="lwc-body">
-                    <span class="lwc-name">${escHTML(p.web_name)}<span class="lwc-team">${escHTML(p.team || '')} · ${escHTML(lwPosShort(p))}</span></span>
-                    <span class="lwc-why">${lwCaptainReason(p)}</span>
-                </span>
-                <span class="lwc-xp" data-tooltip="${escHTML(`${p.gwScore.toFixed(1)} projected, doubled with the armband.`)}">${(p.gwScore * 2).toFixed(1)}<em>pts</em></span>
-                <span class="lwc-acts">
-                    <button class="lwc-btn${isCap ? ' on-c' : ''}" onclick="setLWCaptain(${p.id})" data-tooltip="Give ${escHTML(p.web_name)} the armband">C</button>
-                    <button class="lwc-btn${isVC ? ' on-v' : ''}" onclick="setLWViceCaptain(${p.id})" data-tooltip="Make ${escHTML(p.web_name)} vice-captain">VC</button>
-                </span>
-                <span class="lwc-detail">
-                    <span class="lwc-chips">
-                        ${fixChip}
-                        <span class="lwc-stat" data-tooltip="Form — points per match over the last 30 days."><em>Form</em><b>${form.toFixed(1)}</b></span>
-                        <span class="lwc-stat" data-tooltip="Share of FPL managers who own him — what you are risking by not having him, or gaining by having him when others do not."><em>Owned</em><b>${p.ownership != null ? p.ownership + '%' : '—'}</b></span>
+            /* The reason this candidate is where he is — who he faces and what
+               the market expects of his side — reads as a sentence and a
+               sentence does not fit on a card this size. It is the card's own
+               tooltip instead, so nothing is lost and nothing is crammed. */
+            return `<li class="lwc-row${isCap ? ' is-cap' : ''}" data-tooltip="${escHTML(
+                `${p.web_name} — ${lwCaptainReason(p).replace(/<[^>]+>/g, '')}. ${p.gwScore.toFixed(1)} projected, ${(p.gwScore * 2).toFixed(1)} with the armband.`)}">
+                <span class="lwc-head">
+                    <span class="lwc-rank">${i + 1}</span>
+                    <span class="lwc-acts">
+                        <button class="lwc-btn${isCap ? ' on-c' : ''}" onclick="setLWCaptain(${p.id})" data-tooltip="Give ${escHTML(p.web_name)} the armband">C</button>
+                        <button class="lwc-btn${isVC ? ' on-v' : ''}" onclick="setLWViceCaptain(${p.id})" data-tooltip="Make ${escHTML(p.web_name)} vice-captain">VC</button>
                     </span>
-                    ${(oppTrend || oppConceded != null) ? `<span class="lwc-ctx">${[
-                        oppConceded != null ? `${escHTML(fx.opponent || 'Opponent')} concede <b>${oppConceded.toFixed(1)}</b> a game` : '',
-                        oppTrend ? `${escHTML(fx.opponent || 'Opponent')} ${oppTrend}` : ''
-                    ].filter(Boolean).join(' · ')}</span>` : ''}
+                    <span class="lwc-xp">${(p.gwScore * 2).toFixed(1)}<em>pts</em></span>
                 </span>
+                <span class="lwc-id">
+                    ${lwFace(p)}
+                    <span class="lwc-name">${escHTML(p.web_name)}<span class="lwc-team">${escHTML(p.team || '')} · ${escHTML(lwPosShort(p))}</span></span>
+                </span>
+                <span class="lwc-chips">
+                    ${fixChip}
+                    <span class="lwc-stat" data-tooltip="Form — points per match over the last 30 days."><em>Form</em><b>${form.toFixed(1)}</b></span>
+                    <span class="lwc-stat" data-tooltip="Share of FPL managers who own him — what you are risking by not having him, or gaining by having him when others do not."><em>Own</em><b>${p.ownership != null ? p.ownership + '%' : '—'}</b></span>
+                </span>
+                ${(oppTrend || oppConceded != null) ? `<span class="lwc-ctx">${[
+                    oppConceded != null ? `${escHTML(fx.opponent || 'Opponent')} concede <b>${oppConceded.toFixed(1)}</b> a game` : '',
+                    oppTrend ? `${escHTML(fx.opponent || 'Opponent')} ${oppTrend}` : ''
+                ].filter(Boolean).join(' · ')}</span>` : ''}
             </li>`;
         }
 
@@ -706,7 +710,7 @@
                     <p class="lwc-insight-t">${verdict}${topRisk && topRisk.pct < 80 ? ` Worth noting he is only ${topRisk.pct}% likely to start.` : ''}</p>
                 </div>
                 ${off}
-                <ol class="lwc-list">${candidates.map((p, i) => lwCaptainRow(p, i, ranks)).join('')}</ol>
+                <ol class="lwc-cards">${candidates.map((p, i) => lwCaptainRow(p, i, ranks)).join('')}</ol>
                 <p class="lwc-foot">Ranked on this gameweek alone — the armband only ever pays out once.</p>
             </section>`;
         }
