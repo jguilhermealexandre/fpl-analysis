@@ -172,7 +172,22 @@
                         </header>
                         <div id="lwPitchField">${renderLWPitch()}</div>
                     </section>
+
+                    <!-- The page as it stood before the redesign, for
+                         comparison. Self-contained: see
+                         scripts/lineup-wizard-legacy.js. Removing it is
+                         deleting that file, its stylesheet block, its manifest
+                         entry and these lines. -->
+                    <section class="lw-legacy" id="lwLegacySection">
+                        <header class="lw-legacy-head">
+                            <h3 class="lw-legacy-title">${v2Icon('clock')} Previous version</h3>
+                            <span class="lw-legacy-tag">before the redesign</span>
+                        </header>
+                        <p class="lw-legacy-note">The Lineup Wizard as it was at 92d26c8c, running live against the same squad \u2014 for comparing what the redesign kept against what it dropped. Everything here works; the two versions share the same lineup, so a swap or an armband in one shows in the other.</p>
+                        <div id="lwLegacyBody"></div>
+                    </section>
                 </div>`;
+            if (window.lwLegacy) window.lwLegacy.render();
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -1374,6 +1389,9 @@
             set('lwCaptaincyPane', lwRenderCaptaincy());
             const kpis = document.getElementById('lwKpis');
             if (kpis) kpis.outerHTML = lwRenderOverviewRow();
+            // The comparison section reads the same lineup, so it follows every
+            // change made in either version. Guarded: it is meant to be removable.
+            if (window.lwLegacy) window.lwLegacy.render();
             const f = document.getElementById('lwFormation');
             if (f) f.textContent = lineupState.formation;
             if (typeof lucide !== 'undefined') lucide.createIcons();
