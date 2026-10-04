@@ -2896,8 +2896,17 @@
 .tsb-row:last-child { margin-bottom: 0; }
 /* Wraps rather than holding the column open. A two-line "Conceded / game" is
    readable; the number sheared off the right edge, which is what nowrap was
-   producing once four cards shared a 1240px row, is not. */
-.tsb-label { font-size: 10.5px; color: var(--text-muted); min-width: 0; }
+   producing once four cards shared a 1240px row, is not.
+
+   That wrap needed a place to happen. "Conceded/game" is a single token with
+   no space in it, and nothing breaks at a slash by default, so white-space:
+   normal had nothing to work with and the label spilled 32px past its column
+   wherever two of them shared a card under about 280px — twenty of the hundred
+   and twenty labels on the rankings tab, at 1180 and 1024. The template now
+   emits a <wbr> after the slash, which puts the break where a reader would put
+   it; overflow-wrap is the guarantee that it cannot spill even if some future
+   label has no slash either. */
+.tsb-label { font-size: 10.5px; color: var(--text-muted); min-width: 0; overflow-wrap: anywhere; }
 .tsb-value {
     font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 800;
     color: var(--text-primary); font-variant-numeric: tabular-nums;
