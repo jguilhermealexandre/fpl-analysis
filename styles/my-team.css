@@ -705,8 +705,14 @@
     box-shadow: 0 0 0 3px var(--color-primary-muted);
 }
 
-@media (max-width: 900px) {
-    .sq-panel-controls { grid-template-columns: 1fr; }
+/* Keyed to the panel, not the screen. Below 1100px the command body stacks,
+   which makes this panel the full width of the page — so at 834 the viewport
+   rule was stacking filters, search and the chart button into three rows
+   inside a 736px panel that seats all three on one. Same mistake, and the same
+   fix, as the Lineup Wizard's summary bar: the question is how wide this panel
+   is, and the viewport does not answer it. */
+@container sqpanel (max-width: 560px) {
+    .sq-panel-controls { grid-template-columns: minmax(0, 1fr); }
 }
 .sq-panel-title {
     display: inline-flex; align-items: center; gap: 8px;
@@ -3366,6 +3372,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
    sections inside it, not cards of their own. Seven boxes stacked down the
    page read as seven things — a squad is one thing with four parts. */
 .sq-panel {
+    container: sqpanel / inline-size;
     padding: 16px;
     background: var(--surface-1);
     border: 1px solid var(--v2-card-border, var(--border-emphasis));
@@ -6686,13 +6693,20 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    ran the full width of the page; in the left-hand column it is about 230px
    per chip and every headline was cut off mid-sentence. The detail line
    underneath is gone either way — it said what the row's own tooltip says. */
-.draft-chip-advice-grid { display: grid; gap: 4px; }
+/* minmax(0, 1fr) and min-width: 0, for the reason spelled out at .tm-columns
+   and .lw-cc-body: a grid item's automatic minimum size is its content, so an
+   implicit track will not let a row narrower than the text inside it. At 390
+   the track was 302px and the row sat in it at 327 — 25px over the side of the
+   panel, with the ellipsis that was supposed to catch this never engaging
+   because nothing ever forced the row to be the track's width. */
+.draft-chip-advice-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 
 .draft-chip-advice-row {
     display: flex;
     align-items: center;
     gap: 10px;
     width: 100%;
+    min-width: 0;
     padding: 7px 10px;
     margin-bottom: 0;
     background: transparent;

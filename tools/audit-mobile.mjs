@@ -26,8 +26,21 @@
                     takes the taps meant for the other.
      tiny-text      under 10px, which is not reading, it is guessing.
 
-   Run: node tools/audit-mobile.mjs [--width 390] [--json]
+   Run: node tools/audit-mobile.mjs [--width 390,1180,1440] [--json]
    It needs the dev server (npm run dev) and the bundled Chromium.
+
+   Widths, plural, and not only phone ones. This started as a phone tool and
+   that was too narrow a reading of its own job: a panel's width is not the
+   screen's. My Team's intel panel is 530px on a 1920 monitor, 334px at 1180
+   where the body is still two columns, and 922px at 1024 where it has just
+   stacked — so the layout is at its tightest on a laptop, and two faults
+   lived there precisely because "desktop" had been checked at one width and
+   "mobile" at two. `npm run audit:widths` sweeps the laptop and tablet band
+   as well; `npm run audit:mobile` keeps the phone-only default.
+
+   Tap-target findings are collected only at touch widths. A 24px button is a
+   coin toss under a thumb and completely fine under a mouse, so reporting it
+   on a 1440 desktop is noise that buries the geometry faults worth having.
 
    Not part of `npm run check`: it drives a real browser against a running
    server, which that gate cannot assume. It is the thing you run after
@@ -40,7 +53,13 @@ const CHROME = process.env.AUDIT_CHROME || '/opt/pw-browsers/chromium-1194/chrom
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
 const widthArg = args.indexOf('--width');
-const WIDTHS = widthArg !== -1 ? [Number(args[widthArg + 1])] : [390, 360];
+const WIDTHS = widthArg !== -1
+    ? String(args[widthArg + 1]).split(',').map(n => Number(n.trim())).filter(Boolean)
+    : [390, 360];
+/* Touch emulation follows the width rather than the tool's name: running a
+   phone context at 1440 reports hover states and pointer rules that no desktop
+   visitor ever sees. */
+const isTouch = w => w <= 768;
 
 /* Every page a visitor or a signed-in manager can reach. The app pages are
    listed by their /dashboard/ URL because that is where the redirects send
@@ -275,7 +294,8 @@ const report = [];
 
 for (const width of WIDTHS) {
     const ctx = await browser.newContext({
-        viewport: { width, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1
+        viewport: { width, height: isTouch(width) ? 844 : 1000 },
+        isMobile: isTouch(width), hasTouch: isTouch(width), deviceScaleFactor: 1
     });
     await ctx.addInitScript(() => { try { localStorage.setItem('fpl_team_id', '0'); } catch { /* private mode */ } });
     const page = await ctx.newPage();
@@ -297,6 +317,8 @@ for (const width of WIDTHS) {
             }
             let found;
             try { found = await page.evaluate(collect); } catch { continue; }
+            // A small control is a fault for a thumb, not for a cursor.
+            if (!isTouch(width)) found.tiny = [];
             report.push({ width, page: label, section: stop.label, ...found });
         }
     }
