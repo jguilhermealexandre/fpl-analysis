@@ -4397,6 +4397,15 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 
 .rc-btn {
     flex: 1;
+    /* inline-flex, because the label is an icon and a word and a <button> is
+       inline-block by default: the SVG sat on the text baseline, which put it
+       a couple of pixels low and left "Auto-optimise" riding higher than its
+       own icon. Centring both on the cross axis is the fix; the gap replaces
+       the whitespace text node that used to do the spacing. */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     padding: 6px 10px;
     border-radius: var(--radius-md);
     border: 1px solid var(--border-default);
@@ -4408,6 +4417,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
 }
 
+.rc-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
 .rc-btn:hover { background: var(--surface-3); color: var(--text-primary); }
 
 .rc-btn.primary { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
@@ -8895,6 +8905,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .loading-text,
 .lw-ctx-header-name,
 .lw-ov-call-v,
+.lw-pitch-sec-title,
+.lwc-title,
+.lwc-xp,
+.lwm-goals,
 .mgr-deadline-value,
 .mgr-money .mgr-value,
 .mgr-value,
@@ -8969,6 +8983,8 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-ov-call-n,
 .lw-row-swap-btn,
 .lw-stat-val,
+.lwc-name,
+.lwm-team,
 .manager-info,
 .news-card-detail,
 .news-card-hero .news-card-detail,
@@ -9145,6 +9161,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-ovs-l,
 .lw-pitch-hint,
 .lw-pitch-node,
+.lw-pitch-sec .dp-score,
 .lw-row,
 .lw-row-fixture,
 .lw-row-player-name,
@@ -9154,6 +9171,14 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-step-num,
 .lw-swap-hint,
 .lw-toggle,
+.lwc-off,
+.lwc-verdict,
+.lwm-cs-n b,
+.lwm-gw,
+.lwm-mine-n,
+.lwm-p,
+.lwm-p-xp,
+.lwm-sub,
 .manager-stat,
 .market-watch-panel,
 .market-watch-panel .mw-empty,
@@ -9391,7 +9416,18 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-ovs-il,
 .lw-pitch-name,
 .lw-pitch-score,
+.lw-pitch-sec .dp-name,
+.lw-pitch-sec-sub,
 .lw-row-player-team,
+.lwc-btn,
+.lwc-clear,
+.lwc-sub,
+.lwc-why,
+.lwm-foot,
+.lwm-goals.is-none,
+.lwm-ko,
+.lwm-legend,
+.lwm-v,
 .market-watch-panel .mw-arrow,
 .market-watch-panel .mw-net,
 .market-watch-panel .mw-price,
@@ -9555,6 +9591,14 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-pitch-arm,
 .lw-row-stat-label,
 .lw-stat-label,
+.lwc-rank,
+.lwc-team,
+.lwc-xp em,
+.lwm-arm,
+.lwm-cs-n em,
+.lwm-goals em,
+.lwm-mine-n em,
+.lwm-p-pos,
 .mgr-est,
 .news-card-team-tag,
 .on-bench-tag,
@@ -9664,6 +9708,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-chg-tag,
 .lw-ov-call-l,
 .lw-ov-risk-where,
+.lwm-odds-t,
 .mgr-gw,
 .news-card-category,
 .news-card-squad-badge,
@@ -9816,3 +9861,252 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     letter-spacing: 0.14em !important;
 }
 /* === END GENERATED TRACKING === */
+
+/* ===========================================================================
+   THE LINEUP WIZARD, REBUILT
+
+   The page used to open on a full-width pitch with the analysis folded into a
+   tab strip beside it, so the two things that decide a lineup — the matches
+   and the armband — were behind a click, and the picture of the squad took the
+   screen. The order is the order of the decision now: what the eleven is
+   worth, the matches it is playing in, who captains it, and the squad last.
+   =========================================================================== */
+
+/* Squad Analysis opens with exactly this object, so the two screens introduce
+   themselves the same way. Four across, collapsing in halves rather than
+   straight to a column — two 2-up rows read better than four stacked. */
+.lw-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+@media (max-width: 1100px) { .lw-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px)  { .lw-kpis { grid-template-columns: minmax(0, 1fr); } }
+
+/* Matchday takes two thirds because it is the question; captaincy is the
+   answer to a smaller one and sits beside it. minmax(0, …) on both tracks:
+   a bare 2fr is min-width:auto underneath and the fixture cards inside would
+   hold the column open rather than shrink. */
+.lw-main {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+    margin-bottom: 16px;
+}
+/* Stacked, Matchday first — it is what the screen is for. */
+@media (max-width: 1100px) { .lw-main { grid-template-columns: minmax(0, 1fr); } }
+
+/* ===== MATCHDAY ===== */
+.lwm { min-width: 0; }
+.lwm-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.lwm-title {
+    display: flex; align-items: center; gap: 7px; margin: 0;
+    font-family: var(--font-display, inherit); font-size: 17px; font-weight: 650; color: var(--text-primary);
+}
+.lwm-title svg { width: 17px; height: 17px; color: var(--color-primary); }
+.lwm-gw {
+    font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: var(--radius-full);
+    background: var(--surface-3); color: var(--text-muted);
+}
+.lwm-sub { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+
+/* The two clean-sheet numbers are the one thing on this card a first-time
+   reader cannot guess, so the key is on the page rather than in a tooltip. */
+.lwm-legend {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px;
+    margin-bottom: 10px; font-size: 10.5px; color: var(--text-muted);
+}
+.lwm-key { display: inline-flex; align-items: center; gap: 5px; }
+.lwm-key em { font-style: normal; font-weight: 700; color: var(--text-secondary); }
+.lwm-key-sw { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+.lwm-key-sw.is-xi { background: var(--color-primary); }
+.lwm-key-sw.is-bench { background: var(--surface-3); border: 1px solid var(--border-default); }
+.lwm-key-cs { cursor: help; }
+
+.lwm-list { display: grid; gap: 10px; }
+/* Two fixture cards abreast once the column can seat them. */
+@media (min-width: 1400px) { .lwm-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1100px) and (min-width: 720px) { .lwm-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* The dashboard's Gameweek card, carried over: crest, short name, kickoff,
+   your players underneath. What is added here is the market row, because this
+   screen is about what the match is likely to do rather than what it did. */
+.lwm-fix {
+    min-width: 0;
+    padding: 12px 13px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    background: var(--surface-1);
+    box-shadow: var(--v2-card-shadow, none);
+}
+.lwm-fix-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.lwm-ko { font-size: 10.5px; font-weight: 600; color: var(--text-muted); }
+.lwm-mine-n {
+    margin-left: auto; font-size: 12px; font-weight: 700; font-family: var(--font-mono);
+    color: var(--color-primary);
+}
+.lwm-mine-n em { font-style: normal; font-size: 9px; font-weight: 600; color: var(--text-muted); margin-left: 3px; }
+
+.lwm-teams { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 9px; }
+.lwm-team { display: inline-flex; align-items: center; gap: 7px; min-width: 0; font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.lwm-team.a { flex-direction: row; }
+.lwm-crest { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
+.lwm-v { font-size: 10px; font-weight: 600; color: var(--text-muted); }
+
+/* The de-vigged market, drawn. Home / draw / away, left to right. */
+.lwm-res { display: flex; height: 5px; border-radius: 3px; overflow: hidden; background: var(--surface-3); margin-bottom: 9px; cursor: help; }
+.lwm-res i { display: block; height: 100%; }
+.lwm-res-h { background: var(--color-primary); }
+.lwm-res-d { background: var(--surface-3); }
+.lwm-res-a { background: var(--color-info); }
+
+.lwm-odds { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.lwm-odds-side { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 0; }
+.lwm-odds-side.is-away { align-items: flex-end; text-align: right; }
+.lwm-odds-t { font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.lwm-goals {
+    flex-shrink: 0; text-align: center;
+    font-size: 14px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary);
+}
+.lwm-goals em { display: block; font-style: normal; font-size: 8.5px; font-weight: 600; color: var(--text-muted); }
+.lwm-goals.is-none { font-size: 9.5px; font-family: var(--font-body); color: var(--text-muted); font-weight: 600; cursor: help; }
+
+/* Market first, ours second, each under its own word. They were "62% vs 55%"
+   with the difference explained only on hover. */
+.lwm-cs { display: inline-flex; align-items: center; gap: 8px; cursor: help; }
+.lwm-cs-n { display: inline-flex; align-items: baseline; gap: 3px; }
+.lwm-cs-n em { font-style: normal; font-size: 8.5px; font-weight: 700; letter-spacing: .03em; color: var(--text-muted); }
+.lwm-cs-n b { font-size: 12px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
+.lwm-cs-n.is-ours b { color: var(--color-primary); }
+.lwm-cs-n.is-none b { color: var(--text-muted); }
+/* Where the two disagree by ten points or more, which is the whole reason for
+   showing both. */
+.lwm-cs.is-wide .lwm-cs-n.is-ours b { color: var(--verdict-monitor); }
+
+.lwm-players { display: flex; flex-wrap: wrap; gap: 5px; padding-top: 9px; border-top: 1px solid var(--border-subtle); }
+.lwm-p {
+    display: inline-flex; align-items: center; gap: 5px; min-width: 0;
+    padding: 3px 8px 3px 4px; border-radius: var(--radius-full);
+    border: 1px solid var(--border-default); background: var(--surface-2);
+    font-size: 11px; color: var(--text-secondary);
+}
+/* A starter is lit, a substitute is not. The whole job of this screen is
+   telling those two apart at a glance. */
+.lwm-p.is-xi {
+    border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+    background: var(--color-primary-muted);
+    color: var(--text-primary);
+}
+.lwm-p.is-out { border-color: color-mix(in srgb, var(--color-error) 45%, transparent); }
+.lwm-p.is-doubt { border-color: color-mix(in srgb, var(--verdict-monitor) 45%, transparent); }
+.lwm-p-n { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lwm-p-pos { font-size: 9px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono); }
+.lwm-p-xp { font-size: 11px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); }
+.lwm-p .lw-face { --v2-pid-face: 18px; }
+.lwm-arm {
+    font-size: 8.5px; font-weight: 800; width: 14px; height: 14px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.lwm-arm.c { background: var(--color-captain, #facc15); color: #000; }
+.lwm-arm.v { background: var(--surface-3); color: var(--text-secondary); }
+.lwm-foot { margin: 10px 0 0; font-size: 10px; line-height: 1.5; color: var(--text-muted); }
+
+/* ===== CAPTAINCY ===== */
+.lwc {
+    min-width: 0;
+    padding: 13px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    background: var(--surface-1);
+    box-shadow: var(--v2-card-shadow, none);
+    position: sticky; top: 84px;
+}
+/* Sticky is a desktop affordance: stacked under Matchday it would pin itself
+   over the thing the reader scrolled to. */
+@media (max-width: 1100px) { .lwc { position: static; } }
+.lwc-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.lwc-title {
+    display: flex; align-items: center; gap: 7px; margin: 0;
+    font-family: var(--font-display, inherit); font-size: 15px; font-weight: 650; color: var(--text-primary);
+}
+.lwc-title svg { width: 16px; height: 16px; color: var(--color-primary); }
+.lwc-sub { font-size: 10px; color: var(--text-muted); margin-left: auto; }
+.lwc-clear {
+    margin-left: auto; padding: 3px 9px; border-radius: var(--radius-md);
+    border: 1px solid var(--border-default); background: transparent;
+    font-size: 10px; font-weight: 600; color: var(--text-secondary); cursor: pointer; font-family: var(--font-body);
+}
+.lwc-clear:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
+.lwc-verdict { margin: 0 0 8px; font-size: 11.5px; line-height: 1.5; color: var(--text-secondary); }
+.lwc-verdict strong { color: var(--text-primary); }
+.lwc-off {
+    margin: 0 0 8px; padding: 5px 8px; border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--verdict-monitor) 12%, transparent);
+    border-left: 3px solid var(--verdict-monitor);
+    font-size: 11px; color: var(--text-secondary);
+}
+.lwc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.lwc-row {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: 'rank face body xp' '. . acts acts';
+    align-items: center; gap: 3px 7px;
+    padding: 7px 8px; border-radius: var(--radius-lg);
+    border: 1px solid var(--border-subtle); background: var(--surface-2);
+}
+.lwc-row.is-cap { border-color: var(--color-captain, #facc15); background: color-mix(in srgb, var(--color-captain, #facc15) 9%, var(--surface-2)); }
+.lwc-rank {
+    grid-area: rank; width: 17px; height: 17px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; font-family: var(--font-mono);
+    background: var(--surface-3); color: var(--text-secondary);
+}
+.lwc-row.is-cap .lwc-rank { background: var(--color-captain, #facc15); color: #000; }
+.lwc-row .lw-face { grid-area: face; --v2-pid-face: 26px; }
+.lwc-row .lw-face .v2-pid-avatar { width: 26px; height: 26px; }
+.lwc-body { grid-area: body; display: flex; flex-direction: column; min-width: 0; }
+.lwc-name { font-size: 12.5px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lwc-team { margin-left: 5px; font-size: 9px; font-weight: 600; color: var(--text-muted); font-family: var(--font-mono); }
+.lwc-why { font-size: 10px; color: var(--text-muted); line-height: 1.4; overflow-wrap: anywhere; }
+.lwc-xp { grid-area: xp; font-size: 15px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); text-align: right; }
+.lwc-xp em { display: block; font-style: normal; font-size: 8.5px; font-weight: 600; color: var(--text-muted); }
+.lwc-acts { grid-area: acts; display: flex; gap: 4px; justify-self: end; }
+.lwc-btn {
+    min-width: 34px; padding: 3px 8px; border-radius: var(--radius-md);
+    border: 1px solid var(--border-default); background: transparent;
+    font-size: 10px; font-weight: 700; color: var(--text-secondary);
+    cursor: pointer; font-family: var(--font-body);
+    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.lwc-btn:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
+.lwc-btn.on-c { background: var(--color-captain, #facc15); border-color: var(--color-captain, #facc15); color: #000; }
+.lwc-btn.on-v { background: var(--surface-3); border-color: var(--border-emphasis); color: var(--text-primary); }
+
+/* ===== THE PITCH, DEMOTED =====
+   One section, one class prefix, one render call — liftable whole. Its only
+   job now is showing which players are in the squad, so it is scaled down and
+   sits under the decisions rather than above them. */
+.lw-pitch-sec {
+    padding: 13px;
+    border: 1px solid var(--v2-card-border, var(--border-emphasis));
+    border-radius: var(--v2-card-radius, 16px);
+    background: var(--surface-1);
+    box-shadow: var(--v2-card-shadow, none);
+}
+.lw-pitch-sec-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.lw-pitch-sec-title {
+    display: flex; align-items: center; gap: 7px; margin: 0;
+    font-family: var(--font-display, inherit); font-size: 15px; font-weight: 650; color: var(--text-primary);
+}
+.lw-pitch-sec-title svg { width: 16px; height: 16px; color: var(--color-primary); }
+.lw-pitch-sec-sub { font-size: 10px; color: var(--text-muted); margin-left: auto; }
+/* Smaller cards and a shorter field: the pitch is a reference picture now, not
+   the work surface. The ladder these variables drive lives with .pitch-field. */
+.lw-pitch-sec .pitch-field { --pitch-min-h: 380px; }
+.lw-pitch-sec .dp-card { --dp-card-w: 84px; }
+.lw-pitch-sec .dp-name { font-size: 10.5px; }
+.lw-pitch-sec .dp-score { font-size: 12px; }
+.lw-pitch-sec .dp-xp-run { display: none; }
+.lw-pitch-sec .v2-pid-pitch { --v2-pid-face: 34px; --v2-pid-crest: 15px; }

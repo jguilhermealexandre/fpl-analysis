@@ -304,50 +304,25 @@
             </div>`;
         }
 
-        function renderBOMatchdayPanel() {
-            if (!boOdds) {
-                boLoadOdds().then(d => { if (d) boRefreshPanel(); });
-                return boOddsError
-                    ? `<div class="lw-side-empty">Bookmakers' odds are unavailable right now — ${escHTML(boOddsError)}. The rest of the wizard is unaffected; every projection on this page is the site's own model and does not depend on this feed.</div>`
-                    : `<div class="lw-side-empty">Loading this gameweek's odds…</div>`;
-            }
+        /* renderBOMatchdayPanel() lived here and is gone.
 
-            const matches = boMatchesForEvent();
-            if (!matches.length) {
-                return `<div class="lw-side-empty">No priced fixtures for this gameweek yet. Bookmakers price a round at a time, usually from the start of the week.</div>`;
-            }
+           It drew this gameweek's matches from boMatchesForEvent() — that is,
+           from the odds feed — which meant the Lineup Wizard's Matchday section
+           could only ever show fixtures a bookmaker had priced. data/odds.json
+           carries five of GW5's ten and says so itself
+           (coverage: {priced: 5, scheduled: 10}), so half the round and every
+           squad player at those ten clubs were invisible.
 
-            const gw = matches[0].event;
-            const updated = boOdds.metadata && boOdds.metadata.lastUpdated
-                ? new Date(boOdds.metadata.lastUpdated) : null;
-            const stale = updated ? (Date.now() - updated.getTime()) > 36 * 3600 * 1000 : false;
+           lwRenderMatchday() in scripts/lineup-wizard.js replaces it, spined on
+           the fixture list with the odds left-joined by fixtureId. The helpers
+           below — boSquadIn, boRenderMatch, boPct, boKickoff — are still the
+           market's own vocabulary and are used from there. */
 
-            return `<div class="bo-panel">
-                <div class="bo-head">
-                    <span class="bo-title">Matchday odds <span class="bo-gw">GW${gw}</span></span>
-                    <span class="bo-src" data-tooltip="Consensus prices across the bookmakers published by football-data.co.uk. Nobody quotes a clean-sheet percentage — these are derived from the 1X2 and over/under 2.5 markets with the bookmaker's margin removed.">
-                        ${matches.length} matches${updated ? ` · ${escHTML(updated.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }))}` : ''}</span>
-                </div>
-                ${stale ? `<div class="bo-stale">These prices are more than a day old — the odds job has not run since. Treat them as indicative.</div>` : ''}
-                ${(() => {
-                    const b = boBlendInfo();
-                    return b.active
-                        ? `<div class="bo-blend on" data-tooltip="${escHTML(
-                            `Every projection on this page for GW${b.event} is ${Math.round(b.weight * 100)}% the market's goal expectations and ${Math.round((1 - b.weight) * 100)}% this site's model. The market's share falls as the season gives the model more of its own evidence — currently ${b.matchesPlayed ?? 0} matches played. Later gameweeks are model-only: bookmakers do not price them yet.`)}">
-                            Blended into GW${b.event} projections · market weight ${Math.round(b.weight * 100)}%</div>`
-                        : `<div class="bo-blend off" data-tooltip="Projections are model-only. The market is blended in only when every fixture in the round is priced, so that no two players are being compared across different estimators.">
-                            Shown for reference — not blended into projections</div>`;
-                })()}
-                <div class="bo-matches">${matches.map(boRenderMatch).join('')}</div>
-                <div class="bo-foot">Derived from de-vigged 1X2 and over/under 2.5 prices, fitted to independent Poisson. Odds describe one gameweek only, which is why they appear here and not in the Transfer Wizard. Source: football-data.co.uk.</div>
-            </div>`;
-        }
+        /* boRefreshPanel() lived here and is gone with the panel it served.
 
-        // Repaint once the feed lands, but only if the reader is still looking at
-        // this tab — otherwise an async resolve would yank them out of whatever
-        // they switched to while it was loading.
-        function boRefreshPanel() {
-            if (typeof lineupState === 'undefined' || !lineupState) return;
-            if (lineupState.intelTab !== 'odds') return;
-            if (typeof updateLWContextPanel === 'function') updateLWContextPanel();
-        }
+           It repainted the odds tab when the feed resolved, gated on
+           lineupState.intelTab === 'odds'. There is no tab strip any more, and
+           lwRenderMatchday() in the (deferred) lineup-wizard.js asks for the
+           feed and repaints itself when it lands — so this was a dead function
+           whose only remaining act was to reach across the deferral boundary
+           into a file that may not be loaded. check:deferred caught it. */
