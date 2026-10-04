@@ -400,11 +400,23 @@ test('the noise the brief named is gone from the captaincy cards', () => {
     assert.ok(!/Starts<\/em>/.test(html), 'no minutes percentage — a top option is assumed to start');
 });
 
-test('the algorithmic read is an alert box, not a grey paragraph', () => {
+/* The read on the armband is a read on the week, not a control, so it sits in
+   the Overview where the reads are. A sentence above a grid of cards was
+   competing with the cards for the same glance. */
+test('the armband read is an alert box in the Overview', () => {
+    const ctx = wizard(state(XI_442, STRONG_BENCH));
+    const ov = ctx.lwRenderOverviewRow();
+    assert.match(ov, /lwc-insight/);
+    assert.match(ov, /The armband call/);
+    assert.match(ov, /lwc-insight-t/);
+    assert.ok(!ctx.lwRenderCaptaincy().includes('lwc-insight'), 'and not on the captaincy panel too');
+});
+
+test('the captaincy header carries the ranking caveat, not a how-to', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderCaptaincy();
-    assert.match(html, /lwc-insight/);
-    assert.match(html, /Algorithm insight/);
-    assert.match(html, /lwc-insight-t/);
+    assert.match(html, /Ranked on this gameweek alone/);
+    assert.ok(!html.includes('set it here or on the pitch'));
+    assert.ok(!html.includes('lwc-foot'), 'and no footnote repeating it');
 });
 
 /* A pick the dataset does not know used to vanish without trace: map()

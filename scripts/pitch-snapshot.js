@@ -461,13 +461,8 @@
 
             return `<div class="pcard ${a.verdict} ${isBench ? 'pcard-bench' : ''} ${swapClass} ${injured ? 'pcard-injured' : ''}"
                     data-player-id="${p.id}"
-                    draggable="true"
                     onpointerdown="snapshotPointerDown(event, ${p.id})"
                     onclick="snapshotSwapClick(${p.id})"
-                    ondragstart="snapshotDragStart(event, ${p.id})"
-                    ondragover="snapshotDragOver(event, ${p.id})"
-                    ondrop="snapshotDrop(event, ${p.id})"
-                    ondragend="snapshotDragEnd()"
                     title="${escHTML(swapTitle)}">
                 ${isCap ? '<span class="pcard-armband cap" title="Captain — points doubled">C</span>'
                         : isVice ? '<span class="pcard-armband vice" title="Vice-captain — takes the armband if the captain does not play">V</span>' : ''}
@@ -594,7 +589,6 @@
         }
 
         // ===== DRAG & DROP =====
-        let snapshotDragId = null;
 
         /* Marks legal destinations without re-rendering, by toggling the same
            classes renderSnapshotCard() would have written. This exists because
@@ -661,6 +655,15 @@
                 const rect = snapPointer.card.getBoundingClientRect();
                 const ghost = snapPointer.card.cloneNode(true);
                 ghost.classList.add('pcard-ghost');
+                /* Positioned inline, not from the stylesheet. .pcard sets
+                   position: relative twenty lines below .pcard-ghost and both
+                   are a single class, so the later rule won and the copy was
+                   laid out in the document flow — present in the DOM, a
+                   thousand pixels down the page, never under the cursor. */
+                ghost.style.position = 'fixed';
+                ghost.style.margin = '0';
+                ghost.style.zIndex = '400';
+                ghost.style.pointerEvents = 'none';
                 ghost.style.width = `${rect.width}px`;
                 ghost.style.left = `${rect.left}px`;
                 ghost.style.top = `${rect.top}px`;
@@ -715,38 +718,17 @@
             document.addEventListener('pointercancel', snapshotPointerUp);
         }
 
-        function snapshotDragStart(event, playerId) {
-            snapshotDragId = playerId;
-            snapshotSwapSource = playerId; // reuse the same highlight pass as click-to-swap
-            try { event.dataTransfer.setData('text/plain', String(playerId)); } catch (e) { /* older browsers */ }
-            if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
-            snapshotMarkSwapTargets(playerId);
-        }
+        /* snapshotDragStart / DragOver / Drop / DragEnd lived here and are gone
+           with the draggable="true" that fed them.
 
-        function snapshotDragOver(event, playerId) {
-            if (snapshotDragId === null || !canSnapshotSwap(snapshotDragId, playerId)) return;
-            event.preventDefault(); // only a preventDefault'd dragover accepts a drop
-            if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-        }
-
-        function snapshotDrop(event, playerId) {
-            event.preventDefault();
-            const sourceId = snapshotDragId;
-            snapshotDragId = null;
-            if (sourceId === null || sourceId === playerId) {
-                snapshotSwapSource = null;
-                snapshotMarkSwapTargets(null);
-                return;
-            }
-            performSnapshotSwap(sourceId, playerId);
-        }
-
-        function snapshotDragEnd() {
-            if (snapshotDragId === null) return; // a successful drop already tidied up
-            snapshotDragId = null;
-            snapshotSwapSource = null;
-            snapshotMarkSwapTargets(null);
-        }
+           Native HTML5 drag-and-drop looks like the obvious way to drag a card
+           and is the wrong one here for two reasons. It never fires from a
+           touchscreen, so on a phone the pitch could only ever be rearranged
+           by tapping. And where both are wired to the same element the native
+           protocol wins: the browser claims the gesture on mousedown and
+           cancels the pointer stream, so the pointer implementation below —
+           the one with the card that follows your hand — never got past its
+           six-pixel threshold. Removing the attributes is what turns it on. */
 
         /* The armband has to stay on the pitch.
 

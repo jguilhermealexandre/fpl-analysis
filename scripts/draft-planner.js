@@ -800,6 +800,15 @@
                 const rect = draftPointer.card.getBoundingClientRect();
                 const ghost = draftPointer.card.cloneNode(true);
                 ghost.classList.add('pcard-ghost');
+                /* Positioned inline, not from the stylesheet. .pcard sets
+                   position: relative after .pcard-ghost and both are a single
+                   class, so the later rule won and the copy was laid out in
+                   the document flow — present in the DOM, three thousand
+                   pixels down the page, never under the cursor. */
+                ghost.style.position = 'fixed';
+                ghost.style.margin = '0';
+                ghost.style.zIndex = '400';
+                ghost.style.pointerEvents = 'none';
                 ghost.style.width = `${rect.width}px`;
                 ghost.style.left = `${rect.left}px`;
                 ghost.style.top = `${rect.top}px`;

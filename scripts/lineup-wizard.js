@@ -654,6 +654,51 @@
             </li>`;
         }
 
+        /* Who the armband is actually a choice between. Ranked on gwScore
+           because the armband only ever pays out for this gameweek — the XI
+           itself is picked on a longer run, which is a different question. */
+        function lwCaptainCandidates() {
+            return (lineupState.xi || []).filter(p => p.pos !== 1)
+                .sort((a, b) => b.gwScore - a.gwScore).slice(0, 5);
+        }
+
+        /* The one line that says whether the ranking below is a verdict or a
+           coin toss — and, when you have overruled it, by how much.
+
+           It lives in the Overview rather than on the captaincy panel. It is a
+           read on the week, not a control, and the Overview is where the reads
+           are: a sentence sitting above a grid of cards was competing with the
+           cards for the same glance. */
+        function lwArmbandRead() {
+            const candidates = lwCaptainCandidates();
+            if (!candidates.length) return '';
+            const lead = candidates.length > 1 ? candidates[0].gwScore - candidates[1].gwScore : 0;
+            const picked = (lineupState.squad || []).find(p => p.id === lineupState.captain);
+            const topRisk = typeof optMinutesRisk === 'function' ? optMinutesRisk(candidates[0]) : null;
+            const verdict = candidates.length < 2
+                ? `${escHTML(candidates[0].web_name)} is your only outfield option.`
+                : lead > 0.8
+                    ? `<strong>${escHTML(candidates[0].web_name)}</strong> is the clear call, ${lead.toFixed(1)} projected points clear of ${escHTML(candidates[1].web_name)} before the armband doubles it.`
+                    : `Close call: <strong>${escHTML(candidates[0].web_name)}</strong> leads ${escHTML(candidates[1].web_name)} by only ${lead.toFixed(1)} projected points, so fixture and minutes risk decide it more than projection does.`;
+
+            /* The off-pick line reads by sign. A captained keeper is never in
+               the candidate list, so the subtraction can land either way and a
+               bare minus sign read as a bug. */
+            let off = '';
+            if (picked && picked.id !== candidates[0].id) {
+                const d = candidates[0].gwScore - picked.gwScore;
+                off = ` You have the armband on <strong>${escHTML(picked.web_name)}</strong>, ${Math.abs(d) < 0.05
+                    ? `level with ${escHTML(candidates[0].web_name)}.`
+                    : d > 0
+                        ? `${d.toFixed(1)} projected points behind ${escHTML(candidates[0].web_name)}.`
+                        : `${Math.abs(d).toFixed(1)} projected points ahead of ${escHTML(candidates[0].web_name)} — he is outside the outfield list because of his position.`}`;
+            }
+            return `<div class="lwc-insight">
+                <span class="lwc-insight-h">${v2Icon('crown')} The armband call</span>
+                <p class="lwc-insight-t">${verdict}${topRisk && topRisk.pct < 80 ? ` Worth noting he is only ${topRisk.pct}% likely to start.` : ''}${off}</p>
+            </div>`;
+        }
+
         function lwRenderCaptaincy() {
             /* Selecting players with the ℹ button used to swap the Overview
                tab's body for a comparison. The tab strip is gone, so the
@@ -674,49 +719,17 @@
             }
 
             const ranks = typeof getDefensiveRanks === 'function' ? getDefensiveRanks() : { rank: {}, total: 20 };
-            const candidates = (lineupState.xi || []).filter(p => p.pos !== 1)
-                .sort((a, b) => b.gwScore - a.gwScore).slice(0, 5);
+            const candidates = lwCaptainCandidates();
             if (!candidates.length) {
                 return `<section class="v2-section lwc"><div class="lw-side-empty">No outfield players in the XI yet.</div></section>`;
-            }
-            const lead = candidates.length > 1 ? candidates[0].gwScore - candidates[1].gwScore : 0;
-            const picked = (lineupState.squad || []).find(p => p.id === lineupState.captain);
-            const topRisk = typeof optMinutesRisk === 'function' ? optMinutesRisk(candidates[0]) : null;
-            const verdict = candidates.length < 2
-                ? `${escHTML(candidates[0].web_name)} is your only outfield option.`
-                : lead > 0.8
-                    ? `<strong>${escHTML(candidates[0].web_name)}</strong> is the clear call, ${lead.toFixed(1)} projected points clear of ${escHTML(candidates[1].web_name)} before the armband doubles it.`
-                    : `Close call: <strong>${escHTML(candidates[0].web_name)}</strong> leads ${escHTML(candidates[1].web_name)} by only ${lead.toFixed(1)} projected points, so fixture and minutes risk decide it more than projection does.`;
-
-            /* The off-pick line reads by sign. A captained keeper is never in
-               the candidate list, so the subtraction can land either way and a
-               bare minus sign read as a bug. */
-            let off = '';
-            if (picked && picked.id !== candidates[0].id) {
-                const d = candidates[0].gwScore - picked.gwScore;
-                off = `<p class="lwc-off">You have the armband on <strong>${escHTML(picked.web_name)}</strong>, ${Math.abs(d) < 0.05
-                    ? `level with ${escHTML(candidates[0].web_name)}.`
-                    : d > 0
-                        ? `${d.toFixed(1)} projected points behind ${escHTML(candidates[0].web_name)}.`
-                        : `${Math.abs(d).toFixed(1)} projected points ahead of ${escHTML(candidates[0].web_name)} — he is outside the outfield list because of his position.`}</p>`;
             }
 
             return `<section class="v2-section lwc">
                 <div class="section-header">
                     <h2>${v2Icon('crown')} Captaincy</h2>
-                    <span class="lwc-sub">set it here or on the pitch</span>
+                    <span class="lwc-sub">Ranked on this gameweek alone — the armband only ever pays out once.</span>
                 </div>
-                <!-- The read on the decision, given the weight it earns: it is
-                     the one line on this panel that tells you whether the
-                     ordering below is a verdict or a coin toss. It was a grey
-                     paragraph above a list. -->
-                <div class="lwc-insight">
-                    <span class="lwc-insight-h">${v2Icon('sparkle')} Algorithm insight</span>
-                    <p class="lwc-insight-t">${verdict}${topRisk && topRisk.pct < 80 ? ` Worth noting he is only ${topRisk.pct}% likely to start.` : ''}</p>
-                </div>
-                ${off}
                 <ol class="lwc-cards">${candidates.map(p => lwCaptainRow(p, ranks)).join('')}</ol>
-                <p class="lwc-foot">Ranked on this gameweek alone — the armband only ever pays out once.</p>
             </section>`;
         }
 
@@ -870,6 +883,8 @@
                         risks.length ? escHTML(risks.slice(0, 2).map(r => r.p.web_name).join(', ')) : 'nobody to check',
                         risks.length ? risks.map(r => `${r.p.web_name} — ${r.why}`).join('\n') : 'No injuries, suspensions or rotation risks in the squad.')}
                 </div>
+
+                ${lwArmbandRead()}
 
                 <div class="lw-ov-blocks">
                     ${lwRenderRisks()}
