@@ -419,6 +419,58 @@ test('the pitch offers drag as well as click, and says which drops are legal', (
     assert.equal(ctx.lwSwapWouldWork(XI_442[0].id, STRONG_BENCH.find(p => p.pos !== 1).id), false);
 });
 
+/* The blink: picking a player up used to go through refreshLWView(), which
+   rebuilds four panels' innerHTML — so selecting a substitute destroyed and
+   recreated every card on the pitch, portraits and crests included, and the
+   other players visibly went away and came back. A selection is a thing you
+   are about to do, not a thing you have done. */
+test('selecting a player repaints nothing', () => {
+    const ctx = wizard(state(XI_442, STRONG_BENCH));
+    ctx.__nodes.lwLineupPane = { innerHTML: 'PITCH', textContent: '', style: {}, classList: { add() {}, remove() {} } };
+    ctx.__nodes.lwMatchdayPane = { innerHTML: 'MD', textContent: '', style: {}, classList: { add() {}, remove() {} } };
+    ctx.handleLWSwapClick(STRONG_BENCH[0].id);
+    assert.equal(ctx.lineupState.swapSource, STRONG_BENCH[0].id, 'the player is picked up');
+    assert.equal(ctx.__nodes.lwLineupPane.innerHTML, 'PITCH', 'and the pitch is left alone');
+    assert.equal(ctx.__nodes.lwMatchdayPane.innerHTML, 'MD');
+    // Cancelling is the same: still nothing has happened.
+    ctx.handleLWSwapClick(STRONG_BENCH[0].id);
+    assert.equal(ctx.lineupState.swapSource, null);
+    assert.equal(ctx.__nodes.lwLineupPane.innerHTML, 'PITCH');
+});
+
+test('a swap the shape cannot take repaints nothing either', () => {
+    const ctx = wizard(state(XI_442, STRONG_BENCH));
+    ctx.__nodes.lwLineupPane = { innerHTML: 'PITCH', textContent: '', style: {}, classList: { add() {}, remove() {} } };
+    ctx.handleLWSwapClick(XI_442[0].id);                                  // the keeper
+    ctx.handleLWSwapClick(STRONG_BENCH.find(p => p.pos !== 1).id);        // an outfield sub
+    assert.equal(ctx.__nodes.lwLineupPane.innerHTML, 'PITCH', 'nothing moved, so nothing is redrawn');
+    assert.equal(ctx.lineupState.xi[0].id, XI_442[0].id);
+});
+
+test('a swap that lands does repaint', () => {
+    const ctx = wizard(state(XI_442, STRONG_BENCH));
+    ctx.__nodes.lwLineupPane = { innerHTML: 'PITCH', textContent: '', style: {}, classList: { add() {}, remove() {} } };
+    const weakest = [...XI_442].sort((a, b) => a.lwScore - b.lwScore)[0];
+    ctx.handleLWSwapClick(weakest.id);
+    ctx.handleLWSwapClick(STRONG_BENCH[0].id);
+    assert.notEqual(ctx.__nodes.lwLineupPane.innerHTML, 'PITCH');
+});
+
+/* The armband is two letters on two cards. Repainting the pitch to change
+   them is what made the eleven blink, so the controls are their own markup
+   and get swapped in place. */
+test('the armband controls are addressable on their own', () => {
+    const ctx = wizard(state(XI_442, STRONG_BENCH, { captain: XI_442[5].id, viceCaptain: XI_442[6].id }));
+    const capHtml = ctx.lwArmbandHTML(XI_442[5], false);
+    assert.match(capHtml, /dp-arm-set/, 'a starter gets the two buttons');
+    assert.match(capHtml, /dp-arm on-c/, 'with the one in force filled');
+    assert.match(ctx.lwArmbandHTML(XI_442[6], false), /dp-arm on-v/);
+    // A substitute cannot hold the armband, so he gets the read-only badge
+    // only when he is wearing one, and nothing at all when he is not.
+    assert.match(ctx.lwArmbandHTML({ ...XI_442[5], id: XI_442[5].id }, true), /dp-cap/);
+    assert.equal(ctx.lwArmbandHTML(STRONG_BENCH[0], true), '');
+});
+
 test('a drag that just ended does not also count as a click', () => {
     const ctx = wizard(state(XI_442, STRONG_BENCH, { dragJustEnded: true }));
     ctx.handleLWSwapClick(XI_442[3].id);

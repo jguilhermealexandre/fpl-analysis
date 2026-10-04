@@ -189,6 +189,26 @@
             return `<span class="lw-face">${v2AvatarHTML({ name: p.web_name, code: p.code })}</span>`;
         }
 
+        /* The armband controls for one card, on their own so they can be
+           swapped in place when the armband moves. Repainting the whole pitch
+           to change one letter is what made the cards blink. */
+        function lwArmbandHTML(p, onBench) {
+            const isCap = p.id === lineupState.captain, isVice = p.id === lineupState.viceCaptain;
+            if (!onBench && p.pos !== 1) {
+                return `<span class="dp-arm-set" draggable="false" onclick="event.stopPropagation()">
+                    <button class="dp-arm${isCap ? ' on-c' : ''}" draggable="false" onclick="event.stopPropagation();setLWCaptain(${p.id})"
+                        data-tooltip="${isCap ? `${escHTML(p.web_name)} is your captain — points doubled.` : `Make ${escHTML(p.web_name)} captain`}">C</button>
+                    <button class="dp-arm${isVice ? ' on-v' : ''}" draggable="false" onclick="event.stopPropagation();setLWViceCaptain(${p.id})"
+                        data-tooltip="${isVice ? `${escHTML(p.web_name)} is your vice-captain.` : `Make ${escHTML(p.web_name)} vice-captain`}">V</button>
+                </span>`;
+            }
+            /* The bench and the keeper keep the plain badge: it still has to be
+               possible to SEE who the captain is from a card that cannot set it. */
+            if (isCap) return `<span class="dp-cap" data-tooltip="Captain — points doubled.">C</span>`;
+            if (isVice) return `<span class="dp-cap" data-tooltip="Vice-captain — takes the armband if the captain does not play.">V</span>`;
+            return '';
+        }
+
         // The pitch node carries the decision, not a shirt number: who they play,
         // how hard it is, what they project, and anything that might stop them.
         function lwCard(p, benchIdx) {
@@ -201,8 +221,13 @@
             const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
             const posClass = `pos-${POSITION_CONFIG[p.pos]?.class || 'mid'}`;
             const selected = lineupState.selectedPlayers.includes(p.id);
+            /* The same marks lwPaintSelection() and the drag both use, so a
+               full re-render lands on exactly the state a class toggle would
+               have produced. */
             const isSwapSrc = lineupState.swapSource === p.id;
-            const isSwapTgt = lineupState.swapSource && lineupState.swapSource !== p.id;
+            const swapMark = (lineupState.swapSource && lineupState.swapSource !== p.id)
+                ? (lwSwapWouldWork(lineupState.swapSource, p.id) ? 'is-drop-ok' : 'is-drop-no')
+                : '';
 
             const out = p.status === 'i' || p.status === 'u' || p.status === 's';
             const doubt = p.status === 'd';
@@ -222,17 +247,7 @@
                The bench and the keeper keep the plain badge: it still has to be
                possible to SEE who the captain is from a card that cannot set
                it. */
-            const isCap = p.id === lineupState.captain, isVice = p.id === lineupState.viceCaptain;
-            let armband = '';
-            if (benchIdx == null && p.pos !== 1) {
-                armband = `<span class="dp-arm-set" draggable="false" onclick="event.stopPropagation()">
-                    <button class="dp-arm${isCap ? ' on-c' : ''}" draggable="false" onclick="event.stopPropagation();setLWCaptain(${p.id})"
-                        data-tooltip="${isCap ? `${escHTML(p.web_name)} is your captain — points doubled.` : `Make ${escHTML(p.web_name)} captain`}">C</button>
-                    <button class="dp-arm${isVice ? ' on-v' : ''}" draggable="false" onclick="event.stopPropagation();setLWViceCaptain(${p.id})"
-                        data-tooltip="${isVice ? `${escHTML(p.web_name)} is your vice-captain.` : `Make ${escHTML(p.web_name)} vice-captain`}">V</button>
-                </span>`;
-            } else if (isCap) armband = `<span class="dp-cap" data-tooltip="Captain — points doubled.">C</span>`;
-            else if (isVice) armband = `<span class="dp-cap" data-tooltip="Vice-captain — takes the armband if the captain does not play.">V</span>`;
+            const armband = lwArmbandHTML(p, benchIdx != null);
 
             /* What Auto-optimise just did, marked on the thing it did it to.
                The report already knows; it was only ever shown as prose. */
@@ -254,7 +269,7 @@
                 : `<span class="dp-fix dp-fix-blank" data-tooltip="No fixture this gameweek.">Blank</span>`;
 
             const cls = ['dp-card', posClass, out ? 'is-out' : '', selected ? 'lw-picked' : '',
-                isSwapSrc ? 'swap-selected' : '', isSwapTgt ? 'swap-target' : '', moved.trim()].filter(Boolean).join(' ');
+                isSwapSrc ? 'swap-selected' : '', swapMark, moved.trim()].filter(Boolean).join(' ');
 
             /* The card the dashboard draws, exactly: face and crest above the
                name, then the projection on a line of its own, then who it
@@ -1040,10 +1055,18 @@
             html += `<div class="dp-bench-row">${bench.map(p => lwCard(p, p.pos === 1 ? 'GK' : ++benchCount)).join('')}</div>`;
             html += `</div>`;
             lwBindPitchDrag();
-            html += `<div class="lw-pitch-hint">${lineupState.swapSource
-                ? `Swapping <strong>${escHTML((lineupState.squad.find(p => p.id === lineupState.swapSource) || {}).web_name || '')}</strong> — click another player to complete it, or click them again to cancel.`
-                : 'Drag a player onto another to swap them — on a touchscreen, hold a moment first — or click both. <b>C</b> or <b>V</b> on a card sets the armband; ℹ opens the detail, and a second ℹ compares two.'}</div>`;
+            html += `<div class="lw-pitch-hint">${lwPitchHint()}</div>`;
             return html;
+        }
+
+        /* The line under the pitch, as its own function so a selection can
+           rewrite it without re-rendering the pitch above it. */
+        function lwPitchHint() {
+            if (lineupState.swapSource) {
+                const who = (lineupState.squad.find(p => p.id === lineupState.swapSource) || {}).web_name || '';
+                return `Swapping <strong>${escHTML(who)}</strong> — click a highlighted player to complete it, or click them again to cancel.`;
+            }
+            return 'Drag a player onto another to swap them — on a touchscreen, hold a moment first — or click both. <b>C</b> or <b>V</b> on a card sets the armband; ℹ opens the detail, and a second ℹ compares two.';
         }
 
 
@@ -1223,28 +1246,85 @@
             return 'swapped';
         }
 
+        /* Selecting a player for a swap, drawn by moving classes around.
+
+           It used to go through refreshLWView(), which rebuilds the innerHTML
+           of the lineup, matchday, captaincy and overview panels — so picking
+           somebody up destroyed and recreated every card on the pitch, along
+           with every portrait and crest in them. That is the blink: click a
+           substitute and the other players visibly go away and come back,
+           because they were in fact removed from the document and new ones put
+           in their place.
+
+           Nothing about the lineup has changed at this point. A selection is a
+           thing you are about to do, not a thing you have done, so it is three
+           class names and a line of text. The marks are the ones the drag uses
+           — is-drop-ok and is-drop-no — so picking a player up by clicking
+           teaches exactly what picking him up by dragging does. */
+        function lwPaintSelection() {
+            const src = lineupState.swapSource;
+            document.querySelectorAll('#lwPitchField .dp-card[data-lw-id]').forEach(el => {
+                const id = Number(el.dataset.lwId);
+                el.classList.toggle('swap-selected', src === id);
+                el.classList.remove('swap-target', 'is-drop-ok', 'is-drop-no');
+                if (src == null || src === id) return;
+                el.classList.add(lwSwapWouldWork(src, id) ? 'is-drop-ok' : 'is-drop-no');
+            });
+            const hint = document.querySelector('#lwPitchField .lw-pitch-hint');
+            if (hint) hint.innerHTML = lwPitchHint();
+        }
+
+        /* The mutable parts of a card, updated where they stand: the armband
+           controls, and whether the card is selected for comparison. Neither
+           changes a projection, a fixture or a face, so there is nothing in a
+           card worth rebuilding for them — and rebuilding is what destroyed and
+           recreated every portrait and crest on the pitch. */
+        function lwPaintCards() {
+            const byId = new Map((lineupState.squad || []).map(p => [p.id, p]));
+            const onBench = new Set((lineupState.bench || []).map(p => p.id));
+            const picked = lineupState.selectedPlayers || [];
+            document.querySelectorAll('#lwPitchField .dp-card[data-lw-id]').forEach(el => {
+                const id = Number(el.dataset.lwId);
+                const p = byId.get(id);
+                if (!p) return;
+                el.classList.toggle('lw-picked', picked.includes(id));
+                const want = lwArmbandHTML(p, onBench.has(id));
+                const slot = el.querySelector('.dp-arm-set, .dp-cap');
+                if (slot && want) slot.outerHTML = want;
+                else if (slot) slot.remove();
+                else if (want) {
+                    const badges = el.querySelector('.dp-badges');
+                    if (badges) badges.insertAdjacentHTML('afterend', want);
+                }
+            });
+            lwPaintSelection();
+        }
+
         function handleLWSwapClick(playerId) {
             // A click that ends a drag is the drag's, not a selection.
             if (lineupState.dragJustEnded) { lineupState.dragJustEnded = false; return; }
 
             if (!lineupState.swapSource) {
-                // First click: select source
+                // First click: select source. Nothing has changed yet.
                 lineupState.swapSource = playerId;
-                refreshLWView();
+                lwPaintSelection();
                 return;
             }
 
             if (lineupState.swapSource === playerId) {
-                // Clicked same player: cancel swap
+                // Clicked same player: cancel. Still nothing changed.
                 lineupState.swapSource = null;
-                refreshLWView();
+                lwPaintSelection();
                 return;
             }
 
             const srcId = lineupState.swapSource;
             lineupState.swapSource = null;
-            lwSwapPlayers(srcId, playerId);
-            refreshLWView();
+            const result = lwSwapPlayers(srcId, playerId);
+            // A swap the shape could not take leaves the eleven exactly as it
+            // was, so there is nothing to repaint but the marks.
+            if (result === 'swapped') refreshLWView();
+            else lwPaintSelection();
         }
 
         /* ===== DRAGGING A PLAYER ONTO ANOTHER =====
@@ -1748,13 +1828,14 @@
                 function setLWCaptain(playerId) {
             if (lineupState.viceCaptain === playerId) lineupState.viceCaptain = lineupState.captain;
             lineupState.captain = playerId;
-            refreshLWView();
+            // Nobody moved — only the letter on two cards changed.
+            refreshLWView({ keepPitch: true });
         }
 
         function setLWViceCaptain(playerId) {
             if (lineupState.captain === playerId) lineupState.captain = lineupState.viceCaptain;
             lineupState.viceCaptain = playerId;
-            refreshLWView();
+            refreshLWView({ keepPitch: true });
         }
 
         // Quick lineup scoring — simplified version for inline tab
@@ -2001,7 +2082,11 @@
 
         // Repaints the pitch, the formation and the intel pane together, so a
         // swap can never leave the projected total describing the previous lineup.
-        function refreshLWView() {
+        /* `keepPitch` is for the changes that do not alter who is on the pitch
+           or what they project — an armband, a comparison selection. Those
+           update the cards in place, because a card rebuilt from scratch takes
+           its portrait and its crest with it and the whole eleven blinks. */
+        function refreshLWView(opts) {
             // Every in-place change ends here — a swap, an armband, a vice — so
             // this is where a decision becomes something that survives a reload.
             lwRemember();
@@ -2009,7 +2094,8 @@
                and the Auto-optimise strip, so it is addressed rather than the
                pitch inside it. */
             const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
-            set('lwLineupPane', lwRenderLineupPanel());
+            if (opts && opts.keepPitch) lwPaintCards();
+            else set('lwLineupPane', lwRenderLineupPanel());
             set('lwMatchdayPane', lwRenderMatchday());
             set('lwCaptaincyPane', lwRenderCaptaincy());
             const kpis = document.getElementById('lwKpis');
@@ -2027,6 +2113,12 @@
            read the squad, so both are repainted. */
         function updateLWContextPanel() {
             refreshLWView();
+        }
+
+        /* Opening or closing a player's detail changes which panel the right
+           column shows and nothing else, so the pitch stays as it is. */
+        function updateLWContextPanelOnly() {
+            refreshLWView({ keepPitch: true });
         }
 
         // ── LINEUP WIZARD: Info/Compare Button Handler ──
@@ -2048,5 +2140,5 @@
             } else {
                 lineupState.selectedPlayers.push(playerId);
             }
-            updateLWContextPanel();
+            updateLWContextPanelOnly();
         }
