@@ -287,31 +287,50 @@ test('the section says where its numbers come from and whether they are blended'
 
 /* ===== THE OVERVIEW ROW ===== */
 
-test('the overview leads with the Squad Analysis KPI row', () => {
+/* The Overview is the four blocks the brief asks for, in the order you act on
+   them. The stacked points bar, the fixture narrative, the multi-gameweek
+   figures and the four summary cards were all asked out of it: the tab is for
+   deciding one gameweek, and a figure you cannot act on this week is noise. */
+test('the overview summary bar is three figures, not four cards', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderOverviewRow();
-    assert.equal((html.match(/class="sq-kpi"/g) || []).length, 4, 'four tiles, same object as Squad Analysis');
-    assert.match(html, /sq-kpi-icon tone-/);
+    assert.equal((html.match(/class="sq-kpi"/g) || []).length, 3, 'xP, the gain, and the flag count');
+    assert.match(html, /Projected points/);
+    assert.match(html, /vs live FPL team/);
+    assert.match(html, /Flagged/);
+    assert.match(html, /lw-kpis is-three/);
 });
 
-/* The Overview was cut to four tiles once. These are the figures that went
-   with them, and they are back: a tile reading "0 flagged" cannot tell you the
-   eleven is three-deep on one club, or where half its points come from. */
-test('the overview keeps every figure that described the eleven', () => {
+test('the overview carries no figure you cannot act on this gameweek', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderOverviewRow();
-    assert.match(html, /Nailed on/, 'how many starters are nailed on');
-    assert.match(html, /Expected absent/);
-    assert.match(html, /Avg FDR/);
-    assert.match(html, /XI xP/);
-    assert.match(html, /What the eleven face/, 'the fixture read');
-    assert.match(html, /Key player decisions/, 'weakest starter against best substitute');
-    assert.match(html, /Changes against your saved lineup/);
+    assert.ok(!html.includes('opt-bar'), 'no "where the points come from" stacked bar');
+    assert.ok(!/What the eleven face/.test(html), 'no fixture narrative');
+    assert.ok(!/Nailed on|Expected absent|Avg FDR|XI xP/.test(html), 'and none of the four summary cards');
+    assert.ok(!/next \d+ GWs|GW\d+–GW\d+/.test(html), 'nothing summed over a multi-gameweek run');
 });
 
-test('the swap offer only appears when the shape survives it', () => {
-    // STRONG_BENCH holds a substitute who out-projects a starter in a legal shape.
+test('the overview is risks, then changes, then the closest call', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderOverviewRow();
-    if (html.includes('lw-sum-apply')) assert.match(html, /lwApplySwap\(\d+, \d+\)/, 'the button names both players');
-    else assert.match(html, /no legal formation|as good as the eleven gets|no swap to make/, 'or says why there is none');
+    const order = ['Risks &amp; flags', 'Optimiser changes', 'Closest bench call'].map(h => html.indexOf(h));
+    assert.ok(order.every(i => i > -1), 'all three blocks are present');
+    assert.deepEqual(order, [...order].sort((a, b) => a - b), 'and in the order the brief sets');
+});
+
+test('the changes are grouped by what happened, not listed per player', () => {
+    const moved = XI_442.slice(0, 10).concat([player(90, 'Szoboszlai', 30, 3)]);
+    const st = state(moved, [player(31, 'Fwd1', 9, 4), player(91, 'SubGK', 1, 1)]);
+    st.originalXIIds = new Set(XI_442.map(p => p.id));
+    const html = wizard(st).lwRenderOverviewRow();
+    assert.match(html, /lw-chg-badge">IN</, 'who comes in');
+    assert.match(html, /lw-chg-badge">OUT</, 'who goes out');
+    assert.match(html, /Szoboszlai/);
+});
+
+test('the closest bench call names both players and which way it went', () => {
+    const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderOverviewRow();
+    assert.match(html, /lw-call-i is-in/);
+    assert.match(html, /lw-call-i is-out/);
+    assert.match(html, />starts</);
+    assert.match(html, />benched</);
 });
 
 test('the overview reports the gain against the live FPL eleven', () => {
@@ -320,7 +339,7 @@ test('the overview reports the gain against the live FPL eleven', () => {
     st.originalXIIds = new Set(XI_442.map(p => p.id));
     const ctx = wizard(st);
     assert.notEqual(ctx.lwLiveXP(), ctx.lwTotalXP());
-    assert.match(ctx.lwRenderOverviewRow(), /vs your live team/);
+    assert.match(ctx.lwRenderOverviewRow(), /vs live FPL team/);
 });
 
 test('no squad, no overview content', () => {
@@ -356,18 +375,30 @@ test('selecting players turns the captaincy column into the comparison', () => {
     assert.match(two, /Compare/);
 });
 
-/* The captaincy matrix was five cards wide and was cut to a bare list. The
-   width was the problem, not the numbers — all of them are back, read down a
-   column instead of across a grid. */
-test('each candidate carries the numbers the armband is decided on', () => {
+/* The captaincy cards were crammed with a stacked points breakdown and two
+   unlabelled progress bars. All of it was true and none of it was readable at
+   that size — you cannot compare five players on a 5px bar. What is left is
+   what you would actually ask a friend. */
+test('a candidate carries form, ownership and what the opponent concedes', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderCaptaincy();
-    assert.match(html, /Threat/, 'how dangerous he is');
-    assert.match(html, /Opponent/, 'and how leaky the defence he faces is');
     assert.match(html, /Form<\/em>/);
     assert.match(html, /Owned<\/em>/);
-    assert.match(html, /Starts<\/em><b>95%/, 'minutes risk, as a number');
-    assert.match(html, /concede 1\.4 a game/, 'the opponent in goals');
+    assert.match(html, /concede <b>1\.4<\/b> a game/, 'the one fixture stat worth the space');
     assert.match(html, /lw-cap-fdr/, 'and the fixture, coloured by difficulty');
+});
+
+test('the noise the brief named is gone from the captaincy cards', () => {
+    const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderCaptaincy();
+    assert.ok(!/lwc-bars|lwc-bar-row/.test(html), 'no unlabelled Threat and Opponent bars');
+    assert.ok(!/lwc-break/.test(html), 'no granular points breakdown inside the card');
+    assert.ok(!/Starts<\/em>/.test(html), 'no minutes percentage — a top option is assumed to start');
+});
+
+test('the algorithmic read is an alert box, not a grey paragraph', () => {
+    const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderCaptaincy();
+    assert.match(html, /lwc-insight/);
+    assert.match(html, /Algorithm insight/);
+    assert.match(html, /lwc-insight-t/);
 });
 
 /* A pick the dataset does not know used to vanish without trace: map()
