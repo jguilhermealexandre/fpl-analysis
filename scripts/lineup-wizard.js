@@ -136,44 +136,29 @@
 
         function renderLineupCommandCenter() {
             const container = document.getElementById('lineupDisplay');
-            const lwRun = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON) : [];
-            const optimiseTip = lwRun.length > 1
-                ? `Rebuild the legal eleven that projects best across GW${lwRun[0]}–GW${lwRun[lwRun.length - 1]} combined, not just this single week.`
-                : 'Rebuild the highest-projecting legal eleven from your available players.';
+            /* Four panels, two rows. The decision sits above the evidence:
+               what the eleven is worth and who wears the armband on top, the
+               pitch you change and the matches you change it for underneath,
+               side by side at equal weight because neither answers without the
+               other.
+
+               One arrangement, not two. The A/C switch is gone — a page that
+               cannot decide how it is laid out teaches the reader nothing, and
+               a preference stored in localStorage meant no two people were
+               looking at the same screen. */
             container.innerHTML = `
                 <div class="lw-cc">
                     <div class="lw-cc-head">
                         <div class="lw-cc-title">${v2Icon('sliders')} Lineup command centre
                             <span class="lw-cc-gw">GW${planningGW}</span></div>
-                        ${lwRenderLayoutSwitch()}
                     </div>
-
-                    <!-- Overview, then the three panels, then the pitch is one
-                         of those panels rather than an afterthought. Which of
-                         the two arrangements is in force is a class on
-                         #lwMain; the markup is identical either way. -->
-                    ${lwRenderOverviewRow()}
-                    <div class="lw-main is-${lwLayout()}" id="lwMain">
-                        <div class="lw-slot-lineup" id="lwLineupPane">${lwRenderLineupPanel()}</div>
+                    <div class="lw-main" id="lwMain">
+                        <div class="lw-slot-ov" id="lwOverviewPane">${lwRenderOverviewRow()}</div>
                         <div class="lw-slot-cap" id="lwCaptaincyPane">${lwRenderCaptaincy()}</div>
+                        <div class="lw-slot-lineup" id="lwLineupPane">${lwRenderLineupPanel()}</div>
                         <div class="lw-slot-md" id="lwMatchdayPane">${lwRenderMatchday()}</div>
                     </div>
-
-                    <!-- The page as it stood before the redesign, for
-                         comparison. Self-contained: see
-                         scripts/lineup-wizard-legacy.js. Removing it is
-                         deleting that file, its stylesheet block, its manifest
-                         entry and these lines. -->
-                    <section class="lw-legacy" id="lwLegacySection">
-                        <header class="lw-legacy-head">
-                            <h3 class="lw-legacy-title">${v2Icon('clock')} Previous version</h3>
-                            <span class="lw-legacy-tag">before the redesign</span>
-                        </header>
-                        <p class="lw-legacy-note">The Lineup Wizard as it was at 92d26c8c, running live against the same squad \u2014 for comparing what the redesign kept against what it dropped. Everything here works; the two versions share the same lineup, so a swap or an armband in one shows in the other.</p>
-                        <div id="lwLegacyBody"></div>
-                    </section>
                 </div>`;
-            if (window.lwLegacy) window.lwLegacy.render();
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
@@ -406,93 +391,94 @@
             </span>`;
         }
 
-        /* One team's side of a priced fixture: what the market expects them to
-           score, and what both estimators give them for a clean sheet.
+        /* One club's numbers, on one line.
 
-           This was one cramped row with the two clubs' numbers interleaved, so
-           "ARS Mkt — Ours 40% LEE Mkt — Ours 31%" ran together as a single
-           unreadable line. A column per club is the shape the old odds panel
-           used and it was right: the numbers stack under the badge they belong
-           to, and nothing has to be read across a divider. */
-        function lwTeamSide(team, teamId, oppId, isHome, o) {
+           These were two boxed columns stacked inside each card, which spent a
+           lot of chrome on four figures and forced the two clubs apart so you
+           could not compare them without moving your eyes twice. Inline, on
+           the side of the row the club sits on, they read across. */
+        function lwTeamStats(team, teamId, oppId, isHome, o) {
             const short = (team && team.short_name) || '?';
             const name = (team && team.name) || short;
             const xg = o ? (isHome ? o.lambdaHome : o.lambdaAway) : null;
             const marketCs = o ? (isHome ? o.csHome : o.csAway) : null;
             return `<div class="lwm-side${isHome ? '' : ' is-away'}">
-                <div class="lwm-side-top">
-                    <span class="lwm-side-t">${escHTML(short)}</span>
-                    <span class="lwm-ha" data-tooltip="${isHome ? 'At home' : 'Away'}">${isHome ? 'H' : 'A'}</span>
-                </div>
-                <div class="lwm-m" data-tooltip="${escHTML(xg != null
-                    ? `Goals ${name} are expected to score, implied by the match and over/under prices.`
-                    : 'No market price for this fixture yet, so there is no goal expectation to show.')}">
-                    <span class="lwm-m-l">xG</span><b>${xg != null ? xg.toFixed(2) : '—'}</b>
-                </div>
+                <span class="lwm-side-t">${escHTML(short)}</span>
+                ${xg != null ? `<span class="lwm-m" data-tooltip="${escHTML(
+                    `Goals ${name} are expected to score, implied by the match and over/under prices.`)}">
+                    <em>xG</em><b>${xg.toFixed(2)}</b></span>` : ''}
                 ${lwCsCell(teamId, oppId, isHome, marketCs)}
             </div>`;
         }
 
+        /* One match, as a row rather than a card.
+
+           Seven near-identical cards in a two-up grid gave no hierarchy and no
+           scan path: every match looked as important as every other, the
+           players you own were buried at the bottom of each one, and "not
+           priced yet" repeated itself seven times. A row at full column width
+           can put the clubs, the result odds and your stake on one line, which
+           is the line you are actually reading. Your players come straight
+           after it, because they are why you opened this. The market numbers
+           sit underneath for when you want them.
+
+           A match with three or more of your squad in it carries an accent: a
+           single result deciding a third of your week is not the same event as
+           one with a lone defender in it, and the page should not draw them
+           the same. */
         function lwRenderFixture(row) {
             const f = row.f, o = row.odds;
             const tm = (typeof teams !== 'undefined' && teams) || {};
             const home = tm[f.team_h] || {}, away = tm[f.team_a] || {};
-            const ko = typeof boKickoff === 'function' ? boKickoff(f.kickoff_time) : '';
             const xiCount = row.mine.filter(m => m.starting).length;
             const pc = v => Math.round(v * 100) + '%';
+            const ko = (() => {
+                const d = new Date(f.kickoff_time);
+                return isNaN(d) ? '' : d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+            })();
 
-            const goals = o ? (o.lambdaHome + o.lambdaAway) : null;
-            /* Win, draw, lose — as numbers, not only as a bar.
-
-               The bar alone said which way a match leans and refused to say by
-               how much, with the percentages hidden in a tooltip that a phone
-               has no way to open. A 45/30/25 and a 70/20/10 are the same
-               picture and completely different team-selection decisions. The
-               bar stays as the shape; the three figures sit under it, each by
-               the side it belongs to. */
-            const bar = o ? `<div class="lwm-wdl">
+            const odds = o ? `<span class="lwm-wdl">
                 <span class="lwm-res" aria-hidden="true">
                     <i class="lwm-res-h" style="width:${(o.market.home * 100).toFixed(1)}%"></i>
                     <i class="lwm-res-d" style="width:${(o.market.draw * 100).toFixed(1)}%"></i>
                     <i class="lwm-res-a" style="width:${(o.market.away * 100).toFixed(1)}%"></i>
                 </span>
-                <span class="lwm-wdl-n">
-                    <span class="lwm-wdl-i is-h" data-tooltip="${escHTML(`${home.short_name || 'Home'} win, as the market prices it.`)}"><em>${escHTML(home.short_name || 'H')}</em><b>${pc(o.market.home)}</b></span>
-                    <span class="lwm-wdl-i is-d" data-tooltip="Draw, as the market prices it."><em>Draw</em><b>${pc(o.market.draw)}</b></span>
-                    <span class="lwm-wdl-i is-a" data-tooltip="${escHTML(`${away.short_name || 'Away'} win, as the market prices it.`)}"><em>${escHTML(away.short_name || 'A')}</em><b>${pc(o.market.away)}</b></span>
-                </span>
-            </div>` : '';
+                <span class="lwm-draw" data-tooltip="Draw, as the betting market prices it.">Draw ${pc(o.market.draw)}</span>
+            </span>` : /* An empty result track says nothing and looks like a
+                            loading state. A plain "v" says the same nothing,
+                            honestly, and lets the two clubs sit together. */
+                `<span class="lwm-wdl is-none">v</span>`;
 
-            /* Total goals, over 2.5, both teams to score, and the single
-               likeliest scoreline. Four numbers that describe the SHAPE of the
-               match rather than who wins it, which is exactly the question a
-               defender's owner is asking. */
             const top = o && o.scorelines && o.scorelines[0];
-            const extras = o ? `<div class="lwm-ex">
-                <span class="lwm-ex-i" data-tooltip="Total goals the market expects in this match."><em>Goals</em><b>${goals.toFixed(2)}</b></span>
+            const shape = o ? `<div class="lwm-ex">
+                <span class="lwm-ex-i" data-tooltip="Total goals the market expects in this match."><em>Goals</em><b>${(o.lambdaHome + o.lambdaAway).toFixed(2)}</b></span>
                 <span class="lwm-ex-i" data-tooltip="Chance of three or more goals in the match."><em>Over 2.5</em><b>${pc(o.over25)}</b></span>
                 <span class="lwm-ex-i" data-tooltip="Chance both teams score."><em>BTTS</em><b>${pc(o.bttsYes)}</b></span>
                 ${top ? `<span class="lwm-ex-i" data-tooltip="${escHTML(`The single likeliest scoreline, at ${pc(top.p)}.`)}"><em>Likeliest</em><b>${top.h}–${top.a}</b></span>` : ''}
-            </div>` : `<div class="lwm-ex is-none" data-tooltip="The betting feed has not priced this fixture, so there is no market line for it. Your players and EasyFPL's own clean-sheet model are unaffected.">Not priced yet — EasyFPL's own numbers only</div>`;
+            </div>` : '';
 
-            return `<article class="lwm-fix">
-                <header class="lwm-fix-head">
+            return `<article class="lwm-fix${row.mine.length >= 3 ? ' is-key' : ''}">
+                <div class="lwm-top">
                     <span class="lwm-ko">${escHTML(ko)}</span>
+                    <span class="lwm-tm is-h">
+                        ${lwCrest(home)}<b>${escHTML(home.short_name || '?')}</b>
+                        ${o ? `<em data-tooltip="${escHTML(`${home.short_name || 'Home'} win, as the market prices it.`)}">${pc(o.market.home)}</em>` : ''}
+                    </span>
+                    ${odds}
+                    <span class="lwm-tm is-a">
+                        ${o ? `<em data-tooltip="${escHTML(`${away.short_name || 'Away'} win, as the market prices it.`)}">${pc(o.market.away)}</em>` : ''}
+                        <b>${escHTML(away.short_name || '?')}</b>${lwCrest(away)}
+                    </span>
                     <span class="lwm-mine-n" data-tooltip="${escHTML(
                         `${row.mine.length} of your squad play in this match — ${xiCount} in your XI, ${row.mine.length - xiCount} on the bench.`)}">${row.mine.length}<em>yours</em></span>
-                </header>
-                <div class="lwm-teams">
-                    <span class="lwm-team h">${lwCrest(home)}<b>${escHTML(home.short_name || '?')}</b></span>
-                    <span class="lwm-v">v</span>
-                    <span class="lwm-team a"><b>${escHTML(away.short_name || '?')}</b>${lwCrest(away)}</span>
                 </div>
-                ${bar}
-                <div class="lwm-sides">
-                    ${lwTeamSide(home, f.team_h, f.team_a, true, o)}
-                    ${lwTeamSide(away, f.team_a, f.team_h, false, o)}
-                </div>
-                ${extras}
                 <div class="lwm-players">${row.mine.map(lwMatchPlayer).join('')}</div>
+                <div class="lwm-stats">
+                    ${lwTeamStats(home, f.team_h, f.team_a, true, o)}
+                    ${o ? '' : '<span class="lwm-unpriced" data-tooltip="The betting feed has not priced this fixture yet, so there is no market line for it. Your players and EasyFPL\'s own clean-sheet model are unaffected.">no market price</span>'}
+                    ${lwTeamStats(away, f.team_a, f.team_h, false, o)}
+                </div>
+                ${shape}
             </article>`;
         }
 
@@ -512,9 +498,26 @@
                     ${b.active
                         ? `<span class="lwm-blend is-on" data-tooltip="${escHTML(
                             `Every projection on this page for GW${b.event} is ${Math.round(b.weight * 100)}% the market's goal expectations and ${Math.round((1 - b.weight) * 100)}% EasyFPL's own model. The market's share falls as the season gives the model more of its own evidence — currently ${b.matchesPlayed ?? 0} matches played. Later gameweeks are model-only: bookmakers do not price them yet.`)}">Blended into GW${b.event} projections · market weight ${Math.round(b.weight * 100)}%</span>`
-                        : `<span class="lwm-blend is-off" data-tooltip="Projections are model-only. The market is blended in only when every fixture in the round is priced, so that no two players are being compared across different estimators.">Shown for reference — not blended into projections</span>`}
+                        : `<span class="lwm-blend is-off" data-tooltip="Projections are model-only. The market is blended in only when every fixture in the round is priced, so that no two players are being compared across different estimators.">Market shown for reference — not blended</span>`}
                     ${updated ? `<span class="lwm-updated" data-tooltip="${escHTML(`Odds feed last refreshed ${updated.toLocaleString()}.`)}">Odds updated ${escHTML(updated.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }))}</span>` : ''}
                 </div>`;
+        }
+
+        /* Matches grouped under the day they are played, because that is how a
+           gameweek is actually experienced — Saturday's three o'clocks are one
+           event, Sunday is another, and a flat list of seven rows hides that. */
+        function lwMatchdayDays(rows) {
+            const days = [];
+            rows.forEach(r => {
+                const d = new Date(r.f.kickoff_time);
+                const key = isNaN(d) ? 'tbc' : d.toDateString();
+                const label = isNaN(d) ? 'Date to be confirmed'
+                    : d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' });
+                let day = days.find(x => x.key === key);
+                if (!day) { day = { key, label, rows: [] }; days.push(day); }
+                day.rows.push(r);
+            });
+            return days;
         }
 
         function lwRenderMatchday() {
@@ -523,16 +526,13 @@
                 return `<section class="v2-section lwm"><div class="lw-side-empty">No fixtures this gameweek involve your players.</div></section>`;
             }
             /* Asked for once, here, rather than by the panel that used to own
-               this section — the odds only ever enrich these cards now, so a
+               this section — the odds only ever enrich these rows now, so a
                feed that never arrives costs the section nothing. */
             if (typeof boOdds !== 'undefined' && !boOdds && typeof boLoadOdds === 'function') {
                 boLoadOdds().then(d => { if (d) refreshLWView(); });
             }
             const counted = rows.reduce((s, r) => s + r.mine.length, 0);
             const unpriced = rows.filter(r => !r.odds).length;
-            /* .v2-section and .section-header: the panel every other screen on
-               the site is built out of, rather than a heading floating over a
-               list. */
             return `<section class="v2-section lwm">
                 <div class="section-header">
                     <h2>${v2Icon('ball')} Matchday <span class="lwm-gw">GW${planningGW}</span></h2>
@@ -543,10 +543,14 @@
                     <span class="lwm-key"><i class="lwm-key-sw is-xi"></i>Starting</span>
                     <span class="lwm-key"><i class="lwm-key-sw is-bench"></i>Bench</span>
                     <span class="lwm-key lwm-key-cs" data-tooltip="Clean sheet chance. Mkt is the betting market's price; Ours is EasyFPL's own model from our fixture and defensive analysis.">
-                        CS · <em>Mkt</em> betting market · <em>Ours</em> EasyFPL model</span>
-                    <span class="lwm-key" data-tooltip="Goals each side is expected to score, implied by the match and over/under prices.">xG · goals expected, per side</span>
+                        CS · <em>Mkt</em> market · <em>Ours</em> EasyFPL</span>
                 </div>
-                <div class="lwm-list">${rows.map(lwRenderFixture).join('')}</div>
+                <div class="lwm-days">
+                    ${lwMatchdayDays(rows).map(day => `<section class="lwm-day">
+                        <h3 class="lwm-day-h">${escHTML(day.label)}<span>${day.rows.length} ${day.rows.length === 1 ? 'match' : 'matches'}</span></h3>
+                        ${day.rows.map(lwRenderFixture).join('')}
+                    </section>`).join('')}
+                </div>
                 ${unpriced ? `<p class="lwm-foot">${unpriced} of these ${unpriced === 1 ? 'fixtures has' : 'fixtures have'} no market price yet — bookmakers publish a round in instalments. Your players and EasyFPL's own numbers are shown regardless.</p>` : ''}
                 <p class="lwm-foot">Market numbers are derived from de-vigged 1X2 and over/under 2.5 prices, fitted to independent Poisson. Nobody quotes a clean-sheet percentage; those are derived the same way. Odds describe one gameweek only. Source: football-data.co.uk.</p>
             </section>`;
@@ -914,32 +918,6 @@
                 ${lwRenderOptimiseStrip()}
                 <div id="lwPitchField">${renderLWPitch()}</div>
             </section>`;
-        }
-
-        /* A and C from the layout sketches, as two sets of grid areas over one
-           DOM. Nothing re-renders when it changes; only the placement does. */
-        function lwLayout() {
-            try { return localStorage.getItem('lw_layout') === 'c' ? 'c' : 'a'; } catch (e) { return 'a'; }
-        }
-
-        function lwSetLayout(which) {
-            try { localStorage.setItem('lw_layout', which); } catch (e) { /* private mode */ }
-            const main = document.getElementById('lwMain');
-            if (main) main.className = 'lw-main is-' + which;
-            document.querySelectorAll('.lw-lay-btn').forEach(b => {
-                b.classList.toggle('active', b.dataset.lay === which);
-            });
-        }
-
-        function lwRenderLayoutSwitch() {
-            const cur = lwLayout();
-            return `<div class="lw-lay" role="group" aria-label="Layout">
-                <span class="lw-lay-l">Layout</span>
-                <button class="lw-lay-btn${cur === 'a' ? ' active' : ''}" data-lay="a" onclick="lwSetLayout('a')"
-                    data-tooltip="Lineup and Matchday side by side, captaincy as a strip under the lineup">A</button>
-                <button class="lw-lay-btn${cur === 'c' ? ' active' : ''}" data-lay="c" onclick="lwSetLayout('c')"
-                    data-tooltip="Matchday wide on the left, lineup and captaincy in a sticky right rail">C</button>
-            </div>`;
         }
 
         function renderLWPitch() {
@@ -2004,11 +1982,7 @@
             else set('lwLineupPane', lwRenderLineupPanel());
             set('lwMatchdayPane', lwRenderMatchday());
             set('lwCaptaincyPane', lwRenderCaptaincy());
-            const kpis = document.getElementById('lwKpis');
-            if (kpis) kpis.outerHTML = lwRenderOverviewRow();
-            // The comparison section reads the same lineup, so it follows every
-            // change made in either version. Guarded: it is meant to be removable.
-            if (window.lwLegacy) window.lwLegacy.render();
+            set('lwOverviewPane', lwRenderOverviewRow());
             const f = document.getElementById('lwFormation');
             if (f) f.textContent = lineupState.formation;
             if (typeof lucide !== 'undefined') lucide.createIcons();

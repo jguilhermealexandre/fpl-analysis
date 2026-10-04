@@ -241,8 +241,8 @@ test('a wide disagreement between market and model is marked', () => {
 
 test('the section carries a legend, so the two numbers need no hover', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderMatchday();
-    assert.match(html, /betting market/);
-    assert.match(html, /EasyFPL model/);
+    assert.match(html, /market<\/span>|<em>Mkt<\/em> market/);
+    assert.match(html, /EasyFPL<\/span>|<em>Ours<\/em> EasyFPL/);
     assert.match(html, /Starting/);
     assert.match(html, /Bench/);
 });
@@ -256,10 +256,10 @@ test('the section carries a legend, so the two numbers need no hover', () => {
 
 test('a priced fixture shows each side its own expected goals', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderMatchday();
-    assert.match(html, /lwm-sides/, 'a column per club');
+    assert.match(html, /lwm-stats/, 'one metrics line, a half per club');
     assert.match(html, /1\.80/, "the home side's goal expectation");
     assert.match(html, /0\.90/, "and the away side's");
-    assert.match(html, /lwm-m-l">xG/, 'labelled, not left as a bare number');
+    assert.match(html, /<em>xG<\/em>/, 'labelled, not left as a bare number');
 });
 
 test('the shape of the match is shown, not only the result', () => {
@@ -274,8 +274,8 @@ test('an unpriced fixture says so rather than showing a blank row', () => {
     // One starter moved to a club whose GW5 fixture the feed has not priced.
     const xi = XI_442.map((p, i) => i === 5 ? { ...p, teamId: 3, team: 'LIV' } : p);
     const html = wizard(state(xi, STRONG_BENCH)).lwRenderMatchday();
-    assert.match(html, /Not priced yet/);
-    assert.match(html, /lwm-players/, 'and his name is still on the card');
+    assert.match(html, /no market price/);
+    assert.match(html, /lwm-players/, 'and his name is still on the row');
 });
 
 test('the section says where its numbers come from and whether they are blended', () => {
@@ -513,20 +513,22 @@ test('a drag that just ended does not also count as a click', () => {
 
 /* ===== THE PAGE ===== */
 
-test('the page is the overview row and then the three panels', () => {
+/* One arrangement, four panels. The A/C switch is gone: a preference stored
+   in localStorage meant no two people were looking at the same screen, and
+   neither layout ever got the attention of being the only one. */
+test('the page is four panels in one grid', () => {
     const ctx = wizard(state(XI_442, STRONG_BENCH));
     ctx.renderLineupCommandCenter();
     const html = ctx.__nodes.lineupDisplay.innerHTML;
-    assert.ok(html.indexOf('lw-kpis') > -1 && html.indexOf('lw-main') > html.indexOf('lw-kpis'),
-        'overview row leads');
-    for (const slot of ['lw-slot-lineup', 'lw-slot-cap', 'lw-slot-md']) {
+    for (const slot of ['lw-slot-ov', 'lw-slot-cap', 'lw-slot-lineup', 'lw-slot-md']) {
         assert.ok(html.includes(slot), `${slot} is present`);
     }
-    /* Source order is fixed; which arrangement is in force is a class, so the
-       mobile order is a property of the CSS areas rather than of the markup. */
-    assert.ok(html.indexOf('lw-slot-lineup') < html.indexOf('lw-slot-cap'));
-    assert.ok(html.indexOf('lw-slot-cap') < html.indexOf('lw-slot-md'));
-    assert.match(html, /lw-main is-[ac]/, 'and a layout is chosen');
+    // Overview and captaincy share the top row; lineup and matchday the next.
+    assert.ok(html.indexOf('lw-slot-ov') < html.indexOf('lw-slot-cap'));
+    assert.ok(html.indexOf('lw-slot-cap') < html.indexOf('lw-slot-lineup'));
+    assert.ok(html.indexOf('lw-slot-lineup') < html.indexOf('lw-slot-md'));
+    assert.ok(!/lw-main is-[ac]/.test(html), 'and no layout variant to choose');
+    assert.ok(!html.includes('lw-lay-btn'), 'so no switch either');
 });
 
 test('each of the three is a real panel, the one the rest of the site uses', () => {
@@ -587,16 +589,16 @@ test('the tab strip is gone', () => {
     assert.ok(!html.includes('setLWIntelTab'));
 });
 
-test('the comparison section is mounted and guarded', () => {
+/* The "Previous version" comparison panel is gone, and so is every hook that
+   reached for it — a dead window.lwLegacy check is how a deleted feature
+   comes back as a bug. */
+test('nothing on the page reaches for the removed comparison panel', () => {
     const ctx = wizard(state(XI_442, STRONG_BENCH));
     ctx.renderLineupCommandCenter();
     const html = ctx.__nodes.lineupDisplay.innerHTML;
-    assert.ok(html.includes('lw-legacy'), 'the previous version has a home');
-    assert.ok(html.includes('lwLegacyBody'), 'and a node of its own to paint into');
-    // The mount is behind a window.lwLegacy check, so deleting the file cannot
-    // break the live page.
+    assert.ok(!html.includes('lw-legacy'), 'no mount point');
     const src = read('scripts/lineup-wizard.js');
-    assert.match(src, /if \(window\.lwLegacy\) window\.lwLegacy\.render\(\)/);
+    assert.ok(!/lwLegacy/.test(src), 'and no reference left in the source');
 });
 
 test('the header carries identity and actions, not a duplicate figure', () => {
