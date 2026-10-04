@@ -21,6 +21,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadScript } from './helpers/load.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+const read = f => fs.readFileSync(path.resolve(import.meta.dirname, '..', f), 'utf8');
 
 /* GW5: two fixtures. Only the first is priced, which is the shape of the real
    feed — football-data.co.uk publishes a round in instalments. */
@@ -291,15 +294,70 @@ test('selecting players turns the captaincy column into the comparison', () => {
 
 /* ===== THE PAGE ===== */
 
-test('the page is overview, then the two columns, then the pitch', () => {
+test('the page is the overview row and then the three panels', () => {
     const ctx = wizard(state(XI_442, STRONG_BENCH));
     ctx.renderLineupCommandCenter();
     const html = ctx.__nodes.lineupDisplay.innerHTML;
-    const order = ['lw-kpis', 'lw-main', 'lw-pitch-sec'].map(c => html.indexOf(c));
-    assert.ok(order.every(i => i > -1), 'all three are present');
-    assert.deepEqual(order, [...order].sort((a, b) => a - b), 'and in that order');
-    assert.ok(html.indexOf('lwMatchdayPane') < html.indexOf('lwCaptaincyPane'),
-        'Matchday leads, so it is first when the columns stack');
+    assert.ok(html.indexOf('lw-kpis') > -1 && html.indexOf('lw-main') > html.indexOf('lw-kpis'),
+        'overview row leads');
+    for (const slot of ['lw-slot-lineup', 'lw-slot-cap', 'lw-slot-md']) {
+        assert.ok(html.includes(slot), `${slot} is present`);
+    }
+    /* Source order is fixed; which arrangement is in force is a class, so the
+       mobile order is a property of the CSS areas rather than of the markup. */
+    assert.ok(html.indexOf('lw-slot-lineup') < html.indexOf('lw-slot-cap'));
+    assert.ok(html.indexOf('lw-slot-cap') < html.indexOf('lw-slot-md'));
+    assert.match(html, /lw-main is-[ac]/, 'and a layout is chosen');
+});
+
+test('each of the three is a real panel, the one the rest of the site uses', () => {
+    const ctx = wizard(state(XI_442, STRONG_BENCH));
+    ctx.renderLineupCommandCenter();
+    const html = ctx.__nodes.lineupDisplay.innerHTML;
+    // One .v2-section with a .section-header for lineup, captaincy and matchday.
+    const panels = (html.match(/class="v2-section/g) || []).length;
+    assert.ok(panels >= 3, `expected three panels, found ${panels}`);
+    assert.ok((html.match(/class="section-header"/g) || []).length >= 3, 'each carries the shared header');
+});
+
+test('Auto-optimise belongs to the Lineup panel', () => {
+    const ctx = wizard(state(XI_442, STRONG_BENCH));
+    const panel = ctx.lwRenderLineupPanel();
+    assert.match(panel, /resetLineupToOptimal/, 'the button is inside the panel it changes');
+    assert.match(panel, /v2-section lw-pane-lineup/);
+    assert.match(panel, /lwPitchField/, 'and the pitch is its content');
+});
+
+test('after optimising, the panel reports before, after and who moved', () => {
+    const st = state(XI_442, STRONG_BENCH);
+    st.optimizeReport = {
+        beforeXP: 50.5, afterXP: 54.1, gain: 3.6,
+        promoted: [player(90, 'Szoboszlai', 30, 3)],
+        benchedOut: [{ player: player(31, 'Fwd1', 9, 4) }]
+    };
+    const strip = wizard(st).lwRenderOptimiseStrip();
+    assert.match(strip, /50\.5/, 'the total before');
+    assert.match(strip, /54\.1/, 'the total after');
+    assert.match(strip, /\+3\.6/, 'and the gain');
+    assert.match(strip, /Szoboszlai/, 'who came in');
+    assert.match(strip, /Fwd1/, 'who went out');
+});
+
+test('a lineup that was already optimal says so instead of showing a zero', () => {
+    const st = state(XI_442, STRONG_BENCH);
+    st.optimizeReport = { beforeXP: 50, afterXP: 50, gain: 0, promoted: [], benchedOut: [] };
+    assert.match(wizard(st).lwRenderOptimiseStrip(), /already the best available/);
+});
+
+test('the armband can be set from the pitch, on starters only', () => {
+    const ctx = wizard(state(XI_442, STRONG_BENCH));
+    const pitch = ctx.renderLWPitch();
+    assert.match(pitch, /dp-arm-set/, 'the control is on the cards');
+    assert.match(pitch, /setLWCaptain/);
+    assert.match(pitch, /setLWViceCaptain/);
+    // Ten outfield starters, two buttons each. The keeper and the bench cannot
+    // hold an armband, so they get the read-only badge instead.
+    assert.equal((pitch.match(/class="dp-arm[ "]/g) || []).length, 20);
 });
 
 test('the tab strip is gone', () => {
@@ -310,15 +368,16 @@ test('the tab strip is gone', () => {
     assert.ok(!html.includes('setLWIntelTab'));
 });
 
-test('the pitch is one self-contained section that can be lifted out', () => {
+test('the comparison section is mounted and guarded', () => {
     const ctx = wizard(state(XI_442, STRONG_BENCH));
     ctx.renderLineupCommandCenter();
     const html = ctx.__nodes.lineupDisplay.innerHTML;
-    const open = html.indexOf('<section class="lw-pitch-sec"');
-    assert.ok(open > -1, 'it is a section of its own');
-    // Everything the pitch needs lives inside it; nothing else refers to it.
-    assert.ok(html.indexOf('lwPitchField') > open, 'including the node the refresh writes into');
-    assert.equal((html.match(/lw-pitch-sec"/g) || []).length, 1, 'exactly one');
+    assert.ok(html.includes('lw-legacy'), 'the previous version has a home');
+    assert.ok(html.includes('lwLegacyBody'), 'and a node of its own to paint into');
+    // The mount is behind a window.lwLegacy check, so deleting the file cannot
+    // break the live page.
+    const src = read('scripts/lineup-wizard.js');
+    assert.match(src, /if \(window\.lwLegacy\) window\.lwLegacy\.render\(\)/);
 });
 
 test('the header carries identity and actions, not a duplicate figure', () => {

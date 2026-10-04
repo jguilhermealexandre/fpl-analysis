@@ -8907,7 +8907,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-legacy .lw-ctx-header-name,
 .lw-legacy-title,
 .lw-ov-call-v,
-.lw-pitch-sec-title,
 .lwc-title,
 .lwc-xp,
 .lwm-goals,
@@ -8988,6 +8987,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-legacy .lw-sum-name,
 .lw-legacy .lw-sum-xp,
 .lw-name,
+.lw-opt-after,
 .lw-ov-call-n,
 .lw-row-swap-btn,
 .lw-stat-val,
@@ -9160,6 +9160,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-ctx-compare-stat-val,
 .lw-deep-col-head,
 .lw-intel-tab,
+.lw-lay-btn,
 .lw-legacy .lw-cap-btn,
 .lw-legacy .lw-cap-lead,
 .lw-legacy .lw-cap-name,
@@ -9177,6 +9178,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-legacy .lw-sum-quiet,
 .lw-legacy-note,
 .lw-meta,
+.lw-opt-strip,
 .lw-ov-call-gap,
 .lw-ov-note,
 .lw-ov-quiet,
@@ -9185,7 +9187,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-ovs-l,
 .lw-pitch-hint,
 .lw-pitch-node,
-.lw-pitch-sec .dp-score,
 .lw-row,
 .lw-row-fixture,
 .lw-row-player-name,
@@ -9203,6 +9204,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwm-p,
 .lwm-p-xp,
 .lwm-sub,
+.lwm-wdl-i b,
 .manager-stat,
 .market-watch-panel,
 .market-watch-panel .mw-empty,
@@ -9389,6 +9391,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .bo-metric,
 .bo-src,
 .bo-stale,
+.dp-arm,
 .dpc-delta,
 .dpc-player,
 .dps-batch-note,
@@ -9443,13 +9446,12 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-legacy .lw-sum-duo-l,
 .lw-legacy .lw-sum-duo-u,
 .lw-legacy .lw-sum-hintline,
+.lw-opt-report,
 .lw-ov-apply,
 .lw-ov-foot,
 .lw-ovs-il,
 .lw-pitch-name,
 .lw-pitch-score,
-.lw-pitch-sec .dp-name,
-.lw-pitch-sec-sub,
 .lw-row-player-team,
 .lwc-btn,
 .lwc-clear,
@@ -9588,6 +9590,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .bo-model,
 .captain-badge,
 .cv-toggle,
+.dp-arm,
 .dpc-chip,
 .dpc-crown,
 .draft-gw-pill .draft-pill-badge,
@@ -9641,6 +9644,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwm-goals em,
 .lwm-mine-n em,
 .lwm-p-pos,
+.lwm-wdl-i em,
 .mgr-est,
 .news-card-team-tag,
 .on-bench-tag,
@@ -9798,6 +9802,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .eo-row-l,
 .fx-matrix-head,
 .lw-cap-lead-h,
+.lw-lay-l,
 .lw-legacy .lw-sum-h,
 .lw-legacy .lw-summary-label,
 .lw-ov-h,
@@ -9930,19 +9935,142 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 @media (max-width: 1100px) { .lw-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px)  { .lw-kpis { grid-template-columns: minmax(0, 1fr); } }
 
-/* Matchday takes two thirds because it is the question; captaincy is the
-   answer to a smaller one and sits beside it. minmax(0, …) on both tracks:
-   a bare 2fr is min-width:auto underneath and the fixture cards inside would
-   hold the column open rather than shrink. */
+/* ===== THE TWO LAYOUTS =====
+
+   A and C from the sketches, over one DOM. The three panels are always in the
+   same source order — lineup, captaincy, matchday — and each layout is a set
+   of grid areas that places them. Switching is a class swap on the container;
+   nothing re-renders, nothing reflows twice, and the mobile order for each is
+   declared with the same mechanism rather than by a separate rule.
+
+   minmax(0, …) on every track: a bare fr is min-width:auto underneath, and a
+   fixture card or a pitch would hold the column open rather than shrink.
+
+   A — lineup and matchday side by side, captaincy a strip under the lineup.
+       You read a fixture on the right and change the eleven on the left
+       without scrolling, which is the loop this page exists for.
+   C — matchday wide on the left, lineup and captaincy in a rail on the right
+       that stays put while the fixtures scroll past it. */
 .lw-main {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
     gap: 14px;
     align-items: start;
     margin-bottom: 16px;
 }
-/* Stacked, Matchday first — it is what the screen is for. */
-@media (max-width: 1100px) { .lw-main { grid-template-columns: minmax(0, 1fr); } }
+.lw-main > div { min-width: 0; }
+
+.lw-main.is-a {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-template-areas:
+        'lineup matchday'
+        'cap    matchday';
+}
+.lw-main.is-c {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-areas:
+        'matchday lineup'
+        'matchday cap';
+}
+.lw-slot-lineup { grid-area: lineup; }
+.lw-slot-cap    { grid-area: cap; }
+.lw-slot-md     { grid-area: matchday; }
+
+/* In C the rail follows the fixtures down. Only in C: in A the lineup is the
+   left column and has nothing to track. */
+@media (min-width: 1101px) {
+    .lw-main.is-c .lw-slot-lineup { position: sticky; top: 84px; }
+}
+
+/* Stacked, and each layout keeps its own order: A puts the armband with the
+   eleven it belongs to, C keeps the evidence before the decision. Lineup
+   leads either way — it is what the page is for. */
+@media (max-width: 1100px) {
+    .lw-main.is-a, .lw-main.is-c { grid-template-columns: minmax(0, 1fr); }
+    .lw-main.is-a { grid-template-areas: 'lineup' 'cap' 'matchday'; }
+    .lw-main.is-c { grid-template-areas: 'lineup' 'matchday' 'cap'; }
+}
+
+/* The switch itself. Two letters, because the thing it changes is visible the
+   moment it is pressed and a longer label would say less than the result. */
+.lw-lay { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.lw-lay-l { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-right: 2px; }
+.lw-lay-btn {
+    width: 28px; height: 26px; border-radius: var(--radius-md);
+    border: 1px solid var(--border-default); background: var(--surface-2);
+    font-size: 11px; font-weight: 800; color: var(--text-secondary);
+    cursor: pointer; font-family: var(--font-body);
+    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.lw-lay-btn:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
+.lw-lay-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+
+/* ===== THE LINEUP PANEL ===== */
+/* The pitch is a panel's content now, so it gets the room a panel gives it
+   rather than the scaled-down treatment it had at the foot of the page. In C
+   the rail is narrower, so the cards step down with it. */
+.lw-pane-lineup .pitch-field { --pitch-min-h: 440px; }
+.lw-main.is-c .lw-pane-lineup .dp-card { --dp-card-w: 92px; }
+.lw-main.is-c .lw-pane-lineup .pitch-field { --pitch-min-h: 400px; }
+/* The pitch draws its own hint line and it changes mid-swap, so there is no
+   second one here. */
+.lw-pitch-hint b { color: var(--text-secondary); font-weight: 700; }
+
+/* What Auto-optimise just did, directly under the button that did it. */
+.lw-opt-strip {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px;
+    margin-bottom: 10px; padding: 8px 10px;
+    border-radius: var(--radius-lg);
+    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--border-subtle));
+    background: color-mix(in srgb, var(--color-primary) 7%, var(--surface-2));
+    font-size: 11px; color: var(--text-secondary);
+}
+.lw-opt-strip.is-quiet {
+    border-color: var(--border-subtle); background: var(--surface-2); color: var(--text-muted);
+    display: flex; align-items: center; gap: 6px;
+}
+.lw-opt-strip.is-quiet svg { width: 13px; height: 13px; color: var(--color-success); }
+.lw-opt-xp { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); }
+.lw-opt-before { font-weight: 700; color: var(--text-muted); text-decoration: line-through; }
+.lw-opt-xp i { display: inline-flex; }
+.lw-opt-xp i svg { width: 12px; height: 12px; color: var(--color-primary); }
+.lw-opt-after { font-weight: 800; font-size: 13px; color: var(--text-primary); }
+.lw-opt-gain { font-style: normal; font-weight: 700; color: var(--text-muted); }
+.lw-opt-gain.is-up { color: var(--color-success); }
+.lw-opt-mv { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.lw-opt-mv i { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.lw-opt-mv.is-in i { background: var(--color-success); }
+.lw-opt-mv.is-out i { background: var(--color-error); }
+.lw-opt-report {
+    margin-left: auto; padding: 3px 9px; border-radius: var(--radius-md);
+    border: 1px solid var(--border-default); background: transparent;
+    font-size: 10px; font-weight: 600; color: var(--text-secondary); cursor: pointer; font-family: var(--font-body);
+}
+.lw-opt-report:hover { border-color: var(--border-emphasis); color: var(--text-primary); }
+
+/* The cards Auto-optimise moved, marked where the move happened. */
+.dp-card.is-moved-in { box-shadow: 0 0 0 2px var(--color-success) inset; }
+.dp-card.is-moved-out { box-shadow: 0 0 0 2px var(--color-error) inset; opacity: .78; }
+
+/* ===== THE ARMBAND, ON THE CARD =====
+   Two buttons in the corner the badge used to sit in. The one in force is
+   filled; the other is an offer, so the pair reads as a choice rather than as
+   two labels. */
+.dp-arm-set { position: absolute; top: 4px; right: 4px; display: inline-flex; gap: 2px; z-index: 2; }
+.dp-arm {
+    width: 17px; height: 17px; border-radius: 50%; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border-default); background: var(--surface-2);
+    font-size: 9px; font-weight: 800; font-family: var(--font-body);
+    color: var(--text-muted); cursor: pointer; line-height: 1;
+    transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+.dp-arm:hover { border-color: var(--color-primary); color: var(--color-primary-text); }
+.dp-arm.on-c { background: var(--color-captain, #facc15); border-color: var(--color-captain, #facc15); color: #000; }
+.dp-arm.on-v { background: var(--surface-3); border-color: var(--border-emphasis); color: var(--text-primary); }
+/* Coarse pointers get a real target without the card growing. */
+@media (pointer: coarse) {
+    .dp-arm { width: 21px; height: 21px; font-size: 10px; }
+}
 
 /* ===== MATCHDAY ===== */
 .lwm { min-width: 0; }
@@ -10002,11 +10130,21 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwm-v { font-size: 10px; font-weight: 600; color: var(--text-muted); }
 
 /* The de-vigged market, drawn. Home / draw / away, left to right. */
-.lwm-res { display: flex; height: 5px; border-radius: 3px; overflow: hidden; background: var(--surface-3); margin-bottom: 9px; cursor: help; }
+.lwm-wdl { margin-bottom: 9px; }
+.lwm-res { display: flex; height: 5px; border-radius: 3px; overflow: hidden; background: var(--surface-3); }
 .lwm-res i { display: block; height: 100%; }
 .lwm-res-h { background: var(--color-primary); }
 .lwm-res-d { background: var(--surface-3); }
 .lwm-res-a { background: var(--color-info); }
+/* The three figures the bar used to keep in a tooltip, spread under it so each
+   sits over its own share. A phone cannot open a tooltip at all, which is half
+   the reason they were invisible. */
+.lwm-wdl-n { display: flex; align-items: baseline; justify-content: space-between; margin-top: 4px; }
+.lwm-wdl-i { display: inline-flex; align-items: baseline; gap: 3px; cursor: help; }
+.lwm-wdl-i em { font-style: normal; font-size: 8.5px; font-weight: 700; color: var(--text-muted); }
+.lwm-wdl-i b { font-size: 11px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
+.lwm-wdl-i.is-h b { color: var(--color-primary); }
+.lwm-wdl-i.is-a b { color: var(--color-info); }
 
 .lwm-odds { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .lwm-odds-side { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 0; }
@@ -10130,32 +10268,8 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwc-btn.on-c { background: var(--color-captain, #facc15); border-color: var(--color-captain, #facc15); color: #000; }
 .lwc-btn.on-v { background: var(--surface-3); border-color: var(--border-emphasis); color: var(--text-primary); }
 
-/* ===== THE PITCH, DEMOTED =====
-   One section, one class prefix, one render call — liftable whole. Its only
-   job now is showing which players are in the squad, so it is scaled down and
-   sits under the decisions rather than above them. */
-.lw-pitch-sec {
-    padding: 13px;
-    border: 1px solid var(--v2-card-border, var(--border-emphasis));
-    border-radius: var(--v2-card-radius, 16px);
-    background: var(--surface-1);
-    box-shadow: var(--v2-card-shadow, none);
-}
-.lw-pitch-sec-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
-.lw-pitch-sec-title {
-    display: flex; align-items: center; gap: 7px; margin: 0;
-    font-family: var(--font-display, inherit); font-size: 15px; font-weight: 650; color: var(--text-primary);
-}
-.lw-pitch-sec-title svg { width: 16px; height: 16px; color: var(--color-primary); }
-.lw-pitch-sec-sub { font-size: 10px; color: var(--text-muted); margin-left: auto; }
-/* Smaller cards and a shorter field: the pitch is a reference picture now, not
-   the work surface. The ladder these variables drive lives with .pitch-field. */
-.lw-pitch-sec .pitch-field { --pitch-min-h: 380px; }
-.lw-pitch-sec .dp-card { --dp-card-w: 84px; }
-.lw-pitch-sec .dp-name { font-size: 10.5px; }
-.lw-pitch-sec .dp-score { font-size: 12px; }
-.lw-pitch-sec .dp-xp-run { display: none; }
-.lw-pitch-sec .v2-pid-pitch { --v2-pid-face: 34px; --v2-pid-crest: 15px; }
+/* The pitch's own demoted section is gone: it is the content of the Lineup
+   panel now, which is a .v2-section like every other panel on the site. */
 
 
 /* ===========================================================================

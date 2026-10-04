@@ -38,8 +38,16 @@
         const host = document.getElementById('lwLegacyBody');
         if (!host) return;
         if (typeof lineupState === 'undefined' || !lineupState || !lineupState.xi) return;
+        /* Each half is a panel, matching the rest of the site — the old page
+           had the pitch sitting loose on the background beside a bordered
+           intel panel, which is the inconsistency the panel treatment fixes.
+           .lw-intel already draws its own border, so it is the panel on its
+           side and only the pitch needs wrapping. */
         host.innerHTML = `<div class="lw-cc-body">
-            <div class="lw-cc-pitch">${typeof renderLWPitch === 'function' ? renderLWPitch() : ''}</div>
+            <section class="v2-section lw-cc-pitch">
+                <div class="section-header"><h2>${typeof v2Icon === 'function' ? v2Icon('shirt') : ''} Lineup</h2></div>
+                ${typeof renderLWPitch === 'function' ? renderLWPitch() : ''}
+            </section>
             <div class="lw-cc-intel">${renderLWIntel()}</div>
         </div>`;
         if (typeof lucide !== 'undefined') lucide.createIcons();
