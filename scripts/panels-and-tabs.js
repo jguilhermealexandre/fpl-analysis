@@ -1627,26 +1627,8 @@
             const isHome = nextFix.isHome;
 
             // Traffic light grading
-            function tl(v) { return v > 60 ? 'green' : v < 40 ? 'red' : 'amber'; }
-            function tlInv(v) { return v < 40 ? 'green' : v > 60 ? 'red' : 'amber'; }
 
             // Power comparison row helper
-            function powerRow(label, myVal, oppVal, invertGrade) {
-                const myGrade = invertGrade ? tlInv(myVal) : tl(myVal);
-                const oppGrade = invertGrade ? tlInv(oppVal) : tl(oppVal);
-                const myPct = Math.min(Math.round(myVal), 100);
-                const oppPct = Math.min(Math.round(oppVal), 100);
-                return `<div class="h2h-power-row">
-                    <div class="h2h-power-label">${label}</div>
-                    <div class="h2h-power-bar h2h-power-bar-l"><div class="h2h-power-bar-fill h2h-bg-${myGrade}" style="width:${myPct}%;"></div></div>
-                    <div class="h2h-power-val h2h-tl-${myGrade}">${myVal}</div>
-                    <div class="h2h-vs">v</div>
-                    <div class="h2h-power-val h2h-tl-${oppGrade}">${oppVal}</div>
-                    <div class="h2h-power-bar h2h-power-bar-r"><div class="h2h-power-bar-fill h2h-bg-${oppGrade}" style="width:${oppPct}%;"></div></div>
-                    <div class="h2h-power-label-r">${label}</div>
-                </div>`;
-            }
-
             // xG tug-of-war bar helper
             function xgBar(label, myVal, oppVal, lowerIsBetter) {
                 const total = myVal + oppVal || 1;
@@ -1749,18 +1731,40 @@
 
             html += `<div class="h2h-body">`;
 
-            // Power grid — venue-specific
-            const myAtkV = isHome ? (ta?.attackPowerHome || 50) : (ta?.attackPowerAway || 50);
-            const myDefV = isHome ? (ta?.defensePowerHome || 50) : (ta?.defensePowerAway || 50);
-            const oppAtkV = isHome ? (oppTa?.attackPowerAway || 50) : (oppTa?.attackPowerHome || 50);
-            const oppDefV = isHome ? (oppTa?.defensePowerAway || 50) : (oppTa?.defensePowerHome || 50);
+            /* The four-row power grid used to sit here — ATK and DEF out of
+               100, then the same two again split by venue. It went because it
+               was the weakest thing on the card and the most prominent: an
+               index nobody can calibrate ("is 47 good?"), shown twice, directly
+               above an expected-goals comparison that answers the same question
+               in goals per game, which is a unit a reader already owns.
 
-            html += `<div class="h2h-power-grid">`;
-            html += powerRow('ATK', ta?.attackPower || 50, oppTa?.attackPower || 50, false);
-            html += powerRow('DEF', ta?.defensePower || 50, oppTa?.defensePower || 50, false);
-            html += powerRow(`ATK ${isHome ? '(H)' : '(A)'}`, myAtkV, oppAtkV, false);
-            html += powerRow(`DEF ${isHome ? '(H)' : '(A)'}`, myDefV, oppDefV, false);
-            html += `</div>`;
+               What the market thinks takes its place below — the one view here
+               that comes from outside this site. */
+
+            /* The bookmakers on this exact fixture.
+
+               Same source and same arithmetic as the Lineup Wizard's Matchday
+               tab (scripts/odds-panel.js): the overround is removed, so these
+               are probabilities rather than prices. Shown only when the round is
+               actually priced — a fixture the book has not opened yet gets
+               nothing rather than a row of dashes. */
+            const mkt = (typeof boTeamView === 'function') ? boTeamView(tid) : null;
+            if (mkt && mkt.opponentId === oppId) {
+                const pct = v => Math.round(v * 100) + '%';
+                html += `<div class="h2h-market">
+                    <div class="h2h-market-title">${v2Icon('up')} What the market expects</div>
+                    <div class="h2h-market-row">
+                        <div class="h2h-market-cell"><span class="h2h-market-l">Win</span><b>${pct(mkt.win)}</b></div>
+                        <div class="h2h-market-cell"><span class="h2h-market-l">Draw</span><b>${pct(mkt.draw)}</b></div>
+                        <div class="h2h-market-cell"><span class="h2h-market-l">Clean sheet</span><b>${pct(mkt.cleanSheet)}</b></div>
+                    </div>
+                    <div class="h2h-market-row">
+                        <div class="h2h-market-cell"><span class="h2h-market-l">Goals for</span><b>${mkt.goalsFor.toFixed(2)}</b></div>
+                        <div class="h2h-market-cell"><span class="h2h-market-l">Goals against</span><b>${mkt.goalsAgainst.toFixed(2)}</b></div>
+                        <div class="h2h-market-cell"><span class="h2h-market-l h2h-market-src">bookmakers, margin removed</span></div>
+                    </div>
+                </div>`;
+            }
 
             // xG tug-of-war
             if (sXg && oppSXg) {

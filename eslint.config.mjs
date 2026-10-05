@@ -1831,6 +1831,7 @@ export default [
                 twfToggleDefcon: 'writable',
                 twfToggleDetail: 'writable',
                 twfToggleFilterStrip: 'writable',
+                twfUpstreamNote: 'writable',
                 twfViewPrefs: 'writable',
                 twrOptionCard: 'writable',
                 undoDraftAutoSuggest: 'writable',
