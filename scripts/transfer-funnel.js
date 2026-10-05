@@ -49,7 +49,11 @@
             return {
                 view: 'quick',      // quick | custom — see twfRenderQuick
                 clubs: [],          // team ids; empty means every club
-                minutes: 'any',     // any | likely | nailed
+                /* 'playing' rather than 'any' by default: the base pool no
+                   longer carries a minutes floor, so without a default here the
+                   list would open on every third-choice keeper in the game. Any
+                   is still Any — it just has to be asked for now. */
+                minutes: 'playing', // any | playing | nailed
                 form: 'any',        // any | hot | cold
                 quality: 'any',     // any | top25 | top10
                 price: 'any',       // any | cheaper | same | upgrade
@@ -443,6 +447,24 @@
            Each is a pure predicate over one player and one settings object, so
            the same code can answer "who survives" and "who would survive if this
            chip were on" — which is where the per-chip counts come from. */
+        /* Why the number does not move when every chip is cleared.
+
+           Two things sit above the filter panel and neither is a chip: what you
+           can afford against the man you are selling, and whether a club already
+           has three of your players. Both are real — you cannot buy past them —
+           but a count that will not budge needs to say which wall it is against. */
+        function twfUpstreamNote(base, pos, ctx) {
+            if (typeof allPlayers === 'undefined' || !Array.isArray(allPlayers)) return '';
+            const inPos = allPlayers.filter(p => p.position === pos
+                && (p.status === 'a' || p.status === 'd'));
+            const priced = inPos.length - base.length;
+            if (priced <= 0) return '';
+            const bits = [`${priced} of the ${inPos.length} available `
+                + `${pos === 1 ? 'keepers' : 'players'} in this position cost more than your budget`];
+            return `<div class="twf-panel-upstream">${escHTML(bits.join('. '))}. `
+                + `The filters below only narrow what is left.</div>`;
+        }
+
         function twfPasses(p, s, ctx) {
             const f = twfFacts(p);
 
@@ -451,6 +473,7 @@
             // "Include doubts" reported the same number.
             if (s.avail === 'fit' && p.status !== 'a') return false;
 
+            if (s.minutes === 'playing' && f.pStart < 0.35) return false;
             if (s.minutes === 'nailed' && f.pStart < 0.8) return false;
 
             if (s.form === 'hot' && !(f.formRatio > 1.15 && f.played >= 2)) return false;
@@ -507,15 +530,28 @@
             exclude.add(slot.soldPlayer.id);
 
             const budget = twSlotBudget(slotIdx);
-            const floor = typeof minMinutesForCandidate === 'function' ? minMinutesForCandidate() : 0;
             const shortlist = s.source === 'favorites' ? getTWShortlistIds() : null;
 
+            /* No minutes floor here, and that is the fix for a real complaint:
+               every chip relaxed and a goalkeeper search still read "14 players
+               match", with no way to find out why.
+
+               It was filtering on SEASON minutes — under 100 by GW5 and you were
+               gone — which is a second copy of the judgement the Minutes chip
+               already makes, except this one sat upstream of the chips and so
+               could never be relaxed. It fails hardest at goalkeeper, where the
+               distribution is not a spread but two clumps: twenty men on 450
+               minutes and thirty-five on nought. It cut 35 of 55 keepers before
+               the filter panel had a say.
+
+               Measured across all four positions, it never once removed a player
+               the start-probability gate would have kept — so nothing is lost by
+               letting that gate do the work alone, where a chip can reach it. */
             return allPlayers.filter(p => {
                 if (p.position !== pos) return false;
                 if (exclude.has(p.id)) return false;
                 if (shortlist) return shortlist.has(p.id);
                 if (p.price > budget + 0.001) return false;
-                if (p.minutes < floor) return false;
                 // Both fit and doubtful; twfPasses() narrows to one or the other.
                 if (p.status !== 'a' && p.status !== 'd') return false;
                 return true;
@@ -751,7 +787,8 @@
 
             const groups = [
                 group('Minutes', 'minutes', [
-                    { v: 'any', l: 'Any' },
+                    { v: 'any', l: 'Any', tip: 'Everyone who fits the budget, including men who have not played a minute.' },
+                    { v: 'playing', l: 'In the side', tip: 'At least a 35% chance of starting.' },
                     { v: 'nailed', l: 'Nailed', tip: 'At least an 80% chance of starting.' }
                 ], 'The most common reason a transfer fails.'),
                 group('Form', 'form', [
@@ -861,6 +898,14 @@
                         : 'Nothing matches'}</span>
                     ${active ? `<button class="twf-panel-reset" onclick="twfResetFilters()">Clear all</button>` : ''}
                 </div>
+                ${/* What the chips below cannot reach.
+
+                      Clearing every filter and watching the number sit still is
+                      how a correct list reads as a broken one — the complaint
+                      that prompted this was a goalkeeper search stuck at 14. The
+                      budget is a real wall and belongs upstream; what was
+                      missing was anyone saying so. */''}
+                ${twfUpstreamNote(base, pos, ctx)}
                 ${survivors.length ? '' : `<div class="twf-panel-dead">Every count below reads 0 because removing any single filter still leaves nothing \u2014 more than one is doing the cutting.</div>`}
                 <div class="twf-filters-strip-groups">${clubGroup}${groups}</div>
             </div>`;
@@ -991,7 +1036,12 @@
                from a club you already have three of, belongs in the funnel
                where the reason can be shown next to him. */
             const s = twfState();
-            const eligible = base.filter(p => p.status === 'a' && !blocked.has(p.teamId));
+            /* And the same start-probability gate the custom search now applies
+               through its Minutes chip. Quick picks has no chips, so it has to
+               carry the default itself — without it this list would rank every
+               reserve keeper in the game as a "quick pick". */
+            const eligible = base.filter(p => p.status === 'a' && !blocked.has(p.teamId)
+                && twfFacts(p).pStart >= 0.35);
             const scored = eligible.map(p => {
                 const proj = twfProjection(p, gws);
                 return { p, proj, gain: Math.round((proj.total - soldProj.total) * 10) / 10 };

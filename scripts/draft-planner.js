@@ -459,36 +459,86 @@
 
             html += `<div id="draftTransferComparison"></div>`;
 
+            const squad2 = getDraftSquad(gw);
+
+            /* One card, two lists. The shortlist and the ranked suggestions are
+               the same object with the same click, so they are the same markup;
+               `mark` is what differs — a rank number for the ranked list, a star
+               for a player the manager picked out himself. */
+            const optCard = (r, mark, markClass) => {
+                const rFix = (r.fixtures || []).slice(0, 3);
+                const delta = r.price - player.price;
+                return `<button class="dtp-opt" onclick="confirmDraftTransfer(${player.id}, ${r.id})"
+                    data-tooltip="Bring ${escHTML(r.name)} in for ${escHTML(player.name)} in GW${gw}.">
+                    <span class="dtp-opt-rank ${markClass || ''}">${mark}</span>
+                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(r, 'v2-pid-portrait dtp-opt-face') : ''}
+                    <span class="dtp-opt-id">
+                        <span class="dtp-opt-name">${escHTML(r.name)}</span>
+                        <span class="dtp-opt-team">${escHTML(r.team)}</span>
+                    </span>
+                    <span class="dtp-opt-price">£${r.price.toFixed(1)}m ${priceChangeBadge(r)}
+                        <span class="dtp-opt-delta ${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}">${delta === 0 ? 'same price' : `${delta > 0 ? '+' : '−'}£${Math.abs(delta).toFixed(1)}m`}</span>
+                    </span>
+                    <span class="dtp-opt-fix">${rFix.length
+                        ? rFix.map(f => `<span class="dtp-fix fdr-${f.difficulty || 3}">${escHTML(f.opponent)} <span class="dtp-fix-ha">(${f.isHome ? 'H' : 'A'})</span></span>`).join('')
+                        : '<span class="dtp-fix dtp-fix-blank">No fixture</span>'}</span>
+                    ${Number.isFinite(r._score)
+                        ? `<span class="dtp-opt-score" data-tooltip="Our ranking for this swap: form, points per game, the projection for the week ahead and the run of fixtures, combined.">${r._score.toFixed(0)}</span>`
+                        : '<span class="dtp-opt-score dtp-opt-score-none" data-tooltip="Not in the ranked list below — starred, so shown anyway.">★</span>'}
+                </button>`;
+            };
+
+            /* ===== The manager's own shortlist, first =====
+
+               He has already told us these interest him, which is a stronger
+               signal than anything this page computes — so they go above the
+               ranked list rather than being left for him to find inside it.
+
+               No minutes floor here, unlike findDraftReplacements(). A star IS
+               the judgement that floor is trying to make, and a manager who has
+               deliberately starred a benched keeper about to take over does not
+               want us quietly dropping him.
+
+               Anyone shown here is removed from the ranked list below: the same
+               player twice in one panel is noise, and the star should win. */
+            const starred = (typeof getTWShortlistIds === 'function') ? getTWShortlistIds() : new Set();
+            const squadIds2 = new Set(squad2.map(p => p.id));
+            const shortlist = !starred.size ? [] : allPlayers.filter(r =>
+                starred.has(r.id)
+                && r.position === player.position
+                && r.id !== player.id
+                && !squadIds2.has(r.id)
+                && r.price <= maxAffordable + 0.001
+                && (r.status === 'a' || r.status === 'd'));
+            shortlist.sort((a, b) => b.price - a.price);
+            const shortlistIds = new Set(shortlist.map(r => r.id));
+
+            if (shortlist.length) {
+                html += `<div class="detail-section">
+                    <div class="detail-section-title">${v2Icon('star')} From your shortlist</div>
+                    <div class="dtp-grid">${shortlist.map(r => optCard(r, '\u2605', 'is-star')).join('')}</div>
+                </div>`;
+            } else if (starred.size) {
+                /* He has starred players and none of them can go here. Silence
+                   would read as the feature being broken; one line says which
+                   wall it is — almost always position or money. */
+                html += `<div class="detail-section">
+                    <div class="detail-section-title">${v2Icon('star')} From your shortlist</div>
+                    <div class="dtp-star-none">None of your ${starred.size} starred player${starred.size === 1 ? '' : 's'}
+                        can replace ${escHTML(player.name)} — they are a different position, already in your squad,
+                        or above £${maxAffordable.toFixed(1)}m.</div>
+                </div>`;
+            }
+
             // Ranked replacements. One click swaps the player in — unlike the
             // manual search above, which goes through the compare-then-confirm
             // flow via selectDraftReplacement, since these are already vetted.
-            const squad2 = getDraftSquad(gw);
-            const suggestions = findDraftReplacements(player, squad2, 8);
+            const suggestions = findDraftReplacements(player, squad2, 8)
+                .filter(r => !shortlistIds.has(r.id));
             if (suggestions.length > 0) {
                 html += `<div class="detail-section">
                     <div class="detail-section-title">${v2Icon('sparkle')} Best available for £${maxAffordable.toFixed(1)}m</div>
-                    <div class="dtp-grid">
-                    ${suggestions.map((r, i) => {
-                        const rFix = (r.fixtures || []).slice(0, 3);
-                        const delta = r.price - player.price;
-                        return `<button class="dtp-opt" onclick="confirmDraftTransfer(${player.id}, ${r.id})"
-                            data-tooltip="Bring ${escHTML(r.name)} in for ${escHTML(player.name)} in GW${gw}.">
-                            <span class="dtp-opt-rank">${i + 1}</span>
-                            ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(r, 'v2-pid-portrait dtp-opt-face') : ''}
-                            <span class="dtp-opt-id">
-                                <span class="dtp-opt-name">${escHTML(r.name)}</span>
-                                <span class="dtp-opt-team">${escHTML(r.team)}</span>
-                            </span>
-                            <span class="dtp-opt-price">£${r.price.toFixed(1)}m ${priceChangeBadge(r)}
-                                <span class="dtp-opt-delta ${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}">${delta === 0 ? 'same price' : `${delta > 0 ? '+' : '−'}£${Math.abs(delta).toFixed(1)}m`}</span>
-                            </span>
-                            <span class="dtp-opt-fix">${rFix.length
-                                ? rFix.map(f => `<span class="dtp-fix fdr-${f.difficulty || 3}">${escHTML(f.opponent)} <span class="dtp-fix-ha">(${f.isHome ? 'H' : 'A'})</span></span>`).join('')
-                                : '<span class="dtp-fix dtp-fix-blank">No fixture</span>'}</span>
-                            <span class="dtp-opt-score" data-tooltip="Our ranking for this swap: form, points per game, the projection for the week ahead and the run of fixtures, combined.">${r._score.toFixed(0)}</span>
-                        </button>`;
-                    }).join('')}
-                    </div>
+                    <div class="dtp-grid">${suggestions.map((r, i) => optCard(r, String(i + 1))).join('')}</div>
                 </div>`;
             }
 
