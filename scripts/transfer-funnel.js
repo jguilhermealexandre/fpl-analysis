@@ -751,6 +751,10 @@
 
         function twfFilterBarHTML(base, survivors, ctx, pos, gws) {
             const s = twfState();
+            // Read once for the Favourites button in the bar below.
+            const favOn = s.source === 'favorites';
+            const starredCount = (typeof getTWShortlistIds === 'function')
+                ? getTWShortlistIds().size : 0;
             const clubSet = new Set(s.clubs);
             const scoped = clubSet.size ? base.filter(p => clubSet.has(p.teamId)) : base;
             const countIf = (over) => {
@@ -876,6 +880,33 @@
                       still carries its badge, which answers a different
                       question — how many filters are on, not how many
                       players survived them. */''}
+                ${/* FAVOURITES, OUT HERE RATHER THAN ONLY IN THE STRIP.
+
+                      The Shortlist group inside the panel has done this since
+                      September and was asked for again, which is the whole
+                      argument for this button: a filter nobody can find is a
+                      filter that does not exist. It was two clicks and a scroll
+                      past eight other groups, on a panel that is shut by
+                      default.
+
+                      Same state as the group — twfPick('source:…') is what both
+                      call — so they cannot disagree, and the Filters badge still
+                      counts it among the active filters. The target value is
+                      passed explicitly because twfSetFilter deliberately does
+                      not toggle `source` back to a default the way the other
+                      keys do; there is no "any" for a source.
+
+                      The count is the number starred, not the number surviving:
+                      zero is the one case where the button needs to say why
+                      pressing it will show nothing. */''}
+                <button class="apf-menu-btn${favOn ? ' is-on' : ''}"
+                    onclick="twfPick('source:${favOn ? 'all' : 'favorites'}')"
+                    aria-pressed="${favOn}"
+                    data-tooltip="${starredCount
+                        ? `Only the ${starredCount} player${starredCount === 1 ? '' : 's'} you starred on the Players page. Budget and minutes limits are lifted here, so an unaffordable target still shows, marked.`
+                        : 'You have not starred anyone yet — use the star on the Players page and they show up here.'}">
+                    ${typeof v2Icon === 'function' ? v2Icon('star') : ''}Favourites${starredCount ? `<span class="apf-menu-n">${starredCount}</span>` : ''}
+                </button>
                 <div class="twf-search-wrap">
                     ${typeof v2Icon === 'function' ? v2Icon('eye') : ''}
                     <input class="twf-search" type="text" placeholder="Search by name\u2026" value="${escHTML(s.search)}" oninput="twfSearch(this.value)">

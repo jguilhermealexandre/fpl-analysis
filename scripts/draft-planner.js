@@ -30,6 +30,10 @@
         let draftSlotCount = 1;
         let draftSwapSource = null;
         let draftReplacementTarget = null;
+        /* Which half of the replacement panel is showing. Kept at screen level
+           rather than per player: which list you want to work from is how you
+           are shopping, not a fact about the man you are replacing. */
+        let draftPanelTab = 'best';
         let draftCompareMode = false;
         // 'stats' shows the historical per-90 columns; 'xp' replaces them with a
         // week-by-week projection, which is what a planner is actually for.
@@ -511,40 +515,69 @@
                 && r.price <= maxAffordable + 0.001
                 && (r.status === 'a' || r.status === 'd'));
             shortlist.sort((a, b) => b.price - a.price);
-            const shortlistIds = new Set(shortlist.map(r => r.id));
 
-            if (shortlist.length) {
-                html += `<div class="detail-section">
-                    <div class="detail-section-title">${v2Icon('star')} From your shortlist</div>
-                    <div class="dtp-grid">${shortlist.map(r => optCard(r, '\u2605', 'is-star')).join('')}</div>
+            /* TWO TABS RATHER THAN TWO STACKS.
+
+               Best available and your starred players were two sections one
+               under the other, which on a side panel meant the ranked list
+               started below the fold whenever anything was starred. They are the
+               same question asked two ways \u2014 who can replace this man \u2014 so they
+               belong in one block with a choice, not in a column.
+
+               Best available leads, because it is the answer for a manager who
+               has starred nothing, which is most of them.
+
+               The ranked list no longer drops starred players. It did while both
+               sections were on screen at once, where the same face twice was
+               noise; with tabs you see one list at a time, and knowing that your
+               starred target ranks seventh of eight is worth more than hiding
+               him from the ranking. */
+            const suggestions = findDraftReplacements(player, squad2, 8);
+            const tab = draftPanelTab === 'favorites' ? 'favorites' : 'best';
+
+            const pill = (key, label, n) => `<button
+                class="filter-pill compact-pill${tab === key ? ' active' : ''}"
+                onclick="setDraftPanelTab('${key}')"
+                aria-pressed="${tab === key}">${label}${n != null ? ` (${n})` : ''}</button>`;
+
+            html += `<div class="detail-section">
+                <div class="apf-controls">
+                    ${pill('best', 'Best available', suggestions.length)}
+                    ${pill('favorites', 'Favourites', shortlist.length || null)}
                 </div>`;
+
+            if (tab === 'best') {
+                html += suggestions.length
+                    ? `<div class="dtp-grid">${suggestions.map((r, i) => optCard(r, String(i + 1))).join('')}</div>`
+                    : `<div class="dtp-star-none">Nothing in the market can replace
+                        ${escHTML(player.name)} for \u00A3${maxAffordable.toFixed(1)}m \u2014 the money or the
+                        three-per-club limit runs out first.</div>`;
+            } else if (shortlist.length) {
+                html += `<div class="dtp-grid">${shortlist.map(r => optCard(r, '\u2605', 'is-star')).join('')}</div>`;
             } else if (starred.size) {
                 /* He has starred players and none of them can go here. Silence
                    would read as the feature being broken; one line says which
-                   wall it is — almost always position or money. */
-                html += `<div class="detail-section">
-                    <div class="detail-section-title">${v2Icon('star')} From your shortlist</div>
-                    <div class="dtp-star-none">None of your ${starred.size} starred player${starred.size === 1 ? '' : 's'}
-                        can replace ${escHTML(player.name)} — they are a different position, already in your squad,
-                        or above £${maxAffordable.toFixed(1)}m.</div>
-                </div>`;
+                   wall it is \u2014 almost always position or money. */
+                html += `<div class="dtp-star-none">None of your ${starred.size} starred player${starred.size === 1 ? '' : 's'}
+                    can replace ${escHTML(player.name)} \u2014 they are a different position, already in your squad,
+                    or above \u00A3${maxAffordable.toFixed(1)}m.</div>`;
+            } else {
+                html += `<div class="dtp-star-none">You have not starred anyone yet \u2014 use the star on the
+                    Players page and they show up here, ahead of the ranking.</div>`;
             }
-
-            // Ranked replacements. One click swaps the player in — unlike the
-            // manual search above, which goes through the compare-then-confirm
-            // flow via selectDraftReplacement, since these are already vetted.
-            const suggestions = findDraftReplacements(player, squad2, 8)
-                .filter(r => !shortlistIds.has(r.id));
-            if (suggestions.length > 0) {
-                html += `<div class="detail-section">
-                    <div class="detail-section-title">${v2Icon('sparkle')} Best available for £${maxAffordable.toFixed(1)}m</div>
-                    <div class="dtp-grid">${suggestions.map((r, i) => optCard(r, String(i + 1))).join('')}</div>
-                </div>`;
-            }
+            html += `</div>`;
 
             document.getElementById('draftTransferBody').innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
             document.getElementById('draftTransferOverlay').classList.add('show');
+        }
+
+        function setDraftPanelTab(key) {
+            draftPanelTab = key === 'favorites' ? 'favorites' : 'best';
+            /* Re-open rather than patch: the panel is built in one pass from the
+               player it is about, and openDraftTransferPanel is idempotent —
+               adding .show to an overlay that already has it is a no-op. */
+            if (draftReplacementTarget) openDraftTransferPanel(draftReplacementTarget.id);
         }
 
         function closeDraftTransferPanel(event) {
