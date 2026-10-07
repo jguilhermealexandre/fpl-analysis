@@ -391,19 +391,29 @@
             return false;
         }
 
-        // A small, bounded nudge from the team's own recent results — genuinely
-        // independent of the player's own regressed per-90 rate (a squad can be
-        // hot or cold before an individual's underlying numbers catch up), the
-        // same signal findReplacements()/analyzePlayer() already lean on. Kept
-        // deliberately small relative to a typical multi-GW xP swing so it can
-        // only ever break a close call, never override what the projection
-        // itself already says once fixture difficulty and form are folded in.
-        //
-        // Opt-in (see twXPCached below): the Transfer Wizard's own recommendation
-        // card and the dashboard alert already show "X.X xP" numbers built from
-        // this same cache without it, and turning it on unconditionally would
-        // quietly change those already-shipped figures. GW Draft's recommender
-        // asks for it explicitly; everyone else keeps today's behaviour.
+        /* A small, bounded nudge from the team's own recent results — genuinely
+           independent of the player's own regressed per-90 rate (a squad can be
+           hot or cold before an individual's underlying numbers catch up), the
+           same signal findReplacements()/analyzePlayer() already lean on.
+           Applied to the ranking rather than the projection, so it never reaches
+           a figure on screen — see twXPCached.
+
+           CLAMPED AT 0.75 EACH END, WHICH IS A CHANGE. It was ±2.5, and because
+           the nudge is applied as in-minus-out the widest it could move a
+           ranking was 5.0 — against the 3.0 a free transfer has to be worth.
+           So the comment above it claiming it "can only ever break a close call,
+           never override what the projection itself already says" was not true
+           at the edges: at the extremes it could promote a move the projection
+           rated nearly two margins worse.
+
+           ±0.75 caps the swing between two players at 1.5, matching
+           TW_SIGNAL_MAX. That is the budget every other thumb on the scale gets:
+           enough to decide between candidates the engine rates as near-equals,
+           not enough to manufacture a preference. The ordering the whole design
+           rests on — a selection nudge must stay under the margin a transfer has
+           to clear — is asserted in tests/transfer-engine.test.mjs. */
+        const TW_TEAM_CTX_CLAMP = 0.75;
+
         function twTeamContextNudge(player) {
             const ta = typeof teamAnalysis !== 'undefined' ? teamAnalysis[player.teamId] : null;
             if (!ta || !ta.matchesPlayed) return 0;
@@ -411,7 +421,7 @@
             let nudge = (ta.formRating - 50) / 50;
             nudge += powerField !== undefined ? (powerField - 50) / 50 : 0;
             nudge += (ta.fixtureScore - 50) / 100;
-            return Math.max(-2.5, Math.min(2.5, nudge));
+            return Math.max(-TW_TEAM_CTX_CLAMP, Math.min(TW_TEAM_CTX_CLAMP, nudge));
         }
 
         /* Projected points, and nothing else.
@@ -635,7 +645,18 @@
                a transfer has to clear. See TW_SIGNAL_MAX. */
             const boost = opts.boost || (() => 0);
             const costFor = n => Math.max(0, n - ft) * 4;
-            const maxN = Math.min(opts.maxPlan || TW_MAX_PLAN, Math.max(2, ft + 1));
+            /* How far to build. Two by default, or one past the free-transfer
+               count, whichever is larger — a recommendation should not reach for
+               a second hit nobody asked about.
+
+               `opts.size` lifts that, and only that, because a manager who has
+               explicitly asked for a three-transfer plan is not being offered
+               hits, they are requesting them. TW_MAX_PLAN is still the ceiling,
+               and the per-move margin still decides what gets RECOMMENDED — an
+               unasked-for hit cannot sneak through here, it can only be built
+               and then flagged as more than the numbers support. */
+            const maxN = Math.min(opts.maxPlan || TW_MAX_PLAN,
+                                  Math.max(2, ft + 1, Math.round(opts.size || 0)));
 
             const chain = [];
             const usedOut = new Set(), usedIn = new Set();
@@ -681,6 +702,61 @@
                 depth = opt.n;
             }
             return { chain, depth };
+        }
+
+        /* SEVERAL PLANS OF THE SAME SIZE, rather than one.
+         *
+         * "I have four free transfers, show me some ways to use three of them"
+         * is a different question from "what is the single best move", and the
+         * engine could only answer the second. twPlanChain pins its first step
+         * to the caller's top-ranked move, so seeding it with a different first
+         * move each time and keeping the answers that are meaningfully different
+         * is the whole of this: same engine, same pricing, same legality checks,
+         * several answers.
+         *
+         * DISTINCT, NOT PERMUTED. Two plans sharing most of their moves are the
+         * same plan with the order shuffled, and offering both as choices is a
+         * worse answer than offering one. Anything overlapping an
+         * already-accepted plan by more than half its moves is dropped.
+         *
+         * `size` is what the manager asked for; `recommended` is whether the
+         * engine would endorse it. Those come apart on purpose: ask for three
+         * when only one move clears its margin and you get three-move plans,
+         * each flagged as more than the numbers support. Refusing to answer
+         * would be the engine overruling a question it was asked, and quietly
+         * returning one move would be answering a different one. */
+        const TW_PACKAGE_OVERLAP = 0.5;
+
+        function twPlanPackages(moves, opts, want) {
+            const o = opts || {};
+            const size = Math.max(1, Math.round(o.size || 1));
+            const k = Math.max(1, Math.round(want || 3));
+            const list = moves || [];
+            const out = [];
+            const seen = [];
+            const keyOf = m => `${m.out.id}>${m.in.id}`;
+
+            for (const seed of list) {
+                if (out.length >= k) break;
+                /* Seed first, the rest in the caller's order behind it, so each
+                   pass is the best plan that STARTS with this move. */
+                const reordered = [seed].concat(list.filter(m => m !== seed));
+                const { chain, depth } = twPlanChain(reordered, o);
+                const plan = chain[size - 1];
+                if (!plan) continue;          // no legal plan this big from here
+
+                const ids = new Set(plan.moves.map(keyOf));
+                const sharedWith = prev => {
+                    let n = 0;
+                    ids.forEach(id => { if (prev.has(id)) n++; });
+                    return n / size;
+                };
+                if (seen.some(prev => sharedWith(prev) > TW_PACKAGE_OVERLAP)) continue;
+
+                seen.push(ids);
+                out.push(Object.assign({}, plan, { recommended: size <= depth }));
+            }
+            return out;
         }
 
         /* opts lets a host without the squad page's globals supply them:
@@ -879,8 +955,19 @@
              * are each affordable against the full bank may not be affordable
              * together, and two from the same club can breach the three-per-club
              * limit jointly while each looks fine alone. */
+            /* packagesFor is handed out as a closure for the same reason rescore
+               and legal are: how many transfers the manager wants is a choice
+               made on the card, after this function has returned, and pricing a
+               plan needs the pool and the base value that only exist in here.
+               The full `moves` list is closed over rather than the five handed
+               out above, so seeding is not limited by what the card displays. */
             return { best, options, moves: moves.slice(0, 5), gws, ft, horizon: TW_HORIZON,
                      rescore: twJointGain, legal: twMovesLegal,
+                     packagesFor: (size, want) => twPlanPackages(moves, {
+                         ft, jointGain: twJointGain, legal: twMovesLegal,
+                         boost: m => signalBoost(m) + teamCtx(m),
+                         freeTransfersOnly: o.freeTransfersOnly, size
+                     }, want),
                      sample: (typeof seasonGamesPlayed !== 'undefined' ? seasonGamesPlayed : null) };
         }
 

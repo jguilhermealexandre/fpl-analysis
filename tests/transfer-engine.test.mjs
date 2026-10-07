@@ -503,8 +503,8 @@ const twTeamContextNudge = loadFunction('scripts/transfer-engine.js', 'twTeamCon
 test('the nudge stays inside its clamp at both extremes', () => {
     const hot = twTeamContextNudge({ teamId: 'hot', position: 4 });
     const cold = twTeamContextNudge({ teamId: 'cold', position: 4 });
-    assert.equal(hot, 2.5);
-    assert.equal(cold, -2.5);
+    assert.equal(hot, 0.75);
+    assert.equal(cold, -0.75);
 });
 
 test('an average team is worth nothing either way', () => {
@@ -527,13 +527,125 @@ test('swapping inside one club is neutral', () => {
     assert.equal(a - b, 0);
 });
 
-test('the widest the nudge can move a ranking is twice its clamp', () => {
-    /* Worth knowing and worth watching: 5.0 is wider than TW_MIN_FREE_GAIN, so
-       at the extremes this can outrank a move the projection prefers. That was
-       equally true while it lived inside the projection — this test records the
-       bound rather than changing it, because retuning it is a product decision
-       and not part of making the surfaces agree. */
+test('no selection nudge may outrun the margin a transfer has to clear', () => {
+    /* THE INVARIANT THE WHOLE DESIGN RESTS ON, and it was broken until now.
+
+       Three things move a selection without moving a projection: the goalkeeper
+       friction, the Rising Form / Purple Patch boost, and this nudge. Each is
+       meant to decide between candidates the engine rates as near-equals, and
+       none of them may be able to promote a move the projection rates worse by
+       more than a transfer is required to be worth.
+
+       The nudge failed that. Clamped at ±2.5 and applied as in-minus-out, it
+       could swing a ranking by 5.0 against a 3.0 margin — so its own comment,
+       claiming it could "only ever break a close call", was false at the edges.
+       ±0.75 caps the swing at 1.5, the same budget TW_SIGNAL_MAX gets.
+
+       Asserted against the constants in the source rather than against literals,
+       so raising any one of them without the others fails here. */
+    const src = fs.readFileSync(path.join(ROOT, 'scripts/transfer-engine.js'), 'utf8');
+    const num = name => {
+        const m = new RegExp(`${name}\\s*=\\s*([0-9.]+)`).exec(src);
+        assert.ok(m, `${name} should be findable`);
+        return parseFloat(m[1]);
+    };
+    const margin = num('TW_MIN_FREE_GAIN');
+    // The nudge is a difference between two clamped values, so its reach is double.
+    const nudgeSwing = num('TW_TEAM_CTX_CLAMP') * 2;
+    assert.ok(nudgeSwing < margin,
+        `team context can swing ${nudgeSwing} against a ${margin} margin`);
+    assert.ok(num('TW_SIGNAL_MAX') < margin,
+        'the signal boost must not outrun the margin either');
+    assert.ok(nudgeSwing <= num('TW_SIGNAL_MAX'),
+        'and it should not outrank the signals, which are about the player himself');
+
+    // And the measured swing matches the constant.
     const delta = twTeamContextNudge({ teamId: 'hot', position: 4 })
         - twTeamContextNudge({ teamId: 'cold', position: 4 });
-    assert.equal(delta, 5.0);
+    assert.equal(delta, nudgeSwing);
+});
+
+/* ===== Several plans of the same size =====
+
+   "I have four free transfers, show me some ways to use three of them" is a
+   different question from "what is the single best move", and the engine could
+   only answer the second. twPlanChain pins its first step to the caller's
+   top-ranked move, so seeding it with a different first move each time and
+   keeping the answers that differ meaningfully is the whole mechanism — same
+   engine, same pricing, same legality, several answers.
+
+   What matters is that it stays honest about two things: the plans are genuinely
+   different rather than reshuffled, and a plan bigger than the margin supports
+   is still shown and still labelled as such. */
+
+const twPlanPackages = loadFunction('scripts/transfer-engine.js', 'twPlanPackages', {
+    twPlanChain, TW_PACKAGE_OVERLAP: 0.5
+});
+
+const packs = (moves, size, want, extra = {}) => twPlanPackages(moves, {
+    ft: 4, jointGain: jointGain(), legal: anyLegal, size, ...extra
+}, want);
+
+test('three ways to use two transfers', () => {
+    const m = [mv(10), mv(9), mv(8), mv(7), mv(6), mv(5)];
+    const out = packs(m, 2, 3);
+    assert.equal(out.length, 3);
+    for (const p of out) assert.equal(p.moves.length, 2);
+});
+
+test('no two plans are the same set of moves', () => {
+    const m = [mv(10), mv(9), mv(8), mv(7), mv(6), mv(5)];
+    const sigs = packs(m, 2, 3)
+        .map(p => [...p.moves.map(x => x.out.id)].sort().join('+'));
+    assert.equal(new Set(sigs).size, sigs.length);
+});
+
+test('the best plan comes first', () => {
+    const out = packs([mv(10), mv(9), mv(1), mv(1)], 2, 3);
+    assert.equal(out[0].gross, 19);
+});
+
+test('a plan bigger than the margin supports is shown and flagged', () => {
+    /* The manager asked for three. Refusing would be the engine overruling the
+       question; quietly returning one would be answering a different one. */
+    const out = packs([mv(10), mv(0.5), mv(0.4), mv(0.3)], 3, 2);
+    assert.ok(out.length >= 1);
+    assert.equal(out[0].moves.length, 3);
+    assert.equal(out[0].recommended, false);
+});
+
+test('a plan where every move earns its place is flagged as worth it', () => {
+    assert.equal(packs([mv(10), mv(9), mv(8)], 3, 1)[0].recommended, true);
+});
+
+test('an explicit size can exceed the recommendation ceiling', () => {
+    /* A recommendation stops at one past the free-transfer count, so it never
+       reaches for a second hit nobody asked about. An explicit request is
+       somebody asking about it. */
+    const out = packs([mv(10), mv(9), mv(8)], 3, 1, { ft: 1 });
+    assert.equal(out.length, 1);
+    assert.equal(out[0].moves.length, 3);
+    assert.equal(out[0].gross, 27);
+    assert.equal(out[0].cost, 8, 'two hits beyond one free transfer');
+    assert.equal(out[0].net, 19);
+});
+
+test('a size that cannot be filled returns nothing, not a short plan', () => {
+    assert.equal(packs([mv(10), mv(9)], 4, 3).length, 0);
+});
+
+test('an illegal combination is never offered', () => {
+    const out = twPlanPackages([mv(10), mv(9), mv(8)], {
+        ft: 4, jointGain: jointGain(), legal: ms => ms.length < 2, size: 2
+    }, 3);
+    assert.equal(out.length, 0);
+});
+
+test('want is a ceiling, not a quota', () => {
+    assert.equal(packs([mv(10), mv(9)], 2, 5).length, 1, 'only one disjoint pair exists');
+});
+
+test('nothing in, nothing out', () => {
+    assert.equal(packs([], 2, 3).length, 0);
+    assert.equal(twPlanPackages(null, { ft: 4, jointGain: jointGain(), legal: anyLegal, size: 2 }, 3).length, 0);
 });

@@ -747,7 +747,102 @@
                     }).join('')}
                 </div>
                 <button class="twr-apply" onclick="twApplyRecommendation()">Load these into the transfer planner</button>
+                ${twrPackagesBlock(r)}
                 ${sampleNote}`;
+        }
+
+        /* ===== Several ways to spend the same number of transfers =====
+         *
+         * The card above answers "what is the best move". On a multi-transfer
+         * plan that is not the whole question: a manager holding four free
+         * transfers who has decided to use three wants to see some THREE-move
+         * plans, not one plan and a count.
+         *
+         * Only on Multi. On Single the three option boxes per slot already
+         * answer "what else could I do with this move" — see twDiversifySwaps —
+         * and on a Wildcard or a Free Hit the recommender is hidden entirely,
+         * because it prices against a free-transfer count both chips waive.
+         *
+         * Sizes offered run to the free-transfer count, plus one more that takes
+         * a hit, capped by what the engine will build. Each plan carries whether
+         * the engine would actually endorse it: ask for three when only one move
+         * clears its margin and you get three-move plans, each labelled as more
+         * than the numbers support. That is the honest answer to a question the
+         * manager asked — refusing to show it would be overruling them, and
+         * quietly showing one move would be answering something else. */
+        const TWR_PACKAGE_COUNT = 3;
+
+        function twrPackageSize(r) {
+            const max = twrPackageMax(r);
+            const chosen = Math.round(transferState.pkgSize || 0);
+            if (chosen >= 1 && chosen <= max) return chosen;
+            // Default to what the engine recommends, or two if it says hold.
+            return Math.min(max, Math.max(2, (r.best && r.best.n) || 2));
+        }
+
+        function twrPackageMax(r) {
+            const ft = Math.max(1, r.ft || 1);
+            return Math.min(TW_PLAN_CAP.multi || 5, ft + 1);
+        }
+
+        function twSetPackageSize(n) {
+            transferState.pkgSize = Math.round(n);
+            const el = document.getElementById('twRecoBody');
+            if (el && twLastRecommendation) {
+                el.innerHTML = renderTWRecommendation(twLastRecommendation);
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        }
+
+        function twrPackagesBlock(r) {
+            if (!r || typeof r.packagesFor !== 'function') return '';
+            if (transferState.strategy !== 'multi') return '';
+
+            const max = twrPackageMax(r);
+            if (max < 2) return '';
+            const size = twrPackageSize(r);
+            const packs = r.packagesFor(size, TWR_PACKAGE_COUNT) || [];
+
+            const sizes = [];
+            for (let n = 1; n <= max; n++) {
+                sizes.push(`<button class="twc-mini${n === size ? ' is-on' : ''}"
+                    onclick="twSetPackageSize(${n})"
+                    data-tooltip="${n > r.ft ? `Takes a ${(n - r.ft) * 4}-point hit` : 'Covered by your free transfers'}"
+                    >${n}</button>`);
+            }
+
+            const cards = packs.map((p, i) => {
+                const moves = p.moves.map(m => `<div class="twr-move">
+                    <span class="twr-out">${escHTML(m.out.name)}</span>
+                    <span class="twr-arrow">${v2Icon('next')}</span>
+                    <span class="twr-in">${escHTML(m.in.name)}</span>
+                </div>`).join('');
+                const bankLeft = p.moves.reduce((b, m) =>
+                    b + ((m.out.sellPrice || m.out.price) - m.in.price), getTWBank());
+                return `<div class="twr-slot">
+                    <div class="twr-slot-h">
+                        Plan ${i + 1}${i === 0 ? ' · best' : ''}
+                        <span class="twr-opt-tag">${p.recommended ? 'worth it' : 'more than the numbers back'}</span>
+                    </div>
+                    ${moves}
+                    <div class="twr-gain">
+                        <strong>${p.net >= 0 ? '+' : ''}${p.net.toFixed(1)} xP</strong> net
+                        · ${p.gross.toFixed(1)} gained
+                        · ${p.cost > 0 ? `<span class="twr-cost">−${p.cost} hit</span>` : '<span class="twr-free">no hit</span>'}
+                        · £${bankLeft.toFixed(1)}m left
+                    </div>
+                </div>`;
+            }).join('');
+
+            return `<div class="twr-slots">
+                <!-- The size buttons sit straight in the header rather than in a
+                     wrapper of their own: .twc-mini already carries its own
+                     shape, and a new class here would mean a stylesheet edit for
+                     one row of digits. -->
+                <div class="twr-slot-h">Ways to use ${sizes.join('')} transfer${size === 1 ? '' : 's'}</div>
+                ${cards || `<div class="twr-caveat">No ${size}-transfer plan is legal with this squad and bank —
+                    the money or the three-per-club limit runs out first.</div>`}
+            </div>`;
         }
 
         // Why this move, in the model's own terms rather than a generic blurb.
