@@ -144,6 +144,114 @@
             return TW_GK_FRICTION;
         }
 
+        /* ===== The site's own signals, as an input to who to buy =====
+         *
+         * The recommender priced every candidate on projected points and
+         * nothing else. Rising Form and Purple Patch are computed on this same
+         * page, shown on two others, and were not consulted — so the site could
+         * put a player in its Rising Form section and ignore him when choosing
+         * a transfer, which reads as the two halves not talking to each other.
+         *
+         * BOUNDED, AND ONLY ON THE RANKING. This never touches gain, gross or
+         * net: those are the engine's real projection and are what the card
+         * prints. A signal can tip a close call between two candidates; it
+         * cannot manufacture a recommendation, because the margin a move has to
+         * clear is tested against the unadjusted figure. TW_SIGNAL_MAX is set
+         * at half TW_MIN_FREE_GAIN deliberately — large enough to reorder two
+         * similar candidates over a five-gameweek horizon, too small to promote
+         * one that is materially worse, and smaller than TW_GK_FRICTION so it
+         * can never cancel the goalkeeper brake.
+         *
+         * Both scores are 0-100 at source. A player measurable on only one of
+         * them is averaged over the one, rather than halved for the silence of
+         * the other — "no purple patch yet" is a statement about the calendar
+         * four gameweeks into a season, not about the player.
+         *
+         * NOT the players page's calculatePositionScore. That ranks who is
+         * worth buying in a position and price tier; this asks what swapping
+         * one player for another gains over five gameweeks. Different
+         * questions, and forcing them together would make that page worse. It
+         * also lives in an inline block on fpl-players-analysis.html and is
+         * unreachable from here, which is a symptom of the same thing. */
+        const TW_SIGNAL_MAX = 1.5;
+
+        /* Built once per recommendation, never per candidate.
+         *
+         * Rising Form reads player.history — the raw per-gameweek rows — and
+         * Purple Patch reads the l5/season windows that buildStatWindows()
+         * derives from them. Both are cheap for one player and ruinous done
+         * inside twScanSwaps, which evaluates hundreds of candidates for each
+         * of fifteen squad players. So the pool is walked once here and the
+         * result is a lookup.
+         *
+         * The history index is a Map rather than the .find() the rest of this
+         * file uses on playersDetailData.players: that is a linear scan per
+         * candidate, and doing it once per pool instead is the difference
+         * between hundreds of thousands of comparisons and six hundred. */
+        function twBuildSignalMap(players) {
+            const out = new Map();
+            const rows = (typeof playersDetailData !== 'undefined' && playersDetailData
+                && playersDetailData.players) || [];
+            if (!rows.length) return out;
+
+            const histById = new Map();
+            rows.forEach(r => histById.set(r.id, (r.history || [])));
+
+            (players || []).forEach(p => {
+                const history = histById.get(p.id);
+                if (!history || !history.length) return;
+
+                /* A copy with the history and the windows attached. The pool
+                   objects come from xpBuildPlayers and carry neither, and
+                   mutating them would leak a shape the rest of the page does
+                   not expect onto every player in the game. */
+                const subject = Object.assign({}, p, { history });
+                if (typeof buildStatWindows === 'function') {
+                    const w = buildStatWindows(subject, history);
+                    if (w) { subject.l5 = w.recent; subject.season = w.season; }
+                }
+
+                let rising = null, patch = null, labels = [];
+                if (typeof risingFormFor === 'function') {
+                    try {
+                        const rf = risingFormFor(subject);
+                        if (rf && rf.score != null) {
+                            rising = rf.score;
+                            (rf.signals || []).forEach(s => labels.push(s.label || s.name || 'rising'));
+                        }
+                    } catch (e) { /* a signal that throws is a signal we do not have */ }
+                }
+                if (typeof purplePatchFor === 'function') {
+                    try {
+                        const pp = purplePatchFor(subject);
+                        if (pp && pp.patch && pp.sustainability
+                            && typeof pp.sustainability.totalScore === 'number') {
+                            patch = pp.sustainability.totalScore;
+                            labels.push(`purple patch · ${pp.sustainability.verdict || 'run'}`);
+                        }
+                    } catch (e) { /* as above */ }
+                }
+
+                if (rising != null || patch != null) {
+                    out.set(p.id, { rising, patch, labels });
+                }
+            });
+            return out;
+        }
+
+        // What the signals are worth to an incoming player, in points, bounded.
+        function twMoveBoost(m, signals) {
+            if (!signals || !m || !m.in) return 0;
+            const s = typeof signals.get === 'function' ? signals.get(m.in.id) : null;
+            if (!s) return 0;
+            const clamp01 = v => Math.max(0, Math.min(1, v / 100));
+            const parts = [];
+            if (s.rising != null) parts.push(clamp01(s.rising));
+            if (s.patch != null) parts.push(clamp01(s.patch));
+            if (!parts.length) return 0;
+            return (parts.reduce((a, b) => a + b, 0) / parts.length) * TW_SIGNAL_MAX;
+        }
+
         /* The most transfers a single recommendation will ever propose.
 
            Not a judgement about football — it is the point past which this stops
@@ -469,6 +577,10 @@
                than import the live constant and assert against whatever it
                happens to be this week. */
             const friction = opts.friction || (typeof twMoveFriction === 'function' ? twMoveFriction : () => 0);
+            /* Ranking only. Deliberately absent from the margin test below: a
+               signal reorders two similar candidates, it does not lower the bar
+               a transfer has to clear. See TW_SIGNAL_MAX. */
+            const boost = opts.boost || (() => 0);
             const costFor = n => Math.max(0, n - ft) * 4;
             const maxN = Math.min(opts.maxPlan || TW_MAX_PLAN, Math.max(2, ft + 1));
 
@@ -487,7 +599,7 @@
                     const gross = jointGain(trial);
                     // Ranked on the gain less the move's own reluctance, so the
                     // same friction that orders step one orders the rest.
-                    const rank = gross - friction(m);
+                    const rank = gross - friction(m) + boost(m);
                     if (rank > pickRank) { pickRank = rank; pickGross = gross; pick = m; }
                 }
                 if (!pick) break;
@@ -535,6 +647,9 @@
             squad.forEach(p => { clubCount[p.teamId] = (clubCount[p.teamId] || 0) + 1; });
 
             const cache = {};
+            /* Once, before any scanning. See twBuildSignalMap. */
+            const signals = twBuildSignalMap(typeof allPlayers !== 'undefined' ? allPlayers : []);
+            const signalBoost = m => twMoveBoost(m, signals);
             const pool = twBuildPool(squad, gws, cache, o.useTeamContext);
             const baseXI = typeof solveQuickLineup === 'function' ? solveQuickLineup(pool).xi : pool.slice(0, 11);
 
@@ -579,9 +694,10 @@
                being a keeper the viability test would then refuse — which would
                have returned "hold" while a perfectly good outfield move sat two
                rows down. */
+            const rankOf = m => m.gain - twMoveFriction(m) + signalBoost(m);
             const byGain = squad.map(p => twBestSwapFor(p, ctx))
                 .filter(Boolean)
-                .sort((a, b) => (b.gain - twMoveFriction(b)) - (a.gain - twMoveFriction(a)));
+                .sort((a, b) => rankOf(b) - rankOf(a));
 
             /* Promote a flagged player's move only when doing so costs nothing.
 
@@ -646,6 +762,7 @@
             // answer two for a manager holding four.
             const { chain, depth } = twPlanChain(moves, {
                 ft, jointGain: twJointGain, legal: twMovesLegal,
+                boost: signalBoost,
                 freeTransfersOnly: o.freeTransfersOnly
             });
 
@@ -674,7 +791,15 @@
                no sense doing it for moves the verdict discarded. alts[0] is the
                move itself, because both come off the top of the same scan. */
             if (best && best.moves.length) {
-                best.moves.forEach(m => { m.alts = twAltSwapsFor(m.out, ctx, 3); });
+                best.moves.forEach(m => {
+                    m.alts = twAltSwapsFor(m.out, ctx, 3);
+                    /* Which of the site's own signals fired on the incoming
+                       player, so the card can show its working. A thumb on the
+                       scale nobody can see is indistinguishable from a bug. */
+                    const s = signals.get(m.in.id);
+                    m.inSignals = s ? s.labels.slice(0, 3) : [];
+                    m.inSignalBoost = Math.round(signalBoost(m) * 100) / 100;
+                });
             }
 
             /* Handed out so the card can let a manager pick a different option

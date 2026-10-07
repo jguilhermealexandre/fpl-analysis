@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { loadFunction } from './helpers/load.mjs';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
 
 const twDeriveFreeTransfers = loadFunction('scripts/transfer-engine.js', 'twDeriveFreeTransfers');
 const twDiversifySwaps = loadFunction('scripts/transfer-engine.js', 'twDiversifySwaps');
@@ -326,4 +330,110 @@ test('a keeper topping the ranking and then failing cannot hide a viable move', 
             }
         }
     }
+});
+
+/* ===== The site's own signals, as an input to who to buy =====
+
+   The recommender priced candidates on projected points and nothing else, so
+   the site could put a player in its Rising Form section and ignore him when
+   choosing a transfer. Both signals are computed on the same page.
+
+   The whole risk here is overreach, so that is what is tested: the boost is
+   bounded, it moves the ranking and never the reported points, it cannot
+   manufacture a recommendation that the margin would otherwise refuse, and it
+   cannot cancel the goalkeeper brake. */
+
+const twMoveBoost = loadFunction('scripts/transfer-engine.js', 'twMoveBoost', {
+    TW_SIGNAL_MAX: 1.5
+});
+
+const sigMap = pairs => new Map(Object.entries(pairs));
+const inMove = (solo, inId, extra = {}) => {
+    const m = mv(solo, extra);
+    m.in.id = inId;
+    return m;
+};
+
+test('the boost is zero without a signal to read', () => {
+    assert.equal(twMoveBoost(mv(5), null), 0);
+    assert.equal(twMoveBoost(mv(5), new Map()), 0);
+    assert.equal(twMoveBoost(null, new Map()), 0);
+});
+
+test('the boost scales across the whole 0-100 range and stops at the cap', () => {
+    const m = inMove(5, 'X');
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: 0, patch: 0 } })), 0);
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: 100, patch: 100 } })), 1.5);
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: 50, patch: 50 } })), 0.75);
+});
+
+test('a player measurable on one signal is averaged over one, not halved', () => {
+    /* Four gameweeks in, "no purple patch yet" is a fact about the calendar,
+       not about the player, and must not read as a zero. */
+    const m = inMove(5, 'X');
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: 100, patch: null } })), 1.5);
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: null, patch: 100 } })), 1.5);
+});
+
+test('a score outside its range is clamped rather than trusted', () => {
+    const m = inMove(5, 'X');
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: 999, patch: 999 } })), 1.5);
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: -50, patch: -50 } })), 0);
+});
+
+test('the signal belongs to the player coming in, not the one going out', () => {
+    const m = inMove(5, 'IN');
+    assert.equal(twMoveBoost(m, sigMap({ IN: { rising: 100, patch: 100 } })), 1.5);
+    assert.equal(twMoveBoost(m, sigMap({ [m.out.id]: { rising: 100, patch: 100 } })), 0);
+});
+
+test('a signal cannot manufacture a recommendation the margin would refuse', () => {
+    /* 2.0 is under TW_MIN_FREE_GAIN. The margin is tested on the unadjusted
+       gain, so even a maximal boost must leave this a hold. */
+    const m = inMove(2.0, 'X');
+    const S = sigMap({ X: { rising: 100, patch: 100 } });
+    const r = plan([m], { ft: 4, boost: x => twMoveBoost(x, S) });
+    assert.equal(r.depth, 0);
+});
+
+test('a signal cannot cancel the goalkeeper brake', () => {
+    const g = inMove(4.0, 'K', { pos: 1 });
+    const S = sigMap({ K: { rising: 100, patch: 100 } });
+    const r = plan([g], {
+        ft: 4, friction: twMoveFriction, boost: x => twMoveBoost(x, S)
+    });
+    assert.equal(r.depth, 0, 'friction 3.0 outweighs a 1.5 cap');
+});
+
+test('the boost never reaches the figures the card prints', () => {
+    const m = inMove(9, 'X');
+    const S = sigMap({ X: { rising: 100, patch: 100 } });
+    const r = plan([m], { ft: 4, boost: x => twMoveBoost(x, S) });
+    assert.equal(r.chain[0].gross, 9, 'gross is the real projection');
+    assert.equal(r.chain[0].net, 9, 'and so is net');
+});
+
+test('a signal does reorder two candidates the engine rates similarly', () => {
+    const a = inMove(5.0, 'A');
+    const b = inMove(5.4, 'B');
+    const S = sigMap({ A: { rising: 100, patch: 100 } });
+    const rank = m => m.gain + twMoveBoost(m, S);
+    const first = [a, b].sort((x, y) => rank(y) - rank(x))[0];
+    assert.equal(first.in.id, 'A', '6.5 against 5.4');
+});
+
+test('the constants stay in the order the design depends on', () => {
+    /* TW_SIGNAL_MAX has to sit below both the margin a transfer must clear and
+       the keeper brake, or the two tests above stop meaning anything. Read from
+       source so raising one without the other fails here. */
+    const src = fs.readFileSync(path.join(ROOT, 'scripts/transfer-engine.js'), 'utf8');
+    const num = name => {
+        const m = new RegExp(`${name}\\s*=\\s*([0-9.]+)`).exec(src);
+        assert.ok(m, `${name} should be findable`);
+        return parseFloat(m[1]);
+    };
+    assert.ok(num('TW_SIGNAL_MAX') < num('TW_MIN_FREE_GAIN'),
+        'a signal must not outrun the margin a transfer has to clear');
+    assert.ok(num('TW_SIGNAL_MAX') < num('TW_GK_FRICTION'),
+        'a signal must not cancel the goalkeeper brake');
 });

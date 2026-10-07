@@ -728,6 +728,18 @@
                         return `
                         <div class="twr-slot">
                             <div class="twr-slot-h">Transfer ${i + 1} · ${escHTML(m.out.name)} out — ${alts.length} way${alts.length === 1 ? '' : 's'} to spend it</div>
+                            ${/* Which of the site's own signals fired on the
+                                  incoming player, and what they were worth. The
+                                  engine lets Rising Form and a Purple Patch tip
+                                  a close call between two candidates, and a
+                                  thumb on the scale nobody can see is
+                                  indistinguishable from a bug — so it says so,
+                                  and says plainly that it moved the ranking and
+                                  not the projection above. */''}
+                            ${m.inSignals && m.inSignals.length
+                                ? `<div class="twr-caveat">${escHTML(m.in.name)} is flagged by ${escHTML(m.inSignals.join(', '))}
+                                   — worth +${(m.inSignalBoost || 0).toFixed(2)} when ranking the options below, not added to the points above.</div>`
+                                : ''}
                             <div class="twr-opts">
                                 ${alts.map(a => twrOptionCard(a, m, gws, bankHere, i)).join('')}
                             </div>
