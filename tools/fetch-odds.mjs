@@ -26,7 +26,6 @@ import { calibrationSample, appendRound, summarise } from './odds-calibration.mj
 
 const FIXTURES_URL = 'https://www.football-data.co.uk/fixtures.csv';
 const DIVISION = 'E0';                 // Premier League
-const MIN_FIXTURES = 5;                // below this the round is not usable
 
 /* football-data.co.uk's club names against FPL's. Only the genuine
    disagreements are listed; everything else matches on the nose. Kept explicit
@@ -115,6 +114,41 @@ function fail(message) {
    (03/09/15/21 UTC) always lands inside it, whatever the deadline. */
 const PRICING_GRACE_MS = 12 * 60 * 60 * 1000;
 
+/* WHAT THIS RUN PRICED, ON TOP OF WHAT IS ALREADY HELD.
+ *
+ * This file used to be replaced outright every run, and that is why a round was
+ * never once fully priced. The source carries about two days of fixtures, a
+ * Premier League round runs Friday to Monday, so no single run can see all ten
+ * games. Each successful run therefore threw away the fixtures the last one had
+ * found: on 19 September it wrote five of ten, and five of ten is what the site
+ * still had three weeks later. coverage.complete could not become true, and
+ * boMarketXGA() — which refuses to blend unless a round is complete — had
+ * almost certainly never returned a number in its life.
+ *
+ * Merged by fixtureId, with this run winning. A fixture priced again closer to
+ * kick-off is better information than the same fixture priced three days out,
+ * and the later run is the one holding it.
+ *
+ * ANYTHING ALREADY KICKED OFF IS DROPPED, and that is not housekeeping. Without
+ * it the file grows without bound and, worse, keeps serving prices for games
+ * that have been played — which is exactly what was on screen for the whole of
+ * the September break. A price is a forecast; once the match has started it is
+ * not one.
+ *
+ * `now` is injected so a test can place itself either side of a kick-off. */
+export function mergeHeldOdds(held, fresh, now) {
+    const byId = new Map();
+    // Held first so that fresh overwrites it, not the other way round.
+    for (const m of (held || [])) byId.set(m.fixtureId, m);
+    for (const m of (fresh || [])) byId.set(m.fixtureId, m);
+    return [...byId.values()]
+        .filter(m => {
+            const t = Date.parse(m.kickoff);
+            return Number.isFinite(t) ? t > now : true;
+        })
+        .sort((a, b) => String(a.kickoff).localeCompare(String(b.kickoff)));
+}
+
 function notPricedYet(reason, outPath) {
     let held = null, events = [];
     try {
@@ -155,7 +189,42 @@ function notPricedYet(reason, outPath) {
         }
     }
 
-    console.log(`::notice::${reason}. Keeping the existing odds — bookmakers price one round at a time, so between rounds there is nothing to fetch.`);
+    /* NOTHING NEW TO FETCH IS NOT A REASON TO KEEP SERVING PLAYED GAMES.
+     *
+     * This path used to exit without touching the file, which is how the site
+     * spent the whole September break showing bookmakers' prices for five GW5
+     * fixtures that had already been played. A price is a forecast; the moment
+     * the match kicks off it stops being one, and that is true whether or not
+     * there is anything to replace it with.
+     *
+     * So the held set is pruned here too. Between rounds the file empties
+     * itself, which reads correctly downstream — boTeamView() returns null, the
+     * market block does not render, and the card says the bookmakers have not
+     * priced this fixture rather than quoting them on a finished one.
+     *
+     * Only ever writes when something actually went, so an ordinary unpriced
+     * Tuesday still makes no commit. */
+    try {
+        const file = JSON.parse(fs.readFileSync(outPath, 'utf8'));
+        const before = (file.matches || []).length;
+        const kept = mergeHeldOdds(file.matches, [], now);
+        if (kept.length !== before) {
+            const events2 = [...new Set(kept.map(m => m.event))].sort((a, b) => a - b);
+            file.matches = kept;
+            file.metadata = Object.assign({}, file.metadata, {
+                lastUpdated: new Date().toISOString(),
+                matches: kept.length,
+                events: events2,
+                coverage: (file.metadata?.coverage || []).filter(c => events2.includes(c.event))
+            });
+            fs.writeFileSync(outPath, JSON.stringify(file, null, 1) + '\n');
+            console.log(`Pruned ${before - kept.length} fixture(s) already kicked off; ${kept.length} still ahead.`);
+        }
+    } catch {
+        /* No readable file to prune. Nothing held means nothing stale. */
+    }
+
+    console.log(`::notice::${reason}. Nothing new to fetch — bookmakers price one round at a time, so between rounds there is nothing to add.`);
     process.exit(0);
 }
 
@@ -231,11 +300,22 @@ async function main() {
     }
 
     skipped.forEach(s => console.log(`skipped: ${s}`));
-    if (matches.length < MIN_FIXTURES) {
-        /* Same condition, caught later: the file has started carrying the round
-           but not all of it. A partial round is no use anyway — the projection
-           only blends the market when every fixture in the round is priced. */
-        notPricedYet(`only ${matches.length} of ${rows.length} ${DIVISION} fixtures could be priced (need ${MIN_FIXTURES})`, outPath);
+
+    /* THE FLOOR IS GONE, and removing it is half the fix.
+     *
+     * It used to refuse to write unless this one run priced five fixtures,
+     * reasoning that "a partial round is no use anyway — the projection only
+     * blends the market when every fixture in the round is priced". The second
+     * half of that is true and is still enforced, by coverage.complete and by
+     * boMarketXGA() reading it. The first half was the trap: a round only ever
+     * becomes complete by accumulating the partials, so a floor on each run's
+     * own catch guaranteed the thing it was waiting for could never happen.
+     *
+     * It is also no longer needed as a guard. Writing cannot lose information
+     * now — the merge keeps everything still in the future — so the only reason
+     * left to refuse is having nothing whatsoever to contribute. */
+    if (!matches.length) {
+        notPricedYet(`none of the ${rows.length} ${DIVISION} rows could be priced`, outPath);
     }
 
     /* A quiet way for this to be wrong is for the reconstruction to stop
@@ -247,8 +327,25 @@ async function main() {
         fail(`reconstruction disagrees with the market on draws by ${(worstDraw * 100).toFixed(1)}pp — the model or the feed has changed. Keeping the existing odds.`);
     }
 
-    matches.sort((a, b) => String(a.kickoff).localeCompare(String(b.kickoff)));
-    const events = [...new Set(matches.map(m => m.event))].sort((a, b) => a - b);
+    /* Everything still ahead of us: what was held, with this run written over
+       it. See mergeHeldOdds — `matches` is this run alone and is what the
+       validation above judged, `priced` is what the file will carry. */
+    let held = [];
+    try { held = JSON.parse(fs.readFileSync(outPath, 'utf8')).matches || []; } catch { held = []; }
+
+    // One clock for the whole decision, so nothing straddles a kick-off.
+    const now = Date.now();
+    const priced = mergeHeldOdds(held, matches, now);
+    const stillAhead = (m) => {
+        const t = Date.parse(m.kickoff);
+        return Number.isFinite(t) ? t > now : true;
+    };
+    const keptFromHeld = held.filter(stillAhead).length;
+    const dropped = held.length - keptFromHeld;
+    if (dropped) console.log(`dropped ${dropped} fixture(s) already kicked off`);
+    if (priced.length > keptFromHeld) console.log(`added ${priced.length - keptFromHeld} fixture(s) not previously priced`);
+
+    const events = [...new Set(priced.map(m => m.event))].sort((a, b) => a - b);
 
     /* Whether each round is priced in full.
 
@@ -259,9 +356,9 @@ async function main() {
        between two footballers. Only this job can see how many fixtures the round
        actually holds, so only this job can answer it. */
     const coverage = events.map(event => {
-        const priced = matches.filter(m => m.event === event).length;
+        const n = priced.filter(m => m.event === event).length;
         const scheduled = fixtures.filter(f => f.event === event).length;
-        return { event, priced, scheduled, complete: priced === scheduled };
+        return { event, priced: n, scheduled, complete: n === scheduled };
     });
     coverage.forEach(c => {
         if (!c.complete) console.log(`GW${c.event}: ${c.priced} of ${c.scheduled} fixtures priced — consumers will not blend this round`);
@@ -273,17 +370,21 @@ async function main() {
             source: 'football-data.co.uk',
             sourceUrl: FIXTURES_URL,
             division: DIVISION,
-            matches: matches.length,
+            matches: priced.length,
             events,
             coverage,
-            worstDrawError: Math.round(worstDraw * 1000) / 1000,
+            /* Over everything the file holds, not just this run: it describes
+               the contents rather than the fetch. The gate that can fail the job
+               still judges this run's own prices — see worstDraw above. */
+            worstDrawError: Math.round(Math.max(...priced.map(m => m.drawError)) * 1000) / 1000,
             model: 'independent Poisson fitted to de-vigged 1X2 and over/under 2.5'
         },
-        matches
+        matches: priced
     };
 
     fs.writeFileSync(outPath, JSON.stringify(output, null, 1) + '\n');
-    console.log(`Wrote ${outPath}: ${matches.length} matches across GW${events.join(', GW')}, worst draw error ${(worstDraw * 100).toFixed(1)}pp`);
+    console.log(`Wrote ${outPath}: ${priced.length} matches across GW${events.join(', GW')} (${matches.length} priced this run), worst draw error ${(worstDraw * 100).toFixed(1)}pp`);
+    coverage.filter(c => c.complete).forEach(c => console.log(`GW${c.event} is now priced in full — consumers will blend it`));
 
     /* Record what the site's own model said about the same fixtures.
 
@@ -291,7 +392,12 @@ async function main() {
        fail the job, and nothing on the site reads it. It exists so that in ten
        rounds there is evidence about where the model is biased, instead of an
        argument about it. */
-    const calibRows = calibrationSample(output, boot, fixtures);
+    /* This run's prices, not the merged file. appendRound keys on
+       rows[0].event and replaces that single round, so handing it a file
+       spanning two gameweeks would quietly drop one of them. Calibration is a
+       by-product that nothing on the site reads; it should keep measuring
+       exactly what it measured before the merge existed. */
+    const calibRows = calibrationSample({ metadata: output.metadata, matches }, boot, fixtures);
     if (!calibRows) {
         console.log('No calibration sample this run.');
         return;
@@ -305,4 +411,11 @@ async function main() {
         (stats ? ` mean market/model ${stats.meanRatio} (home ${stats.meanRatioHome}, away ${stats.meanRatioAway}); venue effect vs market ${stats.venueEffectVsMarket}x` : ''));
 }
 
-main().catch(err => fail(`odds fetch threw: ${err.message}`));
+/* Only when this file is what was run.
+ *
+ * mergeHeldOdds is imported by tests/odds-merge.test.mjs, and an unguarded
+ * main() would mean importing it fetches the live source and rewrites
+ * data/odds.json — a test suite with a side effect on production data and a
+ * network dependency. Same guard tools/check-service-worker.mjs uses. */
+const invokedDirectly = process.argv[1] && process.argv[1].endsWith('fetch-odds.mjs');
+if (invokedDirectly) main().catch(err => fail(`odds fetch threw: ${err.message}`));
