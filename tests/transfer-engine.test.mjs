@@ -118,3 +118,121 @@ test('one candidate is one option, and none is none', () => {
     assert.deepEqual(host(twDiversifySwaps(null, 3)), []);
     assert.equal(twDiversifySwaps([cand(1, 8, 5)], 3).length, 1);
 });
+
+/* ===== How many transfers, and the ceiling that used to answer for it =====
+
+   The reported symptom: a manager holding four free transfers was recommended
+   exactly two, every week, whatever the squad looked like. It was not a
+   judgement. The option set was hard-coded to one move and two, and with four
+   banked both cost nothing, the pair's joint gain is never less than the better
+   half alone, and both were measured against the same flat 3.0 margin that the
+   first move had already covered. n = 2 won by construction.
+
+   Lifting the ceiling alone would have made it answer four. The margin is per
+   move now, so each transfer has to add three points of its own — four if it is
+   taking a hit, on top of the hit. These tests are mostly about the second half:
+   what the planner REFUSES to recommend. */
+
+const twPlanChain = loadFunction('scripts/transfer-engine.js', 'twPlanChain', {
+    TW_MIN_FREE_GAIN: 3.0, TW_MIN_HIT_GAIN: 4.0, TW_MAX_PLAN: 5
+});
+
+let planUid = 0;
+/** A move worth `solo` points on its own. */
+const mv = (solo, extra = {}) => {
+    planUid++;
+    return {
+        out: { id: `o${planUid}`, status: extra.status || 'a', teamId: `t${planUid}` },
+        in: { id: `i${planUid}`, teamId: `t${planUid}` },
+        gain: solo, _solo: solo
+    };
+};
+/** Additive by default; `decay` models the double-counting a lineup re-solve
+ *  removes — two moves promoting the same bench player into the same eleven. */
+const jointGain = decay => ms =>
+    ms.reduce((t, m, i) => t + m._solo * (decay ? decay ** i : 1), 0);
+const anyLegal = () => true;
+const plan = (moves, opts = {}) =>
+    twPlanChain(moves, { jointGain: jointGain(opts.decay), legal: opts.legal || anyLegal, ...opts });
+
+test('four free transfers and one good move is one transfer, not two', () => {
+    /* The bug, in one line. Under the old rule the pair netted 9.6 against a
+       flat 3.0 and beat the single move's 9.0, so it was recommended. */
+    assert.equal(plan([mv(9), mv(0.6), mv(0.4), mv(0.2)], { ft: 4 }).depth, 1);
+});
+
+test('the bigger plan is still priced and offered, just not recommended', () => {
+    /* The card can show a plan the engine did not pick, so the chain has to
+       carry it — `depth` is the verdict, not the whole list. */
+    const r = plan([mv(9), mv(0.6)], { ft: 4 });
+    assert.equal(r.chain.length, 2);
+    assert.equal(r.chain[1].net, 9.6);
+    assert.equal(r.depth, 1);
+});
+
+test('four genuinely good moves are all recommended', () => {
+    assert.equal(plan([mv(9), mv(8), mv(7), mv(6)], { ft: 4 }).depth, 4);
+});
+
+test('a plan stops at the first move that cannot pay for itself', () => {
+    assert.equal(plan([mv(9), mv(8), mv(7), mv(0.5)], { ft: 4 }).depth, 3);
+});
+
+test('a hit has to clear the hit and the margin on top of it', () => {
+    // Second move costs 4, so it needs stepGain - 4 >= 4.
+    assert.equal(plan([mv(9), mv(7.9)], { ft: 1 }).depth, 1);
+    assert.equal(plan([mv(9), mv(8.1)], { ft: 1 }).depth, 2);
+});
+
+test('a player who cannot play is replaced whatever the margin says', () => {
+    assert.equal(plan([mv(9), mv(0.1, { status: 'i' })], { ft: 4 }).depth, 2);
+});
+
+test('one injured player does not wave three speculative moves through', () => {
+    /* The old filter exempted a whole package if any move in it was forced,
+       so an injured starter paid for everything behind him. */
+    assert.equal(plan([mv(0.1, { status: 'i' }), mv(0.2), mv(0.3)], { ft: 4 }).depth, 1);
+});
+
+test('freeTransfersOnly drops a hit step but keeps a forced one', () => {
+    assert.equal(plan([mv(9), mv(20)], { ft: 1, freeTransfersOnly: true }).depth, 1);
+    assert.equal(plan([mv(9), mv(0.1, { status: 'i' })], { ft: 1, freeTransfersOnly: true }).depth, 2);
+});
+
+test('the first move is the caller\'s, so the flagged tie-break survives', () => {
+    /* twBuildRecommendation reorders `moves` so a squad-analysis Sell verdict
+       wins a close call. Re-choosing step one by joint gain would undo that. */
+    assert.equal(plan([mv(5), mv(9)], { ft: 4 }).chain[0].step._solo, 5);
+});
+
+test('every move after the first is chosen by what it adds', () => {
+    assert.equal(plan([mv(9), mv(4), mv(7)], { ft: 4 }).chain[1].step._solo, 7);
+});
+
+test('two moves claiming the same improvement are not paid twice', () => {
+    const r = plan([mv(9), mv(5)], { ft: 4, decay: 0.5 });
+    assert.equal(r.chain[1].stepGain, 2.5);
+    assert.equal(r.depth, 1, 'half of 5 does not clear 3.0');
+});
+
+test('a package that is not legal is never built', () => {
+    const r = plan([mv(9), mv(8)], { ft: 4, legal: ms => ms.length < 2 });
+    assert.equal(r.chain.length, 1);
+});
+
+test('the plan is capped however many transfers are banked', () => {
+    const many = Array.from({ length: 9 }, () => mv(20));
+    assert.equal(plan(many, { ft: 8 }).chain.length, 5);
+});
+
+test('no legal move is no chain and no depth', () => {
+    const r = plan([], { ft: 4 });
+    assert.equal(r.chain.length, 0);
+    assert.equal(r.depth, 0);
+});
+
+test('a player is never sold twice in one plan', () => {
+    const first = mv(9);
+    const sameOut = { out: first.out, in: { id: 'zz', teamId: 'tz' }, gain: 8, _solo: 8 };
+    assert.equal(plan([first, sameOut], { ft: 4 }).chain.length, 1);
+});

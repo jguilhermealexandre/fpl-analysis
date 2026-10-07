@@ -2068,26 +2068,49 @@
            broadly enough to rely on), so a band is real columns and each one is
            a stack: the blocks in it sit directly under one another.
 
-           The order is the reading order. Season Numbers first and full width,
-           because the season is the steady figure everything else is judged
-           against. Key Statistics next, also full width — it carries the
-           match-by-match form grid now, which is five or six columns wide and
-           cannot live in a third of the sheet. Then the commentary: routes to
-           points beside the concerns and positives, which are short and stack
-           happily in one column next to it.
+           THIS ARRAY IS THE VISUAL ORDER, not the order the HTML is built in.
+           Everything named here is physically re-parented into one holder, so
+           moving a section in buildPlayerFullProfileHTML and not moving it here
+           changes nothing on screen. That is not hypothetical: concerns and
+           positives were lifted in the markup to sit under the verdict, the
+           markup was correct, and they carried on rendering beside Routes to
+           Points because this array still put them there. If you are moving a
+           section, this is the file's opinion about where it goes.
+
+           The argument first: concerns and positives, two short lists side by
+           side, directly under Scout's Take, the verdict and the price meter
+           that precede the holder in the markup. A reader who has just been
+           told "Sell" gets the case for it in the next breath rather than three
+           screens down.
+
+           Then the evidence. Season Numbers full width, because the season is
+           the steady figure everything else is judged against; Key Statistics
+           full width too — it carries the match-by-match form grid, five or six
+           columns wide and unreadable in a third of the sheet; then Routes to
+           Points, which used to share a band with the concerns and takes the
+           full width now that they have gone up.
 
            `full` sections keep their own row; `cols` builds a band. */
         const PDM_LAYOUT = [
+            { cols: [['concerns'], ['positives']] },
             { full: 'season' },
             { full: 'stats' },
-            { cols: [['routes'], ['concerns', 'positives']] }
+            { full: 'routes' }
         ];
 
         function pdmLayoutBands(host) {
             const body = host.querySelector('.pdm-body');
             if (!body) return;
             const pick = a => body.querySelector(`.detail-section[data-accent="${a}"]`);
-            const anchorEl = pick('season') || pick('stats') || pick('routes');
+            /* The holder goes wherever the first section this layout manages
+               currently sits. Derived from PDM_LAYOUT rather than listed again,
+               because a hand-written fallback chain is a second copy of the
+               order and drifts from the first — which is how the sections above
+               ended up somewhere the markup did not ask for. */
+            const anchorEl = PDM_LAYOUT
+                .flatMap(row => (row.full ? [row.full] : row.cols.flat()))
+                .map(pick)
+                .find(Boolean);
             if (!anchorEl || !anchorEl.parentNode) return;
 
             /* The holder is inserted at the anchor's place BEFORE anything moves.

@@ -104,6 +104,15 @@
         const TW_MIN_FREE_GAIN = 3.0;   // spend a free transfer
         const TW_MIN_HIT_GAIN  = 4.0;   // clear the 4-point hit by this much again
 
+        /* The most transfers a single recommendation will ever propose.
+
+           Not a judgement about football — it is the point past which this stops
+           being a transfer recommendation and starts being a wildcard draft,
+           which is a different screen. The real ceiling in practice is the
+           per-move margin below: a fifth move has to add three points of its own
+           on top of the four before it, and almost nothing does. */
+        const TW_MAX_PLAN = 5;
+
         /* How much a squad-analysis Sell verdict is worth when ordering otherwise
            comparable moves. Deliberately well under TW_MIN_FREE_GAIN: it decides
            ties between moves the engine already rates similarly, and can never
@@ -365,6 +374,101 @@
             return twDiversifySwaps(twScanSwaps(out, ctx), k);
         }
 
+        /* HOW MANY TRANSFERS, as a function of its inputs.
+         *
+         * Lifted out of twBuildRecommendation so the one decision a manager
+         * actually argues with can be tested without a squad, a projection
+         * engine or a lineup solver. Everything it needs to know about the world
+         * arrives as two callbacks: jointGain(moves) prices a set, legal(moves)
+         * says whether the set is affordable and inside the three-per-club
+         * limit. Both are closures over the pool in the caller.
+         *
+         * WHAT IT USED TO DO, and why a manager with four free transfers was
+         * told to make two every single week. The option set was hard-coded to
+         * one move and two — the best, and the best second on a different
+         * player. With four banked, costFor(1) and costFor(2) are both zero; the
+         * joint gain of a pair is never less than the better half alone; and
+         * both options were measured against the same flat 3.0 margin, which the
+         * first move had already covered. So the second move only had to add
+         * something rather than nothing, and n = 2 won by construction rather
+         * than by being right.
+         *
+         * Raising the ceiling alone would only move the problem up — the same
+         * arithmetic recommends four. Two things fix it together:
+         *
+         *   THE CHAIN is greedy on the real joint gain. Each step asks which
+         *   remaining move adds most to the package as a whole, not which has
+         *   the best solo gain, because solo gains double-count: two moves that
+         *   each promote the same bench player into the eleven both claim that
+         *   improvement. Greedy rather than exhaustive — the full search is
+         *   every subset of fifteen, on every render — and step one is pinned to
+         *   the move the caller's ranking already chose, so the flagged-verdict
+         *   tie-break above survives untouched.
+         *
+         *   THE MARGIN is per step. Every move is judged on what IT adds, net of
+         *   what IT costs: three points for a free transfer, four for one taking
+         *   a hit, on top of the four-point hit itself. The chain stops at the
+         *   first step that cannot clear its own bar, because every later step is
+         *   built on top of it. A squad with one obvious move and three marginal
+         *   ones returns one move, which is what four free transfers should
+         *   usually produce.
+         *
+         * Unavailable players stay exempt, per step rather than per package: one
+         * injured starter must not wave three speculative moves through behind
+         * him, which is what the old `moves.some(unavailable)` did.
+         *
+         * Returns the whole chain plus how far down it is worth going, so the
+         * caller can hand every option to the card and still know which one the
+         * verdict is. */
+        function twPlanChain(moves, o) {
+            const opts = o || {};
+            const ft = opts.ft || 0;
+            const jointGain = opts.jointGain;
+            const legal = opts.legal || (() => true);
+            const costFor = n => Math.max(0, n - ft) * 4;
+            const maxN = Math.min(opts.maxPlan || TW_MAX_PLAN, Math.max(2, ft + 1));
+
+            const chain = [];
+            const usedOut = new Set(), usedIn = new Set();
+            let prevGross = 0;
+
+            for (let n = 1; n <= maxN; n++) {
+                const base = chain.length ? chain[chain.length - 1].moves : [];
+                const consider = n === 1 ? moves.slice(0, 1) : moves;
+                let pick = null, pickGross = -Infinity;
+                for (const m of consider) {
+                    if (usedOut.has(m.out.id) || usedIn.has(m.in.id)) continue;
+                    const trial = base.concat([m]);
+                    if (!legal(trial)) continue;
+                    const gross = jointGain(trial);
+                    if (gross > pickGross) { pickGross = gross; pick = m; }
+                }
+                if (!pick) break;
+                usedOut.add(pick.out.id);
+                usedIn.add(pick.in.id);
+                const cost = costFor(n);
+                chain.push({
+                    n, moves: base.concat([pick]), gross: pickGross, cost,
+                    net: pickGross - cost,
+                    // What this move alone added, and what it alone cost.
+                    step: pick, stepGain: pickGross - prevGross, stepCost: cost - costFor(n - 1)
+                });
+                prevGross = pickGross;
+            }
+
+            const unavailable = m => m.out.status === 'i' || m.out.status === 'u' || m.out.status === 's';
+            let depth = 0;
+            for (const opt of chain) {
+                if (!unavailable(opt.step)) {
+                    if (opts.freeTransfersOnly && opt.stepCost > 0) break;
+                    const margin = opt.stepCost > 0 ? TW_MIN_HIT_GAIN : TW_MIN_FREE_GAIN;
+                    if (opt.stepGain - opt.stepCost < margin) break;
+                }
+                depth = opt.n;
+            }
+            return { chain, depth };
+        }
+
         /* opts lets a host without the squad page's globals supply them:
              { squad, bank, freeTransfers, fromGW, useTeamContext }
            Anything omitted falls back to the squad page's own state (or today,
@@ -481,40 +585,30 @@
                 return Object.keys(counts).every(k => counts[k] <= 3);
             };
 
-            // Option A: one move. Option B: two, on different players — the second
-            // is only worth it if it clears its own hit.
-            const one = moves[0];
-            const two = moves.find(m => m.out.id !== one.out.id && m.in.id !== one.in.id
-                && twMovesLegal([one, m]));
-
-            const costFor = n => Math.max(0, n - ft) * 4;
-            const options = [
-                { n: 0, moves: [], gross: 0, cost: 0, net: 0 },
-                { n: 1, moves: [one], gross: one.gain, cost: costFor(1), net: one.gain - costFor(1) }
-            ];
-            if (two) {
-                const gross = twJointGain([one, two]);
-                options.push({ n: 2, moves: [one, two], gross, cost: costFor(2), net: gross - costFor(2) });
-            }
-
-            // A move must clear its margin, not merely beat zero. Anything unavailable
-            // is exempt — a player who cannot play is worth replacing regardless.
-            //
-            // o.freeTransfersOnly (opts) drops any hit-costing option outright,
-            // must-sells aside — for an automated bulk run across several
-            // gameweeks at once, nobody reviewed any single one of those hits,
-            // so "clears its margin" isn't consent to spend points on it. A
-            // manager reviewing one gameweek by hand still sees hit-taking
-            // options; this only narrows what an unattended loop is allowed
-            // to pick for itself.
-            const unavailable = m => m.out.status === 'i' || m.out.status === 'u' || m.out.status === 's';
-            const viable = options.filter(opt => {
-                if (opt.n === 0) return true;
-                if (opt.moves.some(unavailable)) return true;
-                if (o.freeTransfersOnly && opt.cost > 0) return false;
-                const margin = opt.cost > 0 ? TW_MIN_HIT_GAIN : TW_MIN_FREE_GAIN;
-                return opt.net >= margin;
+            // See twPlanChain: how many transfers, and why this used to always
+            // answer two for a manager holding four.
+            const { chain, depth } = twPlanChain(moves, {
+                ft, jointGain: twJointGain, legal: twMovesLegal,
+                freeTransfersOnly: o.freeTransfersOnly
             });
+
+            const options = [{ n: 0, moves: [], gross: 0, cost: 0, net: 0 }].concat(chain);
+
+            /* `depth` is how far down the chain is worth going — each move
+               clearing its own margin, with unavailable players exempt. The
+               rule lives in twPlanChain; what belongs here is why one of its
+               inputs exists.
+
+               o.freeTransfersOnly drops any hit-taking step outright, must-sells
+               aside. For an automated bulk run across several gameweeks at once,
+               nobody reviewed any single one of those hits, so "clears its
+               margin" is not consent to spend points on it. A manager reviewing
+               one gameweek by hand still sees hit-taking options; this only
+               narrows what an unattended loop may pick for itself.
+
+               Everything below `depth` still travels in `options`, so the card
+               can offer a bigger plan it did not recommend. */
+            const viable = [options[0]].concat(chain.slice(0, depth));
 
             const best = viable.sort((a, b) => b.net - a.net || a.n - b.n)[0];
 
