@@ -767,7 +767,17 @@
            single or multi follows the size of the plan, and the two caps agree:
            TW_PLAN_CAP.multi is 5 and so is the engine's TW_MAX_PLAN, so a
            recommendation can never arrive larger than the plan it is loaded
-           into. tests/transfer-plan.test.mjs holds them to that. */
+           into.
+
+           AND IT GOES THROUGH twRailGo, not twGoStep. The market pane does not
+           dispatch on the step at all — it dispatches on transferState.mode,
+           and there is no step-4 branch in it. Setting the step to 4 and
+           leaving mode as 'squad' matched none of its cases, so it fell through
+           to the idle "pick a player in your squad" panel and the Overview
+           arrived empty. twRailGo is the one place that knows which mode each
+           step owns; calling it instead of setting the pair by hand is the
+           same lesson as PDM_LAYOUT in the player card — a second copy of a
+           mapping drifts from the first. */
         let twLastRecommendation = null;
         function twApplyRecommendation() {
             const r = twLastRecommendation;
@@ -778,9 +788,9 @@
 
             transferState.pending = moves.map(m => ({ soldPlayer: m.out, replacement: m.in }));
             transferState.activeSlot = -1;
-            transferState.mode = 'squad';
+            transferState.previewPlayer = null;
 
-            twGoStep(4);
+            twRailGo(4);
             updateStatus(`Loaded ${moves.length} recommended transfer${moves.length === 1 ? '' : 's'} — review before confirming`, 'success');
         }
 

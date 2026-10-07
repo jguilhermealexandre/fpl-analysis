@@ -44,7 +44,7 @@ function v2IsAppShell() {
 function loadSidebarNav() {
     if (!v2IsAppShell()) return loadLandingNav();
     document.documentElement.classList.add('v2-shell-app');
-    return fetch('/sidebar-nav.html?v=426')
+    return fetch('/sidebar-nav.html?v=427')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -160,7 +160,7 @@ async function revealAdminLink() {
 /* The landing shell: a top bar rather than a rail. */
 function loadLandingNav() {
     document.documentElement.classList.add('v2-shell-landing');
-    return fetch('/landing-nav.html?v=426')
+    return fetch('/landing-nav.html?v=427')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
