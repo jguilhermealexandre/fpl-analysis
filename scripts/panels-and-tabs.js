@@ -1749,7 +1749,8 @@
                actually priced — a fixture the book has not opened yet gets
                nothing rather than a row of dashes. */
             const mkt = (typeof boTeamView === 'function') ? boTeamView(tid) : null;
-            if (mkt && mkt.opponentId === oppId) {
+            const marketShown = !!(mkt && mkt.opponentId === oppId);
+            if (marketShown) {
                 const pct = v => Math.round(v * 100) + '%';
                 html += `<div class="h2h-market">
                     <div class="h2h-market-title">${v2Icon('up')} What the market expects</div>
@@ -1766,10 +1767,11 @@
                 </div>`;
             }
 
-            // xG tug-of-war
+            /* xG tug-of-war. No heading: every bar already names its own
+               measure and window ("xG per game (season)"), so the title was
+               restating the four labels under it. */
             if (sXg && oppSXg) {
                 html += `<div class="h2h-xg-section">`;
-                html += `<div class="h2h-xg-title">${v2Icon('bolt')} Expected Goals Comparison</div>`;
                 html += xgBar('xG per game (season)', sXg.xGpg, oppSXg.xGpg, false);
                 html += xgBar('xGC per game (season)', sXg.xGCpg, oppSXg.xGCpg, true);
                 if (rXg && oppRXg) {
@@ -1779,13 +1781,37 @@
                 html += `</div>`;
             }
 
-            // CS%
-            const myCSPct = isHome ? (ss && ss.homeP > 0 ? Math.round((ss.homeCS / ss.homeP) * 100) : null) : (ss && ss.awayP > 0 ? Math.round((ss.awayCS / ss.awayP) * 100) : null);
-            const oppCSPct = isHome ? (oppSS && oppSS.awayP > 0 ? Math.round((oppSS.awayCS / oppSS.awayP) * 100) : null) : (oppSS && oppSS.homeP > 0 ? Math.round((oppSS.homeCS / oppSS.homeP) * 100) : null);
-            if (myCSPct !== null || oppCSPct !== null) {
+            /* Clean sheets kept at this venue — and the fraction they came from.
+               "HUL CS% (H) 100%" was one home game out of one, and a rate with
+               no denominator beside it reads as a property of the team rather
+               than of a two-match sample. Nobody can act on 100% and nobody
+               believes it, which is worse than showing less.
+
+               Shown only when the bookmakers have not priced this fixture. The
+               market block above carries a clean-sheet probability for this
+               exact match, which is the better answer to the same question:
+               forward-looking, opponent-specific, and not drawn from three
+               results. Two clean-sheet numbers side by side would just invite
+               the reader to pick one. So the market wins when it is there, and
+               this stands in when it is not — which, while data/odds.json is
+               stale, is most fixtures. */
+            const csSide = (s, home) => {
+                if (!s) return null;
+                const p = home ? s.homeP : s.awayP;
+                const cs = home ? s.homeCS : s.awayCS;
+                if (!p) return null;
+                return { pct: Math.round((cs / p) * 100), cs, p };
+            };
+            const myCS = csSide(ss, isHome);
+            const oppCS = csSide(oppSS, !isHome);
+            if (!marketShown && (myCS || oppCS)) {
+                const csCell = (name, venue, d) => `<div class="h2h-cs-item">`
+                    + `<div class="h2h-cs-label">${name} CS% (${venue})</div>`
+                    + `<div class="h2h-cs-val">${d ? `${d.pct}% (${d.cs}/${d.p})` : '-'}</div>`
+                    + `</div>`;
                 html += `<div class="h2h-cs-row">`;
-                html += `<div class="h2h-cs-item"><div class="h2h-cs-label">${escHTML(team.short_name)} CS% (${isHome ? 'H' : 'A'})</div><div class="h2h-cs-val">${myCSPct !== null ? myCSPct + '%' : '-'}</div></div>`;
-                html += `<div class="h2h-cs-item"><div class="h2h-cs-label">${escHTML(oppTeam?.short_name || nextFix.opponent)} CS% (${isHome ? 'A' : 'H'})</div><div class="h2h-cs-val">${oppCSPct !== null ? oppCSPct + '%' : '-'}</div></div>`;
+                html += csCell(escHTML(team.short_name), isHome ? 'H' : 'A', myCS);
+                html += csCell(escHTML(oppTeam?.short_name || nextFix.opponent), isHome ? 'A' : 'H', oppCS);
                 html += `</div>`;
             }
 

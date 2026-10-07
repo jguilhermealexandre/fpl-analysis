@@ -1453,6 +1453,7 @@ export default [
                 sdXP: 'writable',
                 seasonGamesAvailable: 'writable',
                 seasonGamesPlayed: 'writable',
+                seasonNetXGpg: 'writable',
                 seasonStats: 'writable',
                 seasonTooYoungNotice: 'writable',
                 selectAllColumns: 'writable',

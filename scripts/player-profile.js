@@ -1526,10 +1526,11 @@
             return { analysis: getPlayerAnalysis(pool), context: 'candidate' };
         }
 
-        // Builds a player's full analytical profile \u2014 AI report, verdict, key
-        // stats, season numbers, routes to points, price watch, concerns/
-        // positives, upcoming fixtures, team context (incl. fixture swing) and
-        // opponent form. Shared by the modal below (renderPlayerModal, on both
+        // Builds a player's full analytical profile, in this order: AI report,
+        // verdict, price watch, concerns/positives \u2014 the argument \u2014 then key
+        // stats, season numbers, routes to points, upcoming fixtures, team
+        // context (incl. fixture swing) and opponent form \u2014 the evidence.
+        // Shared by the modal below (renderPlayerModal, on both
         // the squad page and the players page) and the Transfer Wizard's
         // head-to-head compare, so a buy candidate gets exactly the same depth
         // as one of your own XI. `opts`:
@@ -1608,6 +1609,34 @@
                what the model thinks, what it concludes, and whether the price is
                about to move — and the three of them fit on one row. */
             html += renderPriceWatchSection(player);
+
+            /* The case for and against, directly under the verdict that rests on
+               it. These used to sit far below, between Routes to Points and the
+               fixture strip, which put the reasoning three screens from the
+               conclusion it supports — so the card asserted "Sell" at the top
+               and explained itself somewhere a reader had to go looking.
+               Scout's Take, Verdict, Price Watch, Concerns, Positives: the
+               argument in the order someone actually asks for it, with every
+               number below it as evidence rather than as preamble. */
+            if (concerns.length > 0) {
+                html += `<div class="detail-section" data-accent="concerns">
+                    <div class="detail-section-title">${v2Icon('warn')} Concerns (${concerns.length})</div>
+                    ${concerns.map(c => `<div class="insight-item ${c.type}">
+                        ${c.title ? `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${escHTML(c.title)}</div>` : ''}
+                        <div class="insight-text">${escHTML(c.text)}</div>
+                    </div>`).join('')}
+                </div>`;
+            }
+
+            if (positives.length > 0) {
+                html += `<div class="detail-section" data-accent="positives">
+                    <div class="detail-section-title">${v2Icon('check')} Positives (${positives.length})</div>
+                    ${positives.map(p => `<div class="insight-item positive">
+                        ${p.title ? `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${escHTML(p.title)}</div>` : ''}
+                        <div class="insight-text">${escHTML(p.text)}</div>
+                    </div>`).join('')}
+                </div>`;
+            }
 
             /* What he has actually returned, alongside the rates that predict it.
 
@@ -1764,26 +1793,6 @@
             </div>`;
 
             html += renderRoutesToPoints(player);
-
-            if (concerns.length > 0) {
-                html += `<div class="detail-section" data-accent="concerns">
-                    <div class="detail-section-title">${v2Icon('warn')} Concerns (${concerns.length})</div>
-                    ${concerns.map(c => `<div class="insight-item ${c.type}">
-                        ${c.title ? `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${escHTML(c.title)}</div>` : ''}
-                        <div class="insight-text">${escHTML(c.text)}</div>
-                    </div>`).join('')}
-                </div>`;
-            }
-
-            if (positives.length > 0) {
-                html += `<div class="detail-section" data-accent="positives">
-                    <div class="detail-section-title">${v2Icon('check')} Positives (${positives.length})</div>
-                    ${positives.map(p => `<div class="insight-item positive">
-                        ${p.title ? `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${escHTML(p.title)}</div>` : ''}
-                        <div class="insight-text">${escHTML(p.text)}</div>
-                    </div>`).join('')}
-                </div>`;
-            }
 
             if (fixtures.length > 0) {
                 html += `<div class="detail-section" data-accent="fixtures" data-wide>

@@ -44,7 +44,7 @@ function v2IsAppShell() {
 function loadSidebarNav() {
     if (!v2IsAppShell()) return loadLandingNav();
     document.documentElement.classList.add('v2-shell-app');
-    return fetch('/sidebar-nav.html?v=422')
+    return fetch('/sidebar-nav.html?v=423')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -160,7 +160,7 @@ async function revealAdminLink() {
 /* The landing shell: a top bar rather than a rail. */
 function loadLandingNav() {
     document.documentElement.classList.add('v2-shell-landing');
-    return fetch('/landing-nav.html?v=422')
+    return fetch('/landing-nav.html?v=423')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -177,7 +177,9 @@ function loadLandingNav() {
             if (v2HasTeam()) {
                 const wayIn = document.getElementById('v2LandingWayIn');
                 if (wayIn) {
-                    wayIn.href = '/dashboard/';
+                    // No trailing slash: /dashboard/ is a 404 in production and
+                    // /dashboard is not. See the note in _redirects.
+                    wayIn.href = '/dashboard';
                     wayIn.textContent = 'My dashboard';
                 }
             }

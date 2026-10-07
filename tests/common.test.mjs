@@ -123,7 +123,14 @@ test('the gate is the only copy of the rule', () => {
 test('the ID page will not redirect off the app', () => {
     /* next= is read back off a query string, so it is somebody else's input.
        Anything that is not a path inside /dashboard/ has to collapse to the
-       dashboard rather than be followed. */
+       dashboard rather than be followed.
+
+       AND IT MUST NOT END IN A SLASH. This test used to assert the fallback was
+       '/dashboard/', which is a 404 in production — so the one test covering
+       where a new manager lands after entering their Team ID was pinning the
+       bug in place. Measured 7 Oct 2026: /dashboard 308s to / and serves the
+       page, /dashboard/ returns 404.html, and the /dashboard/ and /dashboard/*
+       rules in _redirects do not fire at all. */
     const html = fs.readFileSync(path.join(ROOT, 'welcome.html'), 'utf8');
     const src = /function wlNext\(\) \{([\s\S]*?)\n {4}\}/.exec(html);
     assert.ok(src, 'welcome.html should still resolve next= through wlNext()');
@@ -138,6 +145,13 @@ test('the ID page will not redirect off the app', () => {
     };
     assert.equal(at('?next=%2Fdashboard%2Fplayers'), '/dashboard/players');
     assert.equal(at('?next=%2Fdashboard'), '/dashboard');
+
+    /* A trailing slash on something otherwise allowed is normalised rather than
+       rejected — a bookmarked /dashboard/ should still work. */
+    assert.equal(at('?next=%2Fdashboard%2F'), '/dashboard');
+    assert.equal(at('?next=%2Fdashboard%2F%2F'), '/dashboard');
+    assert.equal(at('?next=%2Fsquad-analysis%2F'), '/squad-analysis');
+
     for (const bad of [
         '?next=https%3A%2F%2Fevil.example%2Fx',
         '?next=%2F%2Fevil.example',
@@ -145,7 +159,7 @@ test('the ID page will not redirect off the app', () => {
         '?next=javascript%3Aalert(1)',
         ''
     ]) {
-        assert.equal(at(bad), '/dashboard/', `next=${bad} must not be followed`);
+        assert.equal(at(bad), '/dashboard', `next=${bad} must not be followed`);
     }
 });
 
@@ -180,7 +194,9 @@ test('the way in becomes a way back for somebody already signed in', () => {
     const sidebar = fs.readFileSync(path.join(ROOT, 'scripts/sidebar-nav.js'), 'utf8');
     const rewrite = sidebar.slice(sidebar.indexOf('v2LandingWayIn'));
     assert.match(rewrite, /v2LandingWayIn/);
-    assert.match(rewrite, /'\/dashboard\/'/, 'and point it at the dashboard');
+    assert.match(rewrite, /'\/dashboard'/, 'and point it at the dashboard');
+    assert.ok(!/'\/dashboard\/'/.test(rewrite),
+        'and not at /dashboard/, which is a 404 — see the note in _redirects');
     assert.ok(/if \(v2HasTeam\(\)\)/.test(sidebar),
         'only for somebody who has a team saved');
 });
