@@ -727,10 +727,17 @@
         ].filter(b => b.count > 0);
 
 
+            /* toughFixtureStarters and poorFormStarters go out with the rest.
+               The squad report names the players behind each count, and the
+               alternative — re-deriving "tough" and "out of form" at the point
+               of writing the sentence — is how a report ends up disagreeing
+               with the number it is explaining. One definition, computed here,
+               where the score that charges for it is computed. */
             return {
                 health: Math.max(0, Math.min(100, Math.round(healthScore))),
                 breakdown: healthBreakdown,
-                starters, bench, injuredStarters, doubtfulStarters, capAnalysis
+                starters, bench, injuredStarters, doubtfulStarters,
+                toughFixtureStarters, poorFormStarters, capAnalysis
             };
         }
 
@@ -740,7 +747,7 @@
             const stars = analysisResults.filter(a => a.verdict === 'star');
             const holds = analysisResults.filter(a => a.verdict === 'hold');
 
-            const { health: teamHealth, breakdown: healthBreakdown, starters,
+            const { health: teamHealth, starters,
                 injuredStarters, doubtfulStarters, capAnalysis } = computeSquadHealth(analysisResults);
             const suggestedMoves = buildSuggestedMoves(starters, injuredStarters, doubtfulStarters, capAnalysis);
 
@@ -748,7 +755,7 @@
             if (isPreseason) html += renderSeasonNotice('Showing 2025/26 form &amp; stats — verdicts will update once GW1 is played.');
             html += renderPendingTransfersNotice();
             html += renderSquadTickers();
-            html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthBreakdown, suggestedMoves);
+            html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, suggestedMoves);
             /* A trial sits under the numbers it moves, so before and after are
                read in one glance. The picker that starts one sits in the squad
                panel's own header — see renderSquadFilterBar(). */
@@ -1222,7 +1229,7 @@
         /* What the squad needs from you, in one box beside the pitch: the
            counts that read the health score, then the moves, then the way into
            the gameweek that has just been played. */
-        function renderSquadStatusCard(sells, monitors, holds, stars, healthBreakdown, suggestedMoves) {
+        function renderSquadStatusCard(sells, monitors, holds, stars, suggestedMoves) {
             const reviewGW = typeof gwReviewTarget === 'function' ? gwReviewTarget() : null;
             /* computeProjectedXIScore() is the same pure function the pitch uses,
                called rather than read back off the pitch's markup — the card is
@@ -1240,9 +1247,12 @@
                     </span>` : ''}
                 </div>
 
-                <div class="health-breakdown">${healthBreakdown && healthBreakdown.length
-                    ? healthBreakdown.map(b => `${b.count} ${escHTML(b.label)}`).join(' · ')
-                    : 'No injuries or fixture red flags'}</div>
+                <!-- "2 doubtful · 4 tough fixtures · 1 out of form" used to sit
+                     here. Four numbers with no names against them: you could
+                     read it and still not know which two, or what the fixtures
+                     were, or whether the out-of-form one was your captain. It
+                     is the squad report's opening paragraph now, where each
+                     count is followed by the players it counted. -->
 
                 <div class="health-verdict-counts">
                     ${sells.length ? `<span class="hv-count sell">● ${sells.length} Sell</span>` : ''}
@@ -1259,11 +1269,228 @@
                     ${reviewGW
                         ? `<button class="gwr-open" onclick="openGameweekReview()" data-tooltip="How your squad actually did in GW${reviewGW} — the armband, the bench, who delivered, and how it compares with the field.">${v2Icon('report')}Review Gameweek ${reviewGW}</button>`
                         : ''}
+                    <!-- Same class, so it is the same button: a second one of
+                         these rather than a new control to learn. Backwards in
+                         time above, forwards below. -->
+                    <button class="gwr-open" onclick="openSquadReport()" data-tooltip="Every status on this card written out — who is doubtful, who is out of form, who has the hard run, and the reason behind each verdict.">${v2Icon('scales')}Read the squad report</button>
                 </div>
             </div>`;
         }
 
-        function renderTeamOverview(health, sells, monitors, holds, stars, healthBreakdown, suggestedMoves) {
+        /* ===== The squad report =====
+
+           The status card is six numbers. This is those six numbers with the
+           players behind them, which is the difference between "4 tough
+           fixtures" and knowing it is your captain among them.
+
+           EVERY SENTENCE BELOW IS BUILT FROM A VALUE SOMETHING ELSE ALREADY
+           COMPUTED. No figure is derived here, no threshold is invented here,
+           and nothing is phrased as a likelihood. A synthesis surface is the
+           easiest place on a site to write a true-sounding sentence that is not
+           checkable, so the rule is that each clause names its own source: the
+           form it was judged against, the median it was judged by, the FDR the
+           engine weighted, the reason the verdict engine itself gave. If a
+           value is absent the clause is dropped rather than defaulted — the one
+           exception in the codebase, analyzePlayer's `75% chance` fallback for a
+           doubtful player with no published figure, is deliberately not copied.
+
+           Under 10% owned is the differential line, because that is the number
+           the players page already shows the user ("Differentials — Under 10%
+           owned") and the player card already labels at. There are five
+           different thresholds in this codebase (8, 10, 12 on effective
+           ownership, 15); this picks the one that is stated on screen rather
+           than adding a sixth. */
+        const SQR_DIFFERENTIAL_OWNERSHIP = 10;
+
+        // "Salah", "Salah and Palmer", "Salah, Palmer and Saka".
+        function sqrJoin(parts) {
+            if (!parts.length) return '';
+            if (parts.length === 1) return parts[0];
+            return parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
+        }
+
+        function sqrPos(player) {
+            return POSITION_CONFIG[player.position] || { short: '?', formMedian: null };
+        }
+
+        // Name, position, and whether he is actually in the eleven. A verdict on
+        // a bench player reads differently and the report should not hide which
+        // it is talking about.
+        function sqrWho(a, starterIds) {
+            const p = a.player;
+            const tags = [sqrPos(p).short];
+            if (p.isCaptain) tags.push('captain');
+            if (starterIds && !starterIds.has(p.id)) tags.push('bench');
+            // Plain text in the parenthesis rather than a styled span: the only
+            // thing this needed was a class that does not exist on this page,
+            // and a stylesheet edit is a poor trade for one shade of grey.
+            return `<b>${escHTML(p.name)}</b> (${escHTML(tags.join(' · '))})`;
+        }
+
+        function buildSquadReport() {
+            const results = (typeof analysisResults !== 'undefined' && analysisResults) || [];
+            if (!results.length) return null;
+            const h = computeSquadHealth(results);
+            const starterIds = new Set(h.starters.map(a => a.player.id));
+            return {
+                health: h.health,
+                starters: h.starters, bench: h.bench, starterIds,
+                injured: h.injuredStarters,
+                doubtful: h.doubtfulStarters,
+                tough: h.toughFixtureStarters,
+                poorForm: h.poorFormStarters,
+                cap: h.capAnalysis,
+                sells: results.filter(a => a.verdict === 'sell'),
+                monitors: results.filter(a => a.verdict === 'monitor'),
+                stars: results.filter(a => a.verdict === 'star'),
+                holds: results.filter(a => a.verdict === 'hold'),
+                /* Starters only. A differential you are not playing gains you
+                   nothing, so counting the bench in would overstate it. */
+                differentials: h.starters.filter(a =>
+                    typeof a.player.ownership === 'number'
+                    && a.player.ownership < SQR_DIFFERENTIAL_OWNERSHIP)
+            };
+        }
+
+        function sqrSection(icon, title, accent, rows) {
+            if (!rows.length) return '';
+            return `<div class="detail-section" data-accent="${accent}">
+                <div class="detail-section-title">${v2Icon(icon)} ${escHTML(title)}</div>
+                ${rows.join('')}
+            </div>`;
+        }
+
+        function sqrItem(tone, html) {
+            return `<div class="insight-item ${tone}"><div class="insight-text">${html}</div></div>`;
+        }
+
+        function renderSquadReport(d) {
+            if (!d) return `<p class="gwr-line">No squad loaded yet.</p>`;
+
+            /* The opening paragraph — the line that used to be four bare counts
+               on the card, now with its subject named. Only non-zero clauses
+               appear, so a clean squad gets a sentence saying so rather than a
+               row of zeroes. */
+            const bits = [];
+            if (d.injured.length) bits.push(`${d.injured.length} cannot play`);
+            if (d.doubtful.length) bits.push(`${d.doubtful.length} ${d.doubtful.length === 1 ? 'is' : 'are'} a fitness doubt`);
+            if (d.tough.length) bits.push(`${d.tough.length} ${d.tough.length === 1 ? 'faces' : 'face'} a hard next fixture`);
+            if (d.poorForm.length) bits.push(`${d.poorForm.length} ${d.poorForm.length === 1 ? 'is' : 'are'} out of form`);
+
+            let html = `<div class="detail-section" data-accent="report">
+                <div class="detail-section-title">${v2Icon('activity')} Where the squad stands</div>
+                <p class="gwr-line">Squad health <b>${d.health}</b>/100.
+                ${bits.length
+                    ? `Of your ${d.starters.length} starters, ${sqrJoin(bits)}.`
+                    : `Nothing is flagged against any of your ${d.starters.length} starters — no injuries, no doubts, no hard next fixture, nobody out of form.`}</p>
+            </div>`;
+
+            /* Availability. The status word is the same mapping analyzePlayer
+               uses, and the chance and the news are FPL's own strings — printed
+               only when FPL actually published them. */
+            /* FPL writes the percentage into the news string itself — Konsa's
+               reads "Unspecified injury - 75% chance of playing" — so adding
+               our own chance sentence beside it says the same thing twice in
+               one line. The figure is only printed when the news has not
+               already printed it, or when there is no news to print. */
+            const availBody = (p, prefix) => {
+                const news = p.news ? escHTML(p.news) : '';
+                const pctAlreadyThere = /\d+\s*%/.test(p.news || '');
+                const chance = (p.chanceNextRound != null && !pctAlreadyThere)
+                    ? `${p.chanceNextRound}% chance of playing.` : '';
+                const body = [prefix, chance, news].filter(Boolean).join(' ');
+                return body || 'Flagged, with no detail published.';
+            };
+            const availRows = [];
+            d.injured.forEach(a => {
+                const p = a.player;
+                const word = p.status === 'i' ? 'Injured.' : p.status === 'u' ? 'Unavailable.' : 'Suspended.';
+                availRows.push(sqrItem('critical', `${sqrWho(a, d.starterIds)} — ${availBody(p, word)}`));
+            });
+            d.doubtful.forEach(a => {
+                availRows.push(sqrItem('warning', `${sqrWho(a, d.starterIds)} — ${availBody(a.player, '')}`));
+            });
+            html += sqrSection('warn', 'Availability', 'concerns', availRows);
+
+            /* Form. Both figures, because the card prints the raw one and the
+               verdict is reached on the regressed one — showing only the second
+               would put a number in the report that disagrees with the number
+               on the player's own card for no visible reason. */
+            const formRows = d.poorForm.map(a => {
+                const cfg = sqrPos(a.player);
+                const raw = typeof a.rawForm === 'number' ? a.rawForm : null;
+                const eff = typeof a.effectiveForm === 'number' ? a.effectiveForm : null;
+                const shown = raw != null && eff != null && Math.abs(raw - eff) >= 0.1
+                    ? `form ${raw.toFixed(1)}, judged at ${eff.toFixed(1)} once regressed for matches played`
+                    : `form ${(eff != null ? eff : raw).toFixed(1)}`;
+                const median = cfg.formMedian != null
+                    ? `, against a ${escHTML(cfg.short)} median of ${cfg.formMedian}` : '';
+                return sqrItem('warning', `${sqrWho(a, d.starterIds)} — ${shown}${median}.`);
+            });
+            html += sqrSection('trend', 'Out of form', 'concerns', formRows);
+
+            /* Fixtures. avgFDR is the weighted figure analyzePlayer already put
+               on the player — first fixture counts 3, fifth counts 1 — so this
+               is the same number the player card shows, not a mean computed
+               here that would quietly differ from it. */
+            const fixRows = d.tough.map(a => {
+                const f = (a.fixtures || [])[0];
+                const next = f
+                    ? `next up ${escHTML(f.opponent || '???')} ${f.isHome ? '(H)' : '(A)'} at FDR ${f.difficulty}`
+                    : '';
+                const run = typeof a.player.avgFDR === 'number'
+                    ? `weighted FDR ${a.player.avgFDR.toFixed(1)} over his next ${(a.fixtures || []).length}`
+                    : '';
+                return sqrItem('warning',
+                    `${sqrWho(a, d.starterIds)} — ${[next, run].filter(Boolean).join(', ')}.`);
+            });
+            html += sqrSection('calendar', 'The hard run', 'fixtures', fixRows);
+
+            /* The verdict chips, written out. The reason is verdictReason —
+               the engine's own sentence for the verdict it reached — rather
+               than a second explanation composed here, which could disagree
+               with the chip it is explaining. */
+            const verdictRows = group => group.map(a =>
+                sqrItem(a.verdict === 'sell' ? 'critical' : a.verdict === 'star' ? 'positive' : 'warning',
+                    `${sqrWho(a, d.starterIds)}${a.verdictReason ? ` — ${escHTML(a.verdictReason)}` : ''}`));
+
+            html += sqrSection('swap', `Sell (${d.sells.length})`, 'concerns', verdictRows(d.sells));
+            html += sqrSection('eye', `Monitor (${d.monitors.length})`, 'concerns', verdictRows(d.monitors));
+            html += sqrSection('star', `Star (${d.stars.length})`, 'positives', verdictRows(d.stars));
+
+            /* Differentials. The threshold is in the sentence on purpose: a
+               count with an unstated cut-off is not a fact the reader can
+               check, and this one has four rivals in the codebase. */
+            const diffNames = d.differentials
+                .map(a => `${escHTML(a.player.name)} (${a.player.ownership.toFixed(1)}%)`);
+            html += sqrSection('users', 'Differentials', 'positives', [
+                sqrItem('positive', d.differentials.length
+                    ? `${d.differentials.length} of your ${d.starters.length} starters ${d.differentials.length === 1 ? 'is' : 'are'} owned by under ${SQR_DIFFERENTIAL_OWNERSHIP}%: ${sqrJoin(diffNames)}.`
+                    : `None of your ${d.starters.length} starters is owned by under ${SQR_DIFFERENTIAL_OWNERSHIP}% — every one of them is a player the field also has.`)
+            ]);
+
+            /* Holds get a count and no list. Eleven lines saying a player is
+               fine is the part of a report nobody reads, and saying it anyway
+               is what makes the rest look like filler. */
+            html += `<p class="gwr-line">The remaining ${d.holds.length}
+                ${d.holds.length === 1 ? 'player is' : 'players are'} a hold — nothing in the
+                numbers argues for moving ${d.holds.length === 1 ? 'him' : 'them'} this week.</p>`;
+
+            return html;
+        }
+
+        /* Reuses the Optimization Report's modal shell, as the Lineup Wizard,
+           the draft planner and the gameweek review all do. Five features, one
+           overlay, and no stylesheet to touch. */
+        function openSquadReport() {
+            const d = buildSquadReport();
+            v2SetPanelTitle('optReportTitle', 'Squad report', 'scales');
+            document.getElementById('optReportBody').innerHTML = renderSquadReport(d);
+            document.getElementById('optReportOverlay').classList.add('show');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function renderTeamOverview(health, sells, monitors, holds, stars, suggestedMoves) {
             /* One set of bands, not two. The colour used to break at 75/50 while the
                wording broke at 85/70/55/40, so a squad on 72 was labelled "Good
                Shape" and drawn in warning orange at the same time, and one on 52
@@ -1277,7 +1504,7 @@
             <div class="team-overview">
                 ${renderSnapshotBody()}
                 <aside class="sq-side">
-                    ${renderSquadStatusCard(sells, monitors, holds, stars, healthBreakdown, suggestedMoves)}
+                    ${renderSquadStatusCard(sells, monitors, holds, stars, suggestedMoves)}
                     ${renderManagerCard()}
                 </aside>
             </div>`;
