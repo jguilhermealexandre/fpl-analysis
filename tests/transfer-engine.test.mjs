@@ -437,3 +437,103 @@ test('the constants stay in the order the design depends on', () => {
     assert.ok(num('TW_SIGNAL_MAX') < num('TW_GK_FRICTION'),
         'a signal must not cancel the goalkeeper brake');
 });
+
+/* ===== One answer to "can this player be recommended" =====
+
+   Four surfaces offer a replacement and they disagreed about doubts. Step 1,
+   the draft and Squad Analysis accepted status 'd' outright; the wizard's quick
+   picks refused every one. So a doubtful player was a valid recommendation on
+   one screen and invisible on the next, with nothing on screen to explain it.
+
+   The threshold is not a new opinion: rfEvaluate() in scripts/form-trend.js
+   already blocks Rising Form below 75% with the reasoning that a flagged doubt
+   "is not a transfer to plan around". Same number, one rule. */
+
+const twPlayerAvailable = loadFunction('scripts/transfer-engine.js', 'twPlayerAvailable', {
+    TW_DOUBT_FLOOR: 75
+});
+
+const who = (o = {}) => ({ status: 'a', chanceNextRound: null, ...o });
+
+test('a fit player can be recommended', () => {
+    assert.equal(twPlayerAvailable(who()), true);
+});
+
+test('injured, suspended and unavailable cannot', () => {
+    for (const status of ['i', 's', 'u']) {
+        assert.equal(twPlayerAvailable(who({ status })), false, status);
+    }
+});
+
+test('a doubt at 75% or better can, below it cannot', () => {
+    assert.equal(twPlayerAvailable(who({ status: 'd', chanceNextRound: 75 })), true);
+    assert.equal(twPlayerAvailable(who({ status: 'd', chanceNextRound: 100 })), true);
+    assert.equal(twPlayerAvailable(who({ status: 'd', chanceNextRound: 50 })), false);
+    assert.equal(twPlayerAvailable(who({ status: 'd', chanceNextRound: 0 })), false);
+});
+
+test('a doubt FPL has not put a number on still passes', () => {
+    /* The flag without a figure is how FPL marks a knock it has no update on.
+       Refusing those would drop players who are fit. */
+    assert.equal(twPlayerAvailable(who({ status: 'd', chanceNextRound: null })), true);
+});
+
+test('no player is not a player', () => {
+    assert.equal(twPlayerAvailable(null), false);
+    assert.equal(twPlayerAvailable(undefined), false);
+});
+
+/* ===== The team-context nudge, out of the projection =====
+
+   It used to be added inside twXPCached, which put it inside lwScore, inside
+   twSquadValue, and therefore inside the gain/gross/net figures the card prints
+   as "xP". On GW Draft — the one surface that asks for it — the number labelled
+   xP was xP plus up to 2.5 points of something else. It is a ranking adjustment
+   now, so every surface reports pure xP. */
+
+const twTeamContextNudge = loadFunction('scripts/transfer-engine.js', 'twTeamContextNudge', {
+    teamAnalysis: {
+        hot: { matchesPlayed: 5, formRating: 100, attackPower: 100, defensePower: 100, fixtureScore: 100 },
+        cold: { matchesPlayed: 5, formRating: 0, attackPower: 0, defensePower: 0, fixtureScore: 0 },
+        mid: { matchesPlayed: 5, formRating: 50, attackPower: 50, defensePower: 50, fixtureScore: 50 },
+        unplayed: { matchesPlayed: 0, formRating: 100, attackPower: 100, defensePower: 100, fixtureScore: 100 }
+    }
+});
+
+test('the nudge stays inside its clamp at both extremes', () => {
+    const hot = twTeamContextNudge({ teamId: 'hot', position: 4 });
+    const cold = twTeamContextNudge({ teamId: 'cold', position: 4 });
+    assert.equal(hot, 2.5);
+    assert.equal(cold, -2.5);
+});
+
+test('an average team is worth nothing either way', () => {
+    assert.equal(twTeamContextNudge({ teamId: 'mid', position: 4 }), 0);
+});
+
+test('a club that has not played is not read as cold', () => {
+    /* Every component is measured against 50, so a club with no matches would
+       otherwise score whatever its unset fields happen to say. */
+    assert.equal(twTeamContextNudge({ teamId: 'unplayed', position: 4 }), 0);
+    assert.equal(twTeamContextNudge({ teamId: 'nosuchteam', position: 4 }), 0);
+});
+
+test('swapping inside one club is neutral', () => {
+    /* The nudge is applied as in-minus-out now, which is the faithful
+       translation of adding it to both ends inside the projection. Two players
+       at the same club therefore cancel. */
+    const a = twTeamContextNudge({ teamId: 'hot', position: 4 });
+    const b = twTeamContextNudge({ teamId: 'hot', position: 4 });
+    assert.equal(a - b, 0);
+});
+
+test('the widest the nudge can move a ranking is twice its clamp', () => {
+    /* Worth knowing and worth watching: 5.0 is wider than TW_MIN_FREE_GAIN, so
+       at the extremes this can outrank a move the projection prefers. That was
+       equally true while it lived inside the projection — this test records the
+       bound rather than changing it, because retuning it is a product decision
+       and not part of making the surfaces agree. */
+    const delta = twTeamContextNudge({ teamId: 'hot', position: 4 })
+        - twTeamContextNudge({ teamId: 'cold', position: 4 });
+    assert.equal(delta, 5.0);
+});

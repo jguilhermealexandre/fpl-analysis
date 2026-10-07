@@ -553,6 +553,37 @@
             draftReplacementTarget = null;
         }
 
+        /* Who can replace this player in the draft — on projected points, the
+           same as everywhere else.
+
+           THIS USED TO BE A THIRD MODEL. The sort key was a hand-rolled weighted
+           sum:
+
+               (form * 3) + (ppg * 2.5) + (epNext * 2) + ((5 - fdr) * 2.5)
+               + teamBonus + (ownership > 15 ? 1 : 0)
+
+           and the Transfer Wizard answering the same question — replace this
+           player in my squad — ranked on twXPOver over a five-gameweek horizon.
+           Two surfaces, one question, different answers, with nothing on screen
+           to say why. The wizard, quick picks and Squad Analysis all agreed with
+           each other; the draft was the outlier.
+
+           THE OWNERSHIP BONUS IS GONE, and it is worth naming. A flat point for
+           being owned by more than 15% rewarded a player for being popular,
+           which is a thumb on the scale against exactly the differentials the
+           rest of the site is built to surface — the players page has a
+           Differentials tier at *under* 10% owned, so the draft was paying for
+           the opposite of what that page recommends.
+
+           The old score survives as `_score` and breaks ties between candidates
+           that project identically, which is the arrangement
+           findTransferCandidates already uses and for the same reason: it is a
+           number in units of its own, useful for ordering equals and misleading
+           as a headline.
+
+           Projected from the draft's own gameweek rather than from today —
+           "replace him in GW9" is a different question from "replace him now",
+           and twPlanGWs takes the start. */
         function findDraftReplacements(player, currentSquad, count = 8) {
             const ds = getActiveDraft();
             const gw = ds.selectedGW;
@@ -560,9 +591,13 @@
             const squadIds = new Set(currentSquad.map(p => p.id));
             const candidates = allPlayers.filter(p =>
                 p.position === player.position && p.price <= maxPrice && p.id !== player.id &&
-                (p.status === 'a' || p.status === 'd') && p.minutes >= minMinutesForCandidate() &&
+                twPlayerAvailable(p) && p.minutes >= minMinutesForCandidate() &&
                 !squadIds.has(p.id)
             );
+
+            const runGWs = typeof twPlanGWs === 'function' ? twPlanGWs(TW_HORIZON, gw) : [];
+            const canProject = runGWs.length > 0
+                && typeof xpEngineReady === 'function' && xpEngineReady();
 
             candidates.forEach(c => {
                 const fdr = c.fixtures && c.fixtures.length >= 3
@@ -575,9 +610,16 @@
                     if (c.position <= 2) teamBonus += (cTA.defensePower - 50) / 25;
                     teamBonus += (cTA.fixtureScore - 50) / 25;
                 }
-                c._score = (c.form * 3) + (c.ppg * 2.5) + (c.epNext * 2) + ((5 - fdr) * 2.5) + teamBonus + (c.ownership > 15 ? 1 : 0);
+                c._score = (c.form * 3) + (c.ppg * 2.5) + (c.epNext * 2) + ((5 - fdr) * 2.5) + teamBonus;
+                c._xpRun = canProject ? twXPOver(c, runGWs) : null;
             });
-            candidates.sort((a, b) => b._score - a._score);
+
+            /* No engine, or no fixtures left to project: fall back to the old
+               ordering whole rather than sorting everyone by an identical null.
+               Same fallback shape as findTransferCandidates. */
+            candidates.sort(canProject
+                ? (a, b) => (b._xpRun - a._xpRun) || (b._score - a._score)
+                : (a, b) => b._score - a._score);
             return candidates.slice(0, count);
         }
 

@@ -144,6 +144,41 @@
             return TW_GK_FRICTION;
         }
 
+        /* Can this player be recommended at all — one answer, four surfaces.
+         *
+         * The four places that offer a replacement disagreed about doubts.
+         * twScanSwaps and findTransferCandidates accepted status 'd' outright,
+         * findDraftReplacements did too, and the Transfer Wizard's quick picks
+         * refused every 'd' — so a doubtful player was a valid recommendation on
+         * step 1 and invisible one click later, with nothing on screen to
+         * explain the difference.
+         *
+         * Neither extreme is right. A 75%-to-play player with a good run is a
+         * transfer managers make; a 25% one is not a plan. So the rule is the
+         * threshold the site already uses for exactly this judgement —
+         * rfEvaluate() in scripts/form-trend.js blocks Rising Form at
+         * chanceNextRound < 75 with the reasoning that a flagged doubt "is not a
+         * transfer to plan around". Same number here rather than a fifth
+         * opinion.
+         *
+         * A doubt FPL has not quantified (chanceNextRound null) passes: the flag
+         * without a figure is how FPL marks a knock it has no update on, and
+         * refusing those would drop players who are fit.
+         *
+         * Minutes are deliberately NOT here. The funnel replaced its floor with
+         * a user-facing Minutes chip and the engine still uses a floor, and
+         * those differ for a reason a reader can see — a control they set
+         * against a default they did not. This is only the part that differed
+         * for no reason. */
+        const TW_DOUBT_FLOOR = 75;
+
+        function twPlayerAvailable(p) {
+            if (!p) return false;
+            if (p.status === 'a') return true;
+            if (p.status !== 'd') return false;
+            return p.chanceNextRound == null || p.chanceNextRound >= TW_DOUBT_FLOOR;
+        }
+
         /* ===== The site's own signals, as an input to who to buy =====
          *
          * The recommender priced every candidate on projected points and
@@ -379,13 +414,30 @@
             return Math.max(-2.5, Math.min(2.5, nudge));
         }
 
-        function twXPCached(player, gws, cache, useTeamContext) {
+        /* Projected points, and nothing else.
+         *
+         * The team-context nudge used to be added here, which meant it was
+         * inside lwScore, inside twSquadValue, and therefore inside the gain,
+         * gross and net figures the card prints as "xP". On GW Draft, which is
+         * the one surface that asks for the nudge, the number labelled xP was
+         * xP plus up to 2.5 points of something else.
+         *
+         * The nudge's own comment gave that away as the reason it stayed
+         * opt-in — turning it on everywhere "would quietly change those
+         * already-shipped figures". The answer to that is not to keep it off
+         * three surfaces, it is to stop it touching figures at all. It is a
+         * ranking adjustment now, applied alongside the goalkeeper friction and
+         * the Rising Form boost in the one place selections are weighed, so
+         * every surface reports pure xP and the nudge can be consistent.
+         *
+         * The cache key loses its :tc variant with it: there is only one
+         * projection for a player over a window now. */
+        function twXPCached(player, gws, cache) {
             if (!player) return 0;
-            const key = useTeamContext ? `${player.id}:tc` : player.id;
-            if (cache[key] === undefined) {
-                cache[key] = twXPOver(player, gws) + (useTeamContext ? twTeamContextNudge(player) : 0);
+            if (cache[player.id] === undefined) {
+                cache[player.id] = twXPOver(player, gws);
             }
-            return cache[key];
+            return cache[player.id];
         }
 
         /* What a squad is actually worth over the window.
@@ -420,9 +472,9 @@
 
         // One entry per squad player, reused across every candidate so the lineup
         // solve is the only per-candidate work.
-        function twBuildPool(squad, gws, cache, useTeamContext) {
+        function twBuildPool(squad, gws, cache) {
             return squad.map(p => ({
-                id: p.id, pos: p.position, lwScore: twXPCached(p, gws, cache, useTeamContext), _ref: p
+                id: p.id, pos: p.position, lwScore: twXPCached(p, gws, cache), _ref: p
             }));
         }
 
@@ -439,7 +491,7 @@
            Scored on what the swap does to the squad's total, not to the player's. */
         function twScanSwaps(out, ctx) {
             const budget = (out.sellPrice || out.price) + ctx.bank;
-            const outXP = twXPCached(out, ctx.gws, ctx.cache, ctx.useTeamContext);
+            const outXP = twXPCached(out, ctx.gws, ctx.cache);
             const slot = ctx.pool.findIndex(e => e.id === out.id);
             if (slot < 0) return [];
 
@@ -450,12 +502,13 @@
                 if (cand.position !== out.position) continue;
                 if (cand.price > budget) continue;
                 if (ctx.ownedIds.has(cand.id)) continue;
-                if (cand.status !== 'a' && cand.status !== 'd') continue;
+                // One rule for doubts across all four surfaces — see twPlayerAvailable.
+                if (!twPlayerAvailable(cand)) continue;
                 if (cand.minutes < minMinutesForCandidate()) continue;
                 const held = (ctx.clubCount[cand.teamId] || 0) - (cand.teamId === out.teamId ? 1 : 0);
                 if (held >= 3) continue;
 
-                const inXP = twXPCached(cand, ctx.gws, ctx.cache, ctx.useTeamContext);
+                const inXP = twXPCached(cand, ctx.gws, ctx.cache);
                 trial[slot] = { id: cand.id, pos: cand.position, lwScore: inXP, _ref: cand };
                 const gain = twSquadValue(trial) - ctx.baseValue;
 
@@ -650,11 +703,11 @@
             /* Once, before any scanning. See twBuildSignalMap. */
             const signals = twBuildSignalMap(typeof allPlayers !== 'undefined' ? allPlayers : []);
             const signalBoost = m => twMoveBoost(m, signals);
-            const pool = twBuildPool(squad, gws, cache, o.useTeamContext);
+            const pool = twBuildPool(squad, gws, cache);
             const baseXI = typeof solveQuickLineup === 'function' ? solveQuickLineup(pool).xi : pool.slice(0, 11);
 
             const ctx = {
-                gws, useTeamContext: o.useTeamContext,
+                gws,
                 bank: (o.bank != null ? o.bank : (typeof getTWBank === 'function' ? getTWBank() : 0)), cache, pool,
                 baseValue: twSquadValue(pool),
                 baseXIIds: new Set(baseXI.map(p => p.id)),
@@ -694,7 +747,16 @@
                being a keeper the viability test would then refuse — which would
                have returned "hold" while a perfectly good outfield move sat two
                rows down. */
-            const rankOf = m => m.gain - twMoveFriction(m) + signalBoost(m);
+            /* Everything that moves a selection without moving a projection,
+               in one expression: the keeper brake, the site's own signals, and
+               the team-context nudge the draft asks for. The nudge is a delta
+               because it used to be added to both ends inside the projection,
+               so the gain already netted the two — in minus out is the faithful
+               translation, and it leaves gain itself pure xP. */
+            const teamCtx = o.useTeamContext
+                ? m => twTeamContextNudge(m.in) - twTeamContextNudge(m.out)
+                : () => 0;
+            const rankOf = m => m.gain - twMoveFriction(m) + signalBoost(m) + teamCtx(m);
             const byGain = squad.map(p => twBestSwapFor(p, ctx))
                 .filter(Boolean)
                 .sort((a, b) => rankOf(b) - rankOf(a));
@@ -762,7 +824,7 @@
             // answer two for a manager holding four.
             const { chain, depth } = twPlanChain(moves, {
                 ft, jointGain: twJointGain, legal: twMovesLegal,
-                boost: signalBoost,
+                boost: m => signalBoost(m) + teamCtx(m),
                 freeTransfersOnly: o.freeTransfersOnly
             });
 
@@ -1181,7 +1243,7 @@
                 p.price <= maxPrice &&
                 !excludeIds.has(p.id) &&
                 !(blockedClubs && blockedClubs.has(p.teamId)) &&
-                (p.status === 'a' || p.status === 'd') &&
+                twPlayerAvailable(p) &&
                 p.minutes >= minMinutesForCandidate()
             );
 
@@ -1194,10 +1256,15 @@
                players page hit the same thing and fixed it there: across 200
                players the ratio between its two models ran from 0.0 to 23.9, which
                put cards on screen in an order their own badge disagreed with.
-               buildSuggestedMoves in pitch-snapshot.js is worse off still — it
-               says "ranked by xP gained per transfer" and then takes [0] off a
-               list that was not, so a better candidate two rows down was never
-               even looked at.
+               buildSuggestedMoves in pitch-snapshot.js used to be worse off
+               still — it said "ranked by xP gained per transfer" and then took
+               [0] off a list that was not, so a better candidate two rows down
+               was never looked at. THAT IS FIXED: it prices over twRunGWs()
+               with twXPOver and gates on TW_MIN_FREE_GAIN, and this list is
+               ordered by _xpRun, so [0] is now the best projected candidate and
+               the sentence is true. Kept as history because the shape of the
+               mistake — a comment asserting an order the code did not produce —
+               is the one this file keeps making.
 
                _transferScore is still computed and still on the object. The
                package strategies below blend it against price and ownership on its

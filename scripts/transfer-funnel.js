@@ -1032,15 +1032,27 @@
             const budget = twSlotBudget(slotIdx);
 
             /* A recommendation you cannot act on is not a quick answer, it is
-               another decision. Someone carrying a knock, or a fourth player
-               from a club you already have three of, belongs in the funnel
-               where the reason can be shown next to him. */
+               another decision. A fourth player from a club you already have
+               three of belongs in the funnel, where the reason can be shown
+               next to him.
+
+               THE DOUBT RULE IS NO LONGER LOCAL. This used to require status
+               'a' outright, which refused every flagged player — while step 1,
+               the draft and Squad Analysis all accepted them. So a doubtful
+               player was a valid recommendation on one screen and invisible one
+               click later, with nothing explaining the difference.
+               twPlayerAvailable() in scripts/transfer-engine.js is the single
+               rule now: fit, or flagged at 75% or better, which is the
+               threshold Rising Form already uses for the same judgement. */
             const s = twfState();
             /* And the same start-probability gate the custom search now applies
                through its Minutes chip. Quick picks has no chips, so it has to
                carry the default itself — without it this list would rank every
                reserve keeper in the game as a "quick pick". */
-            const eligible = base.filter(p => p.status === 'a' && !blocked.has(p.teamId)
+            const available = typeof twPlayerAvailable === 'function'
+                ? twPlayerAvailable
+                : p => p.status === 'a';
+            const eligible = base.filter(p => available(p) && !blocked.has(p.teamId)
                 && twfFacts(p).pStart >= 0.35);
             const scored = eligible.map(p => {
                 const proj = twfProjection(p, gws);
