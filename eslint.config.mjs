@@ -726,6 +726,7 @@ export default [
                 guessMetricFromTitle: 'writable',
                 gwBenchVerdict: 'writable',
                 gwCaptainVerdict: 'writable',
+                gwEoSwings: 'writable',
                 gwEvents: 'writable',
                 gwFixturePlayed: 'writable',
                 gwHasStarted: 'writable',

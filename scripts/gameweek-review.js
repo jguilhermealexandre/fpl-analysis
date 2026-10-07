@@ -194,6 +194,105 @@
             return gwHasStarted(currentGW) ? currentGW : null;
         }
 
+        /* ===== What the week did to your RANK, rather than to your score =====
+         *
+         * A gameweek score is not a result. Rank moves on the gap between what
+         * you got and what the field got, and the field's holding of a player is
+         * his effective ownership — the share of teams that own him, counting a
+         * captain twice. For one player:
+         *
+         *     swing = (your multiplier - EO/100) x his points
+         *
+         * Own a 120% EO player once and his goal LOSES you ground: the average
+         * team in that tier had 1.2 of him and you had 1. Captain him and you
+         * gain. Do not own him at all and you drop his whole share. That last
+         * case is why the sum walks players outside the squad too — the week's
+         * biggest rank move is often something you did not have.
+         *
+         * THREE THINGS KEEP THIS HONEST.
+         *
+         * It is a SAMPLE. Each tier is four hundred managers, so the resolution
+         * is 0.25%. eoFor() marks anything under that `below`, and a player too
+         * rare for the sample to see is skipped rather than counted as nought —
+         * "no owners" and "fewer than one in four hundred" are different claims.
+         *
+         * It must be THE SAME GAMEWEEK. data/eo.json carries the event it was
+         * sampled for, and ownership moves every week. Explaining GW5 with GW6's
+         * ownership would be a true number about the wrong week, which costs as
+         * much trust as a false one. If the two disagree this returns null and
+         * the section does not render at all.
+         *
+         * And it is ARITHMETIC, not a projection. His points come from the live
+         * feed, your multiplier from your own picks, his EO from the sample.
+         * Nothing here is modelled. */
+        function gwEoSwings(gw, entries, tier) {
+            if (typeof eoReady !== 'function' || !eoReady() || typeof eoFor !== 'function') return null;
+            const meta = typeof eoMeta === 'function' ? eoMeta() : null;
+            if (!meta || meta.event !== gw) return null;
+
+            const t = tier || (typeof EO_DEFAULT_TIER !== 'undefined' ? EO_DEFAULT_TIER : 'top10k');
+            const mine = new Map();
+            (entries || []).forEach(e => mine.set(e.player.id, e));
+
+            const read = (playerId) => {
+                const v = eoFor(playerId, t);
+                return (v && !v.below && typeof v.eo === 'number') ? v : null;
+            };
+
+            const rows = [];
+            /* Yours first, including those who scored nothing: a blank from a
+               player the field was heavily on is a rank GAIN, and that is the
+               least intuitive line on the page. */
+            mine.forEach((e) => {
+                const v = read(e.player.id);
+                if (!v) return;
+                const mult = e.multiplier || 0;
+                rows.push({ player: e.player, points: e.raw, mult, eo: v.eo, owned: true,
+                    swing: (mult - v.eo / 100) * e.raw });
+            });
+            /* Then everyone the sample knows that you did not have, who actually
+               scored — a blank you missed moved nobody. */
+            const pool = (typeof eoData !== 'undefined' && eoData && eoData.players) || {};
+            Object.keys(pool).forEach(key => {
+                const id = Number(key);
+                if (!Number.isFinite(id) || mine.has(id)) return;
+                const player = allPlayersById[id];
+                if (!player) return;
+                const st = gwPlayerStats(player, gw);
+                const pts = st ? st.points : 0;
+                if (!pts) return;
+                const v = read(id);
+                if (!v) return;
+                rows.push({ player, points: pts, mult: 0, eo: v.eo, owned: false,
+                    swing: -(v.eo / 100) * pts });
+            });
+
+            if (!rows.length) return null;
+            rows.sort((a, b) => Math.abs(b.swing) - Math.abs(a.swing));
+            const net = rows.reduce((sum, x) => sum + x.swing, 0);
+
+            /* Nothing actually moved. A round where every swing rounds to
+               nothing — nobody in the sample scored, or your holdings matched
+               the field exactly — would otherwise render a section announcing
+               "worth +0.0 points of ground" above an empty list. A heading with
+               no finding under it reads as something broken rather than as a
+               quiet week. */
+            const gained = rows.filter(x => x.swing >= 0.05);
+            const lost = rows.filter(x => x.swing <= -0.05);
+            if (!gained.length && !lost.length) return null;
+
+            const tierMeta = (meta.tiers || []).find(x => x.id === t);
+            return {
+                tier: t,
+                tierLabel: typeof eoTierLabel === 'function' ? eoTierLabel(t) : t,
+                sampled: tierMeta ? tierMeta.sampled : null,
+                resolution: typeof eoResolution === 'function' ? eoResolution(t) : null,
+                net: Math.round(net * 10) / 10,
+                gained: gained.slice(0, 3),
+                lost: lost.slice(0, 3)
+            };
+        }
+
         function buildGameweekReview() {
             const gw = gwReviewTarget();
             if (!gw) return null;
@@ -264,7 +363,8 @@
                 mostCaptained: ev.most_captained ? allPlayersById[ev.most_captained] : null,
                 mostCaptainedStats: ev.most_captained ? gwPlayerStats(allPlayersById[ev.most_captained] || {}, gw) : null,
                 topElement: ev.top_element_info || null,
-                topElementPlayer: ev.top_element_info ? allPlayersById[ev.top_element_info.id] : null
+                topElementPlayer: ev.top_element_info ? allPlayersById[ev.top_element_info.id] : null,
+                eo: gwEoSwings(gw, entries, null)
             };
         }
 
@@ -559,6 +659,33 @@
                     : null
             ].filter(Boolean);
 
+            /* Omitted entirely rather than approximated when the sample cannot
+               answer for this gameweek — see gwEoSwings. */
+            const eo = r.eo;
+            const eoRow = (x) => `<div class="gwr-row">
+                <span class="gwr-row-name">${escHTML(x.player.name)}</span>
+                <span class="gwr-row-opp">${x.owned
+                    ? (x.mult === 0 ? 'you benched him' : x.mult === 1 ? 'you had 1x' : `you had ${x.mult}x`)
+                    : 'you did not have him'} · field ${x.eo.toFixed(0)}% · ${x.points} pts</span>
+                <span class="gwr-row-pts">${x.swing > 0 ? '+' : '\u2212'}${Math.abs(x.swing).toFixed(1)}</span>
+            </div>`;
+            const eoHtml = !eo ? '' : `
+            <div class="detail-section">
+                <div class="detail-section-title">${v2Icon('users')} What it did to your rank</div>
+                <p class="gwr-line">Your score is what you got; your rank moves on the gap between that and what
+                    everyone else got. Against the <b>${escHTML(eo.tierLabel)}</b> this week was worth
+                    <b>${eo.net > 0 ? '+' : eo.net < 0 ? '\u2212' : ''}${Math.abs(eo.net).toFixed(1)}</b> points of
+                    ground ${eo.net > 0 ? 'gained' : eo.net < 0 ? 'lost' : 'either way'}. A player the field owns
+                    more than once over \u2014 effective ownership above 100% \u2014 costs you ground when he scores
+                    and gains you ground when he blanks.</p>
+                ${eo.gained.length ? `<div class="gwr-rows">${eo.gained.map(eoRow).join('')}</div>` : ''}
+                ${eo.lost.length ? `<div class="gwr-rows">${eo.lost.map(eoRow).join('')}</div>` : ''}
+                <div class="opt-why">Effective ownership counts starters and doubles captains. Sampled from
+                    ${eo.sampled ? `${eo.sampled} managers` : 'a sample'} in GW${escHTML(String(r.gw))}${eo.resolution
+                        ? `, so anything under ${eo.resolution}% owned is below what the sample can see and is left out`
+                        : ''}.</div>
+            </div>`;
+
             const learningsHtml = `
             <div class="detail-section">
                 <div class="detail-section-title">${v2Icon('cap')} What to take from this week</div>
@@ -587,6 +714,7 @@
                 <div class="detail-section-title">${v2Icon('globe')} The week in the game</div>
                 ${fieldHtml}
             </div>
+            ${eoHtml}
             ${learningsHtml}`;
         }
 
