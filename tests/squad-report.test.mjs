@@ -39,17 +39,52 @@ const sqrItem = loadFunction(SRC, 'sqrItem');
 const sqrSection = loadFunction(SRC, 'sqrSection', { escHTML, v2Icon });
 const computeSquadHealth = loadFunction(SRC, 'computeSquadHealth');
 
+/* The two visuals. Both are loaded for real rather than stubbed out, because
+   each is markup built from a value and getting the value wrong is exactly the
+   failure this file exists to catch. sqrSpark reads the page's
+   playersDetailData, so it is rebuilt per case by sparkWith() below; the shared
+   one here has no history for anybody, which is the common case in these
+   fixtures and must render as nothing rather than as a flat line at zero. */
+const sqrHistoryRows = loadFunction(SRC, 'sqrHistoryRows', { playersDetailData: null });
+const sqrSpark = loadFunction(SRC, 'sqrSpark', { sqrHistoryRows, SQR_SPARK_WEEKS: 6 });
+const sqrFdrStrip = loadFunction(SRC, 'sqrFdrStrip', { escHTML });
+/* squadFixtureLoad is stubbed per case by withLoad() below rather than loaded —
+   what it computes is tested in tests/blank-double-gw.test.mjs, and what matters
+   here is only how the report writes up each of its three answers. */
+
+/* price-watch.js, which the squad page loads beside this file. Stubbed at its
+   real boundary — pwClassify's contract is "null unless the player is worth
+   mentioning" — so the report is tested against that contract rather than
+   against a reimplementation of the meter. */
+const PW_CLOSE = 80, PW_DUE = 100;
+const pwClassify = (p, floor) => {
+    const mag = Math.abs(p.priceProgress || 0);
+    if (!mag || mag < floor) return null;
+    return { id: p.id, player: p, dir: p.priceProgress > 0 ? 'rise' : 'fall',
+        tier: mag >= PW_DUE ? 'due' : 'close', progress: p.priceProgress, projected: p.priceProgress };
+};
+const pwLabel = c => (c.tier === 'due'
+    ? (c.dir === 'rise' ? 'Rise due' : 'Drop due')
+    : `${Math.round(Math.abs(c.progress))}% there`);
+const pwDetail = c => (c.tier === 'due'
+    ? `The meter is full, so this ${c.dir === 'rise' ? 'rise' : 'drop'} happens at the next daily price update.`
+    : `${Math.round(Math.abs(c.progress))}% of the way, and not projected to cross yet.`);
+
 const renderSquadReport = loadFunction(SRC, 'renderSquadReport', {
     escHTML, v2Icon, sqrJoin, sqrPos, sqrWho, sqrItem, sqrSection,
+    sqrSpark, sqrFdrStrip, pwLabel, pwDetail,
     SQR_DIFFERENTIAL_OWNERSHIP: OWN
 });
 
 /* buildSquadReport reads the page's `analysisResults`, so it gets a fresh
    context per case rather than a mutable one shared between them. */
-function buildWith(results) {
+function buildWith(results, extra = {}) {
     const fn = loadFunction(SRC, 'buildSquadReport', {
         analysisResults: results, computeSquadHealth,
-        SQR_DIFFERENTIAL_OWNERSHIP: OWN
+        SQR_DIFFERENTIAL_OWNERSHIP: OWN,
+        SQR_FIXTURE_HORIZON: 8, planningGW: 6,
+        pwClassify, PW_CLOSE,
+        ...extra
     });
     return fn();
 }
@@ -208,6 +243,166 @@ test('a name or a news string is escaped, not interpolated', () => {
 });
 
 /* ---- an unconfigured position degrades rather than breaks ---- */
+
+/* ---- price watch, where the two tiers must never blur ---- */
+
+test('a full meter says the change happens at the next update', () => {
+    const out = report([analysis({
+        player: { name: 'Climber', price: 7.5, priceProgress: 100 }, verdict: 'hold'
+    })]);
+    assert.match(out, /Price watch/);
+    assert.match(out, /Climber/);
+    assert.match(out, /Rise due/);
+    assert.match(out, /next daily price update/);
+});
+
+test('a player short of the line is never told he moves tonight', () => {
+    /* Measured over a real overnight window, the game's own next-day projection
+       flagged nineteen players to catch four actual changes. The second tier is a
+       watch item and the copy may not promise a night. */
+    const out = report([analysis({
+        player: { name: 'Nearly', price: 5.0, priceProgress: -87 }, verdict: 'hold'
+    })]);
+    assert.match(out, /87% there/);
+    assert.ok(!/tonight/i.test(out), 'no promise of tonight for a watch item');
+    assert.ok(!/next daily price update/.test(out), 'that sentence belongs to the full meter only');
+});
+
+test('nobody near a change means no price section at all', () => {
+    const out = report([analysis({ player: { name: 'Still', price: 5.0, priceProgress: 12 } })]);
+    assert.ok(!out.includes('Price watch'));
+});
+
+test('a drop on a player already listed to sell is called a timing question', () => {
+    /* The one clause that reads the sell list, and it adds no new judgement — the
+       0.1 goes one way or the other purely on whether the move happens before the
+       update. */
+    const out = report([analysis({
+        player: { name: 'Dumper', price: 6.0, priceProgress: -100 },
+        verdict: 'sell', verdictReason: 'Out of form'
+    })]);
+    assert.match(out, /timing question/);
+    assert.match(out, /keeps the 0\.1/);
+});
+
+test('a rising player you are holding gets no timing clause', () => {
+    const out = report([analysis({
+        player: { name: 'Riser', price: 6.0, priceProgress: 100 }, verdict: 'hold'
+    })]);
+    assert.match(out, /Rise due/);
+    assert.ok(!out.includes('timing question'));
+});
+
+/* ---- blanks and doubles ---- */
+
+const withLoad = (results, fixtureLoad) =>
+    text(renderSquadReport(buildWith(results, {
+        squadFixtureLoad: () => fixtureLoad, planningGW: 6, SQR_FIXTURE_HORIZON: 8
+    })));
+
+test('a clean fixture window says so, and says why it may not stay clean', () => {
+    /* The one section here that speaks when it has found nothing. "No blanks are
+       scheduled" is the answer to a question asked before spending a chip, and an
+       absent section would be indistinguishable from a broken one. What it must
+       not do is imply a clean list stays clean. */
+    const out = withLoad([analysis({ player: { name: 'A' } })], {
+        from: 6, to: 13, examined: 8, squadSize: 15, blanks: [], doubles: [], clean: true
+    });
+    assert.match(out, /Blanks and doubles/);
+    assert.match(out, /GW6.GW13/);
+    assert.match(out, /exactly one fixture every week/);
+    assert.match(out, /cup tie/, 'the reason it is clean in October');
+});
+
+test('a blank names the players and the gameweek, and the heading carries the window', () => {
+    const out = withLoad([analysis({ player: { name: 'A' } })], {
+        from: 6, to: 13, examined: 8, squadSize: 15, clean: false, doubles: [],
+        blanks: [{ gw: 9, players: [{ name: 'Saka' }, { name: 'Rice' }] }]
+    });
+    assert.match(out, /Blanks and doubles \(GW6.GW13\)/);
+    assert.match(out, /GW9 is a blank for 2 of your 15: Saka and Rice/);
+    assert.match(out, /No fixture at all/);
+});
+
+test('a long list of affected players is cut short rather than printed whole', () => {
+    const many = Array.from({ length: 9 }, (_, i) => ({ name: `P${i}` }));
+    const out = withLoad([analysis({ player: { name: 'A' } })], {
+        from: 6, to: 13, examined: 8, squadSize: 15, clean: false, blanks: [],
+        doubles: [{ gw: 11, players: many }]
+    });
+    assert.match(out, /and 3 more/);
+    assert.ok(!out.includes('P8'), 'the tail is summarised, not listed');
+});
+
+test('no fixture data at all means no section, not a clean one', () => {
+    const out = text(renderSquadReport(buildWith([analysis({ player: { name: 'A' } })])));
+    assert.ok(!out.includes('Blanks and doubles'),
+        'silence is right when the fixture list cannot answer');
+});
+
+/* ---- the two visuals ---- */
+
+test('the sparkline draws one bar per gameweek and marks the weeks he did not play', () => {
+    const spark = loadFunction(SRC, 'sqrSpark', {
+        SQR_SPARK_WEEKS: 6,
+        sqrHistoryRows: () => [
+            { round: 1, total_points: 9, minutes: 90 },
+            { round: 2, total_points: 2, minutes: 90 },
+            { round: 3, total_points: 0, minutes: 0 }
+        ]
+    });
+    const html = spark({ id: 1 });
+    assert.equal((html.match(/<i /g) || []).length, 3);
+    assert.match(html, /twf-sp haul/, 'nine points is a haul');
+    assert.match(html, /twf-sp out/, 'no minutes is a week he did not play');
+    assert.match(html, /GW3: did not play/);
+});
+
+test('the sparkline draws nothing rather than a flat line when there is no history', () => {
+    /* A row of zero-height bars reads as a measured run of blanks. */
+    const spark = loadFunction(SRC, 'sqrSpark', { SQR_SPARK_WEEKS: 6, sqrHistoryRows: () => [] });
+    assert.equal(spark({ id: 1 }), '');
+});
+
+test('a quiet run is not stretched to look like a good one', () => {
+    /* The scale has a floor, so two points out of a possible six draws short. */
+    const spark = loadFunction(SRC, 'sqrSpark', {
+        SQR_SPARK_WEEKS: 6,
+        sqrHistoryRows: () => [{ round: 1, total_points: 2, minutes: 90 }]
+    });
+    const pct = Number(/height:([\d.]+)%/.exec(spark({ id: 1 }))[1]);
+    assert.ok(pct < 50, `a two-point week drew at ${pct}%`);
+});
+
+test('the FDR strip carries one badge per fixture, coloured by difficulty', () => {
+    const strip = loadFunction(SRC, 'sqrFdrStrip', { escHTML });
+    const html = strip([
+        { opponent: 'MCI', isHome: false, difficulty: 5, event: 6 },
+        { opponent: 'BUR', isHome: true, difficulty: 2, event: 7 }
+    ]);
+    assert.match(html, /fdr-5/);
+    assert.match(html, /fdr-2/);
+    assert.match(html, /MCI \(A\)/, 'away is marked on the badge');
+    assert.match(html, /BUR \(H\)/, 'and so is home — an unmarked badge asks the reader to infer');
+    assert.match(html, /difficulty 5 of 5/);
+    assert.equal(strip([]), '', 'no fixtures, no strip');
+    assert.equal(strip(null), '');
+});
+
+test('a fixture with no difficulty still renders, in the middle band', () => {
+    const strip = loadFunction(SRC, 'sqrFdrStrip', { escHTML });
+    const html = strip([{ opponent: 'TBC', isHome: true }]);
+    assert.match(html, /fdr-3/);
+    assert.ok(!html.includes('undefined'));
+    assert.ok(!html.includes('NaN'));
+});
+
+test('an opponent name is escaped on the badge as well as in the prose', () => {
+    const strip = loadFunction(SRC, 'sqrFdrStrip', { escHTML });
+    const html = strip([{ opponent: '"><img src=x>', isHome: true, difficulty: 3 }]);
+    assert.ok(!html.includes('<img src=x'));
+    assert.match(html, /&quot;&gt;&lt;img/);
+});
 
 test('a position with no config does not produce the word undefined', () => {
     /* Carries a verdict so that it actually appears: a hold with nothing

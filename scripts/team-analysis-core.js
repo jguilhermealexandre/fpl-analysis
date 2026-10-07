@@ -98,6 +98,11 @@
            See applyPendingTransfers() in scripts/common.js. */
         let reviewPicksData = null;
         let pendingTransfers = null; // { gw, moves:[{out,in,slot}], armband } once applied
+        /* Every transfer the manager has ever made, from
+           /api/entry/{id}/transfers/ — FPL's own record, one row per move with
+           the gameweek it was made for. Optional: it is fetched with a .catch,
+           and the two features that read it say so rather than guessing. */
+        let managerTransferLog = null;
         let gwEvents = [];        // bootstrap events[] — deadlines, is_current/is_next
         let chipDefinitions = []; // bootstrap chips[] — each chip's start_event/stop_event window
         let maxFreeTransfers = 5; // from game_settings.max_extra_free_transfers + 1
@@ -341,7 +346,12 @@
                 if (typeof v2SetTeamName === 'function') v2SetTeamName(managerData.name);
                 picksData = await picksRes.json();
                 managerHistory = await histRes.json();
-                const transferLog = transfersRes ? await transfersRes.json().catch(() => null) : null;
+                /* Kept rather than consumed. applyPendingTransfers() below only
+                   wants the moves for the round being planned, but the same
+                   response is every transfer the manager has ever made — which
+                   is the only source for what the round just played cost and
+                   returned. The Gameweek Review reads it from here. */
+                managerTransferLog = transfersRes ? await transfersRes.json().catch(() => null) : null;
 
                 // Free Hit fix: if FH was active this GW, the picks endpoint returns
                 // the temporary FH squad. Load the real squad from the previous GW instead.
@@ -372,7 +382,7 @@
                         const el = allPlayersById[id];
                         return el ? Math.round(el.price * 10) : null;
                     };
-                    const applied = applyPendingTransfers(picksData, transferLog, planningGW, nowCost);
+                    const applied = applyPendingTransfers(picksData, managerTransferLog, planningGW, nowCost);
                     if (applied) {
                         picksData = applied.picksData;
                         pendingTransfers = { gw: applied.gw, moves: applied.moves, armband: applied.armband };
@@ -1277,6 +1287,65 @@
             </div>`;
         }
 
+        /* ===== Blanks and doubles =====
+
+           A gameweek is a BLANK for a club with no fixture in it and a DOUBLE
+           for one with two. Neither exists when a season is published: all 380
+           matches start out one per club per round, and they move when a club's
+           league fixture clashes with a cup tie — out of the round it clashed
+           with, and back into some later round once the tie is settled. So both
+           appear mid-season, and the fixture list is the only record of them.
+           There is no published list of affected gameweeks; counting the list is
+           what produces one.
+
+           Counted off fixtures.json, the same file every other fixture on this
+           page comes from, so this cannot disagree with the run shown beside it.
+
+           ONE THING HERE IS EASY TO GET WRONG. A club with no row in a gameweek
+           is only blanking if that gameweek is in the list at all. Keying the
+           result on the gameweeks that actually have fixtures means a truncated
+           or short file reports fewer gameweeks examined — which the caller can
+           say out loud — instead of reporting the entire rest of the season as a
+           blank for all twenty clubs. */
+        function fixtureLoadByGW(from, to) {
+            const out = new Map();            // gw -> Map(teamId -> fixtures)
+            (allFixtures || []).forEach(f => {
+                const gw = f.event;
+                if (gw == null || gw < from || gw > to) return;
+                if (!out.has(gw)) out.set(gw, new Map());
+                const m = out.get(gw);
+                [f.team_h, f.team_a].forEach(t => m.set(t, (m.get(t) || 0) + 1));
+            });
+            return out;
+        }
+
+        /* Which of these players blank and which double, gameweek by gameweek.
+           `players` is whatever squad the caller holds; each needs a teamId.
+           Returns null when the fixture list says nothing about the window —
+           there is a difference between a clean run and no data about one. */
+        function squadFixtureLoad(players, from, to) {
+            const squad = (players || []).filter(p => p && p.teamId != null);
+            if (!squad.length) return null;
+            const load = fixtureLoadByGW(from, to);
+            if (!load.size) return null;
+
+            const gws = [...load.keys()].sort((a, b) => a - b);
+            const blanks = [], doubles = [];
+            gws.forEach(gw => {
+                const m = load.get(gw);
+                const b = squad.filter(p => (m.get(p.teamId) || 0) === 0);
+                const d = squad.filter(p => (m.get(p.teamId) || 0) > 1);
+                if (b.length) blanks.push({ gw, players: b });
+                if (d.length) doubles.push({ gw, players: d });
+            });
+            return {
+                from: gws[0], to: gws[gws.length - 1], examined: gws.length,
+                squadSize: squad.length,
+                blanks, doubles,
+                clean: !blanks.length && !doubles.length
+            };
+        }
+
         /* ===== The squad report =====
 
            The status card is six numbers. This is those six numbers with the
@@ -1327,12 +1396,101 @@
             return `<b>${escHTML(p.name)}</b> (${escHTML(tags.join(' · '))})`;
         }
 
+        /* Per-gameweek rows for one player, from players-data.json.
+
+           Deliberately not shared with the four other copies of this lookup
+           (player-profile.js, pitch-snapshot.js, panels-and-tabs.js and
+           gameweek-review.js each have one). Those files load on pages this one
+           does not — the players page has player-profile.js and no
+           team-analysis-core.js — so a helper defined here and called there is
+           the shape of bug that shipped the help drawer with no stylesheet. */
+        function sqrHistoryRows(playerId) {
+            return (playersDetailData?.players || []).find(p => p.id === playerId)?.history || [];
+        }
+
+        /* ===== Two pictures, each next to the sentence it is about =====
+
+           The report is prose, and prose is the right form for a verdict. It is
+           the wrong form for a shape: "form 1.8, judged at 2.1 against a MID
+           median of 4.0" does not distinguish a player sliding away from one who
+           had a single bad week, and those want different decisions. So each
+           visual goes under the one claim it illustrates and nowhere else —
+           a sparkline under out-of-form, a fixture strip under the hard run.
+
+           Both reuse markup that already exists and is already styled on this
+           page: .twf-spark from the transfer funnel's shortlist cards and
+           .transfer-fdr-strip from the draft planner's replacement cards. No new
+           stylesheet rules, and a player's run looks the same wherever it is
+           drawn. */
+        const SQR_SPARK_WEEKS = 6;
+
+        function sqrSpark(player) {
+            const rows = sqrHistoryRows(player.id).slice(-SQR_SPARK_WEEKS);
+            if (!rows.length) return '';
+            /* A floor of 6 on the scale, so a run of ones and twos draws as a
+               run of ones and twos rather than being stretched to look like a
+               haul by the absence of a bigger week beside it. */
+            const peak = Math.max(6, ...rows.map(h => h.total_points || 0));
+            const bars = rows.map(h => {
+                const pts = h.total_points || 0;
+                const mins = h.minutes || 0;
+                // Blue is a normal week, green a haul, grey a week he did not
+                // play — the same three readings the shortlist card uses.
+                const cls = mins === 0 ? ' out' : pts >= 8 ? ' haul' : '';
+                const what = mins === 0 ? 'did not play' : `${pts} pt${pts === 1 ? '' : 's'}, ${mins} min`;
+                return `<i class="twf-sp${cls}" style="height:${Math.max(8, (pts / peak) * 100)}%"
+                    data-tooltip="GW${h.round}: ${what}"></i>`;
+            }).join('');
+            return `<span class="twf-spark" role="img"
+                aria-label="Points in his last ${rows.length} gameweeks">${bars}</span>`;
+        }
+
+        function sqrFdrStrip(fixtures) {
+            const fx = (fixtures || []).filter(f => f);
+            if (!fx.length) return '';
+            /* Both venues marked, not just the away ones. The sentence above the
+               strip already writes "next up ARS (A)", and a badge that is silent
+               for home games asks the reader to infer a convention from an
+               absence. A double gameweek renders as two badges on the same round,
+               which is the right picture of it. */
+            return `<span class="transfer-fdr-strip">${fx.map(f =>
+                `<span class="transfer-fdr-badge fdr-${f.difficulty || 3}"
+                    data-tooltip="GW${f.event ?? '?'}: ${escHTML(f.opponent || '?')} ${f.isHome ? 'at home' : 'away'}, difficulty ${f.difficulty ?? '?'} of 5"
+                    >${escHTML(f.opponent || '?')} (${f.isHome ? 'H' : 'A'})</span>`).join('')}</span>`;
+        }
+
+        /* How far ahead the blank-and-double scan looks.
+
+           Eight gameweeks, stated in the copy so the window can be checked. FPL
+           reschedules a few weeks out rather than months, so a shorter run would
+           miss announcements that are already on the list, and a scan to GW38
+           would flag a blank for players who will not be in this squad by then.
+           Chip windows are the thing this is read for, and eight weeks is about
+           as far as a chip is worth planning. */
+        const SQR_FIXTURE_HORIZON = 8;
+
         function buildSquadReport() {
             const results = (typeof analysisResults !== 'undefined' && analysisResults) || [];
             if (!results.length) return null;
             const h = computeSquadHealth(results);
             const starterIds = new Set(h.starters.map(a => a.player.id));
+            const squad = h.starters.concat(h.bench).map(a => a.player);
+
+            /* Price moves, from scripts/price-watch.js rather than from a reading
+               of our own: that file holds FPL's published meter and the two tiers
+               it supports, and a second classification here would let this report
+               call a player due on a night the market ticker did not. Everything
+               below PW_CLOSE comes back null and is simply not mentioned. */
+            const priceMoves = (typeof pwClassify === 'function'
+                ? squad.map(p => pwClassify(p, typeof PW_CLOSE === 'number' ? PW_CLOSE : 80))
+                : []).filter(Boolean).sort((a, b) => Math.abs(b.progress) - Math.abs(a.progress));
+
             return {
+                squad,
+                priceMoves,
+                fixtureLoad: typeof squadFixtureLoad === 'function'
+                    ? squadFixtureLoad(squad, planningGW, planningGW + SQR_FIXTURE_HORIZON - 1)
+                    : null,
                 health: h.health,
                 starters: h.starters, bench: h.bench, starterIds,
                 injured: h.injuredStarters,
@@ -1425,7 +1583,12 @@
                     : `form ${(eff != null ? eff : raw).toFixed(1)}`;
                 const median = cfg.formMedian != null
                     ? `, against a ${escHTML(cfg.short)} median of ${cfg.formMedian}` : '';
-                return sqrItem('warning', `${sqrWho(a, d.starterIds)} — ${shown}${median}.`);
+                /* The shape behind the number. Two players on the same form
+                   figure are different problems if one is sliding and the other
+                   had a single bad week, and the figure alone cannot tell them
+                   apart. */
+                return sqrItem('warning',
+                    `${sqrWho(a, d.starterIds)} — ${shown}${median}.${sqrSpark(a.player)}`);
             });
             html += sqrSection('trend', 'Out of form', 'concerns', formRows);
 
@@ -1441,10 +1604,43 @@
                 const run = typeof a.player.avgFDR === 'number'
                     ? `weighted FDR ${a.player.avgFDR.toFixed(1)} over his next ${(a.fixtures || []).length}`
                     : '';
+                /* The run itself, in the colours the fixture tables use. The
+                   sentence gives the weighted average; the strip gives which
+                   weeks are the hard ones, which is what decides whether to sell
+                   him now or ride it out. */
                 return sqrItem('warning',
-                    `${sqrWho(a, d.starterIds)} — ${[next, run].filter(Boolean).join(', ')}.`);
+                    `${sqrWho(a, d.starterIds)} — ${[next, run].filter(Boolean).join(', ')}.${sqrFdrStrip(a.fixtures)}`);
             });
             html += sqrSection('calendar', 'The hard run', 'fixtures', fixRows);
+
+            /* ===== Blanks and doubles =====
+
+               Unlike every other section here, this one speaks even when it has
+               found nothing — because "no blanks or doubles are scheduled" is
+               itself the answer to a question a manager asks before spending a
+               chip, and an absent section would be indistinguishable from a
+               broken one. What it must never do is imply that a clean list will
+               stay clean: the reason it is clean in October is that the cup
+               rounds that empty a gameweek have not been drawn yet.
+
+               Silent only when the fixture list cannot answer at all. */
+            const fl = d.fixtureLoad;
+            if (fl) {
+                const names = (players) => sqrJoin(players.slice(0, 6).map(p => `<b>${escHTML(p.name)}</b>`))
+                    + (players.length > 6 ? ` and ${players.length - 6} more` : '');
+                const loadRows = [];
+                fl.doubles.forEach(x => loadRows.push(sqrItem('positive',
+                    `<b>GW${x.gw}</b> is a double for ${x.players.length} of your ${fl.squadSize}: ${names(x.players)}. Two fixtures each, so two chances to score.`)));
+                fl.blanks.forEach(x => loadRows.push(sqrItem('critical',
+                    `<b>GW${x.gw}</b> is a blank for ${x.players.length} of your ${fl.squadSize}: ${names(x.players)}. No fixture at all, so no points.`)));
+                if (fl.clean) {
+                    loadRows.push(sqrItem('positive',
+                        `Across GW${fl.from}–GW${fl.to} every one of your ${fl.squadSize} players has exactly one fixture every week — no blanks and no doubles on the list yet. Gameweeks empty out when a club's league match clashes with a cup tie, so these appear during the season rather than at the start of it.`));
+                }
+                html += sqrSection('calendar',
+                    fl.clean ? 'Blanks and doubles' : `Blanks and doubles (GW${fl.from}–GW${fl.to})`,
+                    'fixtures', loadRows);
+            }
 
             /* The verdict chips, written out. The reason is verdictReason —
                the engine's own sentence for the verdict it reached — rather
@@ -1457,6 +1653,37 @@
             html += sqrSection('swap', `Sell (${d.sells.length})`, 'concerns', verdictRows(d.sells));
             html += sqrSection('eye', `Monitor (${d.monitors.length})`, 'concerns', verdictRows(d.monitors));
             html += sqrSection('star', `Star (${d.stars.length})`, 'positives', verdictRows(d.stars));
+
+            /* ===== Price watch =====
+
+               Every word of this comes out of scripts/price-watch.js — the tier,
+               the label and the sentence — because that file is where the two
+               tiers are defined and the difference between them is the whole
+               point. "Due" means the meter is full and the change fires at the
+               next daily update. "Closing in" means a player is near the line and
+               nothing more: measured over a real overnight window, the game's own
+               next-day projection flagged nineteen players to catch four actual
+               changes. Writing our own sentence here would be writing one that
+               can promise tonight, which that measurement says we cannot.
+
+               The sell list is read for one extra clause and no new judgement.
+               A player you are already minded to sell who is about to drop is a
+               timing fact, not a new recommendation: the 0.1 goes either way
+               depending only on whether the move happens before the update. */
+            const sellIds = new Set(d.sells.map(a => a.player.id));
+            const priceRows = (d.priceMoves || []).map(c => {
+                const falling = c.dir === 'fall';
+                const tone = falling ? (c.tier === 'due' ? 'critical' : 'warning') : 'positive';
+                const timing = falling && sellIds.has(c.id)
+                    ? ` He is on your sell list above, so this is a timing question: moving him before the update keeps the 0.1, moving him after it does not.`
+                    : '';
+                // Dropped rather than printed as "£undefinedm" — one bad field
+                // would otherwise take the whole report down with it.
+                const price = typeof c.player.price === 'number' ? `, £${c.player.price.toFixed(1)}m` : '';
+                return sqrItem(tone,
+                    `<b>${escHTML(c.player.name)}</b> (${escHTML(sqrPos(c.player).short)}${price}) — <b>${escHTML(pwLabel(c))}</b>. ${escHTML(pwDetail(c))}${timing}`);
+            });
+            html += sqrSection('wallet', 'Price watch', 'concerns', priceRows);
 
             /* Differentials. The threshold is in the sentence on purpose: a
                count with an unstated cut-off is not a fact the reader can
@@ -1479,15 +1706,13 @@
             return html;
         }
 
-        /* Reuses the Optimization Report's modal shell, as the Lineup Wizard,
-           the draft planner and the gameweek review all do. Five features, one
-           overlay, and no stylesheet to touch. */
+        /* Reuses the shared report shell, as the Lineup Wizard, the draft planner
+           and the gameweek review all do — see optReportShow() in
+           scripts/pitch-snapshot.js. Opened as a centred modal rather than the
+           520px drawer: the fixture strips and sparklines added to the sections
+           above need the width, and at 520px they wrapped. */
         function openSquadReport() {
-            const d = buildSquadReport();
-            v2SetPanelTitle('optReportTitle', 'Squad report', 'scales');
-            document.getElementById('optReportBody').innerHTML = renderSquadReport(d);
-            document.getElementById('optReportOverlay').classList.add('show');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+            optReportShow('Squad report', 'scales', renderSquadReport(buildSquadReport()), { modal: true });
         }
 
         function renderTeamOverview(health, sells, monitors, holds, stars, suggestedMoves) {

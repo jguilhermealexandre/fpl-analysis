@@ -293,6 +293,195 @@
             };
         }
 
+        /* ===== Transfer ROI: what the week's moves actually returned =====
+         *
+         * ONE ASSUMPTION, AND IT IS ON SCREEN RATHER THAN BURIED HERE. The player
+         * sold is credited with the points he scored that weekend, as though he
+         * would have kept the same place in the eleven. That is a counterfactual,
+         * and it is the only one available: a squad that was not picked has no
+         * auto-substitutions, no bench order and no captain to resolve, so there
+         * is no honest way to say what your TOTAL would have been. This therefore
+         * compares the two PLAYERS, and the copy says exactly that.
+         *
+         * The hit comes off the sum and not off any single move. Four points are
+         * charged to the gameweek; charging them to whichever transfer happened
+         * to return least would be a judgement dressed up as arithmetic.
+         *
+         * Whether the incoming player actually counted is reported separately,
+         * because it is knowable and it changes the reading: a 12-point haul on
+         * your bench did not win you the week. */
+        function gwTransferROI(gw, log, hit, entries) {
+            const made = (log || [])
+                .filter(t => t && t.event === gw && t.element_in != null && t.element_out != null)
+                // Oldest first. Only the display order below depends on it, but a
+                // single transfer should read as the transfer it was.
+                .sort((a, b) => Date.parse(a.time || 0) - Date.parse(b.time || 0));
+            if (!made.length) return null;
+
+            /* NET, NOT CHRONOLOGICAL, and this is the whole difficulty of the
+               function.
+
+               A transfer log is a list of edits, not a list of transfers. Replaying
+               it pairwise reports every edit, which is wrong twice over: a player
+               bought and then sold again before the deadline was never owned, and —
+               worse — a player sold and then bought BACK through a different slot
+               gets reported as both an arrival and a departure, so his points are
+               credited once and charged once against a manager who still owns him.
+
+               The user's real GW4 wildcard is exactly this case. Thirty log rows;
+               a pairwise replay made ten moves of them and had Groß arriving for
+               +15 and leaving for −14 in the same list. The truth is eight moves:
+               ten players went out and came back and belong in neither column.
+
+               So the net sets come from a flow count — +1 for every arrival, −1 for
+               every departure — and a round trip cancels to nought by
+               construction. */
+            const flow = new Map();
+            made.forEach(t => {
+                flow.set(t.element_in, (flow.get(t.element_in) || 0) + 1);
+                flow.set(t.element_out, (flow.get(t.element_out) || 0) - 1);
+            });
+            const arrivedIds = [], leftIds = [];
+            flow.forEach((n, id) => { if (n > 0) arrivedIds.push(id); else if (n < 0) leftIds.push(id); });
+            // Every edit undone: a squad that ended the week as it started.
+            if (!arrivedIds.length) return null;
+
+            /* Pairing is a presentation choice, and it is made WITHIN POSITION.
+               A squad always holds two keepers, five defenders, five midfielders
+               and three forwards, so the two net sets necessarily have the same
+               shape, and pairing a departing defender with an arriving one is the
+               only reading that describes something a manager did. Which defender
+               with which is arbitrary; the total does not depend on it.
+
+               Departures go in the order they appear in the log so that an
+               ordinary one- or two-transfer week reads as the exact swap it was. */
+            const resolve = (ids) => ids.map(id => allPlayersById[id]).filter(Boolean);
+            const arrived = resolve(arrivedIds);
+            const outOrder = [];
+            made.forEach(t => {
+                if (flow.get(t.element_out) < 0 && !outOrder.includes(t.element_out)) outOrder.push(t.element_out);
+            });
+            leftIds.forEach(id => { if (!outOrder.includes(id)) outOrder.push(id); });
+            const left = resolve(outOrder);
+
+            const mine = new Map();
+            (entries || []).forEach(e => mine.set(e.player.id, e));
+            const pointsOf = (p) => { const s = gwPlayerStats(p, gw); return s ? s.points : 0; };
+
+            const pool = arrived.slice();
+            const moves = [];
+            left.forEach(pOut => {
+                let k = pool.findIndex(p => p.position === pOut.position);
+                // No arrival in his position left to pair with. Only reachable if
+                // FPL has dropped a player out of the pool mid-season, which makes
+                // the two sets different sizes; counted below rather than paired
+                // with somebody in the wrong position.
+                if (k < 0) return;
+                const pIn = pool.splice(k, 1)[0];
+                const inPts = pointsOf(pIn), outPts = pointsOf(pOut);
+                const e = mine.get(pIn.id);
+                moves.push({
+                    in: pIn, out: pOut, inPts, outPts, delta: inPts - outPts,
+                    /* Whether he counted towards your score. Knowable, and it
+                       changes the reading: a haul on your bench did not win you
+                       the week. null when he is not in the reviewed squad at all. */
+                    mult: e ? (e.multiplier || 0) : null,
+                    counted: e ? (e.multiplier || 0) > 0 : null
+                });
+            });
+            if (!moves.length) return null;
+
+            const gross = moves.reduce((s, m) => s + m.delta, 0);
+            moves.sort((a, b) => b.delta - a.delta);
+            return {
+                moves, gross, hit: hit || 0, net: gross - (hit || 0),
+                /* Net moves this could not score, so the copy can say the list is
+                   short rather than letting the lines quietly fail to add up. */
+                unscored: Math.max(arrivedIds.length, leftIds.length) - moves.length
+            };
+        }
+
+        /* ===== Luck: what the model expected of this eleven, against what it got
+         * =====
+         *
+         * A gameweek score is a selection plus a week of variance, and the two ask
+         * for opposite responses. A squad that beat its own projection does not
+         * need fixing. One that missed it by twenty might not either. Telling them
+         * apart needs the projection AS IT STOOD BEFORE THE ROUND, and that is the
+         * whole difficulty: scripts/xp-engine.js reads
+         * data/bootstrap-static.json, which is overwritten every fifteen minutes,
+         * so running it over a played round today answers a different question
+         * about a different squad — form, prices, availability and the per-90
+         * rates have all moved on.
+         *
+         * So this reads one thing and has no fallback: data/model-log/gw{N}.json,
+         * sealed by tools/snapshot-predictions.mjs inside the twenty-four hours
+         * before the deadline and never edited afterwards.
+         *
+         * WHY NO FALLBACK. Re-projecting the round now and presenting it as the
+         * prediction would yield a number for every gameweek, including every one
+         * nobody actually predicted — and it would read identically to an honest
+         * one. That is worse than silence, because a reader cannot tell the
+         * difference. No snapshot, no section.
+         *
+         * GRADED ON THE ELEVEN THAT WAS SUBMITTED, not on the multipliers that
+         * came out of the round. An auto-substitution sets a starter's multiplier
+         * to zero, and reading the realised multiplier would therefore delete that
+         * player's projection from the expected total — quietly discarding exactly
+         * the predictions that failed and flattering every result. The forecast
+         * was made about the team the manager submitted, so that is the team it is
+         * scored against. */
+        function gwSubmittedMultiplier(e, chip) {
+            // Bench Boost pays all fifteen; otherwise only the eleven named.
+            if (!e.started && chip !== 'bboost') return 0;
+            if (!e.isCaptain) return 1;
+            return chip === '3xc' ? 3 : 2;
+        }
+
+        function gwLuckRating(gw, entries, snap, opts) {
+            const o = opts || {};
+            /* A part-played round has no expectation to compare against: the xP
+               is for every fixture in the week and the points are only for the
+               ones that have finished, so the gap would measure the clock. */
+            if (!o.complete) return null;
+            if (!snap || !Array.isArray(snap.players)) return null;
+            if (Number(snap.gw) !== Number(gw)) return null;
+
+            const xpById = new Map();
+            snap.players.forEach(r => {
+                if (r && r.id != null && typeof r.xp === 'number') xpById.set(Number(r.id), r.xp);
+            });
+            if (!xpById.size) return null;
+
+            const chip = o.chip || null;
+            let expected = 0, actual = 0, missing = 0;
+            const rows = [];
+            (entries || []).forEach(e => {
+                const mult = gwSubmittedMultiplier(e, chip);
+                if (!mult) return;
+                const xp = xpById.get(e.player.id);
+                /* A player the snapshot has no projection for — one the engine
+                   could not build at that deadline. Counted and reported, never
+                   treated as a projection of zero. */
+                if (xp == null) { missing++; return; }
+                expected += xp * mult;
+                actual += e.raw * mult;
+                rows.push({ player: e.player, mult, xp, raw: e.raw, delta: (e.raw - xp) * mult });
+            });
+            if (!rows.length) return null;
+
+            rows.sort((a, b) => b.delta - a.delta);
+            const r1 = (v) => Math.round(v * 10) / 10;
+            return {
+                expected: r1(expected), actual, delta: r1(actual - expected),
+                graded: rows.length, missing,
+                takenAt: snap.takenAt || null,
+                hoursBefore: snap.hoursBeforeDeadline ?? null,
+                over: rows.filter(x => x.delta >= 1).slice(0, 3),
+                under: rows.filter(x => x.delta <= -1).slice(-3).reverse()
+            };
+        }
+
         function buildGameweekReview() {
             const gw = gwReviewTarget();
             if (!gw) return null;
@@ -359,7 +548,13 @@
                 benchPoints: thisRow.points_on_bench || 0,
                 overallRank: thisRow.overall_rank ?? null,
                 prevOverallRank: prevRow?.overall_rank ?? null,
+                chip: src.active_chip || null,
                 entries, xi, bench, captain, bestCapAlt, ranked, benchRanked,
+                /* Optional, like everything else that leans on a second source:
+                   managerTransferLog is fetched with a .catch in
+                   scripts/team-analysis-core.js, and without it this is null and
+                   the section does not render. */
+                roi: gwTransferROI(gw, typeof managerTransferLog !== 'undefined' ? managerTransferLog : null, hit, entries),
                 mostCaptained: ev.most_captained ? allPlayersById[ev.most_captained] : null,
                 mostCaptainedStats: ev.most_captained ? gwPlayerStats(allPlayersById[ev.most_captained] || {}, gw) : null,
                 topElement: ev.top_element_info || null,
@@ -686,8 +881,33 @@
                         : ''}.</div>
             </div>`;
 
-            const learningsHtml = `
+            /* Transfer ROI. Null when the transfer log did not load or the week
+               had no moves in it — "you made no transfers" is already in the week
+               in the game above, and saying it twice under its own heading would
+               be padding. */
+            const roi = r.roi;
+            const roiHtml = !roi ? '' : `
             <div class="detail-section">
+                <div class="detail-section-title">${v2Icon('swap')} What the transfers returned</div>
+                <p class="gwr-line">${roi.moves.length === 1 ? 'Your move' : `Your ${roi.moves.length} moves`} ${roi.gross === 0 ? 'came out level' : roi.gross > 0 ? `gained <b>${roi.gross}</b> point${Math.abs(roi.gross) === 1 ? '' : 's'}` : `lost <b>${Math.abs(roi.gross)}</b> point${Math.abs(roi.gross) === 1 ? '' : 's'}`} on the players
+                    ${roi.moves.length === 1 ? 'he' : 'they'} replaced${roi.hit ? `, and cost <b>${roi.hit}</b> in hits — <b>${roi.net > 0 ? '+' : roi.net < 0 ? '−' : ''}${Math.abs(roi.net)}</b> net` : ''}.</p>
+                <div class="gwr-rows">${roi.moves.map(m => `<div class="gwr-row ${m.delta >= 6 ? 'haul' : m.delta > 0 ? 'good' : m.delta < 0 ? 'blank' : ''}">
+                    <span class="gwr-row-name">${escHTML(m.in.name)}</span>
+                    <span class="gwr-row-opp">in for ${escHTML(m.out.name)} · ${m.inPts} against ${m.outPts}${m.counted === false ? ' · did not count for you' : ''}</span>
+                    <span class="gwr-row-pts">${m.delta > 0 ? '+' : m.delta < 0 ? '−' : ''}${Math.abs(m.delta)}</span>
+                </div>`).join('')}</div>
+                <div class="opt-why">Each line is what the player you bought scored against what the player
+                    you sold scored in the same week. It is not the difference to your total: a squad you did
+                    not pick has no bench order and no auto-substitutions, so there is no honest way to say
+                    what it would have come to.${roi.hit ? ' The hit is charged to the gameweek rather than to any one move.' : ''}</div>
+            </div>`;
+
+            /* The luck section is not built here. It needs the sealed snapshot,
+               which is a separate file and a separate fetch — see
+               gwFillLuckSection(). It lands immediately before this block, so the
+               id is the anchor it inserts against. */
+            const learningsHtml = `
+            <div class="detail-section" id="gwrLearnings">
                 <div class="detail-section-title">${v2Icon('cap')} What to take from this week</div>
                 ${learnings.length
                     ? `<div class="gwr-learnings">${learnings.map(l =>
@@ -714,14 +934,88 @@
                 <div class="detail-section-title">${v2Icon('globe')} The week in the game</div>
                 ${fieldHtml}
             </div>
+            ${roiHtml}
             ${eoHtml}
             ${learningsHtml}`;
         }
 
+        /* ===== The luck section, which arrives late or not at all =====
+
+           The sealed prediction is its own file, a couple of hundred kilobytes
+           of it, and it is only ever wanted by this one panel. Fetching it with
+           the page would charge every visitor for a button most will not press;
+           awaiting it before the modal opens would hold the modal shut on a
+           request that, for any round sealed before the archive existed, is going
+           to 404.
+
+           So the review renders without it and this inserts the section if and
+           when there is one to insert. No placeholder and no spinner: a heading
+           that may never fill is worse than a section that appears a moment late,
+           and for GW1–GW5 there is nothing to wait for — tools/snapshot-
+           predictions.mjs was written on 19 September, by which time those
+           deadlines had passed, and a snapshot cannot be backfilled. */
+        function gwLuckSnapshotURL(gw) {
+            const bust = typeof CACHE_BUSTER !== 'undefined' ? `?v=${CACHE_BUSTER}` : '';
+            return `/data/model-log/gw${Number(gw)}.json${bust}`;
+        }
+
+        function gwRenderLuck(luck, gw) {
+            if (!luck) return '';
+            const sign = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)}`;
+            const row = (x) => `<div class="gwr-row ${x.delta > 0 ? 'good' : 'blank'}">
+                <span class="gwr-row-name">${escHTML(x.player.name)}</span>
+                <span class="gwr-row-opp">projected ${x.xp.toFixed(1)}, scored ${x.raw}${x.mult > 1 ? ` (x${x.mult})` : ''}</span>
+                <span class="gwr-row-pts">${sign(Math.round(x.delta * 10) / 10)}</span>
+            </div>`;
+            return `
+            <div class="detail-section">
+                <div class="detail-section-title">${v2Icon('chart')} Was it the picks or the week?</div>
+                <p class="gwr-line">Before the GW${escHTML(String(gw))} deadline this site projected
+                    <b>${luck.expected.toFixed(1)}</b> for the eleven you submitted. It scored
+                    <b>${luck.actual}</b> — <b>${sign(luck.delta)}</b> against its own forecast.
+                    ${luck.delta > 0
+                        ? 'The week went better than the squad was expected to, which is variance rather than a selection to copy.'
+                        : luck.delta < 0
+                            ? 'The week went worse than the squad was expected to. That is an argument against changing much: the same eleven was projected to do more than it did.'
+                            : 'Almost exactly what it was projected to do.'}</p>
+                ${luck.over.length ? `<div class="gwr-rows">${luck.over.map(row).join('')}</div>` : ''}
+                ${luck.under.length ? `<div class="gwr-rows">${luck.under.map(row).join('')}</div>` : ''}
+                <div class="opt-why">Graded against the prediction as it was sealed${luck.hoursBefore != null
+                    ? ` ${luck.hoursBefore < 1 ? 'under an hour' : `${Math.round(luck.hoursBefore)} hour${Math.round(luck.hoursBefore) === 1 ? '' : 's'}`} before the deadline` : ''},
+                    never re-run afterwards. Measured on the eleven you named and the armband you gave, so
+                    auto-substitutions are not in it — a substitute rescues a blank, he was not forecast to.
+                    ${luck.graded} of them had a projection${luck.missing ? `; ${luck.missing} did not and ${luck.missing === 1 ? 'is' : 'are'} left out rather than counted as zero` : ''}.</div>
+            </div>`;
+        }
+
+        async function gwFillLuckSection(r) {
+            if (!r || !r.complete || !document.getElementById('gwrLearnings')) return;
+            try {
+                const url = gwLuckSnapshotURL(r.gw);
+                const snap = (typeof DataCache !== 'undefined' && DataCache.fetchJSON)
+                    ? await DataCache.fetchJSON(url)
+                    : await (await fetch(url)).json();
+                const luck = gwLuckRating(r.gw, r.entries, snap,
+                    { complete: r.complete, chip: r.chip });
+                if (!luck) return;
+                /* Re-read rather than reuse the node from above. The five features
+                   that share this shell all replace #optReportBody wholesale, so
+                   if one of them opened while the fetch was in flight the anchor
+                   is gone and this section belongs nowhere. */
+                const anchor = document.getElementById('gwrLearnings');
+                if (!anchor) return;
+                anchor.insertAdjacentHTML('beforebegin', gwRenderLuck(luck, r.gw));
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            } catch (err) {
+                /* A round with no sealed prediction — every round before the
+                   archive existed, and any whose snapshot job failed. Nothing to
+                   say and nothing to apologise for; see the comment above. */
+            }
+        }
+
         function openGameweekReview() {
             const r = buildGameweekReview();
-            v2SetPanelTitle('optReportTitle', `Gameweek ${r ? Number(r.gw) : Number(currentGW)} review`, 'chart');
-            document.getElementById('optReportBody').innerHTML = renderGameweekReview(r);
-            document.getElementById('optReportOverlay').classList.add('show');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+            optReportShow(`Gameweek ${r ? Number(r.gw) : Number(currentGW)} review`, 'chart',
+                renderGameweekReview(r), { modal: true });
+            gwFillLuckSection(r);
         }

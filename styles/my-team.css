@@ -1879,6 +1879,62 @@
 .sq-toast .opt-revert-btn .v2-sec-icon { color: currentColor; width: 13px; height: 13px; }
 
 .opt-report-panel { max-width: 520px; }
+
+/* ===== The report shell as a centred modal =====
+
+   #optReportOverlay is a 520px drawer off the right edge, which suits a column
+   of short verdicts and does not suit either of the two long reports. The
+   Gameweek Review's rows carry seven things across — position, face, name,
+   opponent, minutes, what he did, his points — and the Squad Report now draws a
+   five-fixture FDR strip and a six-week sparkline inside its sentences. At 520px
+   both wrap into unreadability.
+
+   Set per open by optReportShow() in scripts/pitch-snapshot.js, so the Lineup
+   Wizard's change report and the two draft summaries keep the drawer they were
+   written for. Everything below is an override of styles/v2-app.css, which is
+   why each rule restates the property it is undoing rather than relying on the
+   base to leave it alone.
+
+   `.detail-overlay.as-modal .detail-panel` is 0,3,0 and beats the 0,1,0 of
+   .opt-report-panel above, so the 520px cap does not need unsetting. */
+.detail-overlay.as-modal {
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.34);
+    /* The base clips, because it has to keep a drawer parked at translateX(100%)
+       off the edge of the document. Nothing is parked here, and a modal taller
+       than the viewport has to be reachable. */
+    overflow: auto;
+}
+.detail-overlay.as-modal .detail-panel {
+    position: relative; top: auto; right: auto;
+    width: 100%; max-width: 980px;
+    height: auto; max-height: calc(100vh - 48px);
+    border: 1px solid var(--border-emphasis);
+    border-radius: var(--radius-xl, 16px);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.34);
+    /* Rises into place rather than sliding in from an edge it no longer has. */
+    transform: translateY(10px) scale(0.985);
+    transition: transform 240ms ease;
+}
+.detail-overlay.as-modal.show .detail-panel { transform: none; }
+/* The panel is a column flex container whose height is now a max rather than a
+   fixed 100%. A flex item will not shrink below its content without this, and
+   the body's own overflow-y never gets anything to scroll. */
+.detail-overlay.as-modal .detail-body { min-height: 0; flex: 1 1 auto; }
+
+/* On a phone it is the same bottom sheet every other modal becomes. The rule in
+   styles/responsive.css does this for the drawer, but it selects .detail-overlay
+   at 0,1,0 and loses to the 0,2,0 above — so the sheet has to be restated here
+   at matching specificity rather than left to load order. */
+@media (max-width: 768px) {
+    .detail-overlay.as-modal { align-items: flex-end; padding: 0; }
+    .detail-overlay.as-modal .detail-panel {
+        max-width: 100%; max-height: 92vh;
+        border-radius: 18px 18px 0 0;
+        border-left: none; border-right: none; border-bottom: none;
+    }
+}
 .opt-gw-badge {
     display: inline-block;
     font-size: 11px;

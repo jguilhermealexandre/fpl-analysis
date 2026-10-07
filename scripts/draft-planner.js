@@ -1258,10 +1258,8 @@
             const ds = getActiveDraft();
             const report = ds.optimizeReports && ds.optimizeReports[gw];
             if (!report) return;
-            v2SetPanelTitle('optReportTitle', `GW${Number(gw)} optimization report`, 'chart');
-            document.getElementById('optReportBody').innerHTML = renderOptimizeReportModal(report, gw);
-            document.getElementById('optReportOverlay').classList.add('show');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+            optReportShow(`GW${Number(gw)} optimization report`, 'chart',
+                renderOptimizeReportModal(report, gw));
         }
 
         // ===== DRAFT localStorage PERSISTENCE =====
@@ -3236,10 +3234,7 @@
         }
 
         function openDraftSuggestSummary() {
-            v2SetPanelTitle('optReportTitle', 'Suggested transfers', 'sparkle');
-            document.getElementById('optReportBody').innerHTML = renderDraftSuggestSummaryModal();
-            document.getElementById('optReportOverlay').classList.add('show');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+            optReportShow('Suggested transfers', 'sparkle', renderDraftSuggestSummaryModal());
         }
 
         function renderDraftSidebarBody() {

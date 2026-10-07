@@ -1722,10 +1722,8 @@
 
         function openLineupOptimizeReport() {
             if (!lineupState.optimizeReport) return;
-            v2SetPanelTitle('optReportTitle', `GW${Number(planningGW)} — what Auto-optimise changed`, 'chart');
-            document.getElementById('optReportBody').innerHTML = renderLWChangeReport(lineupState.optimizeReport);
-            document.getElementById('optReportOverlay').classList.add('show');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+            optReportShow(`GW${Number(planningGW)} — what Auto-optimise changed`, 'chart',
+                renderLWChangeReport(lineupState.optimizeReport));
         }
 
         // ── STEP 3: Captain & Summary ──

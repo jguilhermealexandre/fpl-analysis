@@ -1340,16 +1340,51 @@
             </div>`;
         }
 
-        function openOptimizeReport() {
-            v2SetPanelTitle('optReportTitle', 'Optimization report', 'chart');
-            document.getElementById('optReportBody').innerHTML = renderOptimizeReportModal();
-            document.getElementById('optReportOverlay').classList.add('show');
+        /* ===== The one shared report shell =====
+
+           Five features render into #optReportOverlay: this report, the Squad
+           Report, the Gameweek Review, the draft planner's suggestions and its
+           plan comparison. Each repeated the same four lines, and the fifth
+           thing one of them now needs — whether the shell is a side drawer or a
+           centred modal — is a piece of state that cannot be kept correct in
+           five copies. Put it on every open instead, so the shape is always
+           whatever the feature that just opened it asked for.
+
+           Drawer or modal is not a preference. The drawer is 520px, which is
+           right for a column of short verdicts and wrong for anything wider:
+           the Gameweek Review's rows carry position, face, name, opponent,
+           minutes, what he did and his points, and the Squad Report now draws a
+           five-fixture FDR strip and a six-week sparkline inside a sentence.
+           Those two ask for the modal; the other three keep the drawer they
+           were written for. */
+        function optReportShow(title, icon, html, opts) {
+            const o = opts || {};
+            v2SetPanelTitle('optReportTitle', title, icon);
+            const body = document.getElementById('optReportBody');
+            if (body) body.innerHTML = html;
+            const overlay = document.getElementById('optReportOverlay');
+            if (!overlay) return;
+            overlay.classList.toggle('as-modal', !!o.modal);
+            /* The page behind blurs for a modal, the way every other modal on
+               the site does, and must not for a drawer — a drawer is read beside
+               the page it is about. */
+            document.body.classList.toggle('v2-blurred', !!o.modal);
+            overlay.classList.add('show');
             if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function openOptimizeReport() {
+            optReportShow('Optimization report', 'chart', renderOptimizeReportModal());
         }
 
         function closeOptimizeReport(event) {
             if (event && event.target !== event.currentTarget) return;
             document.getElementById('optReportOverlay').classList.remove('show');
+            document.body.classList.remove('v2-blurred');
+            /* `as-modal` deliberately survives the close. It carries the panel's
+               geometry, so stripping it here would snap a centred card back to a
+               520px right-hand drawer for the length of the fade-out. The next
+               open sets it either way. */
         }
 
         // ===== SHARED: open the AI Scouting Report modal for 2+ specific players =====
