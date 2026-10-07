@@ -472,8 +472,26 @@
             const optCard = (r, mark, markClass) => {
                 const rFix = (r.fixtures || []).slice(0, 3);
                 const delta = r.price - player.price;
-                return `<button class="dtp-opt" onclick="confirmDraftTransfer(${player.id}, ${r.id})"
-                    data-tooltip="Bring ${escHTML(r.name)} in for ${escHTML(player.name)} in GW${gw}.">
+                /* A starred player over budget is shown rather than hidden, so
+                   the card has to say so and the click has to be refused — an
+                   enabled button that cannot do what it offers is worse than no
+                   button. The shortfall is the useful number: it says how much
+                   has to come from somewhere else. */
+                const short = r.price - maxAffordable;
+                const overBudget = short > 0.001;
+                /* Refused by a handler that says why, not by the disabled
+                   attribute: .dtp-opt[disabled] has no rule in the stylesheet,
+                   so a disabled card is indistinguishable from a live one and
+                   the click just does nothing. applyDraftTransfer does not check
+                   the budget either — it would have quietly built an
+                   over-budget draft. */
+                return `<button class="dtp-opt"
+                    onclick="${overBudget
+                        ? `draftRefuseUnaffordable(${r.id}, ${short.toFixed(1)})`
+                        : `confirmDraftTransfer(${player.id}, ${r.id})`}"
+                    data-tooltip="${overBudget
+                        ? `${escHTML(r.name)} costs \u00A3${short.toFixed(1)}m more than this slot can afford. Starred, so shown anyway \u2014 free the money elsewhere and he fits.`
+                        : `Bring ${escHTML(r.name)} in for ${escHTML(player.name)} in GW${gw}.`}">
                     <span class="dtp-opt-rank ${markClass || ''}">${mark}</span>
                     ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(r, 'v2-pid-portrait dtp-opt-face') : ''}
                     <span class="dtp-opt-id">
@@ -507,14 +525,31 @@
                player twice in one panel is noise, and the star should win. */
             const starred = (typeof getTWShortlistIds === 'function') ? getTWShortlistIds() : new Set();
             const squadIds2 = new Set(squad2.map(p => p.id));
+            /* NO PRICE CAP, and that was a real complaint: the Favourites tab
+               came up empty for a manager who had starred plenty, because every
+               one of them cost more than this slot can afford and they were
+               filtered out in silence.
+
+               The Transfer Wizard made the opposite call and said why — "how
+               does the player I starred compare is worth answering even when he
+               is unaffordable, and the card marks that rather than hiding him".
+               A star IS the judgement a budget filter is trying to make. Two
+               surfaces disagreeing about the same list is the thing Phase 5 was
+               about, so this one follows the wizard: show him, mark him, and let
+               the manager decide whether to free the money. */
             const shortlist = !starred.size ? [] : allPlayers.filter(r =>
                 starred.has(r.id)
                 && r.position === player.position
                 && r.id !== player.id
                 && !squadIds2.has(r.id)
-                && r.price <= maxAffordable + 0.001
                 && (r.status === 'a' || r.status === 'd'));
-            shortlist.sort((a, b) => b.price - a.price);
+            // Affordable first, dearest of those at the top; the rest behind.
+            shortlist.sort((a, b) => {
+                const aFits = a.price <= maxAffordable + 0.001;
+                const bFits = b.price <= maxAffordable + 0.001;
+                if (aFits !== bFits) return aFits ? -1 : 1;
+                return b.price - a.price;
+            });
 
             /* TWO TABS RATHER THAN TWO STACKS.
 
@@ -570,6 +605,15 @@
             document.getElementById('draftTransferBody').innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
             document.getElementById('draftTransferOverlay').classList.add('show');
+        }
+
+        /* A starred player the slot cannot afford. Shown on purpose — a star is
+           the judgement a budget filter is trying to make — so the refusal has
+           to name the shortfall rather than do nothing. */
+        function draftRefuseUnaffordable(playerId, shortfall) {
+            const p = allPlayersById[playerId];
+            const name = p ? p.name : 'That player';
+            updateStatus(`${name} costs \u00A3${Number(shortfall).toFixed(1)}m more than this slot can afford — sell someone dearer first, or free the money elsewhere in the draft.`, 'error');
         }
 
         function setDraftPanelTab(key) {

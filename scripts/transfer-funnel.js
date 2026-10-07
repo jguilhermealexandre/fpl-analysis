@@ -513,10 +513,15 @@
            minutes floor, exactly as the old tab did: "how does the player I
            starred compare" is worth answering even when he is unaffordable, and
            the card marks that rather than hiding him. */
-        function twfBasePool(slotIdx) {
+        function twfBasePool(slotIdx, sourceOverride) {
             const slot = transferState.pending[slotIdx];
             const s = twfState();
             const pos = slot.soldPlayer.position;
+            /* The filter panel needs to ask what the OTHER source would leave,
+               and it cannot do that by flipping a flag and re-running
+               twfPasses: source changes this pool rather than that predicate.
+               See the count note in twfFilterBarHTML. */
+            const source = sourceOverride != null ? sourceOverride : s.source;
 
             const soldIds = new Set(transferState.pending.map(x => x.soldPlayer.id));
             const boughtIds = new Set(transferState.pending.filter(x => x.replacement).map(x => x.replacement.id));
@@ -530,7 +535,7 @@
             exclude.add(slot.soldPlayer.id);
 
             const budget = twSlotBudget(slotIdx);
-            const shortlist = s.source === 'favorites' ? getTWShortlistIds() : null;
+            const shortlist = source === 'favorites' ? getTWShortlistIds() : null;
 
             /* No minutes floor here, and that is the fix for a real complaint:
                every chip relaxed and a goalkeeper search still read "14 players
@@ -634,7 +639,7 @@
             const survivors = afterClubs.filter(p => twfPasses(p, s, ctx));
 
             el.innerHTML = '<div class="twf">' +
-                twfRenderHead(slotIdx, sold, gws, twfFilterBarHTML(base, survivors, ctx, pos, gws)) +
+                twfRenderHead(slotIdx, sold, gws, twfFilterBarHTML(base, survivors, ctx, pos, gws, slotIdx)) +
                 twfRenderCustom(slot, survivors, gws, pos, slotIdx, blocked, ctx) + '</div>';
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -749,7 +754,7 @@
                 .filter(k => s[k] !== d[k]).length + (s.defcon ? 1 : 0) + (s.clubs.length ? 1 : 0);
         }
 
-        function twfFilterBarHTML(base, survivors, ctx, pos, gws) {
+        function twfFilterBarHTML(base, survivors, ctx, pos, gws, slotIdx) {
             const s = twfState();
             // Read once for the Favourites button in the bar below.
             const favOn = s.source === 'favorites';
@@ -766,7 +771,30 @@
                would leave. The count is the whole reason these are pills rather
                than a <select> — you can compare the cost of four answers without
                taking any of them. */
-            const group = (label, key, options, tip) => `
+            /* THE SOURCE PILLS CANNOT BE COUNTED BY countIf, and said they
+               could: a goalkeeper search read "All players 14" and
+               "Favourites 14", and clicking Favourites gave nothing.
+
+               countIf varies one key on `s` and re-runs twfPasses over the pool
+               already in hand. That works for every filter that is a predicate
+               over a fixed pool. Source is not one: twfBasePool applies it and
+               returns early, deliberately lifting the budget and the status gate
+               for a starred player. So changing `source` changes the POOL, and
+               twfPasses does not read `source` at all — which is why both pills
+               reported the pool they were already looking at.
+
+               Counted against the pool each option would actually produce
+               instead. The club narrowing is applied the same way countIf
+               applies it, so the two kinds of count mean the same thing. */
+            const sourceCount = (val) => {
+                if (slotIdx == null) return null;
+                const pool = twfBasePool(slotIdx, val);
+                const scopedPool = clubSet.size ? pool.filter(p => clubSet.has(p.teamId)) : pool;
+                const merged = Object.assign({}, s, { source: val });
+                return scopedPool.filter(p => twfPasses(p, merged, ctx)).length;
+            };
+
+            const group = (label, key, options, tip, countFor) => `
                 <div class="apf-group">
                     <span class="v2-menu-label"${tip ? ` data-tooltip="${escHTML(tip)}"` : ''}>${escHTML(label)}</span>
                     <div class="apf-controls">${options.map(o => {
@@ -778,12 +806,15 @@
                            them as ON, because a non-empty string is truthy. */
                         const val = Object.prototype.hasOwnProperty.call(o, 'cv') ? o.cv : o.v;
                         const on = s[key] === val;
-                        const n = countIf({ [key]: val });
+                        const n = countFor ? countFor(val) : countIf({ [key]: val });
                         return `<button class="filter-pill compact-pill${on ? ' active' : ''}"
                             onclick="twfPick('${key}:${o.v}')"
                             ${o.tip ? `data-tooltip="${escHTML(o.tip)}"` : ''}>${escHTML(o.l)}<em class="twf-n">${n}</em></button>`;
                     }).join('')}</div>
                 </div>`;
+
+            // Survivors if the source were Favourites — see sourceCount.
+            const favFit = sourceCount('favorites');
 
             const outPrice = ctx.outPrice;
             const qLabel = twfQualityLabel(pos);
@@ -828,7 +859,7 @@
                 group('Shortlist', 'source', [
                     { v: 'all', l: 'All players' },
                     { v: 'favorites', l: 'Favourites', tip: 'The players you starred on the Players Analysis page. Budget and minutes limits are lifted here, so an unaffordable target still shows, marked.' }
-                ], 'Everyone, or only the players you starred.'),
+                ], 'Everyone, or only the players you starred.', sourceCount),
                 pos === 1 ? '' : group('Defensive contribution', 'defcon', [
                     { v: 'false', cv: false, l: 'Any' },
                     { v: 'true', cv: true, l: 'Clears the threshold' }
@@ -896,16 +927,22 @@
                       not toggle `source` back to a default the way the other
                       keys do; there is no "any" for a source.
 
-                      The count is the number starred, not the number surviving:
-                      zero is the one case where the button needs to say why
-                      pressing it will show nothing. */''}
+                      The badge is how many would survive for THIS slot, which
+                      is the same number the Shortlist pill in the panel shows —
+                      two numbers about favourites on one screen must agree, and
+                      a mismatch between them is exactly the bug that sent me
+                      back here. How many are starred in total goes in the
+                      tooltip, because "you have five, none of them a keeper" is
+                      the sentence a nought needs. */''}
                 <button class="apf-menu-btn${favOn ? ' is-on' : ''}"
                     onclick="twfPick('source:${favOn ? 'all' : 'favorites'}')"
                     aria-pressed="${favOn}"
-                    data-tooltip="${starredCount
-                        ? `Only the ${starredCount} player${starredCount === 1 ? '' : 's'} you starred on the Players page. Budget and minutes limits are lifted here, so an unaffordable target still shows, marked.`
-                        : 'You have not starred anyone yet — use the star on the Players page and they show up here.'}">
-                    ${typeof v2Icon === 'function' ? v2Icon('star') : ''}Favourites${starredCount ? `<span class="apf-menu-n">${starredCount}</span>` : ''}
+                    data-tooltip="${!starredCount
+                        ? 'You have not starred anyone yet — use the star on the Players page and they show up here.'
+                        : favFit
+                            ? `${favFit} of the ${starredCount} player${starredCount === 1 ? '' : 's'} you starred can fill this slot. Budget and minutes limits are lifted here, so an unaffordable target still shows, marked.`
+                            : `None of the ${starredCount} player${starredCount === 1 ? '' : 's'} you starred can fill this slot — wrong position, or already in your squad.`}">
+                    ${typeof v2Icon === 'function' ? v2Icon('star') : ''}Favourites${starredCount ? `<span class="apf-menu-n">${favFit}</span>` : ''}
                 </button>
                 <div class="twf-search-wrap">
                     ${typeof v2Icon === 'function' ? v2Icon('eye') : ''}

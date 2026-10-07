@@ -219,3 +219,80 @@ test('an explicit slot index can be asked for', () => {
     ctx.transferState.activeSlot = 1;
     assert.deepEqual([...ctx.twfState(0).clubs], [6], 'reads the slot asked for, not the active one');
 });
+
+/* ===== Counting a filter that changes the pool rather than the predicate =====
+
+   Reported from the live site: a goalkeeper search showed "All players 14" and
+   "Favourites 14" side by side, and clicking Favourites gave nothing.
+
+   Both pills were computed by varying one key on the filter state and re-running
+   twfPasses over the pool already in hand. That works for every filter that IS
+   a predicate over a fixed pool. Source is not one — twfBasePool applies it and
+   returns early, deliberately lifting the budget and the status gate for a
+   starred player — and twfPasses never reads `source` at all. So the Favourites
+   pill reported the pool it was already looking at.
+
+   The fix is that twfBasePool can be asked about a source other than the live
+   one, which is what these pin down. */
+
+function poolHarness({ starred = [], players = [], budget = 4.5 } = {}) {
+    const ctx = load();
+    ctx.allPlayers = players;
+    ctx.selectedPlayers = [];
+    ctx.twSlotBudget = () => budget;
+    ctx.getTWShortlistIds = () => new Set(starred);
+    ctx.transferState.pending = [{
+        soldPlayer: { id: 999, position: 1, name: 'Out', price: 4.5, sellPrice: 4.5 },
+        replacement: null, funnel: null
+    }];
+    ctx.transferState.activeSlot = 0;
+    return ctx;
+}
+
+const keeper = (id, price) => ({ id, position: 1, price, status: 'a', name: `GK${id}`, teamId: id });
+const mid = (id, price) => ({ id, position: 3, price, status: 'a', name: `MID${id}`, teamId: id });
+
+test('the favourites pool is the starred players, not the affordable ones', () => {
+    const ctx = poolHarness({
+        starred: [101, 102],
+        players: [keeper(1, 4.0), keeper(2, 4.5), keeper(3, 9.0), mid(101, 9.0), mid(102, 8.0)]
+    });
+    const all = ctx.twfBasePool(0, 'all');
+    const fav = ctx.twfBasePool(0, 'favorites');
+    // Two affordable keepers; the £9.0m one is over a £4.5m budget.
+    assert.deepEqual([...all.map(p => p.id)], [1, 2]);
+    // Neither starred player is a keeper, so the favourites pool for this slot
+    // is empty — which is exactly what clicking the pill showed while the pill
+    // itself claimed otherwise.
+    assert.deepEqual([...fav.map(p => p.id)], []);
+    assert.notEqual(all.length, fav.length, 'the two counts must be able to differ');
+});
+
+test('a starred player over budget is kept, because a star outranks the budget', () => {
+    /* The Transfer Wizard decided this deliberately: "how does the player I
+       starred compare" is worth answering even when he is unaffordable. */
+    const ctx = poolHarness({
+        starred: [3],
+        players: [keeper(1, 4.0), keeper(3, 9.0)]
+    });
+    assert.deepEqual([...ctx.twfBasePool(0, 'favorites').map(p => p.id)], [3]);
+    assert.deepEqual([...ctx.twfBasePool(0, 'all').map(p => p.id)], [1],
+        'and the ordinary pool still respects it');
+});
+
+test('asking about the other source does not change the live one', () => {
+    /* The counts are drawn while a search is on screen. If asking what
+       Favourites would leave switched the search to Favourites, reading the
+       panel would change it. */
+    const ctx = poolHarness({ starred: [3], players: [keeper(1, 4.0), keeper(3, 9.0)] });
+    const before = ctx.twfState().source;
+    ctx.twfBasePool(0, 'favorites');
+    assert.equal(ctx.twfState().source, before);
+});
+
+test('with no override it follows the live source', () => {
+    const ctx = poolHarness({ starred: [3], players: [keeper(1, 4.0), keeper(3, 9.0)] });
+    assert.deepEqual([...ctx.twfBasePool(0).map(p => p.id)], [1], 'default source is all');
+    ctx.twfState().source = 'favorites';
+    assert.deepEqual([...ctx.twfBasePool(0).map(p => p.id)], [3]);
+});

@@ -569,6 +569,7 @@ export default [
                 draftPointerDown: 'writable',
                 draftPointerMove: 'writable',
                 draftPointerUp: 'writable',
+                draftRefuseUnaffordable: 'writable',
                 draftReplacementTarget: 'writable',
                 draftSideToggleLabel: 'writable',
                 draftSidebarTab: 'writable',
