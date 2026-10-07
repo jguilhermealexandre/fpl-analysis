@@ -741,17 +741,47 @@
         // Why this move, in the model's own terms rather than a generic blurb.
 
 
-        // Drop the recommendation into the planner so it can be reviewed and edited
-        // rather than applied blind.
+        /* Drop the recommendation into the planner so it can be reviewed and
+           edited rather than applied blind.
+
+           THIS USED TO DO NOTHING VISIBLE, and then quietly undo itself.
+
+           It filled the cart and re-rendered, but left the wizard on step 1.
+           Step 1 is the plan chooser: renderTWMarketPane returns an empty
+           string on it and the squad pane draws twRenderPlanStep, so a loaded
+           cart rendered in neither. The button appeared inert.
+
+           Worse, it left transferState.strategy null — the state the wizard
+           starts in — so the obvious next thing to do was pick a plan, and
+           twSetStrategy empties pending on an actual switch. Picking a plan is
+           meant to throw away players chosen under the previous one; here it
+           threw away the recommendation the manager had just asked for. The
+           button did nothing, and then the next click deleted what it had done.
+
+           So: the plan FIRST, while the cart is still empty and there is
+           nothing for the switch to wipe, then the cart, then the step that
+           actually shows it. Every slot arrives with a replacement already, so
+           the Overview is both reachable and the right place to land — the
+           squad this leaves you with, and what it costs.
+
+           single or multi follows the size of the plan, and the two caps agree:
+           TW_PLAN_CAP.multi is 5 and so is the engine's TW_MAX_PLAN, so a
+           recommendation can never arrive larger than the plan it is loaded
+           into. tests/transfer-plan.test.mjs holds them to that. */
         let twLastRecommendation = null;
         function twApplyRecommendation() {
             const r = twLastRecommendation;
             if (!r || !r.best || !r.best.moves.length) return;
-            transferState.pending = r.best.moves.map(m => ({ soldPlayer: m.out, replacement: m.in }));
+            const moves = r.best.moves;
+
+            twSetStrategy(moves.length > 1 ? 'multi' : 'single', { render: false });
+
+            transferState.pending = moves.map(m => ({ soldPlayer: m.out, replacement: m.in }));
             transferState.activeSlot = -1;
             transferState.mode = 'squad';
-            renderTWAll();
-            updateStatus(`Loaded ${r.best.moves.length} recommended transfer${r.best.moves.length === 1 ? '' : 's'} — review before confirming`, 'success');
+
+            twGoStep(4);
+            updateStatus(`Loaded ${moves.length} recommended transfer${moves.length === 1 ? '' : 's'} — review before confirming`, 'success');
         }
 
         /* A move handed over from the dashboard.

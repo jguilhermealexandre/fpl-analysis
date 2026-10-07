@@ -104,6 +104,46 @@
         const TW_MIN_FREE_GAIN = 3.0;   // spend a free transfer
         const TW_MIN_HIT_GAIN  = 4.0;   // clear the 4-point hit by this much again
 
+        /* How much better a goalkeeper swap has to be before it is offered.
+         *
+         * THIS IS A STATED PREFERENCE, NOT A MODELLING CORRECTION, and it is
+         * worth being exact about that because the obvious justification is
+         * false. The tempting story is "the model keeps picking keepers because
+         * they are all the same, so noise clears the margin there more easily
+         * than a real upgrade does in attack". Measured on GW6 data, over the
+         * five-gameweek horizon this engine uses, the points-per-game spread
+         * between the 10th and 90th percentile of PLAYING keepers is 21.0
+         * points — against 20.0 for midfielders and 21.5 for defenders. Keepers
+         * are not interchangeable and that story does not survive contact with
+         * the data.
+         *
+         * What IS structural is the price band. Playing keepers cost £4.5m to
+         * £6.1m, a standard deviation of £0.42; midfielders span £4.5m to
+         * £11.9m and forwards £5.5m to £15.6m. So a keeper transfer moves no
+         * money — it cannot free funds for an upgrade elsewhere and it cannot
+         * concentrate them — and the market prices the position so flatly that
+         * £4.7m Tzolakis outscores £6.1m Raya. The transfer buys a different
+         * keeper and nothing else.
+         *
+         * The rest of the reason is that managers do not make this move, which
+         * is the site owner's call about the product rather than something to
+         * be derived. Set at the same size as TW_MIN_FREE_GAIN, so a keeper
+         * swap has to be worth about twice what an outfield one does: harder to
+         * recommend, which is what was asked, rather than never recommended.
+         *
+         * Waived entirely when the outgoing keeper is not available — an injury
+         * or a suspension is not a reluctant transfer. A keeper who has simply
+         * lost his place needs no special case: the engine already projects him
+         * near zero over the horizon, so the gain on replacing him clears even
+         * the raised bar on its own. */
+        const TW_GK_FRICTION = 3.0;
+
+        function twMoveFriction(m) {
+            if (!m || !m.out || m.out.position !== 1) return 0;
+            if (m.out.status !== 'a') return 0;
+            return TW_GK_FRICTION;
+        }
+
         /* The most transfers a single recommendation will ever propose.
 
            Not a judgement about football — it is the point past which this stops
@@ -425,6 +465,10 @@
             const ft = opts.ft || 0;
             const jointGain = opts.jointGain;
             const legal = opts.legal || (() => true);
+            /* Injectable so a test can state the friction it is testing rather
+               than import the live constant and assert against whatever it
+               happens to be this week. */
+            const friction = opts.friction || (typeof twMoveFriction === 'function' ? twMoveFriction : () => 0);
             const costFor = n => Math.max(0, n - ft) * 4;
             const maxN = Math.min(opts.maxPlan || TW_MAX_PLAN, Math.max(2, ft + 1));
 
@@ -435,13 +479,16 @@
             for (let n = 1; n <= maxN; n++) {
                 const base = chain.length ? chain[chain.length - 1].moves : [];
                 const consider = n === 1 ? moves.slice(0, 1) : moves;
-                let pick = null, pickGross = -Infinity;
+                let pick = null, pickGross = -Infinity, pickRank = -Infinity;
                 for (const m of consider) {
                     if (usedOut.has(m.out.id) || usedIn.has(m.in.id)) continue;
                     const trial = base.concat([m]);
                     if (!legal(trial)) continue;
                     const gross = jointGain(trial);
-                    if (gross > pickGross) { pickGross = gross; pick = m; }
+                    // Ranked on the gain less the move's own reluctance, so the
+                    // same friction that orders step one orders the rest.
+                    const rank = gross - friction(m);
+                    if (rank > pickRank) { pickRank = rank; pickGross = gross; pick = m; }
                 }
                 if (!pick) break;
                 usedOut.add(pick.out.id);
@@ -462,7 +509,9 @@
                 if (!unavailable(opt.step)) {
                     if (opts.freeTransfersOnly && opt.stepCost > 0) break;
                     const margin = opt.stepCost > 0 ? TW_MIN_HIT_GAIN : TW_MIN_FREE_GAIN;
-                    if (opt.stepGain - opt.stepCost < margin) break;
+                    // Plus whatever this move costs in reluctance — a keeper
+                    // swap has to be worth about twice an outfield one.
+                    if (opt.stepGain - opt.stepCost - friction(opt.step) < margin) break;
                 }
                 depth = opt.n;
             }
@@ -520,11 +569,19 @@
             const ftNow = o.freeTransfers != null ? o.freeTransfers : twFreeTransfers();
             const cost1 = Math.max(0, 1 - ftNow) * 4;
             const margin1 = cost1 > 0 ? TW_MIN_HIT_GAIN : TW_MIN_FREE_GAIN;
-            const clearsBar = m => (m.gain - cost1) >= margin1;
+            const clearsBar = m => (m.gain - cost1 - twMoveFriction(m)) >= margin1;
 
+            /* Ranked on what each move is worth less what it costs in
+               reluctance, so a keeper swap only reaches the top of the list by
+               beating the best outfield move outright rather than by a point.
+               See twMoveFriction: this is the same penalty the margin applies,
+               and applying it here as well is what stops the pinned first step
+               being a keeper the viability test would then refuse — which would
+               have returned "hold" while a perfectly good outfield move sat two
+               rows down. */
             const byGain = squad.map(p => twBestSwapFor(p, ctx))
                 .filter(Boolean)
-                .sort((a, b) => b.gain - a.gain);
+                .sort((a, b) => (b.gain - twMoveFriction(b)) - (a.gain - twMoveFriction(a)));
 
             /* Promote a flagged player's move only when doing so costs nothing.
 

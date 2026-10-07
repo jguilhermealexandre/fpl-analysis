@@ -138,11 +138,15 @@ const twPlanChain = loadFunction('scripts/transfer-engine.js', 'twPlanChain', {
 });
 
 let planUid = 0;
-/** A move worth `solo` points on its own. */
+/** A move worth `solo` points on its own. `pos` is the outgoing player's
+ *  position — 1 is a goalkeeper, which the friction below cares about. */
 const mv = (solo, extra = {}) => {
     planUid++;
     return {
-        out: { id: `o${planUid}`, status: extra.status || 'a', teamId: `t${planUid}` },
+        out: {
+            id: `o${planUid}`, status: extra.status || 'a',
+            position: extra.pos || 3, teamId: `t${planUid}`
+        },
         in: { id: `i${planUid}`, teamId: `t${planUid}` },
         gain: solo, _solo: solo
     };
@@ -235,4 +239,91 @@ test('a player is never sold twice in one plan', () => {
     const first = mv(9);
     const sameOut = { out: first.out, in: { id: 'zz', teamId: 'tz' }, gain: 8, _solo: 8 };
     assert.equal(plan([first, sameOut], { ft: 4 }).chain.length, 1);
+});
+
+/* ===== Goalkeepers, and the justification that did not survive checking =====
+
+   Managers do not transfer keepers, and the engine kept offering it. The
+   tempting explanation — "playing keepers are all much of a muchness, so noise
+   clears the margin there more easily than a real upgrade does in attack" — is
+   false. Measured on GW6 data over the five-gameweek horizon, the p10-to-p90
+   points spread among playing keepers is 21.0 points against 20.0 for
+   midfielders. Keepers are not interchangeable.
+
+   What is structural is the price band: playing keepers span £4.5m to £6.1m
+   against £4.5m-£11.9m for midfielders, so the transfer moves no money and buys
+   a different keeper and nothing else. The rest is a product decision. Either
+   way the constant is a preference, so these tests inject the friction rather
+   than asserting against whatever TW_GK_FRICTION happens to be. */
+
+const twMoveFriction = loadFunction('scripts/transfer-engine.js', 'twMoveFriction', {
+    TW_GK_FRICTION: 3.0
+});
+
+const gk = (solo, extra = {}) => mv(solo, { ...extra, pos: 1 });
+/** Step one is pinned to moves[0], so the caller owns the ranking — and the
+ *  caller applies the same friction. Mirrored here so these exercise the real
+ *  pipeline rather than an order production never produces. */
+const ranked = moves => moves.slice()
+    .sort((a, b) => (b.gain - twMoveFriction(b)) - (a.gain - twMoveFriction(a)));
+const planRanked = (moves, opts = {}) => twPlanChain(ranked(moves), {
+    jointGain: jointGain(opts.decay), legal: opts.legal || anyLegal,
+    friction: twMoveFriction, ...opts
+});
+
+test('friction falls on an available keeper and nobody else', () => {
+    assert.equal(twMoveFriction(gk(5)), 3.0);
+    assert.equal(twMoveFriction(mv(5)), 0, 'outfield moves are free of it');
+    assert.equal(twMoveFriction(gk(5, { status: 'i' })), 0, 'an injury is not reluctance');
+    assert.equal(twMoveFriction(gk(5, { status: 'd' })), 0);
+    assert.equal(twMoveFriction(null), 0);
+});
+
+test('a keeper swap has to be worth about twice an outfield one', () => {
+    assert.equal(planRanked([mv(4)], { ft: 4 }).depth, 1, 'an outfield move worth 4 is taken');
+    assert.equal(planRanked([gk(4)], { ft: 4 }).depth, 0, 'the same number on a keeper is not');
+    assert.equal(planRanked([gk(5.9)], { ft: 4 }).depth, 0);
+    assert.equal(planRanked([gk(6.1)], { ft: 4 }).depth, 1);
+});
+
+test('a keeper who cannot play is replaced on the ordinary margin', () => {
+    assert.equal(planRanked([gk(3.5, { status: 'i' })], { ft: 4 }).depth, 1);
+});
+
+test('a refused keeper does not cost you the outfield move behind it', () => {
+    /* The friction is applied to the RANKING as well as the margin, so a
+       keeper that would fail the bar does not get pinned to step one and
+       strand a perfectly good move two rows down. */
+    const r = planRanked([gk(5), mv(5)], { ft: 4 });
+    assert.equal(r.chain[0].step.out.position, 3, 'step one is the outfield move');
+    assert.equal(r.depth, 1);
+});
+
+test('a clearly better keeper still wins', () => {
+    const r = planRanked([gk(12), mv(5)], { ft: 4 });
+    assert.equal(r.chain[0].step.out.position, 1);
+    assert.ok(r.depth >= 1);
+});
+
+test('the friction applies to later steps, not only the first', () => {
+    const r = planRanked([mv(9), gk(4), mv(3.5)], { ft: 4 });
+    assert.equal(r.chain[1].step.out.position, 3, 'step two prefers the outfield move');
+    assert.equal(planRanked([mv(9), gk(4)], { ft: 4 }).depth, 1, 'and refuses the keeper outright');
+});
+
+test('a keeper topping the ranking and then failing cannot hide a viable move', () => {
+    /* The property that makes pinning step one safe. If the keeper leads after
+       friction then gkGain - 3 >= every other gain; if it then fails viability,
+       gkGain - 3 < 3, so every other gain is under 3 and none of them would
+       have cleared the margin either. Holding is the right answer, not a move
+       the friction lost. Swept rather than argued. */
+    for (let g = 3.0; g <= 6.0; g += 0.25) {
+        for (let o = 0; o <= g - 3.0; o += 0.25) {
+            const r = planRanked([gk(g), mv(o)], { ft: 4 });
+            if (r.depth === 0) {
+                assert.ok(o < 3.0,
+                    `held at keeper ${g} while an outfield move worth ${o} was available`);
+            }
+        }
+    }
 });
