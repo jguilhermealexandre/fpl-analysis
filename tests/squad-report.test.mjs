@@ -193,8 +193,35 @@ test('an injury is the first thing on the to-do list, because it has a deadline'
     ]);
     assert.match(out, /What to do this week/);
     const todo = out.slice(out.indexOf('What to do this week'));
-    assert.ok(todo.indexOf('Broken') < todo.indexOf('argue for moving'),
-        'the thing with a deadline comes first');
+    assert.ok(todo.indexOf('Broken') < todo.indexOf('Of your 2 players'),
+        'the thing with a deadline comes before the everything-else line');
+});
+
+test("the to-do list IS the status card's list, not a second opinion about it", () => {
+    /* THE BUG THIS EXISTS FOR. The card rendered "Do this week — Upgrade Konsa,
+       Upgrade Palmer" with xP gains; the report's "What to do this week" said
+       "1 player the numbers argue for moving on" and named nobody. Two headings
+       one click apart, two different answers, because one asked the transfer
+       engine for the biggest available gain and the other counted sell verdicts.
+       Both now read the one array buildSuggestedMoves() produced. */
+    const moves = [
+        { icon: '', urgent: false, title: 'Upgrade Konsa', detail: 'Muharemovic over Konsa — projected +15.6 pts' },
+        { icon: '', urgent: true, title: 'Replace Broken', detail: 'He cannot play' }
+    ];
+    const out = text(renderSquadReport(buildWith(
+        [analysis({ player: { name: 'Konsa' } })], { squadSuggestedMoves: moves })));
+    const todo = out.slice(out.indexOf('What to do this week'));
+    assert.match(todo, /Upgrade Konsa/);
+    assert.match(todo, /projected \+15\.6 pts/);
+    assert.match(todo, /Replace Broken/);
+});
+
+test('a move names the player the card named, escaped', () => {
+    const moves = [{ icon: '', urgent: false, title: "Upgrade O'Shea", detail: '<img src=x> over him' }];
+    const html = renderSquadReport(buildWith(
+        [analysis({ player: { name: 'A' } })], { squadSuggestedMoves: moves }));
+    assert.ok(!html.includes('<img src=x'), 'the card escapes these and so does this');
+    assert.match(html, /O&#39;Shea/);
 });
 
 test('a sell-listed player dropping tonight is called out by name', () => {
@@ -223,19 +250,23 @@ test('a clean squad gets a to-do list saying there is nothing to do', () => {
     const out = report(Array.from({ length: 11 }, (_, i) =>
         analysis({ player: { id: i, name: `Clean${i}` } })));
     const todo = out.slice(out.indexOf('What to do this week'));
-    assert.match(todo, /The other 11 players are a hold/);
+    assert.match(todo, /Nothing is flagged against any of your 11 players/);
 });
 
-test('holds are the good news at the end, not an apology at the end', () => {
-    /* "The remaining 9 players are a hold" was the last line of the report and
-       read as one. As a line of the summary it is simply the rest of the squad
-       being fine. */
+test('the closing line adds up against the whole squad', () => {
+    /* "The other 6 players are a hold" after a line about one sell implied a
+       squad of seven — holds are one of four verdicts and the other two are not
+       nothing. The denominator is the squad, which is the only one a reader can
+       check, and it is a list so no verb has to agree with a count of one. */
     const out = report([
         analysis({ player: { id: 1, name: 'S' }, verdict: 'sell', verdictReason: 'r' }),
-        analysis({ player: { id: 2, name: 'H' } })
+        analysis({ player: { id: 2, name: 'M' }, verdict: 'monitor', verdictReason: 'r' }),
+        analysis({ player: { id: 3, name: 'T' }, verdict: 'star', verdictReason: 'r' }),
+        analysis({ player: { id: 4, name: 'H' } })
     ]);
     const todo = out.slice(out.indexOf('What to do this week'));
-    assert.match(todo, /The other 1 player is a hold/);
+    assert.match(todo, /Of your 4 players: 1 to hold, 1 performing too well to touch, 2 carrying a flag/);
+    assert.ok(!/1 are|1 carry\b/.test(todo), 'no plural verb on a count of one');
 });
 
 /* ---- what it says when there is nothing to say ---- */

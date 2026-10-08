@@ -1584,6 +1584,7 @@ export default [
                 squadFilterPos: 'writable',
                 squadFixtureLoad: 'writable',
                 squadIds: 'writable',
+                squadSuggestedMoves: 'writable',
                 startDeadlineCountdown: 'writable',
                 startPriceLockCountdown: 'writable',
                 statsCategory: 'writable',

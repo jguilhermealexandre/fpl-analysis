@@ -103,6 +103,10 @@
            the gameweek it was made for. Optional: it is fetched with a .catch,
            and the two features that read it say so rather than guessing. */
         let managerTransferLog = null;
+        /* What buildSuggestedMoves() last produced, so the status card's "Do this
+           week" and the squad report's "What to do this week" are the same list
+           and not two answers to one question. Set in renderTeamAnalysis(). */
+        let squadSuggestedMoves = [];
         let gwEvents = [];        // bootstrap events[] — deadlines, is_current/is_next
         let chipDefinitions = []; // bootstrap chips[] — each chip's start_event/stop_event window
         let maxFreeTransfers = 5; // from game_settings.max_extra_free_transfers + 1
@@ -759,7 +763,15 @@
 
             const { health: teamHealth, starters,
                 injuredStarters, doubtfulStarters, capAnalysis } = computeSquadHealth(analysisResults);
-            const suggestedMoves = buildSuggestedMoves(starters, injuredStarters, doubtfulStarters, capAnalysis);
+            /* Kept as well as passed down. The status card renders these as "Do
+               this week"; the squad report behind its button has to answer the
+               same question with the same list, and the only way to guarantee
+               that is for both to read the one array rather than each deriving
+               an answer of its own. Recomputing in the report would also drift:
+               it is called on a click, by which time the bank and the squad may
+               have moved under it. */
+            squadSuggestedMoves = buildSuggestedMoves(starters, injuredStarters, doubtfulStarters, capAnalysis);
+            const suggestedMoves = squadSuggestedMoves;
 
             let html = '';
             if (isPreseason) html += renderSeasonNotice('Showing 2025/26 form &amp; stats — verdicts will update once GW1 is played.');
@@ -1505,6 +1517,10 @@
 
             return {
                 squad,
+                /* The status card's list, not a second opinion about it — see the
+                   comment on squadSuggestedMoves. Defaulted so the report still
+                   renders if it is opened before renderTeamAnalysis has run. */
+                moves: (typeof squadSuggestedMoves !== 'undefined' && squadSuggestedMoves) || [],
                 priceMoves,
                 fixtureLoad: typeof squadFixtureLoad === 'function'
                     ? squadFixtureLoad(squad, planningGW, planningGW + SQR_FIXTURE_HORIZON - 1)
@@ -1869,21 +1885,55 @@
             if (dueDrop.length) {
                 next.push({ tone: 'bad', icon: v2Icon('wallet'), text: `${sqrJoin(dueDrop.map(c => `<b>${escHTML(c.player.name)}</b>`))} ${dueDrop.length === 1 ? 'is' : 'are'} on your sell list and ${dueDrop.length === 1 ? 'drops' : 'drop'} at the next daily update. Moving before it keeps the 0.1.` });
             }
-            if (d.sells.length) {
-                /* "None of them urgent" only when nothing above it was. An
-                   earlier cut dropped this line entirely whenever there was an
-                   injury, which lost the sell list rather than re-ranking it —
-                   the injury goes first because it has a deadline, not because
-                   it is the only thing worth saying. */
-                const urgent = d.injured.length || dueDrop.length;
-                next.push({ tone: 'mixed', icon: v2Icon('swap'), text: `${d.sells.length} player${d.sells.length === 1 ? '' : 's'} the numbers argue for moving on${urgent ? '' : ', none of them urgent'} — the Transfer Wizard prices each swap against the hit before you commit to it.` });
-            }
+            /* ===== The moves themselves, from the one list that produces them
+               =====
+
+               This block used to count verdicts: "1 player the numbers argue for
+               moving on". The card two inches behind it was naming two concrete
+               upgrades with their xP gains. Both headings say "do this week" and
+               they gave different answers, because they were answering different
+               questions — the card asks the transfer engine "what is the biggest
+               xP gain available at your budget", the report was asking the
+               verdict engine "which of my players has something wrong with him".
+
+               A player can be a perfectly good hold and still be the best
+               upgrade going, because someone far better is affordable; and he can
+               be a sell with no affordable replacement. Both are legitimate, and
+               two legitimate answers under one heading is still a bug. So the
+               report reads d.moves — the same array the card renders — and the
+               verdict counts stay where they belong, as the evidence in the
+               sections above.
+
+               Title and detail are the card's own strings, so the two surfaces
+               cannot drift into describing one move differently. */
+            (d.moves || []).forEach(m => {
+                next.push({
+                    tone: m.urgent ? 'bad' : 'mixed',
+                    icon: m.icon,
+                    text: `<b>${escHTML(m.title)}</b> — ${escHTML(m.detail)}`
+                });
+            });
             const nearBlank = d.fixtureLoad && d.fixtureLoad.blanks[0];
             if (nearBlank) {
                 next.push({ tone: 'mixed', icon: v2Icon('calendar'), text: `<b>GW${nearBlank.gw}</b> leaves ${nearBlank.players.length} of your squad without a fixture. That is a chip question rather than a transfer one.` });
             }
-            if (d.holds.length) {
-                next.push({ tone: 'good', icon: v2Icon('check'), text: `The other ${d.holds.length} ${d.holds.length === 1 ? 'player is' : 'players are'} a hold — nothing in the numbers argues for moving ${d.holds.length === 1 ? 'him' : 'them'} this week.` });
+            /* The closing reassurance, and it has to add up. "The other 6 players
+               are a hold" after a line about one sell implied a squad of seven;
+               holds are one of four verdicts and the other two are not nothing.
+               Counted against the whole squad, which is the only denominator a
+               reader can check. */
+            if (d.squad.length) {
+                const flagged = d.sells.length + d.monitors.length;
+                /* A list rather than a sentence, so there is no verb to agree
+                   with a count that can be one: "1 are a straight hold and 0 are
+                   performing too well" is what the sentence version produced. */
+                next.push({
+                    tone: 'good',
+                    icon: v2Icon('check'),
+                    text: flagged
+                        ? `Of your ${d.squad.length} players: <b>${d.holds.length}</b> to hold, <b>${d.stars.length}</b> performing too well to touch, <b>${flagged}</b> carrying a flag.`
+                        : `Nothing is flagged against any of your ${d.squad.length} players.`
+                });
             }
             html += `<div class="detail-section">
                 <div class="detail-section-title">${v2Icon('cap')} What to do this week</div>

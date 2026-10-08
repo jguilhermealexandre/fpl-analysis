@@ -252,11 +252,46 @@
             sellRating += sensAdj(minsPenalty);
             player.minsPerGame = minsPerGame;
 
+            /* ===== What the minutes figure is an average OF =====
+
+               minsPerGame is season minutes over gameweeks ELAPSED, so a player
+               who missed the opening weeks keeps paying for them long after he is
+               back in the side. Konsa read "56 mins/game — rotation risk, bench
+               for tough fixtures" on the day he had started three in a row at
+               ninety minutes: 0, 11, 90, 90, 90 averages 56, and the label
+               described the average rather than the player.
+
+               The average is not wrong and it is not changed here — the
+               projection uses it and that is a separate question, measured and
+               left alone deliberately. What is fixed is the claim made about it.
+               A run of recent starts is checkable, so when there is one it is
+               stated and the verdict is softened to what the evidence supports;
+               when the per-gameweek history is not loaded on this page, the
+               wording falls back to what it always said. */
+            const startRun = (() => {
+                const rows = (typeof playersDetailData !== 'undefined' && playersDetailData?.players || [])
+                    .find(p => p.id === player.id)?.history || [];
+                let n = 0, mins = 0;
+                for (let i = rows.length - 1; i >= 0; i--) {
+                    if (!rows[i].starts) break;
+                    n++; mins += rows[i].minutes || 0;
+                }
+                return n >= 2 ? { n, avg: mins / n } : null;
+            })();
+            const runNote = startRun
+                ? ` He has started his last ${startRun.n} at ${startRun.avg.toFixed(0)} minutes a game, so the season figure is held down by the matches he missed.`
+                : '';
+
+            const minsSoFar = `${minsPerGame.toFixed(0)} mins/game across ${gamesPlayed} gameweek${gamesPlayed === 1 ? '' : 's'}`;
             if (minsPerGame < 45) {
-                concerns.push({ type: 'critical', title: 'Rotation Risk', text: `Only ${minsPerGame.toFixed(0)} mins/game (${player.starts} starts in ${gamesPlayed} GWs) — consider benching or selling` });
-                reasons.push('Not starting regularly');
+                concerns.push(startRun
+                    ? { type: 'warning', title: 'Minutes Building', text: `${minsSoFar}.${runNote}` }
+                    : { type: 'critical', title: 'Rotation Risk', text: `Only ${minsSoFar} (${player.starts} start${player.starts === 1 ? '' : 's'}) — consider benching or selling` });
+                if (!startRun) reasons.push('Not starting regularly');
             } else if (minsPerGame < 65) {
-                concerns.push({ type: 'warning', title: 'Reduced Minutes', text: `${minsPerGame.toFixed(0)} mins/game — rotation risk, bench for tough fixtures` });
+                concerns.push(startRun
+                    ? { type: 'warning', title: 'Minutes Building', text: `${minsSoFar}.${runNote}` }
+                    : { type: 'warning', title: 'Reduced Minutes', text: `${minsPerGame.toFixed(0)} mins/game — rotation risk, bench for tough fixtures` });
             } else if (minsPerGame >= 85) {
                 positives.push({ type: 'positive', title: 'Nailed On', text: `${minsPerGame.toFixed(0)} mins/game — guaranteed starter, no rotation worry` });
             }
