@@ -848,14 +848,21 @@
         // Transfer pressure itself lives in getTransferPressure() further down —
         // there used to be a second copy here using a hardcoded 11m player count,
         // which never ran, since the later declaration wins for every caller.
+        /* The pitch card's own form of the availability mark: text under the
+           face, where there is room for a word. The classification behind it —
+           which statuses count, what each is called, whether there is a usable
+           chance figure — comes from v2Availability() in common.js, which the
+           squad table and the GW Draft table also read. Three surfaces had been
+           deciding this separately, and the table had decided not to show it.
+
+           Gains a title: "OUT" with no reason was the whole badge, and FPL
+           publishes the reason. */
         function injuryBadge(p) {
-            if (p.status === 'i' || p.status === 'u' || p.status === 's') {
-                return `<span class="pitch-injury-badge">OUT</span>`;
-            }
-            if (p.status === 'd' && p.chanceNextRound != null && p.chanceNextRound < 100) {
-                return `<span class="pitch-injury-badge doubt">${p.chanceNextRound}%</span>`;
-            }
-            return '';
+            const a = typeof v2Availability === 'function' ? v2Availability(p) : null;
+            if (!a) return '';
+            const text = a.state === 'out' ? 'OUT' : `${a.chance != null ? a.chance + '%' : 'DOUBT'}`;
+            return `<span class="pitch-injury-badge${a.state === 'doubt' ? ' doubt' : ''}"`
+                + ` title="${escHTML(a.label + (a.detail !== a.word ? ' — ' + a.detail : ''))}">${text}</span>`;
         }
         // Set-piece duty, as published by FPL. Penalties first — a first-choice
         // taker is the single most valuable non-goal attribute in the game — then

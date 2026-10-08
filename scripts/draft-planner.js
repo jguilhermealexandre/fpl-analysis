@@ -2299,18 +2299,10 @@
             let row = `<tr class="${isBench ? 'bench-row' : ''} ${rowSwapClass}" data-player-id="${player.id}">`;
 
             const captain = player.isCaptain ? '<span class="planner-captain-badge">C</span> ' : player.isVice ? '<span class="planner-captain-badge">V</span> ' : '';
-            /* Was `status === 'i' ? '' : status === 'd' ? '' : ''` — three
-               branches, all empty, since the sweep that took the emoji out of
-               the site. Nothing else in this row carries availability: the
-               identity block is an avatar and a crest, so an injured player in
-               a draft looked exactly like a fit one on the table you plan the
-               draft from. Same two icons the squad ticker uses for out and
-               doubtful, so the two surfaces mark it the same way. */
-            const statusIcon = player.status === 'i' || player.status === 'u' || player.status === 's'
-                ? `<span class="dp-avail out" role="img" aria-label="${player.status === 's' ? 'Suspended' : player.status === 'u' ? 'Unavailable' : 'Injured'}" data-tooltip="${escHTML(player.news || (player.status === 's' ? 'Suspended' : 'Unavailable'))}">${v2Icon('cross')}</span>`
-                : player.status === 'd'
-                ? `<span class="dp-avail doubt" role="img" aria-label="Doubtful${player.chanceNextRound != null ? `, ${player.chanceNextRound}% chance of playing` : ''}" data-tooltip="${escHTML(player.news || 'Doubtful')}">${v2Icon('bandage')}</span>`
-                : '';
+            /* Was three ternary branches all returning '' — see check-icons.mjs.
+               The mark itself is v2AvailMark() in common.js now, shared with the
+               squad table and classified the same way as the pitch cards. */
+            const statusIcon = typeof v2AvailMark === 'function' ? v2AvailMark(player) : '';
             const transferBadge = player.isTransferIn ? '<span class="draft-transfer-badge">IN</span>' : '';
             /* Squad Analysis settled this: fading a benched row says "benched"
                a second time and charges an xP, a form figure and five fixture

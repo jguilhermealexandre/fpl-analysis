@@ -2182,6 +2182,23 @@ body h1:not(.hero-title) > .icon,
     box-shadow: 0 8px 24px rgba(0, 0, 0, .55);
 }
 
+/* ----- Is this player available -----
+   The mark v2AvailMark() writes, in scripts/common.js. Three surfaces were
+   telling this one fact three different ways: a text badge under a pitch card,
+   an icon in the GW Draft table, and nothing at all in the squad table. The
+   classification is shared now; this is the compact rendering of it.
+
+   Colour is declared rather than inherited because v2Icon() emits
+   .v2-sec-icon, and that class is the accent green — an injured player would
+   have had a green cross. Same trap as the price ticker's arrow, which
+   v2-design.css already warns about having fallen into twice. The two tokens
+   here are the text-safe verdict colours, which is what these are: words'
+   worth of meaning at 13px, not a 2px border. */
+.v2-avail { display: inline-flex; align-items: center; gap: 2px; margin-right: 4px; vertical-align: middle; }
+.v2-avail .v2-sec-icon { width: 13px; height: 13px; color: currentColor; }
+.v2-avail.out { color: var(--verdict-sell-text); }
+.v2-avail.doubt { color: var(--verdict-monitor-text); }
+
 /* === GENERATED: size-keyed tracking — node tools/gen-tracking.mjs === */
 /* Written by tools/gen-tracking.mjs — do not edit by hand. Every rule in
    this file that sets a font-size under 16px gets the tracking that size

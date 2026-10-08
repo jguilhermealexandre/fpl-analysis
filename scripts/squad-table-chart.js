@@ -267,7 +267,7 @@
                         ${hazardIcon}
                         ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(player) : ''}
                         <div class="sq-row-name-block">
-                            <div class="sq-row-name">${player.isCaptain ? `${v2Icon('crown')} ` : ''}${player.isVice ? 'V ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}${typeof tlBadge === 'function' ? tlBadge(player) : ''}</div>
+                            <div class="sq-row-name">${typeof v2AvailMark === 'function' ? v2AvailMark(player) : ''}${player.isCaptain ? `${v2Icon('crown')} ` : ''}${player.isVice ? 'V ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}${typeof tlBadge === 'function' ? tlBadge(player) : ''}</div>
                             <div class="sq-row-team"><span class="sq-row-club">${escHTML(player.team)} · £${player.price.toFixed(1)}m</span>${priceChangeBadge(player)}</div>
                         </div>
                     </div>

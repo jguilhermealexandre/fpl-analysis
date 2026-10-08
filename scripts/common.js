@@ -748,6 +748,73 @@ function v2CrestHTML(player) {
  * practice a .v2-pid-num pill with the player's projection or score. It goes
  * inside the mark rather than beside it so it can be positioned against the
  * face without either of them needing a wrapper of its own. */
+/* ===== Is this player available? One answer, two presentations. =====
+ *
+ * The same fact was being told three different ways. Squad Analysis's pitch
+ * cards carried a text badge — OUT in red, or the percentage in amber. The GW
+ * Draft table carried an icon. The squad TABLE carried nothing at all, so a
+ * doubtful player at 75% read as an ordinary row: his verdict dot said
+ * "Monitor", which is also what a player with mild form worries gets, and
+ * nothing on the row said the word doubtful.
+ *
+ * Splitting it this way rather than forcing one rendering on both: a pitch card
+ * has room under the face for "OUT" and a dense table row does not, so the
+ * PRESENTATION genuinely differs. What must not differ is the classification —
+ * which statuses count, what each is called, and what the chance figure is. So
+ * that lives here once, and both renderers read it.
+ *
+ * FPL's statuses: a available, d doubtful, i injured, s suspended, u
+ * unavailable (which covers loans, transfers out of the league and non-squad).
+ */
+const V2_AVAILABILITY = {
+    // cross for out and bandage for a doubt, matching the squad ticker's own
+    // marks in team-analysis-core.js. Suspension takes the card, because
+    // "banned" and "hurt" are not the same thing to plan around.
+    i: { state: 'out',   word: 'Injured',     icon: 'cross' },
+    u: { state: 'out',   word: 'Unavailable', icon: 'cross' },
+    s: { state: 'out',   word: 'Suspended',   icon: 'card' },
+    d: { state: 'doubt', word: 'Doubtful',    icon: 'bandage' }
+};
+
+function v2Availability(player) {
+    const row = player && V2_AVAILABILITY[player.status];
+    if (!row) return null;
+
+    /* Only meaningful for a doubt. FPL publishes 0 against every injured,
+       suspended and unavailable player, and "0% chance" beside the word
+       Injured is a number that adds nothing. */
+    const raw = player.chanceNextRound;
+    const chance = row.state === 'doubt' && Number.isFinite(raw) && raw > 0 && raw < 100
+        ? raw : null;
+
+    /* A flagged player whose chance FPL has not published is still flagged.
+       The pitch badge used to require a figure and render nothing without one,
+       which hid the flag entirely — unreachable on today's feed, where all 41
+       doubtful players carry a 50 or a 75, but the wrong way round to fail. */
+    return {
+        state: row.state,
+        word: row.word,
+        icon: row.icon,
+        chance,
+        label: chance != null ? `${row.word}, ${chance}% chance of playing` : row.word,
+        // FPL's own words where it has any, the status otherwise.
+        detail: (player.news && String(player.news).trim()) || row.word
+    };
+}
+
+/* The compact form, for a row in a table. Icon, plus the percentage when there
+   is one — so the table says the same thing in the same words as the pitch. */
+function v2AvailMark(player) {
+    const a = v2Availability(player);
+    if (!a) return '';
+    /* The chance figure lives in the label and the tooltip, not as a second
+       number on the row: a squad row already carries an xMins column whose own
+       tooltip gives the chance of starting, and the pitch card — which has room
+       under the face — prints the percentage itself. */
+    return `<span class="v2-avail ${a.state}" role="img" aria-label="${escHTML(a.label)}"`
+        + ` data-tooltip="${escHTML(a.detail)}">${v2Icon(a.icon)}</span>`;
+}
+
 function v2IdentityHTML(player, variant, extra) {
     return `<span class="v2-pid${variant ? ' ' + variant : ''}">`
         + v2AvatarHTML(player) + v2CrestHTML(player) + (extra || '')
@@ -2502,7 +2569,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=444')
+    fetch('/footer.html?v=445')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
