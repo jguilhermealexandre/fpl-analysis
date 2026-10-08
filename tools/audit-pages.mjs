@@ -41,7 +41,6 @@ export const PAGES = [
     ['/fpl-methodology.html', 'methodology'],
     ['/fpl-accuracy.html', 'accuracy'],
     ['/fpl-contact.html', 'contact'],
-    ['/fpl-changelog.html', 'changelog'],
     ['/fpl-privacy.html', 'privacy'],
     ['/fpl-terms.html', 'terms'],
     ['/feature-squad-analysis.html', 'feature: squad'],

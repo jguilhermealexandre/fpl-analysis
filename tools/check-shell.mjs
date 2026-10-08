@@ -4,7 +4,7 @@
    The site has two chromes. The app shell is a rail down the left, and every
    item in it leads to a page about a squad. The marketing shell is a top bar,
    and it is what the eight feature pages, pricing, the FAQ, how-it-works,
-   methodology, accuracy, contact, privacy, terms, the changelog and the 404
+   methodology, accuracy, contact, privacy, terms and the 404
    are designed around.
 
    Which one a page gets used to be decided from storage: is there a Team ID.

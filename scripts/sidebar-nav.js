@@ -24,7 +24,7 @@ try {
    the same as whether the page they are looking at is part of the app, and
    twenty of these twenty-seven pages are not: the eight feature pages,
    pricing, the FAQ, how-it-works, methodology, accuracy, contact, privacy,
-   terms, the changelog and the 404. A signed-in manager opening any of them
+   terms and the 404. A signed-in manager opening any of them
    got the dashboard's rail down the side of a marketing page, with the top
    nav those pages are designed around nowhere on screen.
 
@@ -44,7 +44,7 @@ function v2IsAppShell() {
 function loadSidebarNav() {
     if (!v2IsAppShell()) return loadLandingNav();
     document.documentElement.classList.add('v2-shell-app');
-    return fetch('/sidebar-nav.html?v=441')
+    return fetch('/sidebar-nav.html?v=442')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -160,7 +160,7 @@ async function revealAdminLink() {
 /* The landing shell: a top bar rather than a rail. */
 function loadLandingNav() {
     document.documentElement.classList.add('v2-shell-landing');
-    return fetch('/landing-nav.html?v=441')
+    return fetch('/landing-nav.html?v=442')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
