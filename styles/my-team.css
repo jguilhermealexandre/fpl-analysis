@@ -1880,6 +1880,52 @@
 
 .opt-report-panel { max-width: 520px; }
 
+/* ===== The squad report's rows =====
+
+   The report was fourteen .insight-item cards — a 3px left edge and a paragraph
+   of grey text, every one the same size and the same shape. It reuses .gwr-row
+   from the Gameweek Review instead, which already solves this one tab across:
+   position badge, face and crest, name, reason, then the figure that decided it
+   right-aligned.
+
+   Only four things are added here, because the review had no equivalent for
+   them. Its three row tones are haul / good / blank, which are facts about a
+   score; a squad report needs sell / monitor / hold, which are verdicts, and
+   borrowing the wrong vocabulary is how two features end up disagreeing about
+   what green means. */
+.sqr-row.is-bad { border-left-color: var(--verdict-sell); background: var(--verdict-sell-bg); }
+.sqr-row.is-warn { border-left-color: var(--verdict-monitor); background: var(--verdict-monitor-bg); }
+.sqr-row.is-good { border-left-color: var(--verdict-hold); background: var(--verdict-hold-bg); }
+
+/* The sentence under a row. .gwr-row-detail is one line with an ellipsis, so
+   anything longer than a few words — FPL's news string, the engine's reason for
+   a verdict, the price-watch caveat — has to live beneath the row rather than be
+   cut off mid-word. Indented to clear the badge and portrait, so it reads as
+   belonging to the row above and not as a row of its own. */
+.sqr-sub {
+    font-size: 11px; line-height: 1.55; color: var(--text-muted);
+    padding: 3px 10px 7px 50px;
+}
+
+/* The verdict, on the row rather than in a heading above a list of one. */
+.sqr-chip {
+    flex-shrink: 0; padding: 2px 8px; border-radius: 999px;
+    font-size: 9.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+    background: var(--surface-3); color: var(--text-secondary);
+}
+.sqr-chip.sell { background: var(--verdict-sell-bg); color: var(--verdict-sell); }
+.sqr-chip.monitor { background: var(--verdict-monitor-bg); color: var(--verdict-monitor); }
+.sqr-chip.star { background: var(--verdict-star-bg); color: var(--verdict-star); }
+.sqr-chip.hold { background: var(--verdict-hold-bg); color: var(--verdict-hold); }
+
+/* Both visuals are built to fill their container — .twf-spark's bars are flex:1
+   and the fixture strip centres itself in whatever width it is given. In a row
+   inside a 980px modal that means stretching across half the screen, so each one
+   is pinned to the width it is legible at. */
+.sqr-row .twf-spark { flex: 0 0 64px; width: 64px; height: 18px; margin: 0; }
+.sqr-row .transfer-fdr-strip { flex-shrink: 0; margin: 0; }
+.sqr-row .transfer-fdr-badge { min-width: 30px; padding: 2px 4px; }
+
 /* ===== The report shell as a centred modal =====
 
    #optReportOverlay is a 520px drawer off the right edge, which suits a column

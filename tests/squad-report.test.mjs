@@ -34,10 +34,17 @@ const v2Icon = name => `<svg data-icon="${name}"></svg>`;
 
 const sqrJoin = loadFunction(SRC, 'sqrJoin');
 const sqrPos = loadFunction(SRC, 'sqrPos', { POSITION_CONFIG });
-const sqrWho = loadFunction(SRC, 'sqrWho', { escHTML, sqrPos });
 const sqrItem = loadFunction(SRC, 'sqrItem');
 const sqrSection = loadFunction(SRC, 'sqrSection', { escHTML, v2Icon });
 const computeSquadHealth = loadFunction(SRC, 'computeSquadHealth');
+const sqHealthBand = loadFunction(SRC, 'sqHealthBand');
+
+/* The row that replaced fourteen paragraphs. Loaded for real, because what it
+   puts in which slot is the thing under test — v2IdentityHTML is a page global
+   this file does not have, and sqrRow is written to render without it. */
+const sqrRow = loadFunction(SRC, 'sqrRow', { escHTML, sqrPos });
+const sqrFig = loadFunction(SRC, 'sqrFig');
+const sqrChip = loadFunction(SRC, 'sqrChip', { escHTML });
 
 /* The two visuals. Both are loaded for real rather than stubbed out, because
    each is markup built from a value and getting the value wrong is exactly the
@@ -71,7 +78,8 @@ const pwDetail = c => (c.tier === 'due'
     : `${Math.round(Math.abs(c.progress))}% of the way, and not projected to cross yet.`);
 
 const renderSquadReport = loadFunction(SRC, 'renderSquadReport', {
-    escHTML, v2Icon, sqrJoin, sqrPos, sqrWho, sqrItem, sqrSection,
+    escHTML, v2Icon, sqrJoin, sqrPos, sqrItem, sqrSection,
+    sqrRow, sqrFig, sqrChip, sqHealthBand,
     sqrSpark, sqrFdrStrip, pwLabel, pwDetail,
     SQR_DIFFERENTIAL_OWNERSHIP: OWN
 });
@@ -107,6 +115,128 @@ const analysis = (o = {}) => {
 };
 const text = html => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 const report = results => text(renderSquadReport(buildWith(results)));
+
+/* ---- the hero, which is the answer to "how bad is it" ---- */
+
+test('the health score is the hero, in the colour its own band gives it', () => {
+    const html = renderSquadReport(buildWith([analysis({ player: { name: 'A' } })]));
+    const band = sqHealthBand(53);
+    assert.match(html, /gwr-hero-pts/);
+    assert.match(html, /53<span>\/100<\/span>/);
+    assert.ok(html.includes(`style="color:${band.color};"`),
+        'the number carries the band colour rather than a second opinion about it');
+    assert.match(text(html), /Concerning\./);
+});
+
+test('one set of bands, so the ring and the hero cannot disagree', () => {
+    /* The colour used to break at 75/50 while the wording broke at 85/70/55/40,
+       which put a squad on 72 in warning orange under the words "Good Shape".
+       Both readers take both from here now. */
+    assert.deepEqual(
+        [95, 85, 72, 70, 60, 55, 45, 40, 10].map(h => sqHealthBand(h).text),
+        ['Excellent', 'Excellent', 'Good Shape', 'Good Shape', 'Needs Work',
+            'Needs Work', 'Concerning', 'Concerning', 'Overhaul Needed']);
+    // Green where the words are positive, amber where they hesitate, red where
+    // they do not — no band may straddle two colours.
+    assert.equal(sqHealthBand(70).color, 'var(--verdict-hold)');
+    assert.equal(sqHealthBand(69).color, 'var(--verdict-monitor)');
+    assert.equal(sqHealthBand(55).color, 'var(--verdict-monitor)');
+    assert.equal(sqHealthBand(54).color, 'var(--verdict-sell)');
+});
+
+test('the four counts are a grid, and they are the counts that say what to do', () => {
+    const out = report([
+        analysis({ player: { id: 1, name: 'S' }, verdict: 'sell', verdictReason: 'r' }),
+        analysis({ player: { id: 2, name: 'M' }, verdict: 'monitor', verdictReason: 'r' }),
+        analysis({ player: { id: 3, name: 'T' }, verdict: 'star', verdictReason: 'r' }),
+        analysis({ player: { id: 4, name: 'D', ownership: 3 } })
+    ]);
+    assert.match(out, /1 Sell 1 Monitor 1 Star 1 Differentials/);
+});
+
+test('the three verdict headings collapsed into one section', () => {
+    /* "Sell (2)", "Monitor (4)" and "Star (1)" were three headings over three
+       lists of the same kind of thing, at one or two rows each. The counts moved
+       into the grid; the verdict rides on the row as a chip. */
+    const out = report([
+        analysis({ player: { id: 1, name: 'S' }, verdict: 'sell', verdictReason: 'sell reason' }),
+        analysis({ player: { id: 2, name: 'T' }, verdict: 'star', verdictReason: 'star reason' })
+    ]);
+    assert.match(out, /The call on each player/);
+    for (const gone of ['Sell (1)', 'Monitor (0)', 'Star (1)']) {
+        assert.ok(!out.includes(gone), `${gone} should no longer be a heading`);
+    }
+    // Sell first, star last — the order is the priority and it is visible.
+    assert.ok(out.indexOf('sell reason') < out.indexOf('star reason'));
+});
+
+test('a verdict row carries the verdict as a chip, coloured by what it is', () => {
+    const html = renderSquadReport(buildWith([
+        analysis({ player: { id: 1, name: 'S' }, verdict: 'sell', verdictReason: 'r' }),
+        analysis({ player: { id: 2, name: 'M' }, verdict: 'monitor', verdictReason: 'r' }),
+        analysis({ player: { id: 3, name: 'T' }, verdict: 'star', verdictReason: 'r' })
+    ]));
+    assert.match(html, /sqr-chip sell/);
+    assert.match(html, /sqr-chip monitor/);
+    assert.match(html, /sqr-chip star/);
+    assert.match(html, /sqr-row is-bad/);
+    assert.match(html, /sqr-row is-warn/);
+    assert.match(html, /sqr-row is-good/);
+});
+
+/* ---- the closing block ---- */
+
+test('an injury is the first thing on the to-do list, because it has a deadline', () => {
+    const out = report([
+        analysis({ player: { id: 1, name: 'Broken', status: 'i', news: 'Out' } }),
+        analysis({ player: { id: 2, name: 'Meh' }, verdict: 'sell', verdictReason: 'r' })
+    ]);
+    assert.match(out, /What to do this week/);
+    const todo = out.slice(out.indexOf('What to do this week'));
+    assert.ok(todo.indexOf('Broken') < todo.indexOf('argue for moving'),
+        'the thing with a deadline comes first');
+});
+
+test('a sell-listed player dropping tonight is called out by name', () => {
+    const out = report([analysis({
+        player: { name: 'Dumper', price: 6.0, priceProgress: -100 },
+        verdict: 'sell', verdictReason: 'Out of form'
+    })]);
+    const todo = out.slice(out.indexOf('What to do this week'));
+    assert.match(todo, /Dumper/);
+    assert.match(todo, /keeps the 0\.1/);
+});
+
+test('a player dropping who is NOT on the sell list is not in the to-do list', () => {
+    /* The price meter is a fact about the market, not a recommendation. Telling
+       someone to sell a player the engine rates a hold because he is about to
+       lose 0.1 would be the report arguing with itself. */
+    const out = report([analysis({
+        player: { name: 'Faller', price: 6.0, priceProgress: -100 }, verdict: 'hold'
+    })]);
+    assert.match(out, /Price watch/, 'still reported as a price move');
+    const todo = out.slice(out.indexOf('What to do this week'));
+    assert.ok(!todo.includes('keeps the 0.1'), 'but not as something to act on');
+});
+
+test('a clean squad gets a to-do list saying there is nothing to do', () => {
+    const out = report(Array.from({ length: 11 }, (_, i) =>
+        analysis({ player: { id: i, name: `Clean${i}` } })));
+    const todo = out.slice(out.indexOf('What to do this week'));
+    assert.match(todo, /The other 11 players are a hold/);
+});
+
+test('holds are the good news at the end, not an apology at the end', () => {
+    /* "The remaining 9 players are a hold" was the last line of the report and
+       read as one. As a line of the summary it is simply the rest of the squad
+       being fine. */
+    const out = report([
+        analysis({ player: { id: 1, name: 'S' }, verdict: 'sell', verdictReason: 'r' }),
+        analysis({ player: { id: 2, name: 'H' } })
+    ]);
+    const todo = out.slice(out.indexOf('What to do this week'));
+    assert.match(todo, /The other 1 player is a hold/);
+});
 
 /* ---- what it says when there is nothing to say ---- */
 
@@ -152,7 +282,8 @@ test('the chance is printed when the news does not carry it', () => {
     const out = report([analysis({
         player: { status: 'i', name: 'Hurt', news: 'Hamstring injury', chanceNextRound: 0 }
     })]);
-    assert.match(out, /Hurt \(MID\) — Injured\./);
+    // Badge, name, status, chip — then FPL's own words on the line beneath.
+    assert.match(out, /MID Hurt Injured Out/);
     assert.match(out, /0% chance of playing/);
     assert.match(out, /Hamstring injury/);
 });
@@ -193,23 +324,42 @@ test('a starting differential is counted, with the threshold in the sentence', (
        (8, 10, 12 on effective ownership, 15) and a count with an unstated
        cut-off is not something a reader can check. */
     const out = report([analysis({ player: { name: 'Spicy', ownership: 4.2 } })]);
-    assert.match(out, /1 of your 1 starters is owned by under 10%: Spicy \(4\.2%\)/);
+    // His ownership is the figure on his row; the threshold is the line below.
+    assert.match(out, /MID Spicy 4\.2 % owned/);
+    assert.match(out, /1 of your 1 starters is owned by under 10% of managers/);
 });
 
-/* ---- who it is talking about ---- */
+/* ---- who it is talking about ----
+
+   A verdict on a bench player reads differently from a verdict on a starter, and
+   the captain is the one pick worth twice as much as any other. Both used to be
+   parenthesised after the name; both are tags on the row now, which is the same
+   claim in a place the eye finds without reading. */
 
 test('a bench player carrying a verdict is marked as bench', () => {
     const out = report([analysis({
         player: { name: 'Benchy', onBench: true }, verdict: 'sell', verdictReason: 'Not playing'
     })]);
-    assert.match(out, /Benchy \(MID · bench\)/);
+    assert.match(out, /MID Benchy bench Sell/);
 });
 
 test('the captain is named as the captain', () => {
     const out = report([analysis({
         player: { name: 'Haaland', position: 4, isCaptain: true }, verdict: 'star', verdictReason: 'Elite form'
     })]);
-    assert.match(out, /Haaland \(FWD · captain\)/);
+    assert.match(out, /FWD Haaland captain Star/);
+});
+
+test('a starter is not labelled bench, and a non-captain is not labelled captain', () => {
+    /* The tags are the whole point of the slot, so an empty one has to stay
+       empty — a row that says "bench" about a starter is worse than a row that
+       says nothing. */
+    const out = report([analysis({
+        player: { name: 'Plain' }, verdict: 'sell', verdictReason: 'Reason'
+    })]);
+    assert.match(out, /MID Plain Reason|MID Plain Sell/);
+    assert.ok(!out.includes('bench'));
+    assert.ok(!out.includes('captain'));
 });
 
 test('the verdict reason is the engine\'s own, not a second one written here', () => {
@@ -411,7 +561,14 @@ test('a position with no config does not produce the word undefined', () => {
     const out = report([analysis({
         player: { name: 'Odd', position: 99 }, verdict: 'sell', verdictReason: 'Reason'
     })]);
-    assert.match(out, /Odd \(\?\)/);
+    assert.match(out, /\? Odd/, 'the badge falls back to a question mark');
     assert.ok(!out.includes('undefined'));
     assert.ok(!out.includes('NaN'));
+    /* And the badge's colour class with it: POSITION_CONFIG has no entry, so
+       there is no .gk/.def/.mid/.fwd to apply, and `class="position-badge
+       undefined"` would be a class name that happens to look deliberate. */
+    const html = renderSquadReport(buildWith([analysis({
+        player: { name: 'Odd', position: 99 }, verdict: 'sell', verdictReason: 'Reason'
+    })]));
+    assert.match(html, /class="position-badge "/);
 });

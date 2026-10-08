@@ -1371,6 +1371,37 @@
            than adding a sixth. */
         const SQR_DIFFERENTIAL_OWNERSHIP = 10;
 
+        /* ONE set of bands for the health score, and one place they live.
+
+           The colour used to break at 75/50 while the wording broke at
+           85/70/55/40, so a squad on 72 was labelled "Good Shape" and drawn in
+           warning orange at the same time, and one on 52 read "Concerning" in
+           the same orange as a 68. Both now come from here.
+
+           It is a function rather than two lines inside renderTeamOverview()
+           because there are two readers: the ring above the pitch and the hero
+           at the top of the squad report. A second copy would let the same
+           number be called two different things on one screen — which is worse
+           than either name being wrong, because the reader cannot tell which to
+           believe. */
+        function sqHealthBand(health) {
+            /* A missing score is not a bad score, and every comparison below is
+               false for one — so without this the band for NaN comes out
+               "Overhaul Needed" in red, which is a confident verdict about a
+               number nobody has. The squad report now prints this figure at
+               40px, so being loudly wrong is a worse failure than being blank. */
+            if (typeof health !== 'number' || !isFinite(health)) {
+                return { known: false, text: '', color: 'var(--text-muted)' };
+            }
+            return {
+                known: true,
+                text: health >= 85 ? 'Excellent' : health >= 70 ? 'Good Shape'
+                    : health >= 55 ? 'Needs Work' : health >= 40 ? 'Concerning' : 'Overhaul Needed',
+                color: health >= 70 ? 'var(--verdict-hold)'
+                    : health >= 55 ? 'var(--verdict-monitor)' : 'var(--verdict-sell)'
+            };
+        }
+
         // "Salah", "Salah and Palmer", "Salah, Palmer and Saka".
         function sqrJoin(parts) {
             if (!parts.length) return '';
@@ -1382,19 +1413,6 @@
             return POSITION_CONFIG[player.position] || { short: '?', formMedian: null };
         }
 
-        // Name, position, and whether he is actually in the eleven. A verdict on
-        // a bench player reads differently and the report should not hide which
-        // it is talking about.
-        function sqrWho(a, starterIds) {
-            const p = a.player;
-            const tags = [sqrPos(p).short];
-            if (p.isCaptain) tags.push('captain');
-            if (starterIds && !starterIds.has(p.id)) tags.push('bench');
-            // Plain text in the parenthesis rather than a styled span: the only
-            // thing this needed was a class that does not exist on this page,
-            // and a stylesheet edit is a poor trade for one shade of grey.
-            return `<b>${escHTML(p.name)}</b> (${escHTML(tags.join(' · '))})`;
-        }
 
         /* Per-gameweek rows for one player, from players-data.json.
 
@@ -1522,25 +1540,97 @@
             return `<div class="insight-item ${tone}"><div class="insight-text">${html}</div></div>`;
         }
 
+        /* ===== One player, one row =====
+
+           This report was fourteen .insight-item cards: a 3px left edge and a
+           paragraph of grey text, all the same size, all the same shape. Every
+           fact in it was true and none of it was scannable — you had to read a
+           sentence to find out which player it was about, and the number that
+           decided the verdict was buried mid-clause.
+
+           So it borrows the Gameweek Review's row instead, which already solves
+           this on the next tab across: position badge, face and crest, name,
+           then the reason, then the figure that decided it, right-aligned. Same
+           component, same page, so a player looks like himself in both — and the
+           eye can run down the right-hand column instead of reading prose.
+
+           `sub` is for the one or two findings that genuinely are a sentence.
+           .gwr-row-detail is a single line with an ellipsis, so anything longer
+           than a few words has to go beneath the row rather than be silently
+           cut off in the middle. */
+        function sqrRow(o) {
+            const p = o.player;
+            const cfg = sqrPos(p);
+            const face = typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p) : '';
+            const tags = [];
+            if (p.isCaptain) tags.push('captain');
+            if (o.bench) tags.push('bench');
+            return `<div class="gwr-row sqr-row ${o.tone || ''}">
+                <span class="position-badge ${cfg.class || ''}">${escHTML(cfg.short)}</span>
+                ${face}
+                <span class="gwr-row-name">${escHTML(p.name)}</span>
+                <span class="gwr-row-opp">${escHTML(tags.join(' · '))}</span>
+                <span class="gwr-row-detail">${o.detail || ''}</span>
+                ${o.viz || ''}
+                ${o.right || ''}
+            </div>${o.sub ? `<div class="sqr-sub">${o.sub}</div>` : ''}`;
+        }
+
+        // The decisive figure, right-aligned — the column the eye runs down.
+        function sqrFig(value, unit) {
+            return `<span class="gwr-row-pts">${value}${unit ? `<em>${unit}</em>` : ''}</span>`;
+        }
+
+        function sqrChip(kind, label) {
+            return `<span class="sqr-chip ${kind}">${escHTML(label)}</span>`;
+        }
+
         function renderSquadReport(d) {
             if (!d) return `<p class="gwr-line">No squad loaded yet.</p>`;
 
-            /* The opening paragraph — the line that used to be four bare counts
-               on the card, now with its subject named. Only non-zero clauses
-               appear, so a clean squad gets a sentence saying so rather than a
-               row of zeroes. */
+            /* ===== The hero =====
+
+               The report used to open on a sentence: "Squad health 72/100. Of
+               your 11 starters, 1 is a fitness doubt and 2 face a hard next
+               fixture." Every word of that is still here — it is just no longer
+               the first thing to read, because a paragraph is a poor answer to
+               "how bad is it". The number is the answer, so the number is the
+               size of the answer, in the colour its own band gives it.
+
+               Same hero the Gameweek Review opens on, for the same reason. */
             const bits = [];
             if (d.injured.length) bits.push(`${d.injured.length} cannot play`);
             if (d.doubtful.length) bits.push(`${d.doubtful.length} ${d.doubtful.length === 1 ? 'is' : 'are'} a fitness doubt`);
             if (d.tough.length) bits.push(`${d.tough.length} ${d.tough.length === 1 ? 'faces' : 'face'} a hard next fixture`);
             if (d.poorForm.length) bits.push(`${d.poorForm.length} ${d.poorForm.length === 1 ? 'is' : 'are'} out of form`);
+            const band = sqHealthBand(d.health);
+
+            /* The four counts that say what to DO, which is what the sections
+               below are evidence for. They also carry the counts that used to be
+               three separate headings — "Sell (2)", "Monitor (4)", "Star (1)" —
+               so those three collapse into one section further down. */
+            const stat = (value, label, tip, color) =>
+                `<div class="opt-stat"><div class="opt-stat-v"${color ? ` style="color:${color};"` : ''}>${value}</div>
+                    <div class="opt-stat-l" data-tooltip="${escHTML(tip)}">${escHTML(label)}</div></div>`;
 
             let html = `<div class="detail-section" data-accent="report">
                 <div class="detail-section-title">${v2Icon('activity')} Where the squad stands</div>
-                <p class="gwr-line">Squad health <b>${d.health}</b>/100.
-                ${bits.length
-                    ? `Of your ${d.starters.length} starters, ${sqrJoin(bits)}.`
-                    : `Nothing is flagged against any of your ${d.starters.length} starters — no injuries, no doubts, no hard next fixture, nobody out of form.`}</p>
+                <div class="gwr-hero">
+                    <div class="gwr-hero-pts" style="color:${band.color};">${band.known ? d.health : '—'}<span>/100</span></div>
+                    <div class="gwr-hero-text">
+                        ${band.known ? `<strong>${escHTML(band.text)}.</strong>` : ''}
+                        ${bits.length
+                            ? `Of your ${d.starters.length} starters, ${sqrJoin(bits)}.`
+                            : `Nothing is flagged against any of your ${d.starters.length} starters — no injuries, no doubts, no hard next fixture, nobody out of form.`}
+                        Health reads availability, form and the next fixture; everything in it has already happened.
+                    </div>
+                </div>
+                <div class="opt-grid">
+                    ${stat(d.sells.length, 'Sell', 'The numbers argue for moving these on. Each one is listed below with the reason the verdict engine gave.', d.sells.length ? 'var(--verdict-sell)' : '')}
+                    ${stat(d.monitors.length, 'Monitor', 'Worth watching rather than acting on this week.', d.monitors.length ? 'var(--verdict-monitor)' : '')}
+                    ${stat(d.stars.length, 'Star', 'Performing well enough that selling would be the mistake.', d.stars.length ? 'var(--verdict-star)' : '')}
+                    ${stat(d.differentials.length, 'Differentials', `Starters owned by under ${SQR_DIFFERENTIAL_OWNERSHIP}% of managers — where your rank can move away from the field.`)}
+                </div>
             </div>`;
 
             /* Availability. The status word is the same mapping analyzePlayer
@@ -1559,14 +1649,27 @@
                 const body = [prefix, chance, news].filter(Boolean).join(' ');
                 return body || 'Flagged, with no detail published.';
             };
+            const bench = a => !d.starterIds.has(a.player.id);
             const availRows = [];
             d.injured.forEach(a => {
                 const p = a.player;
-                const word = p.status === 'i' ? 'Injured.' : p.status === 'u' ? 'Unavailable.' : 'Suspended.';
-                availRows.push(sqrItem('critical', `${sqrWho(a, d.starterIds)} — ${availBody(p, word)}`));
+                const word = p.status === 'i' ? 'Injured' : p.status === 'u' ? 'Unavailable' : 'Suspended';
+                availRows.push(sqrRow({
+                    player: p, bench: bench(a), tone: 'is-bad',
+                    detail: word, right: sqrChip('sell', 'Out'),
+                    /* The detail cell is one line with an ellipsis, so FPL's news
+                       string goes beneath the row rather than being cut off mid
+                       word. It is the one part of this a manager actually needs
+                       to read. */
+                    sub: availBody(p, '')
+                }));
             });
             d.doubtful.forEach(a => {
-                availRows.push(sqrItem('warning', `${sqrWho(a, d.starterIds)} — ${availBody(a.player, '')}`));
+                availRows.push(sqrRow({
+                    player: a.player, bench: bench(a), tone: 'is-warn',
+                    detail: 'Fitness doubt', right: sqrChip('monitor', 'Doubt'),
+                    sub: availBody(a.player, '')
+                }));
             });
             html += sqrSection('warn', 'Availability', 'concerns', availRows);
 
@@ -1583,12 +1686,27 @@
                     : `form ${(eff != null ? eff : raw).toFixed(1)}`;
                 const median = cfg.formMedian != null
                     ? `, against a ${escHTML(cfg.short)} median of ${cfg.formMedian}` : '';
-                /* The shape behind the number. Two players on the same form
-                   figure are different problems if one is sliding and the other
-                   had a single bad week, and the figure alone cannot tell them
-                   apart. */
-                return sqrItem('warning',
-                    `${sqrWho(a, d.starterIds)} — ${shown}${median}.${sqrSpark(a.player)}`);
+                return sqrRow({
+                    player: a.player, bench: bench(a), tone: 'is-warn',
+                    /* No detail cell. It carried "FWD median 4.5", which the
+                       sub-line underneath already says in the sentence that
+                       compares him to it — so the row read "FWD median 4.5 …
+                       1.0 form" above "form 1.0, against a FWD median of 4.5".
+                       The same two numbers twice in three inches. */
+                    /* The shape behind the number. Two players on the same form
+                       figure are different problems if one is sliding and the
+                       other had a single bad week, and the figure cannot tell
+                       them apart — so it sits in its own slot beside it. */
+                    viz: sqrSpark(a.player),
+                    // The regressed figure, because that is the one the verdict
+                    // was reached on. The raw one is in the sub-line below.
+                    right: eff != null || raw != null
+                        ? sqrFig((eff != null ? eff : raw).toFixed(1), 'form') : '',
+                    // Verbatim, lower case and all: it is a continuation of the
+                    // row above it, and it is the sentence the player's own card
+                    // has to agree with word for word.
+                    sub: `${shown}${median}.`
+                });
             });
             html += sqrSection('trend', 'Out of form', 'concerns', formRows);
 
@@ -1604,12 +1722,20 @@
                 const run = typeof a.player.avgFDR === 'number'
                     ? `weighted FDR ${a.player.avgFDR.toFixed(1)} over his next ${(a.fixtures || []).length}`
                     : '';
-                /* The run itself, in the colours the fixture tables use. The
-                   sentence gives the weighted average; the strip gives which
-                   weeks are the hard ones, which is what decides whether to sell
-                   him now or ride it out. */
-                return sqrItem('warning',
-                    `${sqrWho(a, d.starterIds)} — ${[next, run].filter(Boolean).join(', ')}.${sqrFdrStrip(a.fixtures)}`);
+                return sqrRow({
+                    player: a.player, bench: bench(a), tone: 'is-warn',
+                    /* No detail cell either, and for the same reason: it said
+                       "MUN (A) next" immediately to the left of a strip whose
+                       first badge is MUN (A). */
+                    /* The run itself, in the colours the fixture tables use. The
+                       figure on the right is the weighted average; the strip is
+                       which weeks are the hard ones, which is what decides
+                       whether to sell him now or ride it out. */
+                    viz: sqrFdrStrip(a.fixtures),
+                    right: typeof a.player.avgFDR === 'number'
+                        ? sqrFig(a.player.avgFDR.toFixed(1), 'FDR') : '',
+                    sub: `${[next, run].filter(Boolean).join(', ')}.`
+                });
             });
             html += sqrSection('calendar', 'The hard run', 'fixtures', fixRows);
 
@@ -1642,17 +1768,32 @@
                     'fixtures', loadRows);
             }
 
-            /* The verdict chips, written out. The reason is verdictReason —
-               the engine's own sentence for the verdict it reached — rather
-               than a second explanation composed here, which could disagree
-               with the chip it is explaining. */
-            const verdictRows = group => group.map(a =>
-                sqrItem(a.verdict === 'sell' ? 'critical' : a.verdict === 'star' ? 'positive' : 'warning',
-                    `${sqrWho(a, d.starterIds)}${a.verdictReason ? ` — ${escHTML(a.verdictReason)}` : ''}`));
+            /* ===== The call on each player =====
 
-            html += sqrSection('swap', `Sell (${d.sells.length})`, 'concerns', verdictRows(d.sells));
-            html += sqrSection('eye', `Monitor (${d.monitors.length})`, 'concerns', verdictRows(d.monitors));
-            html += sqrSection('star', `Star (${d.stars.length})`, 'positives', verdictRows(d.stars));
+               One section, not three. "Sell (2)", "Monitor (4)" and "Star (1)"
+               were three headings over three lists of the same kind of thing,
+               and at one or two rows each the chrome outweighed the content. The
+               counts moved into the grid at the top, where they are read at a
+               glance, and the verdict itself rides on the row as a chip — so the
+               order sell, monitor, star is visible rather than announced.
+
+               The reason is verdictReason, the engine's own sentence for the
+               verdict it reached, and not a second explanation composed here
+               which could disagree with the chip it is explaining. */
+            const CALL = {
+                sell: { chip: 'sell', label: 'Sell', tone: 'is-bad' },
+                monitor: { chip: 'monitor', label: 'Monitor', tone: 'is-warn' },
+                star: { chip: 'star', label: 'Star', tone: 'is-good' }
+            };
+            const callRows = [...d.sells, ...d.monitors, ...d.stars].map(a => {
+                const c = CALL[a.verdict] || CALL.monitor;
+                return sqrRow({
+                    player: a.player, bench: bench(a), tone: c.tone,
+                    right: sqrChip(c.chip, c.label),
+                    sub: a.verdictReason ? escHTML(a.verdictReason) : ''
+                });
+            });
+            html += sqrSection('swap', 'The call on each player', 'concerns', callRows);
 
             /* ===== Price watch =====
 
@@ -1673,35 +1814,84 @@
             const sellIds = new Set(d.sells.map(a => a.player.id));
             const priceRows = (d.priceMoves || []).map(c => {
                 const falling = c.dir === 'fall';
-                const tone = falling ? (c.tier === 'due' ? 'critical' : 'warning') : 'positive';
                 const timing = falling && sellIds.has(c.id)
                     ? ` He is on your sell list above, so this is a timing question: moving him before the update keeps the 0.1, moving him after it does not.`
                     : '';
                 // Dropped rather than printed as "£undefinedm" — one bad field
                 // would otherwise take the whole report down with it.
-                const price = typeof c.player.price === 'number' ? `, £${c.player.price.toFixed(1)}m` : '';
-                return sqrItem(tone,
-                    `<b>${escHTML(c.player.name)}</b> (${escHTML(sqrPos(c.player).short)}${price}) — <b>${escHTML(pwLabel(c))}</b>. ${escHTML(pwDetail(c))}${timing}`);
+                const price = typeof c.player.price === 'number' ? `£${c.player.price.toFixed(1)}m` : '';
+                return sqrRow({
+                    player: c.player,
+                    tone: falling ? (c.tier === 'due' ? 'is-bad' : 'is-warn') : 'is-good',
+                    detail: price,
+                    /* The label and the sentence both come out of
+                       scripts/price-watch.js, so the chip can never promise a
+                       night the sentence below it does not. */
+                    right: sqrChip(falling ? 'sell' : 'hold', pwLabel(c)),
+                    sub: `${escHTML(pwDetail(c))}${timing}`
+                });
             });
             html += sqrSection('wallet', 'Price watch', 'concerns', priceRows);
 
-            /* Differentials. The threshold is in the sentence on purpose: a
-               count with an unstated cut-off is not a fact the reader can
-               check, and this one has four rivals in the codebase. */
-            const diffNames = d.differentials
-                .map(a => `${escHTML(a.player.name)} (${a.player.ownership.toFixed(1)}%)`);
-            html += sqrSection('users', 'Differentials', 'positives', [
-                sqrItem('positive', d.differentials.length
-                    ? `${d.differentials.length} of your ${d.starters.length} starters ${d.differentials.length === 1 ? 'is' : 'are'} owned by under ${SQR_DIFFERENTIAL_OWNERSHIP}%: ${sqrJoin(diffNames)}.`
-                    : `None of your ${d.starters.length} starters is owned by under ${SQR_DIFFERENTIAL_OWNERSHIP}% — every one of them is a player the field also has.`)
-            ]);
+            /* Differentials. The threshold is stated on purpose: a count with an
+               unstated cut-off is not a fact the reader can check, and this one
+               has four rivals in the codebase. */
+            // No detail cell: the ownership figure on the right IS the finding,
+            // and "owned by the field" next to it said nothing — every player is.
+            const diffRows = d.differentials.map(a => sqrRow({
+                player: a.player, tone: 'is-good',
+                right: sqrFig(a.player.ownership.toFixed(1), '% owned')
+            }));
+            html += sqrSection('users', 'Differentials', 'positives',
+                diffRows.length
+                    ? diffRows.concat([`<div class="opt-why">${diffRows.length} of your ${d.starters.length}
+                        starters ${diffRows.length === 1 ? 'is' : 'are'} owned by under
+                        ${SQR_DIFFERENTIAL_OWNERSHIP}% of managers — that is where your rank can move
+                        away from the field, in either direction.</div>`])
+                    : [sqrItem('positive', `None of your ${d.starters.length} starters is owned by under ${SQR_DIFFERENTIAL_OWNERSHIP}% — every one of them is a player the field also has.`)]);
 
-            /* Holds get a count and no list. Eleven lines saying a player is
-               fine is the part of a report nobody reads, and saying it anyway
-               is what makes the rest look like filler. */
-            html += `<p class="gwr-line">The remaining ${d.holds.length}
-                ${d.holds.length === 1 ? 'player is' : 'players are'} a hold — nothing in the
-                numbers argues for moving ${d.holds.length === 1 ? 'him' : 'them'} this week.</p>`;
+            /* ===== What to do this week =====
+
+               The sections above answer one question each. Nobody opens a report
+               to assemble the conclusion themselves, so this is the conclusion —
+               the same closing block the Gameweek Review ends on, and built the
+               same way: only lines with something to act on, every one of them
+               derived from a value a section above has already shown.
+
+               Holds live here now. "The remaining 9 players are a hold" was the
+               last line of the report and read as an apology for the report; as
+               one line of a summary it is simply the good news. */
+            const next = [];
+            if (d.injured.length) {
+                next.push({ tone: 'bad', icon: v2Icon('warn'), text: `${sqrJoin(d.injured.map(a => `<b>${escHTML(a.player.name)}</b>`))} cannot play. A starter who is out scores nothing and the bench only rescues it if the auto-sub order allows, so this is the one thing on the list with a deadline.` });
+            }
+            const dueDrop = (d.priceMoves || []).filter(c => c.dir === 'fall' && c.tier === 'due' && sellIds.has(c.id));
+            if (dueDrop.length) {
+                next.push({ tone: 'bad', icon: v2Icon('wallet'), text: `${sqrJoin(dueDrop.map(c => `<b>${escHTML(c.player.name)}</b>`))} ${dueDrop.length === 1 ? 'is' : 'are'} on your sell list and ${dueDrop.length === 1 ? 'drops' : 'drop'} at the next daily update. Moving before it keeps the 0.1.` });
+            }
+            if (d.sells.length) {
+                /* "None of them urgent" only when nothing above it was. An
+                   earlier cut dropped this line entirely whenever there was an
+                   injury, which lost the sell list rather than re-ranking it —
+                   the injury goes first because it has a deadline, not because
+                   it is the only thing worth saying. */
+                const urgent = d.injured.length || dueDrop.length;
+                next.push({ tone: 'mixed', icon: v2Icon('swap'), text: `${d.sells.length} player${d.sells.length === 1 ? '' : 's'} the numbers argue for moving on${urgent ? '' : ', none of them urgent'} — the Transfer Wizard prices each swap against the hit before you commit to it.` });
+            }
+            const nearBlank = d.fixtureLoad && d.fixtureLoad.blanks[0];
+            if (nearBlank) {
+                next.push({ tone: 'mixed', icon: v2Icon('calendar'), text: `<b>GW${nearBlank.gw}</b> leaves ${nearBlank.players.length} of your squad without a fixture. That is a chip question rather than a transfer one.` });
+            }
+            if (d.holds.length) {
+                next.push({ tone: 'good', icon: v2Icon('check'), text: `The other ${d.holds.length} ${d.holds.length === 1 ? 'player is' : 'players are'} a hold — nothing in the numbers argues for moving ${d.holds.length === 1 ? 'him' : 'them'} this week.` });
+            }
+            html += `<div class="detail-section">
+                <div class="detail-section-title">${v2Icon('cap')} What to do this week</div>
+                ${next.length
+                    ? `<div class="gwr-learnings">${next.map(l =>
+                        `<div class="gwr-learning ${l.tone}"><span class="gwr-learning-icon">${l.icon}</span><span>${l.text}</span></div>`).join('')}</div>`
+                    : '<div class="opt-empty">Nothing in the numbers argues for a move this week.</div>'}
+            </div>`;
 
             return html;
         }
@@ -1716,13 +1906,7 @@
         }
 
         function renderTeamOverview(health, sells, monitors, holds, stars, suggestedMoves) {
-            /* One set of bands, not two. The colour used to break at 75/50 while the
-               wording broke at 85/70/55/40, so a squad on 72 was labelled "Good
-               Shape" and drawn in warning orange at the same time, and one on 52
-               read "Concerning" in the same orange as a 68. The ring now takes its
-               colour from the band the words already put you in. */
-            const healthText = health >= 85 ? 'Excellent' : health >= 70 ? 'Good Shape' : health >= 55 ? 'Needs Work' : health >= 40 ? 'Concerning' : 'Overhaul Needed';
-            const healthColor = health >= 70 ? 'var(--verdict-hold)' : health >= 55 ? 'var(--verdict-monitor)' : 'var(--verdict-sell)';
+            const { text: healthText, color: healthColor } = sqHealthBand(health);
 
             return `
             ${renderSquadKpiStrip(health, healthText, healthColor)}
