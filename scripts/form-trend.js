@@ -227,7 +227,7 @@
                 .slice(-RF_RECENT);
             if (mine.length < RF_PRIOR) return null;
             const total = mine.reduce((s, f) =>
-                s + ((f.team_h === teamId ? f.team_h_difficulty : f.team_a_difficulty) || 3), 0);
+                s + xpFixtureDifficulty(teamId, f), 0);
             return total / mine.length;
         }
 

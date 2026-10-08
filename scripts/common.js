@@ -1623,8 +1623,53 @@ const OVERLAY_CLOSE_SELECTORS = [
     '.drawer-close'
 ].join(',');
 
+/* Where each panel already writes its own heading. Used to name the dialog
+   rather than inventing a label, so the accessible name is the same words a
+   sighted user reads — and stays correct when the panel retitles itself, which
+   the report shell does on every open. */
+const OVERLAY_TITLE_SELECTORS = [
+    '.detail-header .player-name',
+    '.compare-modal-header h2',
+    '.modal-header h2',
+    '.modal-title'
+].join(',');
+
+/* Which overlays genuinely seal the page behind them.
+   Everything else here is a DRAWER, and .detail-overlay is pointer-events:none
+   on purpose so the page behind a drawer stays live — see the note above. That
+   is a real distinction and not a shortcut, so it is honoured rather than
+   flattened: a drawer gets role="dialog" and takes focus, but NOT
+   aria-modal="true" and NOT a tab trap, because claiming the rest of the page
+   is unavailable while leaving it clickable is worse than claiming nothing. */
+const OVERLAY_MODAL_SELECTORS = [
+    '.detail-overlay.as-modal',
+    '.compare-modal',
+    '.modal-overlay'
+].join(',');
+
+const FOCUSABLE_SELECTORS = [
+    'a[href]', 'area[href]', 'button:not([disabled])',
+    'input:not([disabled]):not([type="hidden"])',
+    'select:not([disabled])', 'textarea:not([disabled])',
+    'summary', 'iframe', '[contenteditable="true"]',
+    '[tabindex]:not([tabindex="-1"])'
+].join(',');
+
 function openOverlays() {
     return [...document.querySelectorAll(OVERLAY_OPEN_SELECTORS.join(','))];
+}
+
+function overlayPanel(overlay) {
+    return overlay.querySelector(OVERLAY_CONTENT_SELECTORS) || overlay;
+}
+
+function overlayFocusables(root) {
+    return [...root.querySelectorAll(FOCUSABLE_SELECTORS)].filter(el => {
+        if (el.hasAttribute('inert') || el.getAttribute('aria-hidden') === 'true') return false;
+        // offsetParent is null for display:none and for anything inside it,
+        // which is how the hidden halves of these panels are kept out.
+        return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+    });
 }
 
 function dismissOverlay(overlay) {
@@ -1633,34 +1678,132 @@ function dismissOverlay(overlay) {
     overlay.classList.remove('show', 'open');
 }
 
+/* ===== Dialog semantics and focus, for every overlay on the site =====
+ *
+ * There were three role="dialog" attributes on the whole site and the panels
+ * that carry most of the product had none, so to a screen reader a drawer
+ * opening was an unannounced block of text appearing somewhere in the document,
+ * with focus left on the button behind it. Tab then walked the page underneath
+ * from wherever that button sat.
+ *
+ * Done here, in the one place that already knows which overlays are open,
+ * rather than at each of the couple of dozen openers: they all signal by adding
+ * a class, the MutationObserver below already watches for exactly that, and an
+ * opener that forgets to call something is the failure mode this avoids. The
+ * price is that focus moves a frame after the class lands, which is invisible.
+ *
+ * Deliberately NOT marking the page behind aria-hidden: aria-modal="true" is
+ * the attribute that tells assistive technology to ignore everything outside,
+ * and hiding body children by hand breaks the moment two panels overlap.
+ */
+const overlayFocusOrigin = new WeakMap();
+let overlayTitleSeq = 0;
+
+function overlayEnter(overlay) {
+    const panel = overlayPanel(overlay);
+    const isModal = overlay.matches(OVERLAY_MODAL_SELECTORS);
+
+    if (!panel.getAttribute('role')) panel.setAttribute('role', 'dialog');
+    if (isModal) panel.setAttribute('aria-modal', 'true');
+    else panel.removeAttribute('aria-modal');
+
+    if (!panel.hasAttribute('aria-label') && !panel.hasAttribute('aria-labelledby')) {
+        const title = panel.querySelector(OVERLAY_TITLE_SELECTORS);
+        if (title) {
+            if (!title.id) title.id = `v2DialogTitle${++overlayTitleSeq}`;
+            panel.setAttribute('aria-labelledby', title.id);
+        }
+    }
+    // A div is not focusable without this, and the panel is the fallback target
+    // when it holds no control of its own.
+    if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
+
+    overlayFocusOrigin.set(overlay, document.activeElement);
+    const target = overlayFocusables(panel)[0] || panel;
+    requestAnimationFrame(() => {
+        // Still open, and nothing else has taken focus in the meantime.
+        if (!overlay.matches(OVERLAY_OPEN_SELECTORS.join(','))) return;
+        if (panel.contains(document.activeElement)) return;
+        try { target.focus({ preventScroll: true }); } catch { target.focus(); }
+    });
+}
+
+function overlayExit(overlay) {
+    const panel = overlayPanel(overlay);
+    panel.removeAttribute('aria-modal');
+
+    const origin = overlayFocusOrigin.get(overlay);
+    overlayFocusOrigin.delete(overlay);
+    if (!origin || typeof origin.focus !== 'function') return;
+    if (!document.contains(origin)) return;
+
+    /* Only put focus back if it is still in the panel being closed, or has been
+       dropped on the body. A drawer leaves the page behind usable on purpose, so
+       somebody who tabbed out and is now typing in the squad filter must not
+       have the caret pulled back to whatever opened the drawer. */
+    const active = document.activeElement;
+    if (active && active !== document.body && !overlay.contains(active)) return;
+    try { origin.focus({ preventScroll: true }); } catch { origin.focus(); }
+}
+
 function initOverlayDismiss() {
     if (window.__overlayDismissReady) return;
     window.__overlayDismissReady = true;
 
     let armed = false;
+    let tracked = [];
 
     function onDocumentPointerDown(event) {
         if (!armed) return;
         openOverlays().forEach(overlay => {
-            const content = overlay.querySelector(OVERLAY_CONTENT_SELECTORS) || overlay;
-            if (!content.contains(event.target)) dismissOverlay(overlay);
+            if (!overlayPanel(overlay).contains(event.target)) dismissOverlay(overlay);
         });
     }
 
     function onKeyDown(event) {
-        if (event.key !== 'Escape') return;
+        if (event.key === 'Escape') {
+            const open = openOverlays();
+            if (open.length) dismissOverlay(open[open.length - 1]);
+            return;
+        }
+        if (event.key !== 'Tab') return;
+
         const open = openOverlays();
-        if (open.length) dismissOverlay(open[open.length - 1]);
+        const top = open[open.length - 1];
+        // Drawers let Tab reach the page on purpose. Only a modal traps.
+        if (!top || !top.matches(OVERLAY_MODAL_SELECTORS)) return;
+
+        const panel = overlayPanel(top);
+        const items = overlayFocusables(panel);
+        if (!items.length) { event.preventDefault(); panel.focus(); return; }
+
+        const first = items[0];
+        const last = items[items.length - 1];
+        const active = document.activeElement;
+        const outside = !panel.contains(active);
+
+        if (event.shiftKey && (outside || active === first || active === panel)) {
+            event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && (outside || active === last)) {
+            event.preventDefault(); first.focus();
+        }
     }
 
     document.addEventListener('pointerdown', onDocumentPointerDown, true);
     document.addEventListener('keydown', onKeyDown);
 
     /* Arming is driven by the class the openers already set, so no opener has
-       to be told about any of this. */
+       to be told about any of this. The open/closed diff rides along: the same
+       observation that arms the click-away is what hands a panel its dialog
+       role and its focus. */
     const sync = () => {
-        const any = openOverlays().length > 0;
-        if (!any) { armed = false; return; }
+        const open = openOverlays();
+
+        open.forEach(o => { if (tracked.indexOf(o) === -1) overlayEnter(o); });
+        tracked.forEach(o => { if (open.indexOf(o) === -1) overlayExit(o); });
+        tracked = open;
+
+        if (!open.length) { armed = false; return; }
         if (!armed) requestAnimationFrame(() => { armed = openOverlays().length > 0; });
     };
 
@@ -2350,7 +2493,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=442')
+    fetch('/footer.html?v=443')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

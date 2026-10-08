@@ -238,7 +238,7 @@
                     opponentId: isHome ? f.team_a : f.team_h,
                     opponent: teams[isHome ? f.team_a : f.team_h]?.short_name || '???',
                     isHome,
-                    difficulty: (isHome ? f.team_h_difficulty : f.team_a_difficulty) || 3
+                    difficulty: xpFixtureDifficulty(teamId, f)
                 });
             });
             // Only unfinished fixtures were kept above, so a leading gameweek with
@@ -1725,7 +1725,7 @@
                 </div>
                 <div class="h2h-header-meta">
                     <span class="h2h-venue ${venueClass}">${venueText}</span>
-                    <span class="planner-fdr-cell v2-fdr-${nextFix.difficulty}" style="padding:2px 6px;font-size:0.6rem;"><abbr title="Fixture Difficulty Rating (1=easiest, 5=hardest)">FDR</abbr> ${nextFix.difficulty}</span>
+                    <span class="planner-fdr-cell v2-fdr-${nextFix.difficulty}" style="padding:2px 6px;font-size:0.6rem;"><abbr title="Fixture Difficulty Rating, set by FPL — higher is harder. The 2026/27 list runs 2 to 5, so a 2 is the kindest fixture on the calendar.">FDR</abbr> ${nextFix.difficulty}</span>
                 </div>
             </div>`;
 

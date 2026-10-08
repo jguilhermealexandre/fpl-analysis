@@ -543,53 +543,16 @@
             return options[Math.abs(h) % options.length];
         }
 
-        // ===== LEAGUE CONTEXT =====
-        // How leaky each defence is, ranked across the league. A raw "concedes 1.8"
-        // means little until you know whether that is 3rd worst or mid-table, which
-        // is the thing that decides whether an opponent is a good one to face.
-        function getDefensiveRanks() {
-            const ids = Object.keys(teams).map(k => parseInt(k, 10))
-                .filter(id => teamAnalysis[id]);
-            // Ascending defensive power: rank 1 is the leakiest defence to attack.
-            const ordered = ids.slice().sort((a, b) =>
-                (teamAnalysis[a].defensePower || 0) - (teamAnalysis[b].defensePower || 0));
-            const rank = {};
-            ordered.forEach((id, i) => { rank[id] = i + 1; });
-            return { rank, total: ordered.length };
-        }
+        /* The league-context trio — getDefensiveRanks, ordinal, opponentContext,
+           and the RATE_MIN_MATCHES floor under them — moved to scripts/xp-engine.js.
 
-        function ordinal(n) {
-            const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
-            return n + (s[(v - 20) % 10] || s[v] || s[0]);
-        }
-
-        // What a given fixture means for the attacking side: how leaky the opponent
-        // is, and a rough goal expectation from both teams' rates.
-        // Three matches is the point where a per-game rate stops being one result.
-        const RATE_MIN_MATCHES = 3;
-
-        function opponentContext(teamId, fx, ranks) {
-            if (!fx) return null;
-            const oppTA = teamAnalysis[fx.opponentId];
-            const myTA = teamAnalysis[teamId];
-            if (!oppTA || !oppTA.matchesPlayed) return null;
-
-            const conceded = oppTA.avgConceded || 0;
-            // A league rank off one match is noise dressed as insight — a side that
-            // shipped four in the opener is not "the leakiest defence in the league".
-            const ranked = oppTA.matchesPlayed >= RATE_MIN_MATCHES;
-            const myGoals = myTA && myTA.matchesPlayed ? myTA.avgGoals : conceded;
-            return {
-                conceded,
-                matches: oppTA.matchesPlayed,
-                ranked,
-                rank: ranked ? ranks.rank[fx.opponentId] : null,
-                total: ranks.total,
-                // Cheap but standard estimator: blend what this attack scores with
-                // what that defence concedes, rather than pretending to a Poisson model.
-                expGoals: ranked ? (myGoals + conceded) / 2 : null
-            };
-        }
+           They are model, not presentation: they read teamAnalysis and answer
+           "how leaky is this opponent, and how does that rank", which is the
+           same question expectedGoalsAgainst() asks. Four files called them from
+           here, and two of those guarded the call with
+           `typeof opponentContext === 'function'` — a renderer defending itself
+           against another renderer it has no business depending on. In the
+           engine the dependency runs the right way and the guards are gone. */
 
         /* ===== RECENT FORM — the last five gameweeks, match by match =====
 
@@ -1121,7 +1084,6 @@
             const color = improving ? 'var(--color-success)' : 'var(--color-error)';
             const bg = improving ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)';
             const border = improving ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)';
-            const FDR_WORDS = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
 
             const chip = f => {
                 const opp = teams[f.opponentId];
@@ -1161,11 +1123,10 @@
             const upcoming = (fixtures || []).slice(0, 3);
             if (!upcoming.length) return '';
             const ranks = typeof getDefensiveRanks === 'function' ? getDefensiveRanks() : { rank: {}, total: 20 };
-            const FDR_WORDS = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
 
             const cards = upcoming.map(fx => {
                 const oppTA = teamAnalysis[fx.opponentId];
-                const ctx = typeof opponentContext === 'function' ? opponentContext(player.teamId, fx, ranks) : null;
+                const ctx = opponentContext(player.teamId, fx, ranks);
                 const formWord = oppTA && oppTA.matchesPlayed
                     ? (oppTA.formRating >= 55 ? 'In form' : oppTA.formRating < 40 ? 'Poor form' : 'Average form')
                     : 'No form data yet';

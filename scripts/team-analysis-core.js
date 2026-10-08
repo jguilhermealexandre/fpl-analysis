@@ -490,30 +490,24 @@
             }
         }
 
+        /* The next five gameweeks per team — from the shared builder, not a
+           local copy.
+
+           This WAS a local copy, and it took the first five FIXTURES rather than
+           the first five GAMEWEEKS. The difference is a double gameweek: two
+           matches in one round spend two of the five slots, so the window ends a
+           round early and the last gameweek drops off the end — silently, since
+           a shorter array still renders. It is the Nxt5 FDR column, the fixture
+           strips and the hard-run detection that read this.
+
+           The dashboard's copy of the same function was migrated to
+           xpBuildTeamFixtures when that bug was found; the page the fix was
+           written for kept its own copy. Measured against today's feed the two
+           agree for all 20 teams, because no side has a double or a blank inside
+           the next five rounds — so this is a latent divergence rather than a
+           live one, and it would have surfaced around the winter doubles. */
         function processFixtures(fixturesData) {
-            teamFixtures = {};
-            
-            const upcoming = fixturesData
-                .filter(f => !f.finished_provisional && f.event !== null)
-                .sort((a, b) => a.event - b.event);
-
-            Object.keys(teams).forEach(teamId => {
-                const tid = parseInt(teamId);
-                const teamFix = upcoming
-                    .filter(f => f.team_h === tid || f.team_a === tid)
-                    .slice(0, 5);
-
-                teamFixtures[tid] = teamFix.map(f => {
-                    const isHome = f.team_h === tid;
-                    return {
-                        opponent: isHome ? teams[f.team_a]?.short_name : teams[f.team_h]?.short_name,
-                        opponentId: isHome ? f.team_a : f.team_h,
-                        difficulty: isHome ? f.team_h_difficulty : f.team_a_difficulty,
-                        isHome: isHome,
-                        event: f.event
-                    };
-                });
-            });
+            teamFixtures = xpBuildTeamFixtures(fixturesData, teams, 5);
         }
 
         // ===== ENHANCED ANALYSIS ENGINE =====
@@ -1475,7 +1469,7 @@
                 aria-label="Points in his last ${rows.length} gameweeks">${bars}</span>`;
         }
 
-        function sqrFdrStrip(fixtures) {
+        function sqrFdrStrip(fixtures, teamId) {
             const fx = (fixtures || []).filter(f => f);
             if (!fx.length) return '';
             /* Both venues marked, not just the away ones. The sentence above the
@@ -1483,10 +1477,18 @@
                for home games asks the reader to infer a convention from an
                absence. A double gameweek renders as two badges on the same round,
                which is the right picture of it. */
-            return `<span class="transfer-fdr-strip">${fx.map(f =>
-                `<span class="transfer-fdr-badge fdr-${f.difficulty || 3}"
-                    data-tooltip="GW${f.event ?? '?'}: ${escHTML(f.opponent || '?')} ${f.isHome ? 'at home' : 'away'}, difficulty ${f.difficulty ?? '?'} of 5"
-                    >${escHTML(f.opponent || '?')} (${f.isHome ? 'H' : 'A'})</span>`).join('')}</span>`;
+            const ranks = getDefensiveRanks();
+            return `<span class="transfer-fdr-strip">${fx.map(f => {
+                let tip = `GW${f.event ?? '?'}: ${escHTML(f.opponent || '?')} ${f.isHome ? 'at home' : 'away'}`
+                    + `, difficulty ${f.difficulty ?? '?'} of 5`;
+                // Same measured read as the squad table's own strip, so a fixture
+                // does not mean one thing in the table and another in the report.
+                const ctx = opponentContext(teamId, f, ranks);
+                if (ctx && ctx.ranked) tip += `. They concede ${ctx.conceded.toFixed(1)} a game, ${ordinal(ctx.rank)} leakiest of ${ctx.total}.`;
+                return `<span class="transfer-fdr-badge fdr-${f.difficulty || 3}"
+                    data-tooltip="${tip}"
+                    >${escHTML(f.opponent || '?')} (${f.isHome ? 'H' : 'A'})</span>`;
+            }).join('')}</span>`;
         }
 
         /* How far ahead the blank-and-double scan looks.
@@ -1747,7 +1749,7 @@
                        figure on the right is the weighted average; the strip is
                        which weeks are the hard ones, which is what decides
                        whether to sell him now or ride it out. */
-                    viz: sqrFdrStrip(a.fixtures),
+                    viz: sqrFdrStrip(a.fixtures, a.player.teamId),
                     right: typeof a.player.avgFDR === 'number'
                         ? sqrFig(a.player.avgFDR.toFixed(1), 'FDR') : '',
                     sub: `${[next, run].filter(Boolean).join(', ')}.`

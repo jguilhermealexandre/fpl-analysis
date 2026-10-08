@@ -601,7 +601,7 @@
            what you would ask a friend. */
         function lwCaptainRow(p, i, ranks) {
             const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
-            const ctx = fx && typeof opponentContext === 'function' ? opponentContext(p.teamId, fx, ranks) : null;
+            const ctx = fx ? opponentContext(p.teamId, fx, ranks) : null;
             const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
             const isCap = lineupState.captain === p.id, isVC = lineupState.viceCaptain === p.id;
 

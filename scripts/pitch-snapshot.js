@@ -373,7 +373,7 @@
             return {
                 opponent: teams[isHome ? f.team_a : f.team_h]?.short_name || '???',
                 isHome,
-                difficulty: isHome ? f.team_h_difficulty : f.team_a_difficulty,
+                difficulty: xpFixtureDifficulty(player.teamId, f),
                 event: f.event
             };
         }

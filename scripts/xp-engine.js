@@ -418,9 +418,9 @@
                 let totalFdr = 0;
                 const futureDetails = futureFixtures.map(f => {
                     const isHome = f.team_h === teamId;
-                    const fdr = isHome ? f.team_h_difficulty : f.team_a_difficulty;
-                    totalFdr += fdr || 3;
-                    return { fdr: fdr || 3, isHome };
+                    const fdr = xpFixtureDifficulty(teamId, f);
+                    totalFdr += fdr;
+                    return { fdr, isHome };
                 });
                 const avgFdr = futureDetails.length > 0 ? totalFdr / futureDetails.length : 3;
                 const homeFixCount = futureDetails.filter(f => f.isHome).length;
@@ -476,6 +476,97 @@
             return ta;
         }
 
+        /* ===== How hard is this fixture? One answer. =====
+
+           Seven places derived this independently from the raw feed, each
+           writing the same ternary over `team_h_difficulty` /
+           `team_a_difficulty`. Four of them defaulted a missing rating to 3 and
+           three did not, so the same fixture could come back as 3 on one surface
+           and `undefined` on another — and `undefined >= 4` is false, which is
+           the quiet half of that: a fixture with no rating reads as "not hard"
+           rather than as "unknown". Today's feed carries a rating on all 380
+           fixtures, so that half has never fired in production. It is a latent
+           difference between surfaces, not a live bug, and the reason to have
+           one definition is that nothing has to decide which it is.
+
+           This returns FPL's own published rating unchanged — see the FDR
+           decision in the optimisation plan. The number is not the thing that
+           was broken; having seven of it was. Switching to a measured band is a
+           one-line change here if the evidence ever calls for it, and that is
+           the point of putting it behind a function.
+
+           Takes a RAW fixture from the feed (team_h/team_a + the two difficulty
+           columns). The already-normalised `{ difficulty, isHome }` objects that
+           xpBuildTeamFixtures emits are downstream of this and read `.difficulty`
+           directly. */
+        const XP_FDR_DEFAULT = 3;
+
+        function xpFixtureDifficulty(teamId, fixture) {
+            if (!fixture) return XP_FDR_DEFAULT;
+            const isHome = fixture.team_h === teamId;
+            const raw = isHome ? fixture.team_h_difficulty : fixture.team_a_difficulty;
+            const fdr = Number(raw);
+            return Number.isFinite(fdr) && fdr > 0 ? fdr : XP_FDR_DEFAULT;
+        }
+
+        /* What each band is called, in words. Was declared three times — twice
+           in player-profile.js and once in squad-table-chart.js — so the vocabulary
+           could drift from the numbers it names.
+
+           Band 1 is kept even though the 2026/27 fixture list contains none: FPL
+           sets these in July and could revise one, and a table missing a key its
+           data might carry is worse than a key that goes unused. What is NOT kept
+           is the claim that 1 is the floor — see xpFixtureDifficulty above. */
+        const FDR_WORDS = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
+
+        // ===== LEAGUE CONTEXT =====
+        // How leaky each defence is, ranked across the league. A raw "concedes 1.8"
+        // means little until you know whether that is 3rd worst or mid-table, which
+        // is the thing that decides whether an opponent is a good one to face.
+        function getDefensiveRanks() {
+            const ids = Object.keys(teams).map(k => parseInt(k, 10))
+                .filter(id => teamAnalysis[id]);
+            // Ascending defensive power: rank 1 is the leakiest defence to attack.
+            const ordered = ids.slice().sort((a, b) =>
+                (teamAnalysis[a].defensePower || 0) - (teamAnalysis[b].defensePower || 0));
+            const rank = {};
+            ordered.forEach((id, i) => { rank[id] = i + 1; });
+            return { rank, total: ordered.length };
+        }
+
+        function ordinal(n) {
+            const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+            return n + (s[(v - 20) % 10] || s[v] || s[0]);
+        }
+
+        // What a given fixture means for the attacking side: how leaky the opponent
+        // is, and a rough goal expectation from both teams' rates.
+        // Three matches is the point where a per-game rate stops being one result.
+        const RATE_MIN_MATCHES = 3;
+
+        function opponentContext(teamId, fx, ranks) {
+            if (!fx) return null;
+            const oppTA = teamAnalysis[fx.opponentId];
+            const myTA = teamAnalysis[teamId];
+            if (!oppTA || !oppTA.matchesPlayed) return null;
+
+            const conceded = oppTA.avgConceded || 0;
+            // A league rank off one match is noise dressed as insight — a side that
+            // shipped four in the opener is not "the leakiest defence in the league".
+            const ranked = oppTA.matchesPlayed >= RATE_MIN_MATCHES;
+            const myGoals = myTA && myTA.matchesPlayed ? myTA.avgGoals : conceded;
+            return {
+                conceded,
+                matches: oppTA.matchesPlayed,
+                ranked,
+                rank: ranked ? ranks.rank[fx.opponentId] : null,
+                total: ranks.total,
+                // Cheap but standard estimator: blend what this attack scores with
+                // what that defence concedes, rather than pretending to a Poisson model.
+                expGoals: ranked ? (myGoals + conceded) / 2 : null
+            };
+        }
+
         /* Upcoming fixtures per team, keyed by team id — the input
            projectPlayerPointsForGW reads.
 
@@ -508,7 +599,7 @@
                     return {
                         opponent: isHome ? teamsById[f.team_a]?.short_name : teamsById[f.team_h]?.short_name,
                         opponentId: isHome ? f.team_a : f.team_h,
-                        difficulty: isHome ? f.team_h_difficulty : f.team_a_difficulty,
+                        difficulty: xpFixtureDifficulty(tid, f),
                         isHome, event: f.event
                     };
                 });
@@ -545,8 +636,8 @@
                     if (!fixtureMap[tid][f.event]) fixtureMap[tid][f.event] = [];
                     fixtureMap[tid][f.event].push({ opponentId: oppId, fdr: fdr || 3, isHome, finished: !!f.finished_provisional });
                 };
-                add(f.team_h, f.team_a, f.team_h_difficulty, true);
-                add(f.team_a, f.team_h, f.team_a_difficulty, false);
+                add(f.team_h, f.team_a, xpFixtureDifficulty(f.team_h, f), true);
+                add(f.team_a, f.team_h, xpFixtureDifficulty(f.team_a, f), false);
             });
 
             const swings = {};

@@ -54,7 +54,21 @@ const sqrChip = loadFunction(SRC, 'sqrChip', { escHTML });
    fixtures and must render as nothing rather than as a flat line at zero. */
 const sqrHistoryRows = loadFunction(SRC, 'sqrHistoryRows', { playersDetailData: null });
 const sqrSpark = loadFunction(SRC, 'sqrSpark', { sqrHistoryRows, SQR_SPARK_WEEKS: 6 });
-const sqrFdrStrip = loadFunction(SRC, 'sqrFdrStrip', { escHTML });
+/* sqrFdrStrip now asks the engine what the opponent has actually done, so the
+   two things it reads from xp-engine.js are stubbed at their contracts:
+   getDefensiveRanks returns a league ordering, opponentContext returns null when
+   there is no sample. Both are exercised for real in the engine's own suite; what
+   this file checks is that the strip still renders when they answer, and when
+   they decline. */
+const fdrStubs = {
+    escHTML,
+    getDefensiveRanks: () => ({ rank: { 11: 3 }, total: 20 }),
+    opponentContext: (_teamId, fx) => (fx && fx.opponentId === 11
+        ? { conceded: 1.8, matches: 5, ranked: true, rank: 3, total: 20, expGoals: 1.9 }
+        : null),
+    ordinal: n => `${n}rd`
+};
+const sqrFdrStrip = loadFunction(SRC, 'sqrFdrStrip', fdrStubs);
 /* squadFixtureLoad is stubbed per case by withLoad() below rather than loaded —
    what it computes is tested in tests/blank-double-gw.test.mjs, and what matters
    here is only how the report writes up each of its three answers. */
@@ -556,7 +570,7 @@ test('a quiet run is not stretched to look like a good one', () => {
 });
 
 test('the FDR strip carries one badge per fixture, coloured by difficulty', () => {
-    const strip = loadFunction(SRC, 'sqrFdrStrip', { escHTML });
+    const strip = loadFunction(SRC, 'sqrFdrStrip', fdrStubs);
     const html = strip([
         { opponent: 'MCI', isHome: false, difficulty: 5, event: 6 },
         { opponent: 'BUR', isHome: true, difficulty: 2, event: 7 }
@@ -570,8 +584,25 @@ test('the FDR strip carries one badge per fixture, coloured by difficulty', () =
     assert.equal(strip(null), '');
 });
 
+test('the badge explains the band with what the opponent has actually done', () => {
+    const strip = loadFunction(SRC, 'sqrFdrStrip', fdrStubs);
+    const html = strip([{ opponent: 'MCI', opponentId: 11, isHome: false, difficulty: 5, event: 6 }], 1);
+    assert.match(html, /difficulty 5 of 5/, 'FPL\u2019s own band is still there');
+    assert.match(html, /concede 1\.8 a game/, 'and the measured read beside it');
+    assert.match(html, /3rd leakiest of 20/);
+});
+
+test('an opponent with no sample yet gets the band and no invented number', () => {
+    const strip = loadFunction(SRC, 'sqrFdrStrip', fdrStubs);
+    // opponentContext returns null for anyone but team 11 in these stubs.
+    const html = strip([{ opponent: 'NEW', opponentId: 99, isHome: true, difficulty: 4, event: 6 }], 1);
+    assert.match(html, /difficulty 4 of 5/);
+    assert.ok(!html.includes('concede'), 'no measured sentence without a sample');
+    assert.ok(!html.includes('undefined') && !html.includes('NaN'));
+});
+
 test('a fixture with no difficulty still renders, in the middle band', () => {
-    const strip = loadFunction(SRC, 'sqrFdrStrip', { escHTML });
+    const strip = loadFunction(SRC, 'sqrFdrStrip', fdrStubs);
     const html = strip([{ opponent: 'TBC', isHome: true }]);
     assert.match(html, /fdr-3/);
     assert.ok(!html.includes('undefined'));
@@ -579,7 +610,7 @@ test('a fixture with no difficulty still renders, in the middle band', () => {
 });
 
 test('an opponent name is escaped on the badge as well as in the prose', () => {
-    const strip = loadFunction(SRC, 'sqrFdrStrip', { escHTML });
+    const strip = loadFunction(SRC, 'sqrFdrStrip', fdrStubs);
     const html = strip([{ opponent: '"><img src=x>', isHome: true, difficulty: 3 }]);
     assert.ok(!html.includes('<img src=x'));
     assert.match(html, /&quot;&gt;&lt;img/);
