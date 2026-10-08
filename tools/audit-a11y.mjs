@@ -124,13 +124,44 @@ for (const [path, label] of chosen) {
         }
         for (const v of result.violations) {
             const conformance = v.tags.some(t => CONFORMANCE.includes(t));
-            findings.push({
+            const finding = {
                 page: label, section: stop.label, id: v.id, impact: v.impact,
                 conformance, help: v.help,
                 nodes: v.nodes.length,
                 // One example is enough to find it; twenty is a wall of HTML.
                 example: (v.nodes[0]?.target || []).join(' ')
-            });
+            };
+            /* For a contrast failure, the selector is not the finding — the
+               COLOUR PAIR is. A first pass at fixing these had to reverse-
+               engineer the pair out of the stylesheets, which worked for six
+               components and failed for the largest: .xgva-exp reads
+               var(--text-muted) and measures 5.71:1 on white, yet axe reported
+               48 failures on it, because the row underneath carries a tint
+               nothing in the rule mentions. Guessing from CSS cannot see a
+               computed background. axe already knows it, so write it down.
+               Distinct pairs are collected rather than every node: 48 failures
+               on one component are usually one pair. */
+            if (v.id === 'color-contrast') {
+                const seen = new Map();
+                for (const n of v.nodes) {
+                    for (const c of [...(n.any || []), ...(n.all || [])]) {
+                        const d = c.data;
+                        if (!d || !d.fgColor || !d.bgColor) continue;
+                        const key = `${d.fgColor} on ${d.bgColor}`;
+                        if (!seen.has(key)) {
+                            seen.set(key, {
+                                fg: d.fgColor, bg: d.bgColor,
+                                ratio: d.contrastRatio, needs: d.expectedContrastRatio,
+                                fontSize: d.fontSize, fontWeight: d.fontWeight,
+                                target: (n.target || []).join(' ').slice(0, 120), count: 0
+                            });
+                        }
+                        seen.get(key).count++;
+                    }
+                }
+                finding.pairs = [...seen.values()].sort((a, b) => b.count - a.count);
+            }
+            findings.push(finding);
         }
         process.stderr.write(`  ${label}${stop.label ? ' › ' + stop.label : ''}: `
             + `${result.violations.length} violation type(s)\n`);
@@ -169,6 +200,31 @@ const ranked = Object.entries(byRule).sort((a, b) => b[1] - a[1]);
 if (ranked.length) {
     console.log('\n  by rule, worst first:');
     for (const [id, n] of ranked) console.log(`    ${String(n).padStart(5)} nodes  ${id}`);
+}
+
+/* Every distinct failing colour pair, across every page, worst first. This is
+   the section you fix from: the pairs are design tokens, so the same two or
+   three usually account for most of the count and one change to a variable
+   clears all of them at once. */
+const pairs = new Map();
+for (const f of real) {
+    for (const p of f.pairs || []) {
+        const key = `${p.fg} on ${p.bg}`;
+        if (!pairs.has(key)) pairs.set(key, { ...p, count: 0, where: new Set() });
+        const row = pairs.get(key);
+        row.count += p.count;
+        row.where.add(f.section ? `${f.page} › ${f.section}` : f.page);
+    }
+}
+if (pairs.size) {
+    console.log('\n  failing colour pairs, worst first:');
+    for (const p of [...pairs.values()].sort((a, b) => b.count - a.count)) {
+        console.log(`    ${String(p.count).padStart(4)}×  ${p.fg} on ${p.bg}`
+            + `  ${Number(p.ratio).toFixed(2)}:1 needs ${p.needs}:1`
+            + `  (${p.fontSize}, weight ${p.fontWeight})`);
+        console.log(`          ${[...p.where].slice(0, 4).join(', ')}${p.where.size > 4 ? ` +${p.where.size - 4} more` : ''}`);
+        console.log(`          e.g. ${p.target}`);
+    }
 }
 
 console.log(`\n  advisory (best-practice, not gated): ${advisory.length} findings`);
