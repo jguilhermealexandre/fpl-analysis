@@ -132,8 +132,20 @@ function collect() {
             if (!scrolls && cut > 12 && el.clientWidth > 40 && cut / el.clientWidth > 0.2) {
                 once('clipped', name(el), { el: name(el), text: text.slice(0, 44), cut: Math.round(cut) });
             }
+            /* A decorative mark is not text to read.
+               The caret on a disclosure, the pipe between ticker items, the
+               tick on a "done" row, the dot on a flag — these are icons drawn
+               with a character rather than an SVG, and asking them to be 10px
+               is asking an icon to be bigger for the sake of a rule nobody
+               reads them by. Measured on the first run, they were 42 of 462
+               findings, which is enough noise to stop the number being read at
+               all.
+               Scoped as narrowly as the question allows: ONE character, and not
+               a letter or a digit. "A" for away and "C" for the armband are a
+               single character too, and both are information — they stay in. */
+            const glyphOnly = text.length === 1 && !/[\p{L}\p{N}]/u.test(text);
             const fs = parseFloat(getComputedStyle(el).fontSize);
-            if (fs && fs < 10) once('small', name(el) + fs, { el: name(el), px: +fs.toFixed(1), text: text.slice(0, 30) });
+            if (fs && fs < 10 && !glyphOnly) once('small', name(el) + fs, { el: name(el), px: +fs.toFixed(1), text: text.slice(0, 30) });
         }
     }
 
