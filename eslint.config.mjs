@@ -2032,7 +2032,13 @@ export default [
        localStorage while the file around it is Node. */
     {
         files: ['tools/pl-news-browser.mjs', 'tools/fetch-pl-injuries.mjs', 'tools/capture-lp-shots.mjs',
-            'tools/make-og-cards.mjs', 'tools/audit-mobile.mjs'],
+            'tools/make-og-cards.mjs', 'tools/audit-mobile.mjs',
+            /* The shared page list and tab-walker the two browser audits import,
+               and the accessibility audit itself. sections()/openSection() moved
+               out of audit-mobile.mjs into audit-pages.mjs and took their
+               document references with them; audit-a11y.mjs seeds a Team ID into
+               localStorage so the gated pages load at all. */
+            'tools/audit-pages.mjs', 'tools/audit-a11y.mjs'],
         languageOptions: {
             ecmaVersion: 2022, sourceType: 'module',
             globals: {

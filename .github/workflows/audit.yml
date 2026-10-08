@@ -1,0 +1,128 @@
+name: Audit — layout and accessibility
+
+# The two browser audits, somewhere they can actually run.
+#
+# tools/audit-mobile.mjs has had npm scripts pointing at it for a while and could
+# not run anywhere: `playwright` was never in devDependencies and no workflow
+# installed a browser. A tool with a script and no runner is a tool nobody has
+# used — which is how a 199px overflow on the Transfers tab survived for weeks,
+# the exact fault its own header describes.
+#
+# Not part of ci.yml. Both of these drive a real Chromium against a running
+# server for several minutes across six widths and twenty-eight pages, which is
+# the wrong shape for a gate that has to answer every push. They run on demand
+# before a layout change ships, and weekly so a regression has a floor on how
+# long it can hide.
+#
+# The findings are uploaded rather than committed. A baseline in git would be a
+# file that changes whenever the data does — the pages render live FPL data, so
+# a fixture result can move a column — and a diff nobody can interpret is worse
+# than a report somebody reads.
+
+on:
+  workflow_dispatch:
+    inputs:
+      widths:
+        description: 'Comma-separated widths for the layout sweep'
+        type: string
+        required: false
+        default: '1440,1180,1024,834,768,390'
+      pages:
+        description: 'Limit to a page label, or "app" for the signed-in screens'
+        type: string
+        required: false
+        default: ''
+  schedule:
+    # Mondays, 06:00 UTC — after the weekend's matches have settled.
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: Install
+        run: npm ci || npm install
+
+      # Only Chromium. The audits launch it by path and the other two engines
+      # are 300MB of download this never opens.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # The audits drive a real server because the pages fetch data/*.json and
+      # resolve /dashboard/* through _redirects — neither of which works off the
+      # filesystem.
+      - name: Serve
+        run: |
+          npm run dev > /tmp/dev-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8080/ -o /dev/null; then echo "server up"; exit 0; fi
+            sleep 1
+          done
+          echo "::error::dev server never answered on 127.0.0.1:8080"
+          cat /tmp/dev-server.log
+          exit 1
+
+      # Playwright's own Chromium, wherever this runner put it. The tools default
+      # to a devcontainer path, so it is passed explicitly rather than assumed.
+      - name: Locate Chromium
+        run: echo "AUDIT_CHROME=$(node -e "console.log(require('playwright').chromium.executablePath())")" >> "$GITHUB_ENV"
+
+      - name: Page weight
+        run: node tools/page-weight.mjs
+
+      - name: Layout
+        run: |
+          node tools/audit-mobile.mjs \
+            --width "${{ inputs.widths || '1440,1180,1024,834,768,390' }}" \
+            ${{ inputs.pages && format('--pages "{0}"', inputs.pages) || '' }} \
+            --json > /tmp/audit-layout.json
+          # Readable copy too, since the JSON is for diffing and the text is for
+          # the person who opened the run.
+          node tools/audit-mobile.mjs \
+            --width "${{ inputs.widths || '1440,1180,1024,834,768,390' }}" \
+            ${{ inputs.pages && format('--pages "{0}"', inputs.pages) || '' }} \
+            | tee /tmp/audit-layout.txt
+
+      - name: Accessibility
+        run: |
+          node tools/audit-a11y.mjs \
+            ${{ inputs.pages && format('--pages "{0}"', inputs.pages) || '' }} \
+            --json > /tmp/audit-a11y.json
+          node tools/audit-a11y.mjs \
+            ${{ inputs.pages && format('--pages "{0}"', inputs.pages) || '' }} \
+            | tee /tmp/audit-a11y.txt
+
+      - name: Summarise into the run
+        if: always()
+        run: |
+          {
+            echo '## Accessibility'
+            echo '```'
+            tail -40 /tmp/audit-a11y.txt 2>/dev/null || echo 'no report'
+            echo '```'
+            echo '## Layout'
+            echo '```'
+            tail -40 /tmp/audit-layout.txt 2>/dev/null || echo 'no report'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-${{ github.run_number }}
+          path: |
+            /tmp/audit-layout.json
+            /tmp/audit-layout.txt
+            /tmp/audit-a11y.json
+            /tmp/audit-a11y.txt
+          retention-days: 30
