@@ -3632,13 +3632,34 @@
            definition, and choosing a plan clears whatever was staged under the
            old one, so a strategy set after the slot would throw the slot away. */
         function tmSellBeforeDrop(playerId) {
-            // Switch first: renderTransferWizard() resets transferState on its first
-            // run, so a slot staged beforehand would be wiped before it was drawn.
-            switchTab('transfer');
-            if (typeof twSetStrategy === 'function' && transferState.strategy !== 'single') {
-                twSetStrategy('single');
-            }
-            twSwapPlayer(playerId);
+            /* Switch first: renderTransferWizard() resets transferState on its
+               first run, so a slot staged beforehand would be wiped before it
+               was drawn.
+
+               And WAIT for it, which is what this was missing. The ordering
+               above used to hold because switchTab() was synchronous; once the
+               wizard's own file started arriving on the click, switchTab began
+               handing back a promise and calling renderTransferWizard() from
+               its .then(). So the two lines below ran first, staged the slot,
+               and the render that followed replaced transferState wholesale —
+               exactly the loss the comment was written to prevent, reintroduced
+               by a change somewhere else.
+
+               It only bit the FIRST use in a session: switchTab only loads and
+               renders when transferRendered is false, so the second click found
+               the wizard already drawn, took the synchronous path, and worked.
+               That is why it survived.
+
+               Promise.resolve() because switchTab returns null once there is
+               nothing left to load. Same shape as planTransferFromPanel() in
+               panels-and-tabs.js, which documents this hazard and is the reason
+               switchTab returns the promise at all. */
+            Promise.resolve(switchTab('transfer')).then(function () {
+                if (typeof twSetStrategy === 'function' && transferState.strategy !== 'single') {
+                    twSetStrategy('single');
+                }
+                twSwapPlayer(playerId);
+            });
         }
 
         function tmSetMarketTab(tab) {
@@ -3715,7 +3736,7 @@
             }
             if (interleaved.length) {
                 const item = p => `<span class="tm-tick ${p.threshold > 0 ? 'up' : 'down'}">
-                    <span class="tm-tick-arrow">${p.threshold > 0 ? '' : ''}</span>
+                    <span class="tm-tick-arrow">${v2Icon(p.threshold > 0 ? 'trend' : 'trendDown')}</span>
                     <span class="tm-tick-name">${escHTML(p.name)}</span>
                     <span class="tm-tick-team">(${escHTML(p.teamShort)})</span>
                     ${squadIds.has(p.id) ? '<span class="tm-tick-squad">SQUAD</span>' : ''}
@@ -3725,7 +3746,7 @@
                 // loop point is invisible.
                 const run = interleaved.map(item).join('<span class="tm-tick-sep">•</span>');
                 html += `<div class="tm-ticker" role="marquee" aria-label="Players closest to a price change">
-                    <div class="tm-ticker-track">${run}<span class="tm-tick-sep">•</span>${run}<span class="tm-tick-sep">•</span></div>
+                    <div class="tm-ticker-track">${run}<span class="tm-tick-sep">•</span><span aria-hidden="true">${run}<span class="tm-tick-sep">•</span></span></div>
                 </div>`;
             }
 

@@ -701,7 +701,13 @@
                 else history.pushState(null, '', nextHash);
             }
 
-            document.getElementById('settingsBtn').style.display = (tab === 'team') ? '' : 'none';
+            /* Guarded, unlike the twelve lookups above it: those are all static
+               markup, and this one is written by renderSquadKpiStrip(). If the
+               squad render ever fails the button is simply absent, and an
+               unguarded .style here would throw on the first line of every tab
+               switch — turning one failed panel into a page where no tab works. */
+            const settingsBtn = document.getElementById('settingsBtn');
+            if (settingsBtn) settingsBtn.style.display = (tab === 'team') ? '' : 'none';
 
             // The help overlay documents Squad Analysis only — swapping players on
             // the pitch, the armband buttons, Auto-Optimize, the fixture chips — so

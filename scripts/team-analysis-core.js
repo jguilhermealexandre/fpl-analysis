@@ -1137,7 +1137,7 @@
             return `<div class="sq-ticker-row${kind ? ` sq-ticker-${kind}` : ''}">
                 <span class="sq-ticker-label" data-tooltip="${escHTML(tip)}">${escHTML(label)}</span>
                 <div class="tm-ticker">
-                    <div class="tm-ticker-track" style="animation-duration:${secs}s">${run}<span class="tm-tick-sep">•</span>${run}<span class="tm-tick-sep">•</span></div>
+                    <div class="tm-ticker-track" style="animation-duration:${secs}s">${run}<span class="tm-tick-sep">•</span><span aria-hidden="true">${run}<span class="tm-tick-sep">•</span></span></div>
                 </div>
             </div>`;
         }

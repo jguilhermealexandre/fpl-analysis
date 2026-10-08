@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { topLevelNames, braceBalance } from '../tools/scan-globals.mjs';
+import { topLevelNames, braceBalance, stripComments, stripNoise } from '../tools/scan-globals.mjs';
 
 test('a regex literal containing a quote does not swallow the file', () => {
     // escHTML in common.js is `.replace(/'/g, '&#39;')`. The apostrophe inside
@@ -77,4 +77,56 @@ test('common.js still yields the declarations that went missing', () => {
     for (const n of ['escHTML', 'POSITION_CONFIG', 'loadFooter', 'initIcons', 'normalisePlayerShape']) {
         assert.ok(names.has(n), `${n} should be visible to the scanner`);
     }
+});
+
+/* ===== stripComments — comments out, every other byte kept =====
+
+   Added with tools/check-icons.mjs, which needs to know whether a string is
+   EMPTY and so cannot use stripNoise (that replaces every literal with ""). The
+   hand-rolled stripper it started with lost its place on a nested template,
+   which is the fault this file's header describes in mirror image — so the
+   lexer grew the function instead of the caller keeping a second one. */
+
+test('stripComments keeps string contents, unlike stripNoise', () => {
+    const src = `const a = 'keep me'; /* drop me */ const b = "";`;
+    const out = stripComments(src);
+    assert.match(out, /'keep me'/, 'a string survives intact');
+    assert.match(out, /""/, 'and an empty one is still visibly empty');
+    assert.doesNotMatch(out, /drop me/);
+    assert.doesNotMatch(stripNoise(src), /keep me/, 'stripNoise would have flattened it');
+});
+
+test('offsets survive, so a caller can report real line numbers', () => {
+    const src = ['const a = 1;', '/* two', '   lines */', 'const b = 2;'].join('\n');
+    const out = stripComments(src);
+    assert.equal(out.length, src.length, 'same length');
+    assert.equal(out.split('\n').length, src.split('\n').length, 'same line count');
+    assert.equal(out.split('\n')[3], 'const b = 2;', 'and the same line 4');
+});
+
+test('a nested template literal does not end the outer one', () => {
+    /* The fault that made the local stripper useless: scanning from a backtick
+       to "the next backtick" stops inside the inner template, after which code
+       reads as string and string as code — and the comment after it survived. */
+    const src = 'const h = `${a ? `<i>${b}</i>` : \'\'}`; /* gone */ const z = 1;';
+    const out = stripComments(src);
+    assert.doesNotMatch(out, /gone/, 'the comment after a nested template is still removed');
+    assert.match(out, /const z = 1;/);
+});
+
+test('a regex holding a quote does not swallow the file', () => {
+    // escHTML's /'/g, the exact literal named in this file's header.
+    const src = `s.replace(/'/g, '&#39;'); /* bye */ const after = 1;`;
+    const out = stripComments(src);
+    assert.doesNotMatch(out, /bye/);
+    assert.match(out, /const after = 1;/);
+    assert.match(out, /\/'\/g/, 'the regex itself is kept');
+});
+
+test('a comment inside an interpolation is deliberately kept', () => {
+    /* Templates are copied whole. That is the choice check-icons.mjs needs:
+       the interpolation is where the markup lives, and a dead expression
+       inside one has to stay visible. */
+    const out = stripComments('const h = `${/* inner */ x}`;');
+    assert.match(out, /inner/);
 });

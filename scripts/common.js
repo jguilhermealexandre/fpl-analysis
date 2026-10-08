@@ -1842,8 +1842,17 @@ const V2_ICON_PATHS = {
     ball: '<circle cx="12" cy="12" r="10"/><path d="m12 7 4.2 3.1-1.6 5H9.4l-1.6-5z"/>'
         + '<path d="M12 2v5"/><path d="m2.6 9.4 5.2.6"/><path d="m21.4 9.4-5.2.6"/>'
         + '<path d="m6.8 20.4 2.6-5.3"/><path d="m17.2 20.4-2.6-5.3"/>',
+    // Finding one — a magnifier. Added because v2Icon('search') was already
+    // being called by the draft planner's replacement finder, and a name with
+    // no path behind it returns an empty string: the heading read "Find a
+    // replacement yourself" with a gap where every other heading has its mark.
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
     // Prices — a line going up.
     trend: '<path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/>',
+    /* The same line mirrored about y=12, with the arrowhead moved to the
+       bottom-right corner. Added because the price ticker had a direction to
+       show and no glyph to show it with — see tm-tick-arrow. */
+    trendDown: '<path d="M22 17 13.5 8.5 8.5 13.5 2 7"/><path d="M16 17h6v-6"/>',
     // Rivals — people.
     users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'
         + '<path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -2493,7 +2502,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=443')
+    fetch('/footer.html?v=444')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

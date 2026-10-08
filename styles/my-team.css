@@ -7807,6 +7807,26 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 }
 .tm-tick-arrow { display: inline-flex; align-items: center; }
 
+/* And the colour, which the rule above left to .v2-sec-icon — and that class is
+   the accent green. An arrow on a FALLING price came out green, which is the
+   trap v2-design.css documents two rules below its own list of filled controls:
+   "remembering is what failed here twice". So the arrow takes the direction's
+   own colour, the same two tokens the percentage beside it already uses, and
+   the icon inherits from the arrow rather than from the accent. */
+.tm-tick-arrow .v2-sec-icon { color: currentColor; }
+.tm-tick.up .tm-tick-arrow { color: var(--verdict-hold-text); }
+.tm-tick.down .tm-tick-arrow { color: var(--verdict-sell-text); }
+
+/* ----- Availability on a GW Draft row -----
+   The mark was an emoji, then an empty string for several months (see
+   statusIcon in draft-planner.js). Sized and coloured here rather than left to
+   .v2-sec-icon for the same reason as the arrow above: red and amber are the
+   point, and the accent green is not. */
+.dp-avail { display: inline-flex; align-items: center; margin-right: 4px; vertical-align: middle; }
+.dp-avail .v2-sec-icon { width: 13px; height: 13px; color: currentColor; }
+.dp-avail.out { color: var(--verdict-sell-text); }
+.dp-avail.doubt { color: var(--verdict-monitor-text); }
+
 /* ----- A squad row's actions -----
    C and V were settable on the pitch and in the lineup wizard and nowhere
    else, so acting on what the table told you meant leaving the table. They sit
