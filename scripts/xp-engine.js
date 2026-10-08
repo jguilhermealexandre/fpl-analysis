@@ -154,6 +154,12 @@
                 status: p.status, news: p.news, newsAdded: p.news_added || null,
                 chanceNextRound: p.chance_of_playing_next_round,
                 minutes: p.minutes, starts: p.starts || 0,
+                /* The last five gameweeks of minutes and starts, attached to the
+                   bootstrap element by tools/attach-minutes-form.mjs. Null for a
+                   player with no history yet, and absent entirely if that job has
+                   not run — expectedMinutesModel falls back to the season rate in
+                   both cases. */
+                mf: p.mf || null,
                 goals: p.goals_scored, assists: p.assists,
                 cleanSheets: p.clean_sheets, goalsConceded: p.goals_conceded || 0,
                 xG: parseFloat(p.expected_goals) || 0, xA: parseFloat(p.expected_assists) || 0,
@@ -1085,7 +1091,68 @@
 
            The two coefficients below are, for the record, close to right: a fit
            starter averages 1.936 appearance points and a fit non-starter 0.501,
-           against the 2 and 0.5 assumed. */
+           against the 2 and 0.5 assumed.
+
+           SINCE SUPERSEDED IN PART, and the distinction matters. Everything above
+           is about RECALIBRATING the season rate — shifting the whole curve to
+           match its measured shape. The fourth option, not tested then, is to
+           change what the rate is measured OVER: recent gameweeks rather than the
+           whole season. That is not a recalibration, and the reason the three
+           above cost ranking does not apply to it. A monotone correction lifts
+           every marginal player at once, and they are marginal for a reason; a
+           recency window lifts the ones whose recent record is strong and LOWERS
+           the ones whose recent record is weak, so the marginal tail is sorted
+           rather than inflated.
+
+           Measured the same way, GW1-4 reconstructed and GW5 graded, n=610, both
+           arms running this file:
+
+                                     pStart Brier   xP MAE   top-10   top-20   top-50
+             season rate (was)              0.1084   1.4705     3.80     3.65     3.76
+             recency-weighted (is)          0.0948   1.4408     3.80     3.65     3.94
+
+           Twelve per cent off the Brier and two off the MAE with the top ten and
+           top twenty UNCHANGED — which is the result the earlier work could not
+           get, and the only reason this one shipped. Of the fourteen players it
+           moved by more than 0.6, twelve moved in the direction their GW5 actually
+           went. See xpRecentStartRate below. */
+        /* ===== How recently he has been starting =====
+         *
+         * The season rate cannot see a change of role, and a change of role is
+         * the single most common reason a projection is wrong about a player.
+         * `mf` carries the last five gameweeks of minutes and FPL's own starts
+         * flag, attached to every bootstrap element by
+         * tools/attach-minutes-form.mjs — see that file for why the evidence
+         * travels on bootstrap rather than being read from the detail feed.
+         *
+         * Exponential decay with a half-life of a gameweek and a half, so the
+         * most recent match is worth about ten times the oldest in the window.
+         * Measured against the alternatives on GW1-4 predicting who actually
+         * started GW5 (n=610): this half-life had the best log-loss of six
+         * candidates and was within a thousandth of the best Brier, and the
+         * shipped season rate was the WORST of the six on both, in all three
+         * cohorts tested. "Last two gameweeks only" scored marginally better on
+         * Brier and is rejected anyway — a two-match window turns one rested
+         * afternoon into a 0.5, which is a worse kind of wrong than being slow.
+         *
+         * Returns null when there is no window, and the caller falls back to the
+         * season rate: that is what it used before this existed, and a player
+         * nobody has data for is not a player we know anything new about. */
+        const XP_RECENT_HALFLIFE = 1.5;
+
+        function xpRecentStartRate(player) {
+            const mf = player && player.mf;
+            if (!mf || !Array.isArray(mf.st) || !mf.st.length) return null;
+            let weight = 0, started = 0;
+            for (let i = 0; i < mf.st.length; i++) {
+                // Most recent is last, so age counts back from the end.
+                const w = Math.pow(0.5, (mf.st.length - 1 - i) / XP_RECENT_HALFLIFE);
+                weight += w;
+                if (mf.st[i]) started += w;
+            }
+            return weight > 0 ? started / weight : null;
+        }
+
         function expectedMinutesModel(player) {
             const avail = player.status === 'd'
                 ? (player.chanceNextRound != null ? player.chanceNextRound : 50) / 100
@@ -1098,7 +1165,14 @@
             // the second player is not a 0.92 to start. FPL publishes a starts
             // count, so use the rate directly and let minutes per game refine it.
             const starts = player.starts || 0;
-            const startRate = games > 0 ? Math.min(1, starts / games) : 0;
+            const seasonRate = games > 0 ? Math.min(1, starts / games) : 0;
+            /* Recent when there is a window for it. Against the real GW5 round
+               this moved nobody who had started all five and lifted Konsa from
+               0.45 to 0.62 — the whole point being that it cuts both ways, which
+               is why it does not do what the recalibration below did to the
+               ranking. */
+            const recentRate = xpRecentStartRate(player);
+            const startRate = recentRate != null ? recentRate : seasonRate;
             /* A continuous read of minutes, not a five-step ladder.
 
                This was `mpg >= 80 ? 0.92 : mpg >= 60 ? 0.75 : ...`, which could not

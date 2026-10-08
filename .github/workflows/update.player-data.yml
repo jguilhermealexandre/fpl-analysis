@@ -416,6 +416,12 @@ jobs:
         # so a gameweek's debrief stays as it was published.
         run: node scripts/build-articles.js
 
+      # After players-data.json is written, not with the other bootstrap fixup
+      # near the top: this reads the per-gameweek rows that step produces, and
+      # running it earlier would copy across the previous run's window.
+      - name: Attach recent minutes to bootstrap
+        run: node tools/attach-minutes-form.mjs data/bootstrap-static.json data/players-data.json
+
       - name: Write last-updated timestamp
         run: |
           echo "{\"lastUpdated\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > data/last-updated.json

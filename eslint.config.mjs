@@ -295,6 +295,7 @@ export default [
                 XG_BANDS: 'writable',
                 XP_PLAN_HORIZON: 'writable',
                 XP_RATE_K: 'writable',
+                XP_RECENT_HALFLIFE: 'writable',
                 XP_STATUS_OUT: 'writable',
                 _boIndex: 'writable',
                 _boPricedRounds: 'writable',
@@ -1984,6 +1985,7 @@ export default [
                 xpOver: 'writable',
                 xpPlanGWs: 'writable',
                 xpPlayersById: 'writable',
+                xpRecentStartRate: 'writable',
                 xpTeamRate: 'writable',
 /* GENERATED-GLOBALS-END */
             }
