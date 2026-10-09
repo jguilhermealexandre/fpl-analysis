@@ -954,101 +954,6 @@ function updateCompareBar() {
                 })).join('')}</tr>`;
             }).join('');
 
-            /* Actual against expected, as a table with the players as columns.
-
-               It was a stack of sentences, one per player per stat per window —
-               four paragraphs for a two-man comparison before anyone had read a
-               number, and the one thing a comparison is for, reading down the
-               same row, could not be done at all.
-
-               Two rows collapse into one when they would say the same thing.
-               Early in a season the last-five window IS the season, so every
-               stat printed its sentence twice, identically; that is not a bug in
-               the arithmetic but it is four rows of nothing. They separate on
-               their own once the window stops covering the whole season.
-
-               The sentence pfVsExpected() writes is kept as the cell's tooltip,
-               including its refusal to call a direction when the expected figure
-               is too small to divide by — the cell shows a dash for that rather
-               than a delta it cannot support. */
-            const aveHtml = (() => {
-                if (!formWindow || typeof pfExpectedPairs !== 'function') return '';
-
-                // Union of the pairs across the compared players: a keeper and a
-                // forward have none in common, and both still get their rows.
-                const order = ['goals', 'assists', 'gi', 'goalsConceded'];
-                const pairsById = new Map();
-                reportData.forEach(p => (pfExpectedPairs(p.position) || []).forEach(pr => {
-                    if (!pairsById.has(pr.key)) pairsById.set(pr.key, pr);
-                }));
-                const pairs = [...pairsById.values()].sort(
-                    (a, b) => (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99));
-                if (!pairs.length) return '';
-
-                const readFor = (p, pr, scope) => {
-                    const w = p._form;
-                    if (!w) return null;
-                    const own = pfExpectedPairs(p.position).some(x => x.key === pr.key);
-                    if (!own) return null;
-                    const t = scope === 'season' ? w.season : w.totals;
-                    return Object.assign(pfVsExpected(t[pr.key], t[pr.expected], pr),
-                        { actual: t[pr.key], expected: t[pr.expected] });
-                };
-                /* Two blanks are the same blank. A keeper has no goals-against-xG
-                   row, so without this a stat that IS identical across both
-                   windows still printed twice the moment one player in the
-                   comparison did not have it. */
-                const same = (a, b) => (!a && !b)
-                    || (!!a && !!b && a.actual === b.actual && a.expected === b.expected);
-
-                /* Every cell says what it is. "2 v 1.4 / +0.6" needs the reader
-                   to already know which number is which, and — worse — that the
-                   sign means opposite things from one row to the next: +0.6 goals
-                   is good news and +0.6 conceded is not. So the actual is
-                   labelled, the expected is labelled, and the gap is written in
-                   words with the colour carrying whether it is the good side. */
-                const cell = (r) => {
-                    if (!r) return '<td class="ave-na">—</td>';
-                    return `<td class="ave-cell t-${r.tone}" data-tooltip="${escHTML(r.text)}">
-                        <span class="ave-pair"><b>${pfNum(r.actual, r.actual % 1 === 0 ? 0 : 1)}</b> actual
-                            <i>vs</i> <b>${r.expected.toFixed(1)}</b> expected</span>
-                        <span class="ave-delta">${escHTML(r.short)}</span></td>`;
-                };
-
-                // Which way is up, per row — the one thing a reader cannot get
-                // from the numbers, and the thing the colours depend on.
-                const aim = pr => pr.invert ? 'fewer is better' : 'more is better';
-
-                const body = pairs.map(pr => {
-                    const recent = reportData.map(p => readFor(p, pr, 'recent'));
-                    const season = reportData.map(p => readFor(p, pr, 'season'));
-                    const head = (when) => `<th scope="row">${escHTML(pr.label)}
-                        <small>${when}</small><em>${aim(pr)}</em></th>`;
-                    // One row while the window still covers the whole season.
-                    const identical = recent.every((r, i) => same(r, season[i]));
-                    if (identical) {
-                        return `<tr>${head('season so far')}${recent.map(cell).join('')}</tr>`;
-                    }
-                    return `<tr>${head(`last ${formWindow.rounds.length}`)}${recent.map(cell).join('')}</tr>`
-                        + `<tr>${head('season')}${season.map(cell).join('')}</tr>`;
-                }).join('');
-
-                return `<table class="ave-table">
-                    <thead><tr><th scope="col"></th>${reportData.map(p =>
-                        `<th scope="col">${escHTML(p.name)}</th>`).join('')}</tr></thead>
-                    <tbody>${body}</tbody>
-                </table>
-                <div class="ave-key">
-                    <span><i class="ave-sw t-over"></i> ahead of the chances</span>
-                    <span><i class="ave-sw t-par"></i> about par</span>
-                    <span><i class="ave-sw t-under"></i> behind the chances</span>
-                    <span><i class="ave-sw t-thin"></i> too few chances to tell</span>
-                </div>
-                <p class="ave-note">Expected goals and assists value every chance by how often it is normally taken, so
-                    a player ahead of his expected figure has finished better than the chances deserved — which usually
-                    does not last — and one behind it has been wasteful or unlucky. Hover any cell for the full reading.</p>`;
-            })();
-
             // Build picks HTML
             const picksHtml = picks.map(pick => `
                 <div class="report-pick-card ${pick.cssClass}">
@@ -1333,10 +1238,6 @@ function updateCompareBar() {
                         </div>
                     </div>
 
-                    ${aveHtml ? `<div class="report-form-read">
-                        <h4>Actual against expected</h4>
-                        ${aveHtml}
-                    </div>` : ''}
 
                     <!-- Player Profile Cards -->
                     <div class="report-profiles">${profilesHtml}</div>
