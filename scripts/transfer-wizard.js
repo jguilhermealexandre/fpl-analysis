@@ -1402,10 +1402,10 @@
                     x.setAttribute('data-tooltip', label);
                     x.setAttribute('aria-label', label);
                     x.onclick = (ev) => { ev.stopPropagation(); twRemoveSlot(slotOf(id)); };
-                    x.onkeydown = (ev) => {
-                        if (ev.key !== 'Enter' && ev.key !== ' ') return;
-                        ev.preventDefault(); ev.stopPropagation(); twRemoveSlot(slotOf(id));
-                    };
+                    /* No onkeydown. x already carries role="button" and
+                       tabindex, and initKeyActivation() in common.js activates
+                       anything with that role on Enter or Space — this was the
+                       fifth hand-written copy of that rule. */
                 }
 
                 const chip = node.querySelector('.pdm-hero-chip');

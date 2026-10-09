@@ -17,7 +17,7 @@ the decisions, not the log.*
 | 2 — My Team · Transfers | done (v444) |
 | availability mark (spans 1 + 3) | done (v445) |
 | 3 — My Team · GW Draft | done (v446) |
-| 4 — My Team · Transfer Wizard | next |
+| 4 — My Team · Transfer Wizard | part 1 done (v448): weight, the funnel invariant, escaping. Flow bug-bash and the 4146-line split still open |
 | 5 — My Team · Lineup Wizard | |
 | 6 — My Team · News | |
 | 7-13 — Players x7 | |
@@ -36,11 +36,10 @@ the decisions, not the log.*
 
 ## Carried forward, with measurements
 
-- **transfer-funnel.min.js on the Transfers tab** — 37.8 KB, and
-  renderTransferMarket calls none of its 43 functions. Removing it from the
-  "transfers" group in #v2TabScripts rests on "no funnel name is reachable from
-  that tab", which check:deferred does not cover: it guards page -> deferred,
-  not deferred -> deferred. Belongs to Surface 4.
+- ~~transfer-funnel.min.js on the Transfers tab~~ — DONE in v448. 37.8 KB off
+  that tab. The invariant check:deferred cannot express is pinned instead by
+  tests/tab-group-closure.test.mjs, which also records that the saving depends
+  on the tmSellBeforeDrop ordering fix from Surface 2.
 - **61 click handlers on non-interactive elements, site-wide.** Three were on
   the GW Draft and are fixed; the delegated handler that makes the fix a
   two-attribute change is in common.js (initKeyActivation). The rest are
