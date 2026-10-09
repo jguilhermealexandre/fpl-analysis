@@ -19,7 +19,7 @@ the decisions, not the log.*
 | 3 — My Team · GW Draft | done (v446) |
 | 4 — My Team · Transfer Wizard | part 2 done (v449): the selling-price defect. The 4146-line split still open |
 | 5 — My Team · Lineup Wizard | done (v450) |
-| 6 — My Team · News | |
+| 6 — My Team · News | done (v453) — and the tab itself is unreachable, see below |
 | 7-13 — Players x7 | |
 | 14-18 — Teams x5 | |
 | 19-24 — Rivals x6 | |
@@ -28,6 +28,17 @@ the decisions, not the log.*
 | 36-47 — static and auth | |
 
 ## Open decisions
+
+- **The My Team News tab is unreachable and 307 lines ship for it.** The button
+  is `class="tab hidden"` in fpl-my-team-analysis.html and nothing anywhere
+  removes `hidden`; nothing links to `#news`. The only way in is typing the hash
+  by hand. Git says this was deliberate — hidden in "Simplify navigation",
+  briefly un-hidden during a Squad Analysis rework, hidden again when v2 shipped
+  — and a standalone News Hub page now exists at /fpl-news. So renderNewsTab()
+  and its helpers, 307 lines in panels-and-tabs.js, are on the critical path of
+  every My Team load for a tab no one can click. Two honest options: un-hide the
+  tab, or delete it and let the News Hub own news. Not taken unilaterally
+  because parking a feature is not the same as abandoning it.
 
 - **Un-gate and index Players and Teams.** A product call, not an engineering
   one: it changes who can see the app without a Team ID. The SEO case is in
