@@ -45,26 +45,26 @@
          waiting for the stylesheet to name them: same-origin now, so a
          preload here costs nothing and starts them with the CSS. -->
     <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-ca11fe9ca5.woff2" crossorigin>
-    <link rel="stylesheet" href="/styles/fonts.min.css?v=422">
-    <script src="/scripts/dashboard-gate.min.js?v=422"></script>
-    <link rel="stylesheet" href="/styles/common.min.css?v=422">
-    <link rel="stylesheet" href="/styles/teams.min.css?v=422">
-    <link rel="stylesheet" href="/styles/v2-design.min.css?v=422">
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=451">
+    <script src="/scripts/dashboard-gate.min.js?v=451"></script>
+    <link rel="stylesheet" href="/styles/common.min.css?v=451">
+    <link rel="stylesheet" href="/styles/teams.min.css?v=451">
+    <link rel="stylesheet" href="/styles/v2-design.min.css?v=451">
     <!-- v2-app.css is the signed-in half of v2-design.css. Asked for here, so
          that the cascade reads the same as it did when the two were one file,
          and only when there is a saved Team ID — see the note at the top of
          v2-design.css. Kept identical on every page by check:appcss. -->
-    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=422';document.head.appendChild(l)})();</script>
-    <link rel="stylesheet" href="/styles/responsive.min.css?v=422">
-    <script src="/scripts/error-monitor.min.js?v=422"></script>
-    <script src="/scripts/auth.min.js?v=422"></script>
-    <script src="/scripts/common.min.js?v=422"></script>
-    <script src="/scripts/team-xg.min.js?v=422"></script>
+    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=451';document.head.appendChild(l)})();</script>
+    <link rel="stylesheet" href="/styles/responsive.min.css?v=451">
+    <script src="/scripts/error-monitor.min.js?v=451"></script>
+    <script src="/scripts/auth.min.js?v=451"></script>
+    <script src="/scripts/common.min.js?v=451"></script>
+    <script src="/scripts/team-xg.min.js?v=451"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="/scripts/push-alerts.min.js?v=422"></script>
-    <script src="/scripts/notifications.min.js?v=422"></script>
-    <script src="/scripts/sidebar-nav.min.js?v=422"></script>
+    <script src="/scripts/push-alerts.min.js?v=451"></script>
+    <script src="/scripts/notifications.min.js?v=451"></script>
+    <script src="/scripts/sidebar-nav.min.js?v=451"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -1092,14 +1092,27 @@
             `;
         }
 
-        // Concrete numbers rather than four 0-100 indices nobody can anchor to.
-        //
-        // Two of the metrics originally specified do not exist: FPL stopped
-        // publishing big chances and shot counts years ago, and neither
-        // big_chances_created nor shots appears anywhere in the element data.
-        // Rather than estimate them from xA and pass the estimate off as a count,
-        // the two slots carry the real measures nearest in purpose — expected
-        // assists for chance quality, goals conceded for defensive leakage.
+        /* Concrete numbers rather than four 0-100 indices nobody can anchor to.
+
+           Two of the metrics originally specified do not exist: FPL stopped
+           publishing big chances and shot counts years ago, and neither
+           big_chances_created nor shots appears anywhere in the element data.
+           Rather than estimate them and pass the estimate off as a count, those
+           slots carry the real measures nearest in purpose — goals conceded for
+           defensive leakage, and goals per game for finishing.
+
+           The attack column reads expected rate, count, actual rate, so xG/game
+           and Goals/game sit in one column and the gap between them is the whole
+           point: Sunderland at 1.97 xG and 1.20 scored are wasting chances,
+           Brighton at 2.31 and 3.20 are not going to keep this up. Both carry
+           the same 1.6 threshold so the two can be read against each other.
+
+           That third slot used to be xA/game, reading xg.xApg — a field
+           getTeamSeasonXg() has never returned, so it rendered an em dash for
+           all twenty clubs. buildTeamXgData() does accumulate seasonXa; the
+           accessor simply never exposed it. Mentioned because the dead field is
+           still there and is the obvious thing to reach for if xA is ever
+           wanted back. */
         function renderTeamStatBlock(team, hl) {
             const xg = team.seasonXg;
             const games = xg && xg.games ? xg.games : 0;
@@ -1108,7 +1121,7 @@
             const attack = [
                 { label: 'xG/game', value: xg ? n(xg.xGpg, 2) : '—', good: xg && xg.xGpg >= 1.6 },
                 { label: 'Goals', value: xg ? xg.totalGoals : team.totalGoals ?? '—', good: false },
-                { label: 'xA/game', value: xg ? n(xg.xApg, 2) : '—', good: xg && xg.xApg >= 1.0 }
+                { label: 'Goals/game', value: xg ? n(xg.gpg, 2) : '—', good: xg && xg.gpg >= 1.6 }
             ];
             const defence = [
                 { label: 'xGC/game', value: xg ? n(xg.xGCpg, 2) : '—', good: xg && xg.xGCpg <= 1.1 },
@@ -1185,15 +1198,55 @@
             </div>`;
         }
 
+        /* Season xG minus season xGC, per game. The one definition on this page.
+
+           Three places read a net season figure — the momentum chart's default
+           axis, the trend arrow on every club card, and the scout report's xG
+           chip — and all three used to reach for `seasonXg.netXGpg`, a field
+           getTeamSeasonXg() has never returned. Each failed differently and none
+           failed loudly: the chart put all twenty clubs on y = 0, the trend
+           arrow went to `recentNet - undefined` and so was NaN, which is neither
+           steady nor rising and therefore read "Declining" on every single team
+           with "NaN per game" in its tooltip, and the scout report's chip was
+           pinned to amber. One missing field, three wrong things on screen.
+
+           Returns null rather than 0 when it cannot be computed, so a caller has
+           to decide what no-data means instead of being handed a figure that
+           looks like an average club. Deliberately NOT added to
+           getTeamSeasonXg(): the other netXGpg on this page comes from
+           getXgScoped(), which is venue- and window-aware. That is a different
+           question with the same name, and merging them would be the same
+           mistake in a new place. */
+        function seasonNetXGpg(xg) {
+            if (!xg || typeof xg.xGpg !== 'number' || typeof xg.xGCpg !== 'number') return null;
+            if (!isFinite(xg.xGpg) || !isFinite(xg.xGCpg)) return null;
+            return xg.xGpg - xg.xGCpg;
+        }
+
         // Whether recent expected-goal output is running above or below the
         // season figure. Needs a few games behind it before it means anything.
         function teamTrend(team) {
             const xg = team.seasonXg;
             const recent = team.recent6Xg;
             if (!xg || !recent || !xg.games || xg.games < 4) return null;
-            const seasonNet = xg.netXGpg;
-            const recentNet = (recent.xG - recent.xGC) / Math.max(recent.games || 1, 1);
+            /* The window has to be a strict subset of the season or there is no
+               comparison to draw. Five rounds played against a six-match window
+               means recent and season are the same matches, and the honest
+               output is no arrow — not "Steady", which reads as a measurement
+               and would be true only in the sense that a thing equals itself. */
+            if (recent.games >= xg.games) return null;
+            const seasonNet = seasonNetXGpg(xg);
+            if (seasonNet === null) return null;
+            /* The window's own per-game fields. This line used to read
+               recent.xG and recent.xGC and divide by recent.games —
+               getTeamXgWindow() returns totalXg and totalXgc, so both terms were
+               undefined and the whole trend was NaN regardless of the season
+               figure. A second missing field in the same expression as the
+               first, and the only place in this file that reads .xG off a window
+               object; everything else already uses the per-game pair. */
+            const recentNet = recent.xGpg - recent.xGCpg;
             const delta = recentNet - seasonNet;
+            if (!isFinite(delta)) return null;
             if (Math.abs(delta) < 0.15) return { dir: 'flat', label: 'Steady', delta };
             return delta > 0
                 ? { dir: 'up', label: 'Improving', delta }
@@ -3196,13 +3249,17 @@
             return 6 - parseFloat(team.avgFdr);
         }
 
+        /* The default metric — the one the page opens on — used to read the
+           missing seasonXg.netXGpg and so returned 0 for every club, stacking
+           all twenty teams on a single horizontal line. Attack and Defence were
+           unaffected because xGpg and xGCpg do exist. See seasonNetXGpg(). */
         function getMomentumY(team) {
             const xg = team.seasonXg;
             if (!xg || !team.hasRealXg) return 0;
             switch (momentumMetric) {
                 case 'attack': return xg.xGpg || 0;
                 case 'defense': return -(xg.xGCpg || 0); // invert: lower conceded = higher on chart
-                default: return xg.netXGpg || 0;
+                default: return seasonNetXGpg(xg) ?? 0;
             }
         }
 
@@ -3515,7 +3572,7 @@
             const xg = team.seasonXg;
             const xGVal = xg ? (xg.xGpg || 0).toFixed(2) : 'N/A';
             const xGCVal = xg ? (xg.xGCpg || 0).toFixed(2) : 'N/A';
-            const netXgVal = xg ? (xg.netXGpg || 0) : 0;
+            const netXgVal = seasonNetXGpg(xg) ?? 0;
             const fdrVal = parseFloat(team.avgFdr);
             const ease = 6 - fdrVal;
 

@@ -27,7 +27,9 @@
    ============================================ */
 
         function solveQuickLineup(squad) {
-            const validFormations = [[3,4,3],[3,5,2],[4,3,3],[4,4,2],[4,5,1],[5,3,2],[5,4,1],[5,2,3]];
+            // Derived from FPL's shape rule in common.js, not listed here. The
+            // literal array this replaced was correct and had no way of saying so.
+            const validFormations = FPL_FORMATIONS;
             const byPos = { 1: [], 2: [], 3: [], 4: [] };
             squad.forEach(p => { if (p.lwScore > -100) byPos[p.pos].push(p); });
             Object.values(byPos).forEach(a => a.sort((a, b) => b.lwScore - a.lwScore));
@@ -103,6 +105,198 @@
         // has to clear over the whole horizon, not per gameweek.
         const TW_MIN_FREE_GAIN = 3.0;   // spend a free transfer
         const TW_MIN_HIT_GAIN  = 4.0;   // clear the 4-point hit by this much again
+
+        /* How much better a goalkeeper swap has to be before it is offered.
+         *
+         * THIS IS A STATED PREFERENCE, NOT A MODELLING CORRECTION, and it is
+         * worth being exact about that because the obvious justification is
+         * false. The tempting story is "the model keeps picking keepers because
+         * they are all the same, so noise clears the margin there more easily
+         * than a real upgrade does in attack". Measured on GW6 data, over the
+         * five-gameweek horizon this engine uses, the points-per-game spread
+         * between the 10th and 90th percentile of PLAYING keepers is 21.0
+         * points — against 20.0 for midfielders and 21.5 for defenders. Keepers
+         * are not interchangeable and that story does not survive contact with
+         * the data.
+         *
+         * What IS structural is the price band. Playing keepers cost £4.5m to
+         * £6.1m, a standard deviation of £0.42; midfielders span £4.5m to
+         * £11.9m and forwards £5.5m to £15.6m. So a keeper transfer moves no
+         * money — it cannot free funds for an upgrade elsewhere and it cannot
+         * concentrate them — and the market prices the position so flatly that
+         * £4.7m Tzolakis outscores £6.1m Raya. The transfer buys a different
+         * keeper and nothing else.
+         *
+         * The rest of the reason is that managers do not make this move, which
+         * is the site owner's call about the product rather than something to
+         * be derived. Set at the same size as TW_MIN_FREE_GAIN, so a keeper
+         * swap has to be worth about twice what an outfield one does: harder to
+         * recommend, which is what was asked, rather than never recommended.
+         *
+         * Waived entirely when the outgoing keeper is not available — an injury
+         * or a suspension is not a reluctant transfer. A keeper who has simply
+         * lost his place needs no special case: the engine already projects him
+         * near zero over the horizon, so the gain on replacing him clears even
+         * the raised bar on its own. */
+        const TW_GK_FRICTION = 3.0;
+
+        function twMoveFriction(m) {
+            if (!m || !m.out || m.out.position !== 1) return 0;
+            if (m.out.status !== 'a') return 0;
+            return TW_GK_FRICTION;
+        }
+
+        /* Can this player be recommended at all — one answer, four surfaces.
+         *
+         * The four places that offer a replacement disagreed about doubts.
+         * twScanSwaps and findTransferCandidates accepted status 'd' outright,
+         * findDraftReplacements did too, and the Transfer Wizard's quick picks
+         * refused every 'd' — so a doubtful player was a valid recommendation on
+         * step 1 and invisible one click later, with nothing on screen to
+         * explain the difference.
+         *
+         * Neither extreme is right. A 75%-to-play player with a good run is a
+         * transfer managers make; a 25% one is not a plan. So the rule is the
+         * threshold the site already uses for exactly this judgement —
+         * rfEvaluate() in scripts/form-trend.js blocks Rising Form at
+         * chanceNextRound < 75 with the reasoning that a flagged doubt "is not a
+         * transfer to plan around". Same number here rather than a fifth
+         * opinion.
+         *
+         * A doubt FPL has not quantified (chanceNextRound null) passes: the flag
+         * without a figure is how FPL marks a knock it has no update on, and
+         * refusing those would drop players who are fit.
+         *
+         * Minutes are deliberately NOT here. The funnel replaced its floor with
+         * a user-facing Minutes chip and the engine still uses a floor, and
+         * those differ for a reason a reader can see — a control they set
+         * against a default they did not. This is only the part that differed
+         * for no reason. */
+        const TW_DOUBT_FLOOR = 75;
+
+        function twPlayerAvailable(p) {
+            if (!p) return false;
+            if (p.status === 'a') return true;
+            if (p.status !== 'd') return false;
+            return p.chanceNextRound == null || p.chanceNextRound >= TW_DOUBT_FLOOR;
+        }
+
+        /* ===== The site's own signals, as an input to who to buy =====
+         *
+         * The recommender priced every candidate on projected points and
+         * nothing else. Rising Form and Purple Patch are computed on this same
+         * page, shown on two others, and were not consulted — so the site could
+         * put a player in its Rising Form section and ignore him when choosing
+         * a transfer, which reads as the two halves not talking to each other.
+         *
+         * BOUNDED, AND ONLY ON THE RANKING. This never touches gain, gross or
+         * net: those are the engine's real projection and are what the card
+         * prints. A signal can tip a close call between two candidates; it
+         * cannot manufacture a recommendation, because the margin a move has to
+         * clear is tested against the unadjusted figure. TW_SIGNAL_MAX is set
+         * at half TW_MIN_FREE_GAIN deliberately — large enough to reorder two
+         * similar candidates over a five-gameweek horizon, too small to promote
+         * one that is materially worse, and smaller than TW_GK_FRICTION so it
+         * can never cancel the goalkeeper brake.
+         *
+         * Both scores are 0-100 at source. A player measurable on only one of
+         * them is averaged over the one, rather than halved for the silence of
+         * the other — "no purple patch yet" is a statement about the calendar
+         * four gameweeks into a season, not about the player.
+         *
+         * NOT the players page's calculatePositionScore. That ranks who is
+         * worth buying in a position and price tier; this asks what swapping
+         * one player for another gains over five gameweeks. Different
+         * questions, and forcing them together would make that page worse. It
+         * also lives in an inline block on fpl-players-analysis.html and is
+         * unreachable from here, which is a symptom of the same thing. */
+        const TW_SIGNAL_MAX = 1.5;
+
+        /* Built once per recommendation, never per candidate.
+         *
+         * Rising Form reads player.history — the raw per-gameweek rows — and
+         * Purple Patch reads the l5/season windows that buildStatWindows()
+         * derives from them. Both are cheap for one player and ruinous done
+         * inside twScanSwaps, which evaluates hundreds of candidates for each
+         * of fifteen squad players. So the pool is walked once here and the
+         * result is a lookup.
+         *
+         * The history index is a Map rather than the .find() the rest of this
+         * file uses on playersDetailData.players: that is a linear scan per
+         * candidate, and doing it once per pool instead is the difference
+         * between hundreds of thousands of comparisons and six hundred. */
+        function twBuildSignalMap(players) {
+            const out = new Map();
+            const rows = (typeof playersDetailData !== 'undefined' && playersDetailData
+                && playersDetailData.players) || [];
+            if (!rows.length) return out;
+
+            const histById = new Map();
+            rows.forEach(r => histById.set(r.id, (r.history || [])));
+
+            (players || []).forEach(p => {
+                const history = histById.get(p.id);
+                if (!history || !history.length) return;
+
+                /* A copy with the history and the windows attached. The pool
+                   objects come from xpBuildPlayers and carry neither, and
+                   mutating them would leak a shape the rest of the page does
+                   not expect onto every player in the game. */
+                const subject = Object.assign({}, p, { history });
+                if (typeof buildStatWindows === 'function') {
+                    const w = buildStatWindows(subject, history);
+                    if (w) { subject.l5 = w.recent; subject.season = w.season; }
+                }
+
+                let rising = null, patch = null, labels = [];
+                if (typeof risingFormFor === 'function') {
+                    try {
+                        const rf = risingFormFor(subject);
+                        if (rf && rf.score != null) {
+                            rising = rf.score;
+                            (rf.signals || []).forEach(s => labels.push(s.label || s.name || 'rising'));
+                        }
+                    } catch (e) { /* a signal that throws is a signal we do not have */ }
+                }
+                if (typeof purplePatchFor === 'function') {
+                    try {
+                        const pp = purplePatchFor(subject);
+                        if (pp && pp.patch && pp.sustainability
+                            && typeof pp.sustainability.totalScore === 'number') {
+                            patch = pp.sustainability.totalScore;
+                            labels.push(`purple patch · ${pp.sustainability.verdict || 'run'}`);
+                        }
+                    } catch (e) { /* as above */ }
+                }
+
+                if (rising != null || patch != null) {
+                    out.set(p.id, { rising, patch, labels });
+                }
+            });
+            return out;
+        }
+
+        // What the signals are worth to an incoming player, in points, bounded.
+        function twMoveBoost(m, signals) {
+            if (!signals || !m || !m.in) return 0;
+            const s = typeof signals.get === 'function' ? signals.get(m.in.id) : null;
+            if (!s) return 0;
+            const clamp01 = v => Math.max(0, Math.min(1, v / 100));
+            const parts = [];
+            if (s.rising != null) parts.push(clamp01(s.rising));
+            if (s.patch != null) parts.push(clamp01(s.patch));
+            if (!parts.length) return 0;
+            return (parts.reduce((a, b) => a + b, 0) / parts.length) * TW_SIGNAL_MAX;
+        }
+
+        /* The most transfers a single recommendation will ever propose.
+
+           Not a judgement about football — it is the point past which this stops
+           being a transfer recommendation and starts being a wildcard draft,
+           which is a different screen. The real ceiling in practice is the
+           per-move margin below: a fifth move has to add three points of its own
+           on top of the four before it, and almost nothing does. */
+        const TW_MAX_PLAN = 5;
 
         /* How much a squad-analysis Sell verdict is worth when ordering otherwise
            comparable moves. Deliberately well under TW_MIN_FREE_GAIN: it decides
@@ -199,19 +393,29 @@
             return false;
         }
 
-        // A small, bounded nudge from the team's own recent results — genuinely
-        // independent of the player's own regressed per-90 rate (a squad can be
-        // hot or cold before an individual's underlying numbers catch up), the
-        // same signal findReplacements()/analyzePlayer() already lean on. Kept
-        // deliberately small relative to a typical multi-GW xP swing so it can
-        // only ever break a close call, never override what the projection
-        // itself already says once fixture difficulty and form are folded in.
-        //
-        // Opt-in (see twXPCached below): the Transfer Wizard's own recommendation
-        // card and the dashboard alert already show "X.X xP" numbers built from
-        // this same cache without it, and turning it on unconditionally would
-        // quietly change those already-shipped figures. GW Draft's recommender
-        // asks for it explicitly; everyone else keeps today's behaviour.
+        /* A small, bounded nudge from the team's own recent results — genuinely
+           independent of the player's own regressed per-90 rate (a squad can be
+           hot or cold before an individual's underlying numbers catch up), the
+           same signal findReplacements()/analyzePlayer() already lean on.
+           Applied to the ranking rather than the projection, so it never reaches
+           a figure on screen — see twXPCached.
+
+           CLAMPED AT 0.75 EACH END, WHICH IS A CHANGE. It was ±2.5, and because
+           the nudge is applied as in-minus-out the widest it could move a
+           ranking was 5.0 — against the 3.0 a free transfer has to be worth.
+           So the comment above it claiming it "can only ever break a close call,
+           never override what the projection itself already says" was not true
+           at the edges: at the extremes it could promote a move the projection
+           rated nearly two margins worse.
+
+           ±0.75 caps the swing between two players at 1.5, matching
+           TW_SIGNAL_MAX. That is the budget every other thumb on the scale gets:
+           enough to decide between candidates the engine rates as near-equals,
+           not enough to manufacture a preference. The ordering the whole design
+           rests on — a selection nudge must stay under the margin a transfer has
+           to clear — is asserted in tests/transfer-engine.test.mjs. */
+        const TW_TEAM_CTX_CLAMP = 0.75;
+
         function twTeamContextNudge(player) {
             const ta = typeof teamAnalysis !== 'undefined' ? teamAnalysis[player.teamId] : null;
             if (!ta || !ta.matchesPlayed) return 0;
@@ -219,16 +423,33 @@
             let nudge = (ta.formRating - 50) / 50;
             nudge += powerField !== undefined ? (powerField - 50) / 50 : 0;
             nudge += (ta.fixtureScore - 50) / 100;
-            return Math.max(-2.5, Math.min(2.5, nudge));
+            return Math.max(-TW_TEAM_CTX_CLAMP, Math.min(TW_TEAM_CTX_CLAMP, nudge));
         }
 
-        function twXPCached(player, gws, cache, useTeamContext) {
+        /* Projected points, and nothing else.
+         *
+         * The team-context nudge used to be added here, which meant it was
+         * inside lwScore, inside twSquadValue, and therefore inside the gain,
+         * gross and net figures the card prints as "xP". On GW Draft, which is
+         * the one surface that asks for the nudge, the number labelled xP was
+         * xP plus up to 2.5 points of something else.
+         *
+         * The nudge's own comment gave that away as the reason it stayed
+         * opt-in — turning it on everywhere "would quietly change those
+         * already-shipped figures". The answer to that is not to keep it off
+         * three surfaces, it is to stop it touching figures at all. It is a
+         * ranking adjustment now, applied alongside the goalkeeper friction and
+         * the Rising Form boost in the one place selections are weighed, so
+         * every surface reports pure xP and the nudge can be consistent.
+         *
+         * The cache key loses its :tc variant with it: there is only one
+         * projection for a player over a window now. */
+        function twXPCached(player, gws, cache) {
             if (!player) return 0;
-            const key = useTeamContext ? `${player.id}:tc` : player.id;
-            if (cache[key] === undefined) {
-                cache[key] = twXPOver(player, gws) + (useTeamContext ? twTeamContextNudge(player) : 0);
+            if (cache[player.id] === undefined) {
+                cache[player.id] = twXPOver(player, gws);
             }
-            return cache[key];
+            return cache[player.id];
         }
 
         /* What a squad is actually worth over the window.
@@ -263,9 +484,9 @@
 
         // One entry per squad player, reused across every candidate so the lineup
         // solve is the only per-candidate work.
-        function twBuildPool(squad, gws, cache, useTeamContext) {
+        function twBuildPool(squad, gws, cache) {
             return squad.map(p => ({
-                id: p.id, pos: p.position, lwScore: twXPCached(p, gws, cache, useTeamContext), _ref: p
+                id: p.id, pos: p.position, lwScore: twXPCached(p, gws, cache), _ref: p
             }));
         }
 
@@ -282,7 +503,7 @@
            Scored on what the swap does to the squad's total, not to the player's. */
         function twScanSwaps(out, ctx) {
             const budget = (out.sellPrice || out.price) + ctx.bank;
-            const outXP = twXPCached(out, ctx.gws, ctx.cache, ctx.useTeamContext);
+            const outXP = twXPCached(out, ctx.gws, ctx.cache);
             const slot = ctx.pool.findIndex(e => e.id === out.id);
             if (slot < 0) return [];
 
@@ -293,12 +514,13 @@
                 if (cand.position !== out.position) continue;
                 if (cand.price > budget) continue;
                 if (ctx.ownedIds.has(cand.id)) continue;
-                if (cand.status !== 'a' && cand.status !== 'd') continue;
+                // One rule for doubts across all four surfaces — see twPlayerAvailable.
+                if (!twPlayerAvailable(cand)) continue;
                 if (cand.minutes < minMinutesForCandidate()) continue;
                 const held = (ctx.clubCount[cand.teamId] || 0) - (cand.teamId === out.teamId ? 1 : 0);
                 if (held >= 3) continue;
 
-                const inXP = twXPCached(cand, ctx.gws, ctx.cache, ctx.useTeamContext);
+                const inXP = twXPCached(cand, ctx.gws, ctx.cache);
                 trial[slot] = { id: cand.id, pos: cand.position, lwScore: inXP, _ref: cand };
                 const gain = twSquadValue(trial) - ctx.baseValue;
 
@@ -365,6 +587,180 @@
             return twDiversifySwaps(twScanSwaps(out, ctx), k);
         }
 
+        /* HOW MANY TRANSFERS, as a function of its inputs.
+         *
+         * Lifted out of twBuildRecommendation so the one decision a manager
+         * actually argues with can be tested without a squad, a projection
+         * engine or a lineup solver. Everything it needs to know about the world
+         * arrives as two callbacks: jointGain(moves) prices a set, legal(moves)
+         * says whether the set is affordable and inside the three-per-club
+         * limit. Both are closures over the pool in the caller.
+         *
+         * WHAT IT USED TO DO, and why a manager with four free transfers was
+         * told to make two every single week. The option set was hard-coded to
+         * one move and two — the best, and the best second on a different
+         * player. With four banked, costFor(1) and costFor(2) are both zero; the
+         * joint gain of a pair is never less than the better half alone; and
+         * both options were measured against the same flat 3.0 margin, which the
+         * first move had already covered. So the second move only had to add
+         * something rather than nothing, and n = 2 won by construction rather
+         * than by being right.
+         *
+         * Raising the ceiling alone would only move the problem up — the same
+         * arithmetic recommends four. Two things fix it together:
+         *
+         *   THE CHAIN is greedy on the real joint gain. Each step asks which
+         *   remaining move adds most to the package as a whole, not which has
+         *   the best solo gain, because solo gains double-count: two moves that
+         *   each promote the same bench player into the eleven both claim that
+         *   improvement. Greedy rather than exhaustive — the full search is
+         *   every subset of fifteen, on every render — and step one is pinned to
+         *   the move the caller's ranking already chose, so the flagged-verdict
+         *   tie-break above survives untouched.
+         *
+         *   THE MARGIN is per step. Every move is judged on what IT adds, net of
+         *   what IT costs: three points for a free transfer, four for one taking
+         *   a hit, on top of the four-point hit itself. The chain stops at the
+         *   first step that cannot clear its own bar, because every later step is
+         *   built on top of it. A squad with one obvious move and three marginal
+         *   ones returns one move, which is what four free transfers should
+         *   usually produce.
+         *
+         * Unavailable players stay exempt, per step rather than per package: one
+         * injured starter must not wave three speculative moves through behind
+         * him, which is what the old `moves.some(unavailable)` did.
+         *
+         * Returns the whole chain plus how far down it is worth going, so the
+         * caller can hand every option to the card and still know which one the
+         * verdict is. */
+        function twPlanChain(moves, o) {
+            const opts = o || {};
+            const ft = opts.ft || 0;
+            const jointGain = opts.jointGain;
+            const legal = opts.legal || (() => true);
+            /* Injectable so a test can state the friction it is testing rather
+               than import the live constant and assert against whatever it
+               happens to be this week. */
+            const friction = opts.friction || (typeof twMoveFriction === 'function' ? twMoveFriction : () => 0);
+            /* Ranking only. Deliberately absent from the margin test below: a
+               signal reorders two similar candidates, it does not lower the bar
+               a transfer has to clear. See TW_SIGNAL_MAX. */
+            const boost = opts.boost || (() => 0);
+            const costFor = n => Math.max(0, n - ft) * 4;
+            /* How far to build. Two by default, or one past the free-transfer
+               count, whichever is larger — a recommendation should not reach for
+               a second hit nobody asked about.
+
+               `opts.size` lifts that, and only that, because a manager who has
+               explicitly asked for a three-transfer plan is not being offered
+               hits, they are requesting them. TW_MAX_PLAN is still the ceiling,
+               and the per-move margin still decides what gets RECOMMENDED — an
+               unasked-for hit cannot sneak through here, it can only be built
+               and then flagged as more than the numbers support. */
+            const maxN = Math.min(opts.maxPlan || TW_MAX_PLAN,
+                                  Math.max(2, ft + 1, Math.round(opts.size || 0)));
+
+            const chain = [];
+            const usedOut = new Set(), usedIn = new Set();
+            let prevGross = 0;
+
+            for (let n = 1; n <= maxN; n++) {
+                const base = chain.length ? chain[chain.length - 1].moves : [];
+                const consider = n === 1 ? moves.slice(0, 1) : moves;
+                let pick = null, pickGross = -Infinity, pickRank = -Infinity;
+                for (const m of consider) {
+                    if (usedOut.has(m.out.id) || usedIn.has(m.in.id)) continue;
+                    const trial = base.concat([m]);
+                    if (!legal(trial)) continue;
+                    const gross = jointGain(trial);
+                    // Ranked on the gain less the move's own reluctance, so the
+                    // same friction that orders step one orders the rest.
+                    const rank = gross - friction(m) + boost(m);
+                    if (rank > pickRank) { pickRank = rank; pickGross = gross; pick = m; }
+                }
+                if (!pick) break;
+                usedOut.add(pick.out.id);
+                usedIn.add(pick.in.id);
+                const cost = costFor(n);
+                chain.push({
+                    n, moves: base.concat([pick]), gross: pickGross, cost,
+                    net: pickGross - cost,
+                    // What this move alone added, and what it alone cost.
+                    step: pick, stepGain: pickGross - prevGross, stepCost: cost - costFor(n - 1)
+                });
+                prevGross = pickGross;
+            }
+
+            const unavailable = m => m.out.status === 'i' || m.out.status === 'u' || m.out.status === 's';
+            let depth = 0;
+            for (const opt of chain) {
+                if (!unavailable(opt.step)) {
+                    if (opts.freeTransfersOnly && opt.stepCost > 0) break;
+                    const margin = opt.stepCost > 0 ? TW_MIN_HIT_GAIN : TW_MIN_FREE_GAIN;
+                    // Plus whatever this move costs in reluctance — a keeper
+                    // swap has to be worth about twice an outfield one.
+                    if (opt.stepGain - opt.stepCost - friction(opt.step) < margin) break;
+                }
+                depth = opt.n;
+            }
+            return { chain, depth };
+        }
+
+        /* SEVERAL PLANS OF THE SAME SIZE, rather than one.
+         *
+         * "I have four free transfers, show me some ways to use three of them"
+         * is a different question from "what is the single best move", and the
+         * engine could only answer the second. twPlanChain pins its first step
+         * to the caller's top-ranked move, so seeding it with a different first
+         * move each time and keeping the answers that are meaningfully different
+         * is the whole of this: same engine, same pricing, same legality checks,
+         * several answers.
+         *
+         * DISTINCT, NOT PERMUTED. Two plans sharing most of their moves are the
+         * same plan with the order shuffled, and offering both as choices is a
+         * worse answer than offering one. Anything overlapping an
+         * already-accepted plan by more than half its moves is dropped.
+         *
+         * `size` is what the manager asked for; `recommended` is whether the
+         * engine would endorse it. Those come apart on purpose: ask for three
+         * when only one move clears its margin and you get three-move plans,
+         * each flagged as more than the numbers support. Refusing to answer
+         * would be the engine overruling a question it was asked, and quietly
+         * returning one move would be answering a different one. */
+        const TW_PACKAGE_OVERLAP = 0.5;
+
+        function twPlanPackages(moves, opts, want) {
+            const o = opts || {};
+            const size = Math.max(1, Math.round(o.size || 1));
+            const k = Math.max(1, Math.round(want || 3));
+            const list = moves || [];
+            const out = [];
+            const seen = [];
+            const keyOf = m => `${m.out.id}>${m.in.id}`;
+
+            for (const seed of list) {
+                if (out.length >= k) break;
+                /* Seed first, the rest in the caller's order behind it, so each
+                   pass is the best plan that STARTS with this move. */
+                const reordered = [seed].concat(list.filter(m => m !== seed));
+                const { chain, depth } = twPlanChain(reordered, o);
+                const plan = chain[size - 1];
+                if (!plan) continue;          // no legal plan this big from here
+
+                const ids = new Set(plan.moves.map(keyOf));
+                const sharedWith = prev => {
+                    let n = 0;
+                    ids.forEach(id => { if (prev.has(id)) n++; });
+                    return n / size;
+                };
+                if (seen.some(prev => sharedWith(prev) > TW_PACKAGE_OVERLAP)) continue;
+
+                seen.push(ids);
+                out.push(Object.assign({}, plan, { recommended: size <= depth }));
+            }
+            return out;
+        }
+
         /* opts lets a host without the squad page's globals supply them:
              { squad, bank, freeTransfers, fromGW, useTeamContext }
            Anything omitted falls back to the squad page's own state (or today,
@@ -382,11 +778,14 @@
             squad.forEach(p => { clubCount[p.teamId] = (clubCount[p.teamId] || 0) + 1; });
 
             const cache = {};
-            const pool = twBuildPool(squad, gws, cache, o.useTeamContext);
+            /* Once, before any scanning. See twBuildSignalMap. */
+            const signals = twBuildSignalMap(typeof allPlayers !== 'undefined' ? allPlayers : []);
+            const signalBoost = m => twMoveBoost(m, signals);
+            const pool = twBuildPool(squad, gws, cache);
             const baseXI = typeof solveQuickLineup === 'function' ? solveQuickLineup(pool).xi : pool.slice(0, 11);
 
             const ctx = {
-                gws, useTeamContext: o.useTeamContext,
+                gws,
                 bank: (o.bank != null ? o.bank : (typeof getTWBank === 'function' ? getTWBank() : 0)), cache, pool,
                 baseValue: twSquadValue(pool),
                 baseXIIds: new Set(baseXI.map(p => p.id)),
@@ -416,11 +815,29 @@
             const ftNow = o.freeTransfers != null ? o.freeTransfers : twFreeTransfers();
             const cost1 = Math.max(0, 1 - ftNow) * 4;
             const margin1 = cost1 > 0 ? TW_MIN_HIT_GAIN : TW_MIN_FREE_GAIN;
-            const clearsBar = m => (m.gain - cost1) >= margin1;
+            const clearsBar = m => (m.gain - cost1 - twMoveFriction(m)) >= margin1;
 
+            /* Ranked on what each move is worth less what it costs in
+               reluctance, so a keeper swap only reaches the top of the list by
+               beating the best outfield move outright rather than by a point.
+               See twMoveFriction: this is the same penalty the margin applies,
+               and applying it here as well is what stops the pinned first step
+               being a keeper the viability test would then refuse — which would
+               have returned "hold" while a perfectly good outfield move sat two
+               rows down. */
+            /* Everything that moves a selection without moving a projection,
+               in one expression: the keeper brake, the site's own signals, and
+               the team-context nudge the draft asks for. The nudge is a delta
+               because it used to be added to both ends inside the projection,
+               so the gain already netted the two — in minus out is the faithful
+               translation, and it leaves gain itself pure xP. */
+            const teamCtx = o.useTeamContext
+                ? m => twTeamContextNudge(m.in) - twTeamContextNudge(m.out)
+                : () => 0;
+            const rankOf = m => m.gain - twMoveFriction(m) + signalBoost(m) + teamCtx(m);
             const byGain = squad.map(p => twBestSwapFor(p, ctx))
                 .filter(Boolean)
-                .sort((a, b) => b.gain - a.gain);
+                .sort((a, b) => rankOf(b) - rankOf(a));
 
             /* Promote a flagged player's move only when doing so costs nothing.
 
@@ -481,40 +898,31 @@
                 return Object.keys(counts).every(k => counts[k] <= 3);
             };
 
-            // Option A: one move. Option B: two, on different players — the second
-            // is only worth it if it clears its own hit.
-            const one = moves[0];
-            const two = moves.find(m => m.out.id !== one.out.id && m.in.id !== one.in.id
-                && twMovesLegal([one, m]));
-
-            const costFor = n => Math.max(0, n - ft) * 4;
-            const options = [
-                { n: 0, moves: [], gross: 0, cost: 0, net: 0 },
-                { n: 1, moves: [one], gross: one.gain, cost: costFor(1), net: one.gain - costFor(1) }
-            ];
-            if (two) {
-                const gross = twJointGain([one, two]);
-                options.push({ n: 2, moves: [one, two], gross, cost: costFor(2), net: gross - costFor(2) });
-            }
-
-            // A move must clear its margin, not merely beat zero. Anything unavailable
-            // is exempt — a player who cannot play is worth replacing regardless.
-            //
-            // o.freeTransfersOnly (opts) drops any hit-costing option outright,
-            // must-sells aside — for an automated bulk run across several
-            // gameweeks at once, nobody reviewed any single one of those hits,
-            // so "clears its margin" isn't consent to spend points on it. A
-            // manager reviewing one gameweek by hand still sees hit-taking
-            // options; this only narrows what an unattended loop is allowed
-            // to pick for itself.
-            const unavailable = m => m.out.status === 'i' || m.out.status === 'u' || m.out.status === 's';
-            const viable = options.filter(opt => {
-                if (opt.n === 0) return true;
-                if (opt.moves.some(unavailable)) return true;
-                if (o.freeTransfersOnly && opt.cost > 0) return false;
-                const margin = opt.cost > 0 ? TW_MIN_HIT_GAIN : TW_MIN_FREE_GAIN;
-                return opt.net >= margin;
+            // See twPlanChain: how many transfers, and why this used to always
+            // answer two for a manager holding four.
+            const { chain, depth } = twPlanChain(moves, {
+                ft, jointGain: twJointGain, legal: twMovesLegal,
+                boost: m => signalBoost(m) + teamCtx(m),
+                freeTransfersOnly: o.freeTransfersOnly
             });
+
+            const options = [{ n: 0, moves: [], gross: 0, cost: 0, net: 0 }].concat(chain);
+
+            /* `depth` is how far down the chain is worth going — each move
+               clearing its own margin, with unavailable players exempt. The
+               rule lives in twPlanChain; what belongs here is why one of its
+               inputs exists.
+
+               o.freeTransfersOnly drops any hit-taking step outright, must-sells
+               aside. For an automated bulk run across several gameweeks at once,
+               nobody reviewed any single one of those hits, so "clears its
+               margin" is not consent to spend points on it. A manager reviewing
+               one gameweek by hand still sees hit-taking options; this only
+               narrows what an unattended loop may pick for itself.
+
+               Everything below `depth` still travels in `options`, so the card
+               can offer a bigger plan it did not recommend. */
+            const viable = [options[0]].concat(chain.slice(0, depth));
 
             const best = viable.sort((a, b) => b.net - a.net || a.n - b.n)[0];
 
@@ -523,7 +931,15 @@
                no sense doing it for moves the verdict discarded. alts[0] is the
                move itself, because both come off the top of the same scan. */
             if (best && best.moves.length) {
-                best.moves.forEach(m => { m.alts = twAltSwapsFor(m.out, ctx, 3); });
+                best.moves.forEach(m => {
+                    m.alts = twAltSwapsFor(m.out, ctx, 3);
+                    /* Which of the site's own signals fired on the incoming
+                       player, so the card can show its working. A thumb on the
+                       scale nobody can see is indistinguishable from a bug. */
+                    const s = signals.get(m.in.id);
+                    m.inSignals = s ? s.labels.slice(0, 3) : [];
+                    m.inSignalBoost = Math.round(signalBoost(m) * 100) / 100;
+                });
             }
 
             /* Handed out so the card can let a manager pick a different option
@@ -541,8 +957,19 @@
              * are each affordable against the full bank may not be affordable
              * together, and two from the same club can breach the three-per-club
              * limit jointly while each looks fine alone. */
+            /* packagesFor is handed out as a closure for the same reason rescore
+               and legal are: how many transfers the manager wants is a choice
+               made on the card, after this function has returned, and pricing a
+               plan needs the pool and the base value that only exist in here.
+               The full `moves` list is closed over rather than the five handed
+               out above, so seeding is not limited by what the card displays. */
             return { best, options, moves: moves.slice(0, 5), gws, ft, horizon: TW_HORIZON,
                      rescore: twJointGain, legal: twMovesLegal,
+                     packagesFor: (size, want) => twPlanPackages(moves, {
+                         ft, jointGain: twJointGain, legal: twMovesLegal,
+                         boost: m => signalBoost(m) + teamCtx(m),
+                         freeTransfersOnly: o.freeTransfersOnly, size
+                     }, want),
                      sample: (typeof seasonGamesPlayed !== 'undefined' ? seasonGamesPlayed : null) };
         }
 
@@ -905,7 +1332,7 @@
                 p.price <= maxPrice &&
                 !excludeIds.has(p.id) &&
                 !(blockedClubs && blockedClubs.has(p.teamId)) &&
-                (p.status === 'a' || p.status === 'd') &&
+                twPlayerAvailable(p) &&
                 p.minutes >= minMinutesForCandidate()
             );
 
@@ -918,10 +1345,15 @@
                players page hit the same thing and fixed it there: across 200
                players the ratio between its two models ran from 0.0 to 23.9, which
                put cards on screen in an order their own badge disagreed with.
-               buildSuggestedMoves in pitch-snapshot.js is worse off still — it
-               says "ranked by xP gained per transfer" and then takes [0] off a
-               list that was not, so a better candidate two rows down was never
-               even looked at.
+               buildSuggestedMoves in pitch-snapshot.js used to be worse off
+               still — it said "ranked by xP gained per transfer" and then took
+               [0] off a list that was not, so a better candidate two rows down
+               was never looked at. THAT IS FIXED: it prices over twRunGWs()
+               with twXPOver and gates on TW_MIN_FREE_GAIN, and this list is
+               ordered by _xpRun, so [0] is now the best projected candidate and
+               the sentence is true. Kept as history because the shape of the
+               mistake — a comment asserting an order the code did not produce —
+               is the one this file keeps making.
 
                _transferScore is still computed and still on the object. The
                package strategies below blend it against price and ownership on its

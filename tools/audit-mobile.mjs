@@ -47,9 +47,7 @@
    touching layout.
 */
 import { chromium } from 'playwright';
-
-const BASE = process.env.AUDIT_BASE || 'http://127.0.0.1:8080';
-const CHROME = process.env.AUDIT_CHROME || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+import { BASE, CHROME, PAGES, sections, openSection } from './audit-pages.mjs';
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
 const widthArg = args.indexOf('--width');
@@ -68,40 +66,6 @@ const WIDTHS = widthArg !== -1
    phone context at 1440 reports hover states and pointer rules that no desktop
    visitor ever sees. */
 const isTouch = w => w <= 768;
-
-/* Every page a visitor or a signed-in manager can reach. The app pages are
-   listed by their /dashboard/ URL because that is where the redirects send
-   people, and a page audited at the wrong URL is a page not audited. */
-const PAGES = [
-    ['/', 'landing'],
-    ['/dashboard/', 'dashboard'],
-    ['/dashboard/my-team', 'my team'],
-    ['/dashboard/players', 'players'],
-    ['/dashboard/teams', 'teams'],
-    ['/dashboard/rivals', 'rivals'],
-    ['/dashboard/scouts-desk', "scout's desk"],
-    ['/dashboard/news', 'news'],
-    ['/dashboard/premium', 'premium'],
-    ['/dashboard/login', 'login'],
-    ['/fpl-pricing.html', 'pricing'],
-    ['/fpl-faq.html', 'faq'],
-    ['/fpl-how-it-works.html', 'how it works'],
-    ['/fpl-methodology.html', 'methodology'],
-    ['/fpl-accuracy.html', 'accuracy'],
-    ['/fpl-contact.html', 'contact'],
-    ['/fpl-changelog.html', 'changelog'],
-    ['/fpl-privacy.html', 'privacy'],
-    ['/fpl-terms.html', 'terms'],
-    ['/feature-squad-analysis.html', 'feature: squad'],
-    ['/feature-transfer-wizard.html', 'feature: transfer wizard'],
-    ['/feature-lineup-wizard.html', 'feature: lineup wizard'],
-    ['/feature-player-explorer.html', 'feature: players'],
-    ['/feature-fixture-ratings.html', 'feature: fixtures'],
-    ['/feature-league-rivals.html', 'feature: rivals'],
-    ['/feature-scouts-desk.html', "feature: scout's desk"],
-    ['/feature-team-news.html', 'feature: team news'],
-    ['/404.html', '404']
-];
 
 /* The measuring, in the page. One function so there is one definition of
    each fault, and it runs identically on every tab of every page. */
@@ -168,8 +132,20 @@ function collect() {
             if (!scrolls && cut > 12 && el.clientWidth > 40 && cut / el.clientWidth > 0.2) {
                 once('clipped', name(el), { el: name(el), text: text.slice(0, 44), cut: Math.round(cut) });
             }
+            /* A decorative mark is not text to read.
+               The caret on a disclosure, the pipe between ticker items, the
+               tick on a "done" row, the dot on a flag — these are icons drawn
+               with a character rather than an SVG, and asking them to be 10px
+               is asking an icon to be bigger for the sake of a rule nobody
+               reads them by. Measured on the first run, they were 42 of 462
+               findings, which is enough noise to stop the number being read at
+               all.
+               Scoped as narrowly as the question allows: ONE character, and not
+               a letter or a digit. "A" for away and "C" for the armband are a
+               single character too, and both are information — they stay in. */
+            const glyphOnly = text.length === 1 && !/[\p{L}\p{N}]/u.test(text);
             const fs = parseFloat(getComputedStyle(el).fontSize);
-            if (fs && fs < 10) once('small', name(el) + fs, { el: name(el), px: +fs.toFixed(1), text: text.slice(0, 30) });
+            if (fs && fs < 10 && !glyphOnly) once('small', name(el) + fs, { el: name(el), px: +fs.toFixed(1), text: text.slice(0, 30) });
         }
     }
 
@@ -271,28 +247,6 @@ function collect() {
         }
     }
     return out;
-}
-
-/* Tabs are sections wearing one URL, and a fault on the fourth tab of My Team
-   is as real as one on the first. Anything that looks like a tab gets clicked
-   and the page measured again. */
-async function sections(page) {
-    return page.evaluate(() => {
-        const bits = [...document.querySelectorAll('.tab, .sub-tab, [role="tab"], .tm-market-tab, .pa-tab')];
-        return bits
-            .filter(el => el.offsetParent !== null)
-            .map((el, i) => ({ i, label: (el.textContent || '').trim().slice(0, 26) || ('tab ' + i) }))
-            .slice(0, 10);
-    });
-}
-
-async function openSection(page, i) {
-    await page.evaluate(idx => {
-        const bits = [...document.querySelectorAll('.tab, .sub-tab, [role="tab"], .tm-market-tab, .pa-tab')]
-            .filter(el => el.offsetParent !== null);
-        bits[idx] && bits[idx].click();
-    }, i);
-    await page.waitForTimeout(2200);
 }
 
 const SEVERITY = { pageScroll: 'CRITICAL', escapes: 'HIGH', overlap: 'HIGH', clipped: 'MEDIUM', tiny: 'MEDIUM', small: 'LOW' };

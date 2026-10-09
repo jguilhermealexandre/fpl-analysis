@@ -1879,6 +1879,114 @@
 .sq-toast .opt-revert-btn .v2-sec-icon { color: currentColor; width: 13px; height: 13px; }
 
 .opt-report-panel { max-width: 520px; }
+
+/* ===== The squad report's rows =====
+
+   The report was fourteen .insight-item cards — a 3px left edge and a paragraph
+   of grey text, every one the same size and the same shape. It reuses .gwr-row
+   from the Gameweek Review instead, which already solves this one tab across:
+   position badge, face and crest, name, reason, then the figure that decided it
+   right-aligned.
+
+   Only four things are added here, because the review had no equivalent for
+   them. Its three row tones are haul / good / blank, which are facts about a
+   score; a squad report needs sell / monitor / hold, which are verdicts, and
+   borrowing the wrong vocabulary is how two features end up disagreeing about
+   what green means. */
+.sqr-row.is-bad { border-left-color: var(--verdict-sell); background: var(--verdict-sell-bg); }
+.sqr-row.is-warn { border-left-color: var(--verdict-monitor); background: var(--verdict-monitor-bg); }
+.sqr-row.is-good { border-left-color: var(--verdict-hold); background: var(--verdict-hold-bg); }
+
+/* The sentence under a row. .gwr-row-detail is one line with an ellipsis, so
+   anything longer than a few words — FPL's news string, the engine's reason for
+   a verdict, the price-watch caveat — has to live beneath the row rather than be
+   cut off mid-word. Indented to clear the badge and portrait, so it reads as
+   belonging to the row above and not as a row of its own. */
+.sqr-sub {
+    font-size: 11px; line-height: 1.55; color: var(--text-muted);
+    padding: 3px 10px 7px 50px;
+}
+
+/* The verdict, on the row rather than in a heading above a list of one. */
+.sqr-chip {
+    flex-shrink: 0; padding: 2px 8px; border-radius: 999px;
+    font-size: 9.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+    background: var(--surface-3); color: var(--text-secondary);
+}
+.sqr-chip.sell { background: var(--verdict-sell-bg); color: var(--verdict-sell-text); }
+.sqr-chip.monitor { background: var(--verdict-monitor-bg); color: var(--verdict-monitor-text); }
+.sqr-chip.star { background: var(--verdict-star-bg); color: var(--verdict-star-text); }
+.sqr-chip.hold { background: var(--verdict-hold-bg); color: var(--verdict-hold-text); }
+
+/* Both visuals are built to fill their container — .twf-spark's bars are flex:1
+   and the fixture strip centres itself in whatever width it is given. In a row
+   inside a 980px modal that means stretching across half the screen, so each one
+   is pinned to the width it is legible at. */
+.sqr-row .twf-spark { flex: 0 0 64px; width: 64px; height: 18px; margin: 0; }
+.sqr-row .transfer-fdr-strip { flex-shrink: 0; margin: 0; }
+.sqr-row .transfer-fdr-badge { min-width: 30px; padding: 2px 4px; }
+
+/* ===== The report shell as a centred modal =====
+
+   #optReportOverlay is a 520px drawer off the right edge, which suits a column
+   of short verdicts and does not suit either of the two long reports. The
+   Gameweek Review's rows carry seven things across — position, face, name,
+   opponent, minutes, what he did, his points — and the Squad Report now draws a
+   five-fixture FDR strip and a six-week sparkline inside its sentences. At 520px
+   both wrap into unreadability.
+
+   Set per open by optReportShow() in scripts/pitch-snapshot.js, so the Lineup
+   Wizard's change report and the two draft summaries keep the drawer they were
+   written for. Everything below is an override of styles/v2-app.css, which is
+   why each rule restates the property it is undoing rather than relying on the
+   base to leave it alone.
+
+   `.detail-overlay.as-modal .detail-panel` is 0,3,0 and beats the 0,1,0 of
+   .opt-report-panel above, so the 520px cap does not need unsetting. */
+.detail-overlay.as-modal {
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.34);
+    /* The base is pointer-events:none so a DRAWER leaves the page behind live.
+       A modal is the opposite claim, and inheriting that let a click on the dim
+       backdrop both close the modal and land on whatever sat under it — a tab,
+       a player row, a wand. Painting a backdrop the page can be clicked through
+       is the one thing a modal must not do. */
+    pointer-events: auto;
+    /* The base clips, because it has to keep a drawer parked at translateX(100%)
+       off the edge of the document. Nothing is parked here, and a modal taller
+       than the viewport has to be reachable. */
+    overflow: auto;
+}
+.detail-overlay.as-modal .detail-panel {
+    position: relative; top: auto; right: auto;
+    width: 100%; max-width: 980px;
+    height: auto; max-height: calc(100vh - 48px);
+    border: 1px solid var(--border-emphasis);
+    border-radius: var(--radius-xl, 16px);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.34);
+    /* Rises into place rather than sliding in from an edge it no longer has. */
+    transform: translateY(10px) scale(0.985);
+    transition: transform 240ms ease;
+}
+.detail-overlay.as-modal.show .detail-panel { transform: none; }
+/* The panel is a column flex container whose height is now a max rather than a
+   fixed 100%. A flex item will not shrink below its content without this, and
+   the body's own overflow-y never gets anything to scroll. */
+.detail-overlay.as-modal .detail-body { min-height: 0; flex: 1 1 auto; }
+
+/* On a phone it is the same bottom sheet every other modal becomes. The rule in
+   styles/responsive.css does this for the drawer, but it selects .detail-overlay
+   at 0,1,0 and loses to the 0,2,0 above — so the sheet has to be restated here
+   at matching specificity rather than left to load order. */
+@media (max-width: 768px) {
+    .detail-overlay.as-modal { align-items: flex-end; padding: 0; }
+    .detail-overlay.as-modal .detail-panel {
+        max-width: 100%; max-height: 92vh;
+        border-radius: 18px 18px 0 0;
+        border-left: none; border-right: none; border-bottom: none;
+    }
+}
 .opt-gw-badge {
     display: inline-block;
     font-size: 11px;
@@ -2949,6 +3057,11 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .draft-ft-input { width: 36px; text-align: center; padding: 2px 4px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--surface-0); color: var(--text-primary); font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; }
 
 .draft-save-indicator { font-size: 0.65rem; color: var(--text-muted); font-style: italic; }
+/* A refused write. Upright and in the sell colour, because the muted italic is
+   the voice of "this is fine, carry on" and a plan that will not survive the tab
+   closing is not that. No font-size of its own: it inherits the rule above, so
+   the size-keyed tracking block needs no regenerating for it. */
+.draft-save-indicator.is-error { color: var(--verdict-sell-text); font-style: normal; font-weight: 700; }
 
 /* Plan selector */
 .draft-plan-bar { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
@@ -2977,7 +3090,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .draft-plan-tab:last-child { padding-right: 18px; }
 .draft-plan-tab-wrap:hover .draft-plan-tab { color: var(--color-primary); }
 .draft-plan-tab-wrap.active .draft-plan-tab,
-.draft-plan-tab-wrap.active:hover .draft-plan-tab { color: #fff; }
+.draft-plan-tab-wrap.active:hover .draft-plan-tab { color: var(--on-primary); }
 .plan-tab-badge { font-size: 0.55rem; font-weight: 700; padding: 1px 5px; border-radius: 8px; background: var(--surface-2); color: var(--text-muted); }
 .draft-plan-tab-wrap.active .plan-tab-badge { background: rgba(255,255,255,0.25); color: #fff; }
 .draft-plan-del {
@@ -4794,12 +4907,12 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .tm-tick-name { color: var(--text-primary); }
 .tm-tick-team { color: var(--text-muted); font-size: 10px; }
 .tm-tick-pct { font-family: var(--font-mono); font-weight: 700; }
-.tm-tick.up .tm-tick-pct { color: var(--verdict-hold); }
-.tm-tick.down .tm-tick-pct { color: var(--verdict-sell); }
+.tm-tick.up .tm-tick-pct { color: var(--verdict-hold-text); }
+.tm-tick.down .tm-tick-pct { color: var(--verdict-sell-text); }
 .tm-tick-squad {
     font-size: 8px; font-weight: 800; letter-spacing: .05em;
     padding: 1px 4px; border-radius: 3px;
-    background: var(--color-primary); color: #fff;
+    background: var(--color-primary); color: var(--on-primary);
 }
 .tm-tick-sep { color: var(--text-muted); padding: 0 10px; opacity: .5; }
 
@@ -5059,9 +5172,9 @@ tr.planner-swap-ineligible { opacity: 0.35; }
    percentage. Only this strip is coloured: see renderSquadTicker's `kind`. */
 .tm-tick-note { font-size: 10px; font-weight: 600; opacity: .85; }
 .sq-ticker-market .tm-tick.up .tm-tick-name,
-.sq-ticker-market .tm-tick.up .tm-tick-note { color: var(--verdict-hold); }
+.sq-ticker-market .tm-tick.up .tm-tick-note { color: var(--verdict-hold-text); }
 .sq-ticker-market .tm-tick.down .tm-tick-name,
-.sq-ticker-market .tm-tick.down .tm-tick-note { color: var(--verdict-sell); }
+.sq-ticker-market .tm-tick.down .tm-tick-note { color: var(--verdict-sell-text); }
 /* Past the line it is not a direction any more, it is tonight. A tinted pill
    separates "heading that way" from "gets there at the next update", which the
    colour alone cannot say. */
@@ -7167,6 +7280,49 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     font-size: 11px; line-height: 1.5; color: var(--text-secondary);
 }
 
+/* The same shape as the dead-end note above, in a neutral tone rather than a
+   warning one: nothing is broken, there is simply a wall the chips below do not
+   reach. It is there whenever the budget has cut anything, which is most of the
+   time — a red panel on every search would read as an error. */
+/* What the bookmakers expect, on the fixture the card is about.
+
+   Replaces the four power-grid rows. Those were an index out of 100 shown
+   twice; this is the one reading on the card that comes from outside this
+   site, which is exactly what makes it worth the space. Two rows of three so
+   it never competes with the expected-goals comparison beneath it. */
+/* The star that marks a shortlisted replacement, and the line when none fit.
+
+   The star reuses the rank chip's box so the two lists sit on one grid — a
+   shortlist card and a ranked card are the same object with a different reason
+   for being there, and they should line up to the pixel. */
+.dtp-opt-rank.is-star { color: var(--color-warning, #F59E0B); font-size: 0.78rem; }
+.dtp-opt-score-none { color: var(--text-muted); font-weight: 600; }
+.dtp-star-none { padding: 8px 10px; border-radius: var(--radius-sm);
+    background: var(--surface-2); font-size: 11px; line-height: 1.5;
+    color: var(--text-muted); }
+
+.h2h-market { margin: 8px 0; padding: 8px 10px; border-radius: var(--radius-sm);
+    background: var(--surface-2); border: 1px solid var(--border-subtle); }
+.h2h-market-title { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.4px;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px;
+    display: flex; align-items: center; gap: 5px; }
+.h2h-market-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.h2h-market-row + .h2h-market-row { margin-top: 6px; }
+.h2h-market-cell { text-align: center; }
+.h2h-market-l { display: block; font-size: 0.56rem; text-transform: uppercase;
+    letter-spacing: 0.3px; color: var(--text-muted); }
+.h2h-market-cell b { font-family: var(--font-mono); font-weight: 700;
+    font-size: 0.8rem; color: var(--text-primary); }
+.h2h-market-src { text-transform: none; letter-spacing: 0; font-style: italic;
+    line-height: 1.3; padding-top: 2px; }
+
+.twf-panel-upstream {
+    margin: 0; padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    font-size: 11px; line-height: 1.5; color: var(--text-muted);
+}
+
 
 .twf-foot { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--border-default); background: var(--surface-2); }
 .twf-foot-why { flex: 1; font-size: 10px; color: var(--text-muted); line-height: 1.4; }
@@ -7655,6 +7811,17 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     display: block;
 }
 .tm-tick-arrow { display: inline-flex; align-items: center; }
+
+/* And the colour, which the rule above left to .v2-sec-icon — and that class is
+   the accent green. An arrow on a FALLING price came out green, which is the
+   trap v2-design.css documents two rules below its own list of filled controls:
+   "remembering is what failed here twice". So the arrow takes the direction's
+   own colour, the same two tokens the percentage beside it already uses, and
+   the icon inherits from the arrow rather than from the accent. */
+.tm-tick-arrow .v2-sec-icon { color: currentColor; }
+.tm-tick.up .tm-tick-arrow { color: var(--verdict-hold-text); }
+.tm-tick.down .tm-tick-arrow { color: var(--verdict-sell-text); }
+
 
 /* ----- A squad row's actions -----
    C and V were settable on the pitch and in the lineup wizard and nowhere
@@ -8900,6 +9067,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    calls for; one that asked for more air than its band keeps its own. */
 .draft-chip-advice-head span,
 .dugout-hint,
+.h2h-market-src,
 .lw-ov-h-sub {
     letter-spacing: inherit !important;
 }
@@ -8976,6 +9144,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .h2h-card .h2h-header-teams,
 .h2h-cs-val,
 .h2h-header-teams,
+.h2h-market-cell b,
 .h2h-power-val,
 .help-step-title,
 .hold-player-info .player-name,
@@ -9104,7 +9273,9 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .draft-transfer-summary-title,
 .dtp-opt-price,
 .dtp-opt-rank,
+.dtp-opt-rank.is-star,
 .dtp-out-meta,
+.dtp-star-none,
 .eo-chip,
 .form-bar-label,
 .fx-advice-body,
@@ -9260,6 +9431,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .sq-optimize-summary,
 .sq-position-count,
 .sq-row-team,
+.sqr-sub,
 .squad-alert-name,
 .squad-lineup-header span:last-child,
 .squad-row-rec,
@@ -9353,6 +9525,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .twf-out-name,
 .twf-panel-dead,
 .twf-panel-reset,
+.twf-panel-upstream,
 .twf-picked-club i,
 .twf-price,
 .twf-search,
@@ -9750,6 +9923,9 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tm-velocity-label {
     letter-spacing: 0.0333em !important;
 }
+.h2h-market-l {
+    letter-spacing: 0.0335em !important;
+}
 .tw-cand-stat-label {
     letter-spacing: 0.0375em !important;
 }
@@ -9768,10 +9944,12 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .news-card-category,
 .news-card-squad-badge,
 .opt-table th,
+.sqr-chip,
 .twc-card-block,
 .twf-block {
     letter-spacing: 0.04em !important;
 }
+.h2h-market-title,
 .lw-bench-header,
 .tw-board-header,
 .tw-scout-header {
@@ -10034,9 +10212,11 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     font-size: 9.5px; font-weight: 800; letter-spacing: .04em; font-family: var(--font-mono);
 }
 .lw-chg-badge svg { width: 12px; height: 12px; }
-.lw-chg-row.is-promoted .lw-chg-badge { background: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--color-success); }
-.lw-chg-row.is-benched  .lw-chg-badge { background: color-mix(in srgb, var(--color-error) 20%, transparent); color: var(--color-error); }
-.lw-chg-row.is-captain  .lw-chg-badge { background: color-mix(in srgb, var(--color-captain, #facc15) 24%, transparent); color: var(--color-captain, #facc15); }
+.lw-chg-row.is-promoted .lw-chg-badge { background: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--verdict-hold-text); }
+.lw-chg-row.is-benched  .lw-chg-badge { background: color-mix(in srgb, var(--color-error) 20%, transparent); color: var(--verdict-sell-text); }
+/* 1.38:1 — the worst pair on the site. Amber on a 24% wash of itself is
+   nearly invisible in the light theme; the fill stays, the ink moves. */
+.lw-chg-row.is-captain  .lw-chg-badge { background: color-mix(in srgb, var(--color-captain, #facc15) 24%, transparent); color: var(--verdict-monitor-text); }
 .lw-chg-names { display: flex; flex-wrap: wrap; gap: 3px 10px; min-width: 0; padding-top: 1px; }
 .lw-chg-p { font-size: 11.5px; font-weight: 700; color: var(--text-primary); }
 .lw-chg-p em { font-style: normal; margin-left: 3px; font-size: 9px; font-weight: 600; font-family: var(--font-mono); color: var(--text-muted); }

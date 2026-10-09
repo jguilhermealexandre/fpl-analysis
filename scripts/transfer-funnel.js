@@ -49,7 +49,11 @@
             return {
                 view: 'quick',      // quick | custom — see twfRenderQuick
                 clubs: [],          // team ids; empty means every club
-                minutes: 'any',     // any | likely | nailed
+                /* 'playing' rather than 'any' by default: the base pool no
+                   longer carries a minutes floor, so without a default here the
+                   list would open on every third-choice keeper in the game. Any
+                   is still Any — it just has to be asked for now. */
+                minutes: 'playing', // any | playing | nailed
                 form: 'any',        // any | hot | cold
                 quality: 'any',     // any | top25 | top10
                 price: 'any',       // any | cheaper | same | upgrade
@@ -443,6 +447,24 @@
            Each is a pure predicate over one player and one settings object, so
            the same code can answer "who survives" and "who would survive if this
            chip were on" — which is where the per-chip counts come from. */
+        /* Why the number does not move when every chip is cleared.
+
+           Two things sit above the filter panel and neither is a chip: what you
+           can afford against the man you are selling, and whether a club already
+           has three of your players. Both are real — you cannot buy past them —
+           but a count that will not budge needs to say which wall it is against. */
+        function twfUpstreamNote(base, pos, ctx) {
+            if (typeof allPlayers === 'undefined' || !Array.isArray(allPlayers)) return '';
+            const inPos = allPlayers.filter(p => p.position === pos
+                && (p.status === 'a' || p.status === 'd'));
+            const priced = inPos.length - base.length;
+            if (priced <= 0) return '';
+            const bits = [`${priced} of the ${inPos.length} available `
+                + `${pos === 1 ? 'keepers' : 'players'} in this position cost more than your budget`];
+            return `<div class="twf-panel-upstream">${escHTML(bits.join('. '))}. `
+                + `The filters below only narrow what is left.</div>`;
+        }
+
         function twfPasses(p, s, ctx) {
             const f = twfFacts(p);
 
@@ -451,6 +473,7 @@
             // "Include doubts" reported the same number.
             if (s.avail === 'fit' && p.status !== 'a') return false;
 
+            if (s.minutes === 'playing' && f.pStart < 0.35) return false;
             if (s.minutes === 'nailed' && f.pStart < 0.8) return false;
 
             if (s.form === 'hot' && !(f.formRatio > 1.15 && f.played >= 2)) return false;
@@ -490,10 +513,15 @@
            minutes floor, exactly as the old tab did: "how does the player I
            starred compare" is worth answering even when he is unaffordable, and
            the card marks that rather than hiding him. */
-        function twfBasePool(slotIdx) {
+        function twfBasePool(slotIdx, sourceOverride) {
             const slot = transferState.pending[slotIdx];
             const s = twfState();
             const pos = slot.soldPlayer.position;
+            /* The filter panel needs to ask what the OTHER source would leave,
+               and it cannot do that by flipping a flag and re-running
+               twfPasses: source changes this pool rather than that predicate.
+               See the count note in twfFilterBarHTML. */
+            const source = sourceOverride != null ? sourceOverride : s.source;
 
             const soldIds = new Set(transferState.pending.map(x => x.soldPlayer.id));
             const boughtIds = new Set(transferState.pending.filter(x => x.replacement).map(x => x.replacement.id));
@@ -507,15 +535,28 @@
             exclude.add(slot.soldPlayer.id);
 
             const budget = twSlotBudget(slotIdx);
-            const floor = typeof minMinutesForCandidate === 'function' ? minMinutesForCandidate() : 0;
-            const shortlist = s.source === 'favorites' ? getTWShortlistIds() : null;
+            const shortlist = source === 'favorites' ? getTWShortlistIds() : null;
 
+            /* No minutes floor here, and that is the fix for a real complaint:
+               every chip relaxed and a goalkeeper search still read "14 players
+               match", with no way to find out why.
+
+               It was filtering on SEASON minutes — under 100 by GW5 and you were
+               gone — which is a second copy of the judgement the Minutes chip
+               already makes, except this one sat upstream of the chips and so
+               could never be relaxed. It fails hardest at goalkeeper, where the
+               distribution is not a spread but two clumps: twenty men on 450
+               minutes and thirty-five on nought. It cut 35 of 55 keepers before
+               the filter panel had a say.
+
+               Measured across all four positions, it never once removed a player
+               the start-probability gate would have kept — so nothing is lost by
+               letting that gate do the work alone, where a chip can reach it. */
             return allPlayers.filter(p => {
                 if (p.position !== pos) return false;
                 if (exclude.has(p.id)) return false;
                 if (shortlist) return shortlist.has(p.id);
                 if (p.price > budget + 0.001) return false;
-                if (p.minutes < floor) return false;
                 // Both fit and doubtful; twfPasses() narrows to one or the other.
                 if (p.status !== 'a' && p.status !== 'd') return false;
                 return true;
@@ -598,7 +639,7 @@
             const survivors = afterClubs.filter(p => twfPasses(p, s, ctx));
 
             el.innerHTML = '<div class="twf">' +
-                twfRenderHead(slotIdx, sold, gws, twfFilterBarHTML(base, survivors, ctx, pos, gws)) +
+                twfRenderHead(slotIdx, sold, gws, twfFilterBarHTML(base, survivors, ctx, pos, gws, slotIdx)) +
                 twfRenderCustom(slot, survivors, gws, pos, slotIdx, blocked, ctx) + '</div>';
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -713,8 +754,12 @@
                 .filter(k => s[k] !== d[k]).length + (s.defcon ? 1 : 0) + (s.clubs.length ? 1 : 0);
         }
 
-        function twfFilterBarHTML(base, survivors, ctx, pos, gws) {
+        function twfFilterBarHTML(base, survivors, ctx, pos, gws, slotIdx) {
             const s = twfState();
+            // Read once for the Favourites button in the bar below.
+            const favOn = s.source === 'favorites';
+            const starredCount = (typeof getTWShortlistIds === 'function')
+                ? getTWShortlistIds().size : 0;
             const clubSet = new Set(s.clubs);
             const scoped = clubSet.size ? base.filter(p => clubSet.has(p.teamId)) : base;
             const countIf = (over) => {
@@ -726,7 +771,30 @@
                would leave. The count is the whole reason these are pills rather
                than a <select> — you can compare the cost of four answers without
                taking any of them. */
-            const group = (label, key, options, tip) => `
+            /* THE SOURCE PILLS CANNOT BE COUNTED BY countIf, and said they
+               could: a goalkeeper search read "All players 14" and
+               "Favourites 14", and clicking Favourites gave nothing.
+
+               countIf varies one key on `s` and re-runs twfPasses over the pool
+               already in hand. That works for every filter that is a predicate
+               over a fixed pool. Source is not one: twfBasePool applies it and
+               returns early, deliberately lifting the budget and the status gate
+               for a starred player. So changing `source` changes the POOL, and
+               twfPasses does not read `source` at all — which is why both pills
+               reported the pool they were already looking at.
+
+               Counted against the pool each option would actually produce
+               instead. The club narrowing is applied the same way countIf
+               applies it, so the two kinds of count mean the same thing. */
+            const sourceCount = (val) => {
+                if (slotIdx == null) return null;
+                const pool = twfBasePool(slotIdx, val);
+                const scopedPool = clubSet.size ? pool.filter(p => clubSet.has(p.teamId)) : pool;
+                const merged = Object.assign({}, s, { source: val });
+                return scopedPool.filter(p => twfPasses(p, merged, ctx)).length;
+            };
+
+            const group = (label, key, options, tip, countFor) => `
                 <div class="apf-group">
                     <span class="v2-menu-label"${tip ? ` data-tooltip="${escHTML(tip)}"` : ''}>${escHTML(label)}</span>
                     <div class="apf-controls">${options.map(o => {
@@ -738,12 +806,15 @@
                            them as ON, because a non-empty string is truthy. */
                         const val = Object.prototype.hasOwnProperty.call(o, 'cv') ? o.cv : o.v;
                         const on = s[key] === val;
-                        const n = countIf({ [key]: val });
+                        const n = countFor ? countFor(val) : countIf({ [key]: val });
                         return `<button class="filter-pill compact-pill${on ? ' active' : ''}"
                             onclick="twfPick('${key}:${o.v}')"
                             ${o.tip ? `data-tooltip="${escHTML(o.tip)}"` : ''}>${escHTML(o.l)}<em class="twf-n">${n}</em></button>`;
                     }).join('')}</div>
                 </div>`;
+
+            // Survivors if the source were Favourites — see sourceCount.
+            const favFit = sourceCount('favorites');
 
             const outPrice = ctx.outPrice;
             const qLabel = twfQualityLabel(pos);
@@ -751,7 +822,8 @@
 
             const groups = [
                 group('Minutes', 'minutes', [
-                    { v: 'any', l: 'Any' },
+                    { v: 'any', l: 'Any', tip: 'Everyone who fits the budget, including men who have not played a minute.' },
+                    { v: 'playing', l: 'In the side', tip: 'At least a 35% chance of starting.' },
                     { v: 'nailed', l: 'Nailed', tip: 'At least an 80% chance of starting.' }
                 ], 'The most common reason a transfer fails.'),
                 group('Form', 'form', [
@@ -787,7 +859,7 @@
                 group('Shortlist', 'source', [
                     { v: 'all', l: 'All players' },
                     { v: 'favorites', l: 'Favourites', tip: 'The players you starred on the Players Analysis page. Budget and minutes limits are lifted here, so an unaffordable target still shows, marked.' }
-                ], 'Everyone, or only the players you starred.'),
+                ], 'Everyone, or only the players you starred.', sourceCount),
                 pos === 1 ? '' : group('Defensive contribution', 'defcon', [
                     { v: 'false', cv: false, l: 'Any' },
                     { v: 'true', cv: true, l: 'Clears the threshold' }
@@ -839,6 +911,39 @@
                       still carries its badge, which answers a different
                       question — how many filters are on, not how many
                       players survived them. */''}
+                ${/* FAVOURITES, OUT HERE RATHER THAN ONLY IN THE STRIP.
+
+                      The Shortlist group inside the panel has done this since
+                      September and was asked for again, which is the whole
+                      argument for this button: a filter nobody can find is a
+                      filter that does not exist. It was two clicks and a scroll
+                      past eight other groups, on a panel that is shut by
+                      default.
+
+                      Same state as the group — twfPick('source:…') is what both
+                      call — so they cannot disagree, and the Filters badge still
+                      counts it among the active filters. The target value is
+                      passed explicitly because twfSetFilter deliberately does
+                      not toggle `source` back to a default the way the other
+                      keys do; there is no "any" for a source.
+
+                      The badge is how many would survive for THIS slot, which
+                      is the same number the Shortlist pill in the panel shows —
+                      two numbers about favourites on one screen must agree, and
+                      a mismatch between them is exactly the bug that sent me
+                      back here. How many are starred in total goes in the
+                      tooltip, because "you have five, none of them a keeper" is
+                      the sentence a nought needs. */''}
+                <button class="apf-menu-btn${favOn ? ' is-on' : ''}"
+                    onclick="twfPick('source:${favOn ? 'all' : 'favorites'}')"
+                    aria-pressed="${favOn}"
+                    data-tooltip="${!starredCount
+                        ? 'You have not starred anyone yet — use the star on the Players page and they show up here.'
+                        : favFit
+                            ? `${favFit} of the ${starredCount} player${starredCount === 1 ? '' : 's'} you starred can fill this slot. Budget and minutes limits are lifted here, so an unaffordable target still shows, marked.`
+                            : `None of the ${starredCount} player${starredCount === 1 ? '' : 's'} you starred can fill this slot — wrong position, or already in your squad.`}">
+                    ${typeof v2Icon === 'function' ? v2Icon('star') : ''}Favourites${starredCount ? `<span class="apf-menu-n">${favFit}</span>` : ''}
+                </button>
                 <div class="twf-search-wrap">
                     ${typeof v2Icon === 'function' ? v2Icon('eye') : ''}
                     <input class="twf-search" type="text" placeholder="Search by name\u2026" value="${escHTML(s.search)}" oninput="twfSearch(this.value)">
@@ -861,6 +966,14 @@
                         : 'Nothing matches'}</span>
                     ${active ? `<button class="twf-panel-reset" onclick="twfResetFilters()">Clear all</button>` : ''}
                 </div>
+                ${/* What the chips below cannot reach.
+
+                      Clearing every filter and watching the number sit still is
+                      how a correct list reads as a broken one — the complaint
+                      that prompted this was a goalkeeper search stuck at 14. The
+                      budget is a real wall and belongs upstream; what was
+                      missing was anyone saying so. */''}
+                ${twfUpstreamNote(base, pos, ctx)}
                 ${survivors.length ? '' : `<div class="twf-panel-dead">Every count below reads 0 because removing any single filter still leaves nothing \u2014 more than one is doing the cutting.</div>`}
                 <div class="twf-filters-strip-groups">${clubGroup}${groups}</div>
             </div>`;
@@ -987,11 +1100,28 @@
             const budget = twSlotBudget(slotIdx);
 
             /* A recommendation you cannot act on is not a quick answer, it is
-               another decision. Someone carrying a knock, or a fourth player
-               from a club you already have three of, belongs in the funnel
-               where the reason can be shown next to him. */
+               another decision. A fourth player from a club you already have
+               three of belongs in the funnel, where the reason can be shown
+               next to him.
+
+               THE DOUBT RULE IS NO LONGER LOCAL. This used to require status
+               'a' outright, which refused every flagged player — while step 1,
+               the draft and Squad Analysis all accepted them. So a doubtful
+               player was a valid recommendation on one screen and invisible one
+               click later, with nothing explaining the difference.
+               twPlayerAvailable() in scripts/transfer-engine.js is the single
+               rule now: fit, or flagged at 75% or better, which is the
+               threshold Rising Form already uses for the same judgement. */
             const s = twfState();
-            const eligible = base.filter(p => p.status === 'a' && !blocked.has(p.teamId));
+            /* And the same start-probability gate the custom search now applies
+               through its Minutes chip. Quick picks has no chips, so it has to
+               carry the default itself — without it this list would rank every
+               reserve keeper in the game as a "quick pick". */
+            const available = typeof twPlayerAvailable === 'function'
+                ? twPlayerAvailable
+                : p => p.status === 'a';
+            const eligible = base.filter(p => available(p) && !blocked.has(p.teamId)
+                && twfFacts(p).pStart >= 0.35);
             const scored = eligible.map(p => {
                 const proj = twfProjection(p, gws);
                 return { p, proj, gain: Math.round((proj.total - soldProj.total) * 10) / 10 };

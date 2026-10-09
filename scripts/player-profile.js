@@ -252,11 +252,63 @@
             sellRating += sensAdj(minsPenalty);
             player.minsPerGame = minsPerGame;
 
-            if (minsPerGame < 45) {
-                concerns.push({ type: 'critical', title: 'Rotation Risk', text: `Only ${minsPerGame.toFixed(0)} mins/game (${player.starts} starts in ${gamesPlayed} GWs) — consider benching or selling` });
+            /* ===== Rotation risk is a question about now, not about August =====
+             *
+             * minsPerGame is season minutes over gameweeks ELAPSED, so a player
+             * who missed the opening weeks keeps paying for them long after he is
+             * back in the side. Konsa read "56 mins/game — rotation risk, bench
+             * for tough fixtures" on a day he had started three in a row at
+             * ninety minutes: 0, 11, 90, 90, 90 averages 56, and the label was
+             * describing the average rather than the player.
+             *
+             * So the verdict reads the recent window — the same `mf` rows
+             * expectedMinutesModel decays over, which means this label and the
+             * projection cannot disagree about whether he is playing. The season
+             * figure is still printed, because it is the one on the rest of the
+             * card and a reader comparing the two should see both.
+             *
+             * minsPerGame still feeds the sell rating above, deliberately. "Is he
+             * playing this week" and "is he worth owning" are different
+             * questions, and a player who has only just become a starter is
+             * genuinely the riskier hold. */
+            const recentMins = (() => {
+                const mf = player.mf;
+                if (!mf || !Array.isArray(mf.mins) || !mf.mins.length) return null;
+                const n = Math.min(4, mf.mins.length);
+                const mins = mf.mins.slice(-n), st = (mf.st || []).slice(-n);
+                return {
+                    n,
+                    avg: mins.reduce((s, m) => s + (m || 0), 0) / n,
+                    starts: st.filter(Boolean).length,
+                    // A run counted back from the most recent match, which is the
+                    // claim a manager actually wants: not "4 of his last 5" but
+                    // "the last 3, without a break".
+                    run: (() => { let k = 0; for (let i = st.length - 1; i >= 0 && st[i]; i--) k++; return k; })()
+                };
+            })();
+
+            const seasonNote = ` Season average is ${minsPerGame.toFixed(0)} across ${gamesPlayed} gameweek${gamesPlayed === 1 ? '' : 's'}.`;
+            if (recentMins) {
+                const r = recentMins;
+                const label = `${r.avg.toFixed(0)} mins/game over his last ${r.n}`;
+                if (r.run >= 3 || (r.avg >= 85 && r.starts === r.n)) {
+                    positives.push({ type: 'positive', title: 'Nailed On',
+                        text: `${label}${r.run >= 3 ? `, started the last ${r.run} in a row` : ''} — no rotation worry.${minsPerGame < 75 ? seasonNote : ''}` });
+                } else if (r.avg < 45) {
+                    concerns.push({ type: 'critical', title: 'Rotation Risk',
+                        text: `${label} (${r.starts} start${r.starts === 1 ? '' : 's'}) — consider benching or selling.${seasonNote}` });
+                    reasons.push('Not starting regularly');
+                } else if (r.avg < 65) {
+                    concerns.push({ type: 'warning', title: 'Reduced Minutes',
+                        text: `${label} — rotation risk, bench for tough fixtures.${seasonNote}` });
+                }
+            } else if (minsPerGame < 45) {
+                // No recent window: the season figure is all there is, and saying
+                // so is better than implying it describes this month.
+                concerns.push({ type: 'critical', title: 'Rotation Risk', text: `Only ${minsPerGame.toFixed(0)} mins/game across the season (${player.starts} start${player.starts === 1 ? '' : 's'}) — consider benching or selling` });
                 reasons.push('Not starting regularly');
             } else if (minsPerGame < 65) {
-                concerns.push({ type: 'warning', title: 'Reduced Minutes', text: `${minsPerGame.toFixed(0)} mins/game — rotation risk, bench for tough fixtures` });
+                concerns.push({ type: 'warning', title: 'Reduced Minutes', text: `${minsPerGame.toFixed(0)} mins/game across the season — rotation risk, bench for tough fixtures` });
             } else if (minsPerGame >= 85) {
                 positives.push({ type: 'positive', title: 'Nailed On', text: `${minsPerGame.toFixed(0)} mins/game — guaranteed starter, no rotation worry` });
             }
@@ -491,53 +543,16 @@
             return options[Math.abs(h) % options.length];
         }
 
-        // ===== LEAGUE CONTEXT =====
-        // How leaky each defence is, ranked across the league. A raw "concedes 1.8"
-        // means little until you know whether that is 3rd worst or mid-table, which
-        // is the thing that decides whether an opponent is a good one to face.
-        function getDefensiveRanks() {
-            const ids = Object.keys(teams).map(k => parseInt(k, 10))
-                .filter(id => teamAnalysis[id]);
-            // Ascending defensive power: rank 1 is the leakiest defence to attack.
-            const ordered = ids.slice().sort((a, b) =>
-                (teamAnalysis[a].defensePower || 0) - (teamAnalysis[b].defensePower || 0));
-            const rank = {};
-            ordered.forEach((id, i) => { rank[id] = i + 1; });
-            return { rank, total: ordered.length };
-        }
+        /* The league-context trio — getDefensiveRanks, ordinal, opponentContext,
+           and the RATE_MIN_MATCHES floor under them — moved to scripts/xp-engine.js.
 
-        function ordinal(n) {
-            const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
-            return n + (s[(v - 20) % 10] || s[v] || s[0]);
-        }
-
-        // What a given fixture means for the attacking side: how leaky the opponent
-        // is, and a rough goal expectation from both teams' rates.
-        // Three matches is the point where a per-game rate stops being one result.
-        const RATE_MIN_MATCHES = 3;
-
-        function opponentContext(teamId, fx, ranks) {
-            if (!fx) return null;
-            const oppTA = teamAnalysis[fx.opponentId];
-            const myTA = teamAnalysis[teamId];
-            if (!oppTA || !oppTA.matchesPlayed) return null;
-
-            const conceded = oppTA.avgConceded || 0;
-            // A league rank off one match is noise dressed as insight — a side that
-            // shipped four in the opener is not "the leakiest defence in the league".
-            const ranked = oppTA.matchesPlayed >= RATE_MIN_MATCHES;
-            const myGoals = myTA && myTA.matchesPlayed ? myTA.avgGoals : conceded;
-            return {
-                conceded,
-                matches: oppTA.matchesPlayed,
-                ranked,
-                rank: ranked ? ranks.rank[fx.opponentId] : null,
-                total: ranks.total,
-                // Cheap but standard estimator: blend what this attack scores with
-                // what that defence concedes, rather than pretending to a Poisson model.
-                expGoals: ranked ? (myGoals + conceded) / 2 : null
-            };
-        }
+           They are model, not presentation: they read teamAnalysis and answer
+           "how leaky is this opponent, and how does that rank", which is the
+           same question expectedGoalsAgainst() asks. Four files called them from
+           here, and two of those guarded the call with
+           `typeof opponentContext === 'function'` — a renderer defending itself
+           against another renderer it has no business depending on. In the
+           engine the dependency runs the right way and the guards are gone. */
 
         /* ===== RECENT FORM — the last five gameweeks, match by match =====
 
@@ -1069,7 +1084,6 @@
             const color = improving ? 'var(--color-success)' : 'var(--color-error)';
             const bg = improving ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)';
             const border = improving ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)';
-            const FDR_WORDS = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
 
             const chip = f => {
                 const opp = teams[f.opponentId];
@@ -1109,11 +1123,10 @@
             const upcoming = (fixtures || []).slice(0, 3);
             if (!upcoming.length) return '';
             const ranks = typeof getDefensiveRanks === 'function' ? getDefensiveRanks() : { rank: {}, total: 20 };
-            const FDR_WORDS = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
 
             const cards = upcoming.map(fx => {
                 const oppTA = teamAnalysis[fx.opponentId];
-                const ctx = typeof opponentContext === 'function' ? opponentContext(player.teamId, fx, ranks) : null;
+                const ctx = opponentContext(player.teamId, fx, ranks);
                 const formWord = oppTA && oppTA.matchesPlayed
                     ? (oppTA.formRating >= 55 ? 'In form' : oppTA.formRating < 40 ? 'Poor form' : 'Average form')
                     : 'No form data yet';
@@ -1526,10 +1539,11 @@
             return { analysis: getPlayerAnalysis(pool), context: 'candidate' };
         }
 
-        // Builds a player's full analytical profile \u2014 AI report, verdict, key
-        // stats, season numbers, routes to points, price watch, concerns/
-        // positives, upcoming fixtures, team context (incl. fixture swing) and
-        // opponent form. Shared by the modal below (renderPlayerModal, on both
+        // Builds a player's full analytical profile, in this order: AI report,
+        // verdict, price watch, concerns/positives \u2014 the argument \u2014 then key
+        // stats, season numbers, routes to points, upcoming fixtures, team
+        // context (incl. fixture swing) and opponent form \u2014 the evidence.
+        // Shared by the modal below (renderPlayerModal, on both
         // the squad page and the players page) and the Transfer Wizard's
         // head-to-head compare, so a buy candidate gets exactly the same depth
         // as one of your own XI. `opts`:
@@ -1608,6 +1622,34 @@
                what the model thinks, what it concludes, and whether the price is
                about to move — and the three of them fit on one row. */
             html += renderPriceWatchSection(player);
+
+            /* The case for and against, directly under the verdict that rests on
+               it. These used to sit far below, between Routes to Points and the
+               fixture strip, which put the reasoning three screens from the
+               conclusion it supports — so the card asserted "Sell" at the top
+               and explained itself somewhere a reader had to go looking.
+               Scout's Take, Verdict, Price Watch, Concerns, Positives: the
+               argument in the order someone actually asks for it, with every
+               number below it as evidence rather than as preamble. */
+            if (concerns.length > 0) {
+                html += `<div class="detail-section" data-accent="concerns">
+                    <div class="detail-section-title">${v2Icon('warn')} Concerns (${concerns.length})</div>
+                    ${concerns.map(c => `<div class="insight-item ${c.type}">
+                        ${c.title ? `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${escHTML(c.title)}</div>` : ''}
+                        <div class="insight-text">${escHTML(c.text)}</div>
+                    </div>`).join('')}
+                </div>`;
+            }
+
+            if (positives.length > 0) {
+                html += `<div class="detail-section" data-accent="positives">
+                    <div class="detail-section-title">${v2Icon('check')} Positives (${positives.length})</div>
+                    ${positives.map(p => `<div class="insight-item positive">
+                        ${p.title ? `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${escHTML(p.title)}</div>` : ''}
+                        <div class="insight-text">${escHTML(p.text)}</div>
+                    </div>`).join('')}
+                </div>`;
+            }
 
             /* What he has actually returned, alongside the rates that predict it.
 
@@ -1764,26 +1806,6 @@
             </div>`;
 
             html += renderRoutesToPoints(player);
-
-            if (concerns.length > 0) {
-                html += `<div class="detail-section" data-accent="concerns">
-                    <div class="detail-section-title">${v2Icon('warn')} Concerns (${concerns.length})</div>
-                    ${concerns.map(c => `<div class="insight-item ${c.type}">
-                        ${c.title ? `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${escHTML(c.title)}</div>` : ''}
-                        <div class="insight-text">${escHTML(c.text)}</div>
-                    </div>`).join('')}
-                </div>`;
-            }
-
-            if (positives.length > 0) {
-                html += `<div class="detail-section" data-accent="positives">
-                    <div class="detail-section-title">${v2Icon('check')} Positives (${positives.length})</div>
-                    ${positives.map(p => `<div class="insight-item positive">
-                        ${p.title ? `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${escHTML(p.title)}</div>` : ''}
-                        <div class="insight-text">${escHTML(p.text)}</div>
-                    </div>`).join('')}
-                </div>`;
-            }
 
             if (fixtures.length > 0) {
                 html += `<div class="detail-section" data-accent="fixtures" data-wide>
@@ -2059,26 +2081,49 @@
            broadly enough to rely on), so a band is real columns and each one is
            a stack: the blocks in it sit directly under one another.
 
-           The order is the reading order. Season Numbers first and full width,
-           because the season is the steady figure everything else is judged
-           against. Key Statistics next, also full width — it carries the
-           match-by-match form grid now, which is five or six columns wide and
-           cannot live in a third of the sheet. Then the commentary: routes to
-           points beside the concerns and positives, which are short and stack
-           happily in one column next to it.
+           THIS ARRAY IS THE VISUAL ORDER, not the order the HTML is built in.
+           Everything named here is physically re-parented into one holder, so
+           moving a section in buildPlayerFullProfileHTML and not moving it here
+           changes nothing on screen. That is not hypothetical: concerns and
+           positives were lifted in the markup to sit under the verdict, the
+           markup was correct, and they carried on rendering beside Routes to
+           Points because this array still put them there. If you are moving a
+           section, this is the file's opinion about where it goes.
+
+           The argument first: concerns and positives, two short lists side by
+           side, directly under Scout's Take, the verdict and the price meter
+           that precede the holder in the markup. A reader who has just been
+           told "Sell" gets the case for it in the next breath rather than three
+           screens down.
+
+           Then the evidence. Season Numbers full width, because the season is
+           the steady figure everything else is judged against; Key Statistics
+           full width too — it carries the match-by-match form grid, five or six
+           columns wide and unreadable in a third of the sheet; then Routes to
+           Points, which used to share a band with the concerns and takes the
+           full width now that they have gone up.
 
            `full` sections keep their own row; `cols` builds a band. */
         const PDM_LAYOUT = [
+            { cols: [['concerns'], ['positives']] },
             { full: 'season' },
             { full: 'stats' },
-            { cols: [['routes'], ['concerns', 'positives']] }
+            { full: 'routes' }
         ];
 
         function pdmLayoutBands(host) {
             const body = host.querySelector('.pdm-body');
             if (!body) return;
             const pick = a => body.querySelector(`.detail-section[data-accent="${a}"]`);
-            const anchorEl = pick('season') || pick('stats') || pick('routes');
+            /* The holder goes wherever the first section this layout manages
+               currently sits. Derived from PDM_LAYOUT rather than listed again,
+               because a hand-written fallback chain is a second copy of the
+               order and drifts from the first — which is how the sections above
+               ended up somewhere the markup did not ask for. */
+            const anchorEl = PDM_LAYOUT
+                .flatMap(row => (row.full ? [row.full] : row.cols.flat()))
+                .map(pick)
+                .find(Boolean);
             if (!anchorEl || !anchorEl.parentNode) return;
 
             /* The holder is inserted at the anchor's place BEFORE anything moves.

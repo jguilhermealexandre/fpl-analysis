@@ -61,7 +61,12 @@
     --fdr-1-ink: #FFFFFF;
     --fdr-2-ink: #0B2E13;
     --fdr-3-ink: #4B5563;
-    --fdr-4-ink: #FFFFFF;
+    /* White on #F97316 is 2.80:1, and that was the ink on every FDR-4 fixture
+       cell on the Full Calendar — 17 failures on that tab alone. The other four
+       inks were already fine (5.02, 10.57, 6.10, 6.47), which is what marks this
+       one out as a slip rather than a decision. A dark brown at 5.10:1 keeps the
+       cell reading as orange; near-black would read as a hole in the grid. */
+    --fdr-4-ink: #4A1D03;
     --fdr-5-ink: #FFFFFF;
 
     /* Verdict colors */
@@ -71,6 +76,32 @@
     --verdict-monitor-bg: rgba(245, 158, 11, 0.08);
     --verdict-hold: #10B981;
     --verdict-hold-bg: rgba(16, 185, 129, 0.08);
+
+    /* ===== The same status colours, as TEXT =====
+     *
+     * A colour used as a FILL and the same colour used as TEXT are held to
+     * different standards, and that is where this kept failing. The four above
+     * are chosen to work as a 2px border or an 8% wash, where WCAG asks 3:1 of
+     * a UI component — and were then also used for the words. Measured on
+     * white: hold 2.54:1, sell 3.76:1, monitor 2.15:1, star 4.23:1. All under
+     * the 4.5:1 normal text needs, and the squad-report chips are worse again
+     * because they sit on an 8% tint of their own colour rather than on the
+     * bare surface.
+     *
+     * Four more tokens rather than four darker fills: darkening --verdict-hold
+     * itself would dull every border, dot and wash on the site to fix the
+     * handful of places it carries words.
+     *
+     * Each value is verified at 4.5:1 or better BOTH on the bare surface and on
+     * the 8% tint, in both themes. The tint is the harder of the two and is the
+     * one the chips use. */
+    --verdict-hold-text: #047857;      /* 5.48 on white, 5.08 on its own tint */
+    --verdict-sell-text: #C81E1E;      /* 5.74 / 5.17 */
+    --verdict-monitor-text: #92400E;   /* 7.09 on white, 6.56 on its 8% tint,
+                                          6.37 on the 24% captain tint — #B45309
+                                          cleared the bare surface but left only
+                                          0.01 on that heavier wash. */
+    --verdict-star-text: #6D28D9;      /* 7.10 / 6.45 */
     /* The fourth verdict. It was declared only in my-team.css, which is the one
        page that had a verdict to show — the player profile card is shared with
        the players page now, and a star player there resolved var(--verdict-star)
@@ -1305,6 +1336,14 @@ body {
 
 /* ===== DARK THEME ===== */
 [data-theme="dark"] {
+    /* The status-text colours invert — see the block beside their light values.
+       A green dark enough to read on white is 2.99:1 on #1B2027, so each is
+       re-picked for this background and re-verified on the 8% tint. */
+    --verdict-hold-text: #10B981;      /* 6.46 on surface-1, 5.73 on its tint */
+    --verdict-sell-text: #FF6B75;      /* 5.94 / 5.52 */
+    --verdict-monitor-text: #FFC53D;   /* 10.37 / 9.08 */
+    --verdict-star-text: #A78BFA;      /* 6.02 / 5.52 */
+
     /* Surfaces — sampled from the supplied dark UI reference */
     --surface-bg: #15191F;
     --surface-0: #15191F;
@@ -2142,6 +2181,23 @@ body h1:not(.hero-title) > .icon,
     color: #111827;
     box-shadow: 0 8px 24px rgba(0, 0, 0, .55);
 }
+
+/* ----- Is this player available -----
+   The mark v2AvailMark() writes, in scripts/common.js. Three surfaces were
+   telling this one fact three different ways: a text badge under a pitch card,
+   an icon in the GW Draft table, and nothing at all in the squad table. The
+   classification is shared now; this is the compact rendering of it.
+
+   Colour is declared rather than inherited because v2Icon() emits
+   .v2-sec-icon, and that class is the accent green — an injured player would
+   have had a green cross. Same trap as the price ticker's arrow, which
+   v2-design.css already warns about having fallen into twice. The two tokens
+   here are the text-safe verdict colours, which is what these are: words'
+   worth of meaning at 13px, not a 2px border. */
+.v2-avail { display: inline-flex; align-items: center; gap: 2px; margin-right: 4px; vertical-align: middle; }
+.v2-avail .v2-sec-icon { width: 13px; height: 13px; color: currentColor; }
+.v2-avail.out { color: var(--verdict-sell-text); }
+.v2-avail.doubt { color: var(--verdict-monitor-text); }
 
 /* === GENERATED: size-keyed tracking — node tools/gen-tracking.mjs === */
 /* Written by tools/gen-tracking.mjs — do not edit by hand. Every rule in

@@ -21,10 +21,10 @@
          waiting for the stylesheet to name them: same-origin now, so a
          preload here costs nothing and starts them with the CSS. -->
     <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-ca11fe9ca5.woff2" crossorigin>
-    <link rel="stylesheet" href="/styles/fonts.min.css?v=422">
-    <link rel="stylesheet" href="/styles/common.min.css?v=422">
-    <link rel="stylesheet" href="/styles/v2-design.min.css?v=422">
-    <link rel="stylesheet" href="/styles/auth.min.css?v=422">
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=451">
+    <link rel="stylesheet" href="/styles/common.min.css?v=451">
+    <link rel="stylesheet" href="/styles/v2-design.min.css?v=451">
+    <link rel="stylesheet" href="/styles/auth.min.css?v=451">
     <style>
         /* The one thing this page is for. Bigger than a form field has any
            business being, because it is the only field on the page and the
@@ -150,8 +150,8 @@
     </main>
 </div>
 
-<script src="/scripts/auth.min.js?v=422"></script>
-<script src="/scripts/common.min.js?v=422"></script>
+<script src="/scripts/auth.min.js?v=451"></script>
+<script src="/scripts/common.min.js?v=451"></script>
 <script>
     /* The door to /dashboard/.
      *
@@ -174,11 +174,21 @@
        gated it never sent one from there. Now that it does, a guard that only
        knew /dashboard would have accepted the visitor and then dropped them on
        the home screen instead of the squad page they had asked for. */
+    /* Where to send someone once we know their team ID.
+
+       No trailing slash, and the slash is stripped off anything handed to us in
+       ?next= as well. This used to return '/dashboard/' and that path is a 404
+       in production — the entire point of this page is to hand a new manager
+       their dashboard, and it was handing them our 404 instead. _redirects does
+       carry rules for /dashboard, /dashboard/ and /dashboard/*, and the bare
+       trailing-slash form matches none of them on Cloudflare Pages; the
+       extensionless form is the one that resolves, so that is the one we emit.
+       '/squad-analysis/' happens to survive as a 308, but normalising it too
+       saves a redirect hop and stops this class of bug coming back. */
     function wlNext() {
         const raw = new URLSearchParams(location.search).get('next') || '';
-        return /^\/(dashboard|squad-analysis)(\/|$)/.test(raw) && !raw.startsWith('//')
-            ? raw
-            : '/dashboard/';
+        const ok = /^\/(dashboard|squad-analysis)(\/|$)/.test(raw) && !raw.startsWith('//');
+        return (ok ? raw : '/dashboard').replace(/\/+$/, '');
     }
 
     function wlShow(id) {

@@ -108,6 +108,51 @@ function skipInterpolation(src, i) {
     return i;
 }
 
+/* Comments out, every other byte kept exactly as it was.
+
+   stripNoise below is the wrong tool for a caller that needs to know what a
+   string CONTAINS — it replaces every literal with `""`, which is the point
+   when counting braces and fatal when looking for a string that is empty.
+   check-icons.mjs needs the second thing, and the hand-rolled stripper it
+   started with desynchronised on nested template literals: scanning from a
+   backtick to "the next backtick" ends inside `${a ? `x` : ''}`, after which
+   code reads as string and string as code. That is this file's own documented
+   fault in mirror image, which is reason enough for there to be one lexer here
+   rather than two.
+
+   Comments are blanked rather than removed so byte offsets — and therefore the
+   line numbers a caller reports — survive. Templates are copied whole, so a
+   comment inside a `${}` is kept; that is deliberate, because the interpolation
+   is where the markup lives and a caller looking for dead expressions needs to
+   see inside it. */
+export function stripComments(src) {
+    const n = src.length;
+    const blank = (s) => s.replace(/[^\n]/g, ' ');
+    let out = '', i = 0;
+    while (i < n) {
+        const c = src[i], d = src[i + 1];
+        if (c === '/' && d === '*') {
+            const e = src.indexOf('*/', i + 2); const end = e < 0 ? n : e + 2;
+            out += blank(src.slice(i, end)); i = end; continue;
+        }
+        if (c === '/' && d === '/') {
+            const e = src.indexOf('\n', i); const end = e < 0 ? n : e;
+            out += blank(src.slice(i, end)); i = end; continue;
+        }
+        if (c === '"' || c === "'") { const j = skipString(src, i); out += src.slice(i, j); i = j; continue; }
+        if (c === '`') { const j = skipTemplate(src, i); out += src.slice(i, j); i = j; continue; }
+        // Bounded tail, like skipInterpolation uses: VALUE_KEYWORD is written
+        // for a short lookbehind, and slicing the whole output here would make
+        // this quadratic on a 4000-line file.
+        if (c === '/' && regexAllowedAfter(out.slice(-24))) {
+            const j = skipRegex(src, i);
+            if (j > 0) { out += src.slice(i, j); i = j; continue; }
+        }
+        out += c; i++;
+    }
+    return out;
+}
+
 export function stripNoise(src) {
     let out = '', i = 0;
     const n = src.length;

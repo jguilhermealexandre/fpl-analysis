@@ -238,7 +238,7 @@
                     opponentId: isHome ? f.team_a : f.team_h,
                     opponent: teams[isHome ? f.team_a : f.team_h]?.short_name || '???',
                     isHome,
-                    difficulty: (isHome ? f.team_h_difficulty : f.team_a_difficulty) || 3
+                    difficulty: xpFixtureDifficulty(teamId, f)
                 });
             });
             // Only unfinished fixtures were kept above, so a leading gameweek with
@@ -701,7 +701,13 @@
                 else history.pushState(null, '', nextHash);
             }
 
-            document.getElementById('settingsBtn').style.display = (tab === 'team') ? '' : 'none';
+            /* Guarded, unlike the twelve lookups above it: those are all static
+               markup, and this one is written by renderSquadKpiStrip(). If the
+               squad render ever fails the button is simply absent, and an
+               unguarded .style here would throw on the first line of every tab
+               switch — turning one failed panel into a page where no tab works. */
+            const settingsBtn = document.getElementById('settingsBtn');
+            if (settingsBtn) settingsBtn.style.display = (tab === 'team') ? '' : 'none';
 
             // The help overlay documents Squad Analysis only — swapping players on
             // the pitch, the armband buttons, Auto-Optimize, the fixture chips — so
@@ -1578,14 +1584,18 @@
             return `${def}-${mid}-${fwd}`;
         }
 
+        /* The rule itself is v2LegalXI() in common.js. This checked the lower
+           bounds and not the upper, so it accepted 6-3-1 and 3-2-5 among fifteen
+           shapes where FPL allows eight. No live difference — those seven need
+           more defenders or forwards than a 2/5/5/3 squad contains — but it was
+           the loosest of the three copies of this rule and the one the other
+           files call the rule. */
         function isValidFormation(lineup) {
-            const starters = lineup.filter(p => !p.onBench);
-            if (starters.length !== 11) return false;
-            const gk = starters.filter(p => p.position === 1).length;
-            const def = starters.filter(p => p.position === 2).length;
-            const mid = starters.filter(p => p.position === 3).length;
-            const fwd = starters.filter(p => p.position === 4).length;
-            return gk === 1 && def >= 3 && mid >= 2 && fwd >= 1;
+            const counts = {};
+            lineup.filter(p => !p.onBench).forEach(p => {
+                counts[p.position] = (counts[p.position] || 0) + 1;
+            });
+            return v2LegalXI(counts);
         }
 
         function renderTeamContextCard(tid, showOpponent) {
@@ -1627,26 +1637,8 @@
             const isHome = nextFix.isHome;
 
             // Traffic light grading
-            function tl(v) { return v > 60 ? 'green' : v < 40 ? 'red' : 'amber'; }
-            function tlInv(v) { return v < 40 ? 'green' : v > 60 ? 'red' : 'amber'; }
 
             // Power comparison row helper
-            function powerRow(label, myVal, oppVal, invertGrade) {
-                const myGrade = invertGrade ? tlInv(myVal) : tl(myVal);
-                const oppGrade = invertGrade ? tlInv(oppVal) : tl(oppVal);
-                const myPct = Math.min(Math.round(myVal), 100);
-                const oppPct = Math.min(Math.round(oppVal), 100);
-                return `<div class="h2h-power-row">
-                    <div class="h2h-power-label">${label}</div>
-                    <div class="h2h-power-bar h2h-power-bar-l"><div class="h2h-power-bar-fill h2h-bg-${myGrade}" style="width:${myPct}%;"></div></div>
-                    <div class="h2h-power-val h2h-tl-${myGrade}">${myVal}</div>
-                    <div class="h2h-vs">v</div>
-                    <div class="h2h-power-val h2h-tl-${oppGrade}">${oppVal}</div>
-                    <div class="h2h-power-bar h2h-power-bar-r"><div class="h2h-power-bar-fill h2h-bg-${oppGrade}" style="width:${oppPct}%;"></div></div>
-                    <div class="h2h-power-label-r">${label}</div>
-                </div>`;
-            }
-
             // xG tug-of-war bar helper
             function xgBar(label, myVal, oppVal, lowerIsBetter) {
                 const total = myVal + oppVal || 1;
@@ -1743,29 +1735,53 @@
                 </div>
                 <div class="h2h-header-meta">
                     <span class="h2h-venue ${venueClass}">${venueText}</span>
-                    <span class="planner-fdr-cell v2-fdr-${nextFix.difficulty}" style="padding:2px 6px;font-size:0.6rem;"><abbr title="Fixture Difficulty Rating (1=easiest, 5=hardest)">FDR</abbr> ${nextFix.difficulty}</span>
+                    <span class="planner-fdr-cell v2-fdr-${nextFix.difficulty}" style="padding:2px 6px;font-size:0.6rem;"><abbr title="Fixture Difficulty Rating, set by FPL — higher is harder. The 2026/27 list runs 2 to 5, so a 2 is the kindest fixture on the calendar.">FDR</abbr> ${nextFix.difficulty}</span>
                 </div>
             </div>`;
 
             html += `<div class="h2h-body">`;
 
-            // Power grid — venue-specific
-            const myAtkV = isHome ? (ta?.attackPowerHome || 50) : (ta?.attackPowerAway || 50);
-            const myDefV = isHome ? (ta?.defensePowerHome || 50) : (ta?.defensePowerAway || 50);
-            const oppAtkV = isHome ? (oppTa?.attackPowerAway || 50) : (oppTa?.attackPowerHome || 50);
-            const oppDefV = isHome ? (oppTa?.defensePowerAway || 50) : (oppTa?.defensePowerHome || 50);
+            /* The four-row power grid used to sit here — ATK and DEF out of
+               100, then the same two again split by venue. It went because it
+               was the weakest thing on the card and the most prominent: an
+               index nobody can calibrate ("is 47 good?"), shown twice, directly
+               above an expected-goals comparison that answers the same question
+               in goals per game, which is a unit a reader already owns.
 
-            html += `<div class="h2h-power-grid">`;
-            html += powerRow('ATK', ta?.attackPower || 50, oppTa?.attackPower || 50, false);
-            html += powerRow('DEF', ta?.defensePower || 50, oppTa?.defensePower || 50, false);
-            html += powerRow(`ATK ${isHome ? '(H)' : '(A)'}`, myAtkV, oppAtkV, false);
-            html += powerRow(`DEF ${isHome ? '(H)' : '(A)'}`, myDefV, oppDefV, false);
-            html += `</div>`;
+               What the market thinks takes its place below — the one view here
+               that comes from outside this site. */
 
-            // xG tug-of-war
+            /* The bookmakers on this exact fixture.
+
+               Same source and same arithmetic as the Lineup Wizard's Matchday
+               tab (scripts/odds-panel.js): the overround is removed, so these
+               are probabilities rather than prices. Shown only when the round is
+               actually priced — a fixture the book has not opened yet gets
+               nothing rather than a row of dashes. */
+            const mkt = (typeof boTeamView === 'function') ? boTeamView(tid) : null;
+            const marketShown = !!(mkt && mkt.opponentId === oppId);
+            if (marketShown) {
+                const pct = v => Math.round(v * 100) + '%';
+                html += `<div class="h2h-market">
+                    <div class="h2h-market-title">${v2Icon('up')} What the market expects</div>
+                    <div class="h2h-market-row">
+                        <div class="h2h-market-cell"><span class="h2h-market-l">Win</span><b>${pct(mkt.win)}</b></div>
+                        <div class="h2h-market-cell"><span class="h2h-market-l">Draw</span><b>${pct(mkt.draw)}</b></div>
+                        <div class="h2h-market-cell"><span class="h2h-market-l">Clean sheet</span><b>${pct(mkt.cleanSheet)}</b></div>
+                    </div>
+                    <div class="h2h-market-row">
+                        <div class="h2h-market-cell"><span class="h2h-market-l">Goals for</span><b>${mkt.goalsFor.toFixed(2)}</b></div>
+                        <div class="h2h-market-cell"><span class="h2h-market-l">Goals against</span><b>${mkt.goalsAgainst.toFixed(2)}</b></div>
+                        <div class="h2h-market-cell"><span class="h2h-market-l h2h-market-src">bookmakers, margin removed</span></div>
+                    </div>
+                </div>`;
+            }
+
+            /* xG tug-of-war. No heading: every bar already names its own
+               measure and window ("xG per game (season)"), so the title was
+               restating the four labels under it. */
             if (sXg && oppSXg) {
                 html += `<div class="h2h-xg-section">`;
-                html += `<div class="h2h-xg-title">${v2Icon('bolt')} Expected Goals Comparison</div>`;
                 html += xgBar('xG per game (season)', sXg.xGpg, oppSXg.xGpg, false);
                 html += xgBar('xGC per game (season)', sXg.xGCpg, oppSXg.xGCpg, true);
                 if (rXg && oppRXg) {
@@ -1775,13 +1791,37 @@
                 html += `</div>`;
             }
 
-            // CS%
-            const myCSPct = isHome ? (ss && ss.homeP > 0 ? Math.round((ss.homeCS / ss.homeP) * 100) : null) : (ss && ss.awayP > 0 ? Math.round((ss.awayCS / ss.awayP) * 100) : null);
-            const oppCSPct = isHome ? (oppSS && oppSS.awayP > 0 ? Math.round((oppSS.awayCS / oppSS.awayP) * 100) : null) : (oppSS && oppSS.homeP > 0 ? Math.round((oppSS.homeCS / oppSS.homeP) * 100) : null);
-            if (myCSPct !== null || oppCSPct !== null) {
+            /* Clean sheets kept at this venue — and the fraction they came from.
+               "HUL CS% (H) 100%" was one home game out of one, and a rate with
+               no denominator beside it reads as a property of the team rather
+               than of a two-match sample. Nobody can act on 100% and nobody
+               believes it, which is worse than showing less.
+
+               Shown only when the bookmakers have not priced this fixture. The
+               market block above carries a clean-sheet probability for this
+               exact match, which is the better answer to the same question:
+               forward-looking, opponent-specific, and not drawn from three
+               results. Two clean-sheet numbers side by side would just invite
+               the reader to pick one. So the market wins when it is there, and
+               this stands in when it is not — which, while data/odds.json is
+               stale, is most fixtures. */
+            const csSide = (s, home) => {
+                if (!s) return null;
+                const p = home ? s.homeP : s.awayP;
+                const cs = home ? s.homeCS : s.awayCS;
+                if (!p) return null;
+                return { pct: Math.round((cs / p) * 100), cs, p };
+            };
+            const myCS = csSide(ss, isHome);
+            const oppCS = csSide(oppSS, !isHome);
+            if (!marketShown && (myCS || oppCS)) {
+                const csCell = (name, venue, d) => `<div class="h2h-cs-item">`
+                    + `<div class="h2h-cs-label">${name} CS% (${venue})</div>`
+                    + `<div class="h2h-cs-val">${d ? `${d.pct}% (${d.cs}/${d.p})` : '-'}</div>`
+                    + `</div>`;
                 html += `<div class="h2h-cs-row">`;
-                html += `<div class="h2h-cs-item"><div class="h2h-cs-label">${escHTML(team.short_name)} CS% (${isHome ? 'H' : 'A'})</div><div class="h2h-cs-val">${myCSPct !== null ? myCSPct + '%' : '-'}</div></div>`;
-                html += `<div class="h2h-cs-item"><div class="h2h-cs-label">${escHTML(oppTeam?.short_name || nextFix.opponent)} CS% (${isHome ? 'A' : 'H'})</div><div class="h2h-cs-val">${oppCSPct !== null ? oppCSPct + '%' : '-'}</div></div>`;
+                html += csCell(escHTML(team.short_name), isHome ? 'H' : 'A', myCS);
+                html += csCell(escHTML(oppTeam?.short_name || nextFix.opponent), isHome ? 'A' : 'H', oppCS);
                 html += `</div>`;
             }
 

@@ -181,8 +181,12 @@
             if (!onBench && p.pos !== 1) {
                 return `<span class="dp-arm-set" draggable="false" onclick="event.stopPropagation()">
                     <button class="dp-arm${isCap ? ' on-c' : ''}" draggable="false" onclick="event.stopPropagation();setLWCaptain(${p.id})"
+                        aria-pressed="${isCap}"
+                        aria-label="${isCap ? `${escHTML(p.web_name)} is captain` : `Make ${escHTML(p.web_name)} captain`}"
                         data-tooltip="${isCap ? `${escHTML(p.web_name)} is your captain — points doubled.` : `Make ${escHTML(p.web_name)} captain`}">C</button>
                     <button class="dp-arm${isVice ? ' on-v' : ''}" draggable="false" onclick="event.stopPropagation();setLWViceCaptain(${p.id})"
+                        aria-pressed="${isVice}"
+                        aria-label="${isVice ? `${escHTML(p.web_name)} is vice-captain` : `Make ${escHTML(p.web_name)} vice-captain`}"
                         data-tooltip="${isVice ? `${escHTML(p.web_name)} is your vice-captain.` : `Make ${escHTML(p.web_name)} vice-captain`}">V</button>
                 </span>`;
             }
@@ -267,12 +271,17 @@
                touchscreen: this way a finger can do it too, by holding and
                then moving. data-lw-id is how the pointer handler identifies
                whatever card ends up under the cursor. */
+            /* No widget role on the card — it contains the ℹ button and, for an
+               outfield starter, the C and V buttons. The keyboard path is the
+               name below, as on the GW Draft pitch. */
             return `<div class="${cls}" onclick="handleLWSwapClick(${p.id})" data-lw-id="${p.id}">
                 <div class="dp-badges">${badges}</div>
                 ${armband}
                 <button class="dp-transfer" draggable="false" onclick="handleLWInfoBtnClick(${p.id}, event)" data-tooltip="View ${escHTML(p.web_name)}'s detail — click a second player to compare them">ℹ</button>
                 ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(lwIdent, 'v2-pid-pitch') : ''}
-                <div class="dp-name">${escHTML(p.web_name)}</div>
+                <div class="dp-name" role="button" tabindex="0"
+                    aria-label="${escHTML(`Move ${p.web_name}${benchIdx != null ? (benchIdx === 'GK' ? ', reserve keeper' : `, bench ${benchIdx}`) : ''}`)}"
+                    onclick="handleLWSwapClick(${p.id})">${escHTML(p.web_name)}</div>
                 <div class="dp-score" data-tooltip="Projected points for ${escHTML(p.web_name)} this gameweek."><b>${xp.toFixed(1)}</b><span class="u">xP</span></div>
                 <div class="dp-fixtures">${fixChip}</div>
                 ${lwRun.length > 1 ? `<div class="dp-xp-run" data-tooltip="Projected points across GW${lwRun[0]}\u2013GW${lwRun[lwRun.length - 1]} combined \u2014 this is what Auto-optimise ranks the XI on, so a steady run beats one flukey week.">${lwRunXP.toFixed(1)}<span class="dp-xp-run-u">next ${lwRun.length}</span></div>` : ''}
@@ -605,7 +614,7 @@
            what you would ask a friend. */
         function lwCaptainRow(p, i, ranks) {
             const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
-            const ctx = fx && typeof opponentContext === 'function' ? opponentContext(p.teamId, fx, ranks) : null;
+            const ctx = fx ? opponentContext(p.teamId, fx, ranks) : null;
             const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
             const isCap = lineupState.captain === p.id, isVC = lineupState.viceCaptain === p.id;
 
@@ -1435,15 +1444,15 @@
             });
         }
 
+        /* Same rule as the squad pitch and the transfer overview, from
+           v2LegalXI() in common.js. This one had the bounds right; what it did
+           not have was any way of staying in step with the other two. Reads
+           .pos rather than .position, which is this file's own shape for a
+           player — hence the wrapper rather than a direct call. */
         function isValidLWFormation(xi) {
-            const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-            xi.forEach(p => { counts[p.pos] = (counts[p.pos] || 0) + 1; });
-            if (counts[1] !== 1) return false;
-            if (counts[2] < 3 || counts[2] > 5) return false;
-            if (counts[3] < 2 || counts[3] > 5) return false;
-            if (counts[4] < 1 || counts[4] > 3) return false;
-            if (counts[2] + counts[3] + counts[4] !== 10) return false;
-            return true;
+            const counts = {};
+            (xi || []).forEach(p => { counts[p.pos] = (counts[p.pos] || 0) + 1; });
+            return v2LegalXI(counts);
         }
 
         function getFormationString(xi) {
@@ -1731,10 +1740,8 @@
 
         function openLineupOptimizeReport() {
             if (!lineupState.optimizeReport) return;
-            v2SetPanelTitle('optReportTitle', `GW${Number(planningGW)} — what Auto-optimise changed`, 'chart');
-            document.getElementById('optReportBody').innerHTML = renderLWChangeReport(lineupState.optimizeReport);
-            document.getElementById('optReportOverlay').classList.add('show');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+            optReportShow(`GW${Number(planningGW)} — what Auto-optimise changed`, 'chart',
+                renderLWChangeReport(lineupState.optimizeReport));
         }
 
         // ── STEP 3: Captain & Summary ──

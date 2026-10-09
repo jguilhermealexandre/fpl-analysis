@@ -572,8 +572,7 @@
                 ? '<span class="twr-opt-state is-on">In your plan</span>'
                 : '<span class="twr-opt-state">Use this one</span>';
             const act = isPick ? '' :
-                ` role="button" tabindex="0" onclick="twSelectOption(${slot}, ${a.in.id})"`
-                + ` onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();twSelectOption(${slot}, ${a.in.id});}"`;
+                ` role="button" tabindex="0" onclick="twSelectOption(${slot}, ${a.in.id})"`;
 
             return `
                 <div class="twr-opt${isPick ? ' is-pick' : ''}"${act}>
@@ -728,6 +727,18 @@
                         return `
                         <div class="twr-slot">
                             <div class="twr-slot-h">Transfer ${i + 1} · ${escHTML(m.out.name)} out — ${alts.length} way${alts.length === 1 ? '' : 's'} to spend it</div>
+                            ${/* Which of the site's own signals fired on the
+                                  incoming player, and what they were worth. The
+                                  engine lets Rising Form and a Purple Patch tip
+                                  a close call between two candidates, and a
+                                  thumb on the scale nobody can see is
+                                  indistinguishable from a bug — so it says so,
+                                  and says plainly that it moved the ranking and
+                                  not the projection above. */''}
+                            ${m.inSignals && m.inSignals.length
+                                ? `<div class="twr-caveat">${escHTML(m.in.name)} is flagged by ${escHTML(m.inSignals.join(', '))}
+                                   — worth +${(m.inSignalBoost || 0).toFixed(2)} when ranking the options below, not added to the points above.</div>`
+                                : ''}
                             <div class="twr-opts">
                                 ${alts.map(a => twrOptionCard(a, m, gws, bankHere, i)).join('')}
                             </div>
@@ -735,23 +746,158 @@
                     }).join('')}
                 </div>
                 <button class="twr-apply" onclick="twApplyRecommendation()">Load these into the transfer planner</button>
+                ${twrPackagesBlock(r)}
                 ${sampleNote}`;
+        }
+
+        /* ===== Several ways to spend the same number of transfers =====
+         *
+         * The card above answers "what is the best move". On a multi-transfer
+         * plan that is not the whole question: a manager holding four free
+         * transfers who has decided to use three wants to see some THREE-move
+         * plans, not one plan and a count.
+         *
+         * Only on Multi. On Single the three option boxes per slot already
+         * answer "what else could I do with this move" — see twDiversifySwaps —
+         * and on a Wildcard or a Free Hit the recommender is hidden entirely,
+         * because it prices against a free-transfer count both chips waive.
+         *
+         * Sizes offered run to the free-transfer count, plus one more that takes
+         * a hit, capped by what the engine will build. Each plan carries whether
+         * the engine would actually endorse it: ask for three when only one move
+         * clears its margin and you get three-move plans, each labelled as more
+         * than the numbers support. That is the honest answer to a question the
+         * manager asked — refusing to show it would be overruling them, and
+         * quietly showing one move would be answering something else. */
+        const TWR_PACKAGE_COUNT = 3;
+
+        function twrPackageSize(r) {
+            const max = twrPackageMax(r);
+            const chosen = Math.round(transferState.pkgSize || 0);
+            if (chosen >= 1 && chosen <= max) return chosen;
+            // Default to what the engine recommends, or two if it says hold.
+            return Math.min(max, Math.max(2, (r.best && r.best.n) || 2));
+        }
+
+        function twrPackageMax(r) {
+            const ft = Math.max(1, r.ft || 1);
+            return Math.min(TW_PLAN_CAP.multi || 5, ft + 1);
+        }
+
+        function twSetPackageSize(n) {
+            transferState.pkgSize = Math.round(n);
+            const el = document.getElementById('twRecoBody');
+            if (el && twLastRecommendation) {
+                el.innerHTML = renderTWRecommendation(twLastRecommendation);
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        }
+
+        function twrPackagesBlock(r) {
+            if (!r || typeof r.packagesFor !== 'function') return '';
+            if (transferState.strategy !== 'multi') return '';
+
+            const max = twrPackageMax(r);
+            if (max < 2) return '';
+            const size = twrPackageSize(r);
+            const packs = r.packagesFor(size, TWR_PACKAGE_COUNT) || [];
+
+            const sizes = [];
+            for (let n = 1; n <= max; n++) {
+                sizes.push(`<button class="twc-mini${n === size ? ' is-on' : ''}"
+                    onclick="twSetPackageSize(${n})"
+                    data-tooltip="${n > r.ft ? `Takes a ${(n - r.ft) * 4}-point hit` : 'Covered by your free transfers'}"
+                    >${n}</button>`);
+            }
+
+            const cards = packs.map((p, i) => {
+                const moves = p.moves.map(m => `<div class="twr-move">
+                    <span class="twr-out">${escHTML(m.out.name)}</span>
+                    <span class="twr-arrow">${v2Icon('next')}</span>
+                    <span class="twr-in">${escHTML(m.in.name)}</span>
+                </div>`).join('');
+                const bankLeft = p.moves.reduce((b, m) =>
+                    b + ((m.out.sellPrice || m.out.price) - m.in.price), getTWBank());
+                return `<div class="twr-slot">
+                    <div class="twr-slot-h">
+                        Plan ${i + 1}${i === 0 ? ' · best' : ''}
+                        <span class="twr-opt-tag">${p.recommended ? 'worth it' : 'more than the numbers back'}</span>
+                    </div>
+                    ${moves}
+                    <div class="twr-gain">
+                        <strong>${p.net >= 0 ? '+' : ''}${p.net.toFixed(1)} xP</strong> net
+                        · ${p.gross.toFixed(1)} gained
+                        · ${p.cost > 0 ? `<span class="twr-cost">−${p.cost} hit</span>` : '<span class="twr-free">no hit</span>'}
+                        · £${bankLeft.toFixed(1)}m left
+                    </div>
+                </div>`;
+            }).join('');
+
+            return `<div class="twr-slots">
+                <!-- The size buttons sit straight in the header rather than in a
+                     wrapper of their own: .twc-mini already carries its own
+                     shape, and a new class here would mean a stylesheet edit for
+                     one row of digits. -->
+                <div class="twr-slot-h">Ways to use ${sizes.join('')} transfer${size === 1 ? '' : 's'}</div>
+                ${cards || `<div class="twr-caveat">No ${size}-transfer plan is legal with this squad and bank —
+                    the money or the three-per-club limit runs out first.</div>`}
+            </div>`;
         }
 
         // Why this move, in the model's own terms rather than a generic blurb.
 
 
-        // Drop the recommendation into the planner so it can be reviewed and edited
-        // rather than applied blind.
+        /* Drop the recommendation into the planner so it can be reviewed and
+           edited rather than applied blind.
+
+           THIS USED TO DO NOTHING VISIBLE, and then quietly undo itself.
+
+           It filled the cart and re-rendered, but left the wizard on step 1.
+           Step 1 is the plan chooser: renderTWMarketPane returns an empty
+           string on it and the squad pane draws twRenderPlanStep, so a loaded
+           cart rendered in neither. The button appeared inert.
+
+           Worse, it left transferState.strategy null — the state the wizard
+           starts in — so the obvious next thing to do was pick a plan, and
+           twSetStrategy empties pending on an actual switch. Picking a plan is
+           meant to throw away players chosen under the previous one; here it
+           threw away the recommendation the manager had just asked for. The
+           button did nothing, and then the next click deleted what it had done.
+
+           So: the plan FIRST, while the cart is still empty and there is
+           nothing for the switch to wipe, then the cart, then the step that
+           actually shows it. Every slot arrives with a replacement already, so
+           the Overview is both reachable and the right place to land — the
+           squad this leaves you with, and what it costs.
+
+           single or multi follows the size of the plan, and the two caps agree:
+           TW_PLAN_CAP.multi is 5 and so is the engine's TW_MAX_PLAN, so a
+           recommendation can never arrive larger than the plan it is loaded
+           into.
+
+           AND IT GOES THROUGH twRailGo, not twGoStep. The market pane does not
+           dispatch on the step at all — it dispatches on transferState.mode,
+           and there is no step-4 branch in it. Setting the step to 4 and
+           leaving mode as 'squad' matched none of its cases, so it fell through
+           to the idle "pick a player in your squad" panel and the Overview
+           arrived empty. twRailGo is the one place that knows which mode each
+           step owns; calling it instead of setting the pair by hand is the
+           same lesson as PDM_LAYOUT in the player card — a second copy of a
+           mapping drifts from the first. */
         let twLastRecommendation = null;
         function twApplyRecommendation() {
             const r = twLastRecommendation;
             if (!r || !r.best || !r.best.moves.length) return;
-            transferState.pending = r.best.moves.map(m => ({ soldPlayer: m.out, replacement: m.in }));
+            const moves = r.best.moves;
+
+            twSetStrategy(moves.length > 1 ? 'multi' : 'single', { render: false });
+
+            transferState.pending = moves.map(m => ({ soldPlayer: m.out, replacement: m.in }));
             transferState.activeSlot = -1;
-            transferState.mode = 'squad';
-            renderTWAll();
-            updateStatus(`Loaded ${r.best.moves.length} recommended transfer${r.best.moves.length === 1 ? '' : 's'} — review before confirming`, 'success');
+            transferState.previewPlayer = null;
+
+            twRailGo(4);
+            updateStatus(`Loaded ${moves.length} recommended transfer${moves.length === 1 ? '' : 's'} — review before confirming`, 'success');
         }
 
         /* A move handed over from the dashboard.
@@ -1256,10 +1402,10 @@
                     x.setAttribute('data-tooltip', label);
                     x.setAttribute('aria-label', label);
                     x.onclick = (ev) => { ev.stopPropagation(); twRemoveSlot(slotOf(id)); };
-                    x.onkeydown = (ev) => {
-                        if (ev.key !== 'Enter' && ev.key !== ' ') return;
-                        ev.preventDefault(); ev.stopPropagation(); twRemoveSlot(slotOf(id));
-                    };
+                    /* No onkeydown. x already carries role="button" and
+                       tabindex, and initKeyActivation() in common.js activates
+                       anything with that role on Enter or Space — this was the
+                       fifth hand-written copy of that rule. */
                 }
 
                 const chip = node.querySelector('.pdm-hero-chip');
@@ -1332,7 +1478,6 @@
                     const drop = picked && transferState.sellMode
                         ? `<span class="tw-sqc-x" role="button" tabindex="0"
                             onclick="event.stopPropagation(); twRemoveSlot(${i});"
-                            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();twRemoveSlot(${i});}"
                             data-tooltip="${escHTML(`Take ${p.name} out of the plan`)}" aria-label="${escHTML(`Take ${p.name} out of the plan`)}">\u00d7</span>`
                         : '';
                     return `<button class="tw-outc tw-sqc${picked ? ' is-picked' : ''}${active ? ' is-active' : ''}${inP ? ' is-filled' : ''}"
@@ -1495,7 +1640,6 @@
                     rows += `<div class="twc-row ${twPosEdge} ${sold ? 'is-sold' : ''} ${pending ? 'is-picked' : ''} ${pickable ? 'is-pickable' : ''}"
                         ${pickable ? `role="button" tabindex="0" aria-pressed="${pending}"
                             onclick="twRowPick(${p.id})"
-                            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();twRowPick(${p.id});}"
                             data-tooltip="${pending ? escHTML(`${p.name} is in the plan — click to take him back out`) : escHTML(`Move ${p.name} on`)}"` : ''}>
                         ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(twIdent) : ''}
                         <div class="twc-who">
@@ -2544,7 +2688,6 @@
                 return `<div class="dp-card twov-card ${posClass}${p.isIncoming ? ' twov-in' : ''}${picked ? ' is-picked' : ''}${target ? ' is-target' : ''}"
                     role="button" tabindex="0" aria-pressed="${picked}"
                     onclick="twOvClick(${p.id})"
-                    onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();twOvClick(${p.id});}"
                     data-tooltip="${escHTML(picked ? `${p.name} is held — click whoever should change places with him`
                         : twOvPick !== null ? (target ? `Swap with ${byId.get(twOvPick).name}` : `${p.name} cannot change places with ${byId.get(twOvPick).name}`)
                         : `${p.name} — click to move him`)}">
@@ -3485,13 +3628,34 @@
            definition, and choosing a plan clears whatever was staged under the
            old one, so a strategy set after the slot would throw the slot away. */
         function tmSellBeforeDrop(playerId) {
-            // Switch first: renderTransferWizard() resets transferState on its first
-            // run, so a slot staged beforehand would be wiped before it was drawn.
-            switchTab('transfer');
-            if (typeof twSetStrategy === 'function' && transferState.strategy !== 'single') {
-                twSetStrategy('single');
-            }
-            twSwapPlayer(playerId);
+            /* Switch first: renderTransferWizard() resets transferState on its
+               first run, so a slot staged beforehand would be wiped before it
+               was drawn.
+
+               And WAIT for it, which is what this was missing. The ordering
+               above used to hold because switchTab() was synchronous; once the
+               wizard's own file started arriving on the click, switchTab began
+               handing back a promise and calling renderTransferWizard() from
+               its .then(). So the two lines below ran first, staged the slot,
+               and the render that followed replaced transferState wholesale —
+               exactly the loss the comment was written to prevent, reintroduced
+               by a change somewhere else.
+
+               It only bit the FIRST use in a session: switchTab only loads and
+               renders when transferRendered is false, so the second click found
+               the wizard already drawn, took the synchronous path, and worked.
+               That is why it survived.
+
+               Promise.resolve() because switchTab returns null once there is
+               nothing left to load. Same shape as planTransferFromPanel() in
+               panels-and-tabs.js, which documents this hazard and is the reason
+               switchTab returns the promise at all. */
+            Promise.resolve(switchTab('transfer')).then(function () {
+                if (typeof twSetStrategy === 'function' && transferState.strategy !== 'single') {
+                    twSetStrategy('single');
+                }
+                twSwapPlayer(playerId);
+            });
         }
 
         function tmSetMarketTab(tab) {
@@ -3568,7 +3732,7 @@
             }
             if (interleaved.length) {
                 const item = p => `<span class="tm-tick ${p.threshold > 0 ? 'up' : 'down'}">
-                    <span class="tm-tick-arrow">${p.threshold > 0 ? '' : ''}</span>
+                    <span class="tm-tick-arrow">${v2Icon(p.threshold > 0 ? 'trend' : 'trendDown')}</span>
                     <span class="tm-tick-name">${escHTML(p.name)}</span>
                     <span class="tm-tick-team">(${escHTML(p.teamShort)})</span>
                     ${squadIds.has(p.id) ? '<span class="tm-tick-squad">SQUAD</span>' : ''}
@@ -3578,7 +3742,7 @@
                 // loop point is invisible.
                 const run = interleaved.map(item).join('<span class="tm-tick-sep">•</span>');
                 html += `<div class="tm-ticker" role="marquee" aria-label="Players closest to a price change">
-                    <div class="tm-ticker-track">${run}<span class="tm-tick-sep">•</span>${run}<span class="tm-tick-sep">•</span></div>
+                    <div class="tm-ticker-track">${run}<span class="tm-tick-sep">•</span><span aria-hidden="true">${run}<span class="tm-tick-sep">•</span></span></div>
                 </div>`;
             }
 

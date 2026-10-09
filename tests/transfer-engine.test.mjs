@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { loadFunction } from './helpers/load.mjs';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
 
 const twDeriveFreeTransfers = loadFunction('scripts/transfer-engine.js', 'twDeriveFreeTransfers');
 const twDiversifySwaps = loadFunction('scripts/transfer-engine.js', 'twDiversifySwaps');
@@ -117,4 +121,531 @@ test('one candidate is one option, and none is none', () => {
     assert.deepEqual(host(twDiversifySwaps([], 3)), []);
     assert.deepEqual(host(twDiversifySwaps(null, 3)), []);
     assert.equal(twDiversifySwaps([cand(1, 8, 5)], 3).length, 1);
+});
+
+/* ===== How many transfers, and the ceiling that used to answer for it =====
+
+   The reported symptom: a manager holding four free transfers was recommended
+   exactly two, every week, whatever the squad looked like. It was not a
+   judgement. The option set was hard-coded to one move and two, and with four
+   banked both cost nothing, the pair's joint gain is never less than the better
+   half alone, and both were measured against the same flat 3.0 margin that the
+   first move had already covered. n = 2 won by construction.
+
+   Lifting the ceiling alone would have made it answer four. The margin is per
+   move now, so each transfer has to add three points of its own — four if it is
+   taking a hit, on top of the hit. These tests are mostly about the second half:
+   what the planner REFUSES to recommend. */
+
+const twPlanChain = loadFunction('scripts/transfer-engine.js', 'twPlanChain', {
+    TW_MIN_FREE_GAIN: 3.0, TW_MIN_HIT_GAIN: 4.0, TW_MAX_PLAN: 5
+});
+
+let planUid = 0;
+/** A move worth `solo` points on its own. `pos` is the outgoing player's
+ *  position — 1 is a goalkeeper, which the friction below cares about. */
+const mv = (solo, extra = {}) => {
+    planUid++;
+    return {
+        out: {
+            id: `o${planUid}`, status: extra.status || 'a',
+            position: extra.pos || 3, teamId: `t${planUid}`
+        },
+        in: { id: `i${planUid}`, teamId: `t${planUid}` },
+        gain: solo, _solo: solo
+    };
+};
+/** Additive by default; `decay` models the double-counting a lineup re-solve
+ *  removes — two moves promoting the same bench player into the same eleven. */
+const jointGain = decay => ms =>
+    ms.reduce((t, m, i) => t + m._solo * (decay ? decay ** i : 1), 0);
+const anyLegal = () => true;
+const plan = (moves, opts = {}) =>
+    twPlanChain(moves, { jointGain: jointGain(opts.decay), legal: opts.legal || anyLegal, ...opts });
+
+test('four free transfers and one good move is one transfer, not two', () => {
+    /* The bug, in one line. Under the old rule the pair netted 9.6 against a
+       flat 3.0 and beat the single move's 9.0, so it was recommended. */
+    assert.equal(plan([mv(9), mv(0.6), mv(0.4), mv(0.2)], { ft: 4 }).depth, 1);
+});
+
+test('the bigger plan is still priced and offered, just not recommended', () => {
+    /* The card can show a plan the engine did not pick, so the chain has to
+       carry it — `depth` is the verdict, not the whole list. */
+    const r = plan([mv(9), mv(0.6)], { ft: 4 });
+    assert.equal(r.chain.length, 2);
+    assert.equal(r.chain[1].net, 9.6);
+    assert.equal(r.depth, 1);
+});
+
+test('four genuinely good moves are all recommended', () => {
+    assert.equal(plan([mv(9), mv(8), mv(7), mv(6)], { ft: 4 }).depth, 4);
+});
+
+test('a plan stops at the first move that cannot pay for itself', () => {
+    assert.equal(plan([mv(9), mv(8), mv(7), mv(0.5)], { ft: 4 }).depth, 3);
+});
+
+test('a hit has to clear the hit and the margin on top of it', () => {
+    // Second move costs 4, so it needs stepGain - 4 >= 4.
+    assert.equal(plan([mv(9), mv(7.9)], { ft: 1 }).depth, 1);
+    assert.equal(plan([mv(9), mv(8.1)], { ft: 1 }).depth, 2);
+});
+
+test('a player who cannot play is replaced whatever the margin says', () => {
+    assert.equal(plan([mv(9), mv(0.1, { status: 'i' })], { ft: 4 }).depth, 2);
+});
+
+test('one injured player does not wave three speculative moves through', () => {
+    /* The old filter exempted a whole package if any move in it was forced,
+       so an injured starter paid for everything behind him. */
+    assert.equal(plan([mv(0.1, { status: 'i' }), mv(0.2), mv(0.3)], { ft: 4 }).depth, 1);
+});
+
+test('freeTransfersOnly drops a hit step but keeps a forced one', () => {
+    assert.equal(plan([mv(9), mv(20)], { ft: 1, freeTransfersOnly: true }).depth, 1);
+    assert.equal(plan([mv(9), mv(0.1, { status: 'i' })], { ft: 1, freeTransfersOnly: true }).depth, 2);
+});
+
+test('the first move is the caller\'s, so the flagged tie-break survives', () => {
+    /* twBuildRecommendation reorders `moves` so a squad-analysis Sell verdict
+       wins a close call. Re-choosing step one by joint gain would undo that. */
+    assert.equal(plan([mv(5), mv(9)], { ft: 4 }).chain[0].step._solo, 5);
+});
+
+test('every move after the first is chosen by what it adds', () => {
+    assert.equal(plan([mv(9), mv(4), mv(7)], { ft: 4 }).chain[1].step._solo, 7);
+});
+
+test('two moves claiming the same improvement are not paid twice', () => {
+    const r = plan([mv(9), mv(5)], { ft: 4, decay: 0.5 });
+    assert.equal(r.chain[1].stepGain, 2.5);
+    assert.equal(r.depth, 1, 'half of 5 does not clear 3.0');
+});
+
+test('a package that is not legal is never built', () => {
+    const r = plan([mv(9), mv(8)], { ft: 4, legal: ms => ms.length < 2 });
+    assert.equal(r.chain.length, 1);
+});
+
+test('the plan is capped however many transfers are banked', () => {
+    const many = Array.from({ length: 9 }, () => mv(20));
+    assert.equal(plan(many, { ft: 8 }).chain.length, 5);
+});
+
+test('no legal move is no chain and no depth', () => {
+    const r = plan([], { ft: 4 });
+    assert.equal(r.chain.length, 0);
+    assert.equal(r.depth, 0);
+});
+
+test('a player is never sold twice in one plan', () => {
+    const first = mv(9);
+    const sameOut = { out: first.out, in: { id: 'zz', teamId: 'tz' }, gain: 8, _solo: 8 };
+    assert.equal(plan([first, sameOut], { ft: 4 }).chain.length, 1);
+});
+
+/* ===== Goalkeepers, and the justification that did not survive checking =====
+
+   Managers do not transfer keepers, and the engine kept offering it. The
+   tempting explanation — "playing keepers are all much of a muchness, so noise
+   clears the margin there more easily than a real upgrade does in attack" — is
+   false. Measured on GW6 data over the five-gameweek horizon, the p10-to-p90
+   points spread among playing keepers is 21.0 points against 20.0 for
+   midfielders. Keepers are not interchangeable.
+
+   What is structural is the price band: playing keepers span £4.5m to £6.1m
+   against £4.5m-£11.9m for midfielders, so the transfer moves no money and buys
+   a different keeper and nothing else. The rest is a product decision. Either
+   way the constant is a preference, so these tests inject the friction rather
+   than asserting against whatever TW_GK_FRICTION happens to be. */
+
+const twMoveFriction = loadFunction('scripts/transfer-engine.js', 'twMoveFriction', {
+    TW_GK_FRICTION: 3.0
+});
+
+const gk = (solo, extra = {}) => mv(solo, { ...extra, pos: 1 });
+/** Step one is pinned to moves[0], so the caller owns the ranking — and the
+ *  caller applies the same friction. Mirrored here so these exercise the real
+ *  pipeline rather than an order production never produces. */
+const ranked = moves => moves.slice()
+    .sort((a, b) => (b.gain - twMoveFriction(b)) - (a.gain - twMoveFriction(a)));
+const planRanked = (moves, opts = {}) => twPlanChain(ranked(moves), {
+    jointGain: jointGain(opts.decay), legal: opts.legal || anyLegal,
+    friction: twMoveFriction, ...opts
+});
+
+test('friction falls on an available keeper and nobody else', () => {
+    assert.equal(twMoveFriction(gk(5)), 3.0);
+    assert.equal(twMoveFriction(mv(5)), 0, 'outfield moves are free of it');
+    assert.equal(twMoveFriction(gk(5, { status: 'i' })), 0, 'an injury is not reluctance');
+    assert.equal(twMoveFriction(gk(5, { status: 'd' })), 0);
+    assert.equal(twMoveFriction(null), 0);
+});
+
+test('a keeper swap has to be worth about twice an outfield one', () => {
+    assert.equal(planRanked([mv(4)], { ft: 4 }).depth, 1, 'an outfield move worth 4 is taken');
+    assert.equal(planRanked([gk(4)], { ft: 4 }).depth, 0, 'the same number on a keeper is not');
+    assert.equal(planRanked([gk(5.9)], { ft: 4 }).depth, 0);
+    assert.equal(planRanked([gk(6.1)], { ft: 4 }).depth, 1);
+});
+
+test('a keeper who cannot play is replaced on the ordinary margin', () => {
+    assert.equal(planRanked([gk(3.5, { status: 'i' })], { ft: 4 }).depth, 1);
+});
+
+test('a refused keeper does not cost you the outfield move behind it', () => {
+    /* The friction is applied to the RANKING as well as the margin, so a
+       keeper that would fail the bar does not get pinned to step one and
+       strand a perfectly good move two rows down. */
+    const r = planRanked([gk(5), mv(5)], { ft: 4 });
+    assert.equal(r.chain[0].step.out.position, 3, 'step one is the outfield move');
+    assert.equal(r.depth, 1);
+});
+
+test('a clearly better keeper still wins', () => {
+    const r = planRanked([gk(12), mv(5)], { ft: 4 });
+    assert.equal(r.chain[0].step.out.position, 1);
+    assert.ok(r.depth >= 1);
+});
+
+test('the friction applies to later steps, not only the first', () => {
+    const r = planRanked([mv(9), gk(4), mv(3.5)], { ft: 4 });
+    assert.equal(r.chain[1].step.out.position, 3, 'step two prefers the outfield move');
+    assert.equal(planRanked([mv(9), gk(4)], { ft: 4 }).depth, 1, 'and refuses the keeper outright');
+});
+
+test('a keeper topping the ranking and then failing cannot hide a viable move', () => {
+    /* The property that makes pinning step one safe. If the keeper leads after
+       friction then gkGain - 3 >= every other gain; if it then fails viability,
+       gkGain - 3 < 3, so every other gain is under 3 and none of them would
+       have cleared the margin either. Holding is the right answer, not a move
+       the friction lost. Swept rather than argued. */
+    for (let g = 3.0; g <= 6.0; g += 0.25) {
+        for (let o = 0; o <= g - 3.0; o += 0.25) {
+            const r = planRanked([gk(g), mv(o)], { ft: 4 });
+            if (r.depth === 0) {
+                assert.ok(o < 3.0,
+                    `held at keeper ${g} while an outfield move worth ${o} was available`);
+            }
+        }
+    }
+});
+
+/* ===== The site's own signals, as an input to who to buy =====
+
+   The recommender priced candidates on projected points and nothing else, so
+   the site could put a player in its Rising Form section and ignore him when
+   choosing a transfer. Both signals are computed on the same page.
+
+   The whole risk here is overreach, so that is what is tested: the boost is
+   bounded, it moves the ranking and never the reported points, it cannot
+   manufacture a recommendation that the margin would otherwise refuse, and it
+   cannot cancel the goalkeeper brake. */
+
+const twMoveBoost = loadFunction('scripts/transfer-engine.js', 'twMoveBoost', {
+    TW_SIGNAL_MAX: 1.5
+});
+
+const sigMap = pairs => new Map(Object.entries(pairs));
+const inMove = (solo, inId, extra = {}) => {
+    const m = mv(solo, extra);
+    m.in.id = inId;
+    return m;
+};
+
+test('the boost is zero without a signal to read', () => {
+    assert.equal(twMoveBoost(mv(5), null), 0);
+    assert.equal(twMoveBoost(mv(5), new Map()), 0);
+    assert.equal(twMoveBoost(null, new Map()), 0);
+});
+
+test('the boost scales across the whole 0-100 range and stops at the cap', () => {
+    const m = inMove(5, 'X');
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: 0, patch: 0 } })), 0);
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: 100, patch: 100 } })), 1.5);
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: 50, patch: 50 } })), 0.75);
+});
+
+test('a player measurable on one signal is averaged over one, not halved', () => {
+    /* Four gameweeks in, "no purple patch yet" is a fact about the calendar,
+       not about the player, and must not read as a zero. */
+    const m = inMove(5, 'X');
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: 100, patch: null } })), 1.5);
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: null, patch: 100 } })), 1.5);
+});
+
+test('a score outside its range is clamped rather than trusted', () => {
+    const m = inMove(5, 'X');
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: 999, patch: 999 } })), 1.5);
+    assert.equal(twMoveBoost(m, sigMap({ X: { rising: -50, patch: -50 } })), 0);
+});
+
+test('the signal belongs to the player coming in, not the one going out', () => {
+    const m = inMove(5, 'IN');
+    assert.equal(twMoveBoost(m, sigMap({ IN: { rising: 100, patch: 100 } })), 1.5);
+    assert.equal(twMoveBoost(m, sigMap({ [m.out.id]: { rising: 100, patch: 100 } })), 0);
+});
+
+test('a signal cannot manufacture a recommendation the margin would refuse', () => {
+    /* 2.0 is under TW_MIN_FREE_GAIN. The margin is tested on the unadjusted
+       gain, so even a maximal boost must leave this a hold. */
+    const m = inMove(2.0, 'X');
+    const S = sigMap({ X: { rising: 100, patch: 100 } });
+    const r = plan([m], { ft: 4, boost: x => twMoveBoost(x, S) });
+    assert.equal(r.depth, 0);
+});
+
+test('a signal cannot cancel the goalkeeper brake', () => {
+    const g = inMove(4.0, 'K', { pos: 1 });
+    const S = sigMap({ K: { rising: 100, patch: 100 } });
+    const r = plan([g], {
+        ft: 4, friction: twMoveFriction, boost: x => twMoveBoost(x, S)
+    });
+    assert.equal(r.depth, 0, 'friction 3.0 outweighs a 1.5 cap');
+});
+
+test('the boost never reaches the figures the card prints', () => {
+    const m = inMove(9, 'X');
+    const S = sigMap({ X: { rising: 100, patch: 100 } });
+    const r = plan([m], { ft: 4, boost: x => twMoveBoost(x, S) });
+    assert.equal(r.chain[0].gross, 9, 'gross is the real projection');
+    assert.equal(r.chain[0].net, 9, 'and so is net');
+});
+
+test('a signal does reorder two candidates the engine rates similarly', () => {
+    const a = inMove(5.0, 'A');
+    const b = inMove(5.4, 'B');
+    const S = sigMap({ A: { rising: 100, patch: 100 } });
+    const rank = m => m.gain + twMoveBoost(m, S);
+    const first = [a, b].sort((x, y) => rank(y) - rank(x))[0];
+    assert.equal(first.in.id, 'A', '6.5 against 5.4');
+});
+
+test('the constants stay in the order the design depends on', () => {
+    /* TW_SIGNAL_MAX has to sit below both the margin a transfer must clear and
+       the keeper brake, or the two tests above stop meaning anything. Read from
+       source so raising one without the other fails here. */
+    const src = fs.readFileSync(path.join(ROOT, 'scripts/transfer-engine.js'), 'utf8');
+    const num = name => {
+        const m = new RegExp(`${name}\\s*=\\s*([0-9.]+)`).exec(src);
+        assert.ok(m, `${name} should be findable`);
+        return parseFloat(m[1]);
+    };
+    assert.ok(num('TW_SIGNAL_MAX') < num('TW_MIN_FREE_GAIN'),
+        'a signal must not outrun the margin a transfer has to clear');
+    assert.ok(num('TW_SIGNAL_MAX') < num('TW_GK_FRICTION'),
+        'a signal must not cancel the goalkeeper brake');
+});
+
+/* ===== One answer to "can this player be recommended" =====
+
+   Four surfaces offer a replacement and they disagreed about doubts. Step 1,
+   the draft and Squad Analysis accepted status 'd' outright; the wizard's quick
+   picks refused every one. So a doubtful player was a valid recommendation on
+   one screen and invisible on the next, with nothing on screen to explain it.
+
+   The threshold is not a new opinion: rfEvaluate() in scripts/form-trend.js
+   already blocks Rising Form below 75% with the reasoning that a flagged doubt
+   "is not a transfer to plan around". Same number, one rule. */
+
+const twPlayerAvailable = loadFunction('scripts/transfer-engine.js', 'twPlayerAvailable', {
+    TW_DOUBT_FLOOR: 75
+});
+
+const who = (o = {}) => ({ status: 'a', chanceNextRound: null, ...o });
+
+test('a fit player can be recommended', () => {
+    assert.equal(twPlayerAvailable(who()), true);
+});
+
+test('injured, suspended and unavailable cannot', () => {
+    for (const status of ['i', 's', 'u']) {
+        assert.equal(twPlayerAvailable(who({ status })), false, status);
+    }
+});
+
+test('a doubt at 75% or better can, below it cannot', () => {
+    assert.equal(twPlayerAvailable(who({ status: 'd', chanceNextRound: 75 })), true);
+    assert.equal(twPlayerAvailable(who({ status: 'd', chanceNextRound: 100 })), true);
+    assert.equal(twPlayerAvailable(who({ status: 'd', chanceNextRound: 50 })), false);
+    assert.equal(twPlayerAvailable(who({ status: 'd', chanceNextRound: 0 })), false);
+});
+
+test('a doubt FPL has not put a number on still passes', () => {
+    /* The flag without a figure is how FPL marks a knock it has no update on.
+       Refusing those would drop players who are fit. */
+    assert.equal(twPlayerAvailable(who({ status: 'd', chanceNextRound: null })), true);
+});
+
+test('no player is not a player', () => {
+    assert.equal(twPlayerAvailable(null), false);
+    assert.equal(twPlayerAvailable(undefined), false);
+});
+
+/* ===== The team-context nudge, out of the projection =====
+
+   It used to be added inside twXPCached, which put it inside lwScore, inside
+   twSquadValue, and therefore inside the gain/gross/net figures the card prints
+   as "xP". On GW Draft — the one surface that asks for it — the number labelled
+   xP was xP plus up to 2.5 points of something else. It is a ranking adjustment
+   now, so every surface reports pure xP. */
+
+const twTeamContextNudge = loadFunction('scripts/transfer-engine.js', 'twTeamContextNudge', {
+    teamAnalysis: {
+        hot: { matchesPlayed: 5, formRating: 100, attackPower: 100, defensePower: 100, fixtureScore: 100 },
+        cold: { matchesPlayed: 5, formRating: 0, attackPower: 0, defensePower: 0, fixtureScore: 0 },
+        mid: { matchesPlayed: 5, formRating: 50, attackPower: 50, defensePower: 50, fixtureScore: 50 },
+        unplayed: { matchesPlayed: 0, formRating: 100, attackPower: 100, defensePower: 100, fixtureScore: 100 }
+    }
+});
+
+test('the nudge stays inside its clamp at both extremes', () => {
+    const hot = twTeamContextNudge({ teamId: 'hot', position: 4 });
+    const cold = twTeamContextNudge({ teamId: 'cold', position: 4 });
+    assert.equal(hot, 0.75);
+    assert.equal(cold, -0.75);
+});
+
+test('an average team is worth nothing either way', () => {
+    assert.equal(twTeamContextNudge({ teamId: 'mid', position: 4 }), 0);
+});
+
+test('a club that has not played is not read as cold', () => {
+    /* Every component is measured against 50, so a club with no matches would
+       otherwise score whatever its unset fields happen to say. */
+    assert.equal(twTeamContextNudge({ teamId: 'unplayed', position: 4 }), 0);
+    assert.equal(twTeamContextNudge({ teamId: 'nosuchteam', position: 4 }), 0);
+});
+
+test('swapping inside one club is neutral', () => {
+    /* The nudge is applied as in-minus-out now, which is the faithful
+       translation of adding it to both ends inside the projection. Two players
+       at the same club therefore cancel. */
+    const a = twTeamContextNudge({ teamId: 'hot', position: 4 });
+    const b = twTeamContextNudge({ teamId: 'hot', position: 4 });
+    assert.equal(a - b, 0);
+});
+
+test('no selection nudge may outrun the margin a transfer has to clear', () => {
+    /* THE INVARIANT THE WHOLE DESIGN RESTS ON, and it was broken until now.
+
+       Three things move a selection without moving a projection: the goalkeeper
+       friction, the Rising Form / Purple Patch boost, and this nudge. Each is
+       meant to decide between candidates the engine rates as near-equals, and
+       none of them may be able to promote a move the projection rates worse by
+       more than a transfer is required to be worth.
+
+       The nudge failed that. Clamped at ±2.5 and applied as in-minus-out, it
+       could swing a ranking by 5.0 against a 3.0 margin — so its own comment,
+       claiming it could "only ever break a close call", was false at the edges.
+       ±0.75 caps the swing at 1.5, the same budget TW_SIGNAL_MAX gets.
+
+       Asserted against the constants in the source rather than against literals,
+       so raising any one of them without the others fails here. */
+    const src = fs.readFileSync(path.join(ROOT, 'scripts/transfer-engine.js'), 'utf8');
+    const num = name => {
+        const m = new RegExp(`${name}\\s*=\\s*([0-9.]+)`).exec(src);
+        assert.ok(m, `${name} should be findable`);
+        return parseFloat(m[1]);
+    };
+    const margin = num('TW_MIN_FREE_GAIN');
+    // The nudge is a difference between two clamped values, so its reach is double.
+    const nudgeSwing = num('TW_TEAM_CTX_CLAMP') * 2;
+    assert.ok(nudgeSwing < margin,
+        `team context can swing ${nudgeSwing} against a ${margin} margin`);
+    assert.ok(num('TW_SIGNAL_MAX') < margin,
+        'the signal boost must not outrun the margin either');
+    assert.ok(nudgeSwing <= num('TW_SIGNAL_MAX'),
+        'and it should not outrank the signals, which are about the player himself');
+
+    // And the measured swing matches the constant.
+    const delta = twTeamContextNudge({ teamId: 'hot', position: 4 })
+        - twTeamContextNudge({ teamId: 'cold', position: 4 });
+    assert.equal(delta, nudgeSwing);
+});
+
+/* ===== Several plans of the same size =====
+
+   "I have four free transfers, show me some ways to use three of them" is a
+   different question from "what is the single best move", and the engine could
+   only answer the second. twPlanChain pins its first step to the caller's
+   top-ranked move, so seeding it with a different first move each time and
+   keeping the answers that differ meaningfully is the whole mechanism — same
+   engine, same pricing, same legality, several answers.
+
+   What matters is that it stays honest about two things: the plans are genuinely
+   different rather than reshuffled, and a plan bigger than the margin supports
+   is still shown and still labelled as such. */
+
+const twPlanPackages = loadFunction('scripts/transfer-engine.js', 'twPlanPackages', {
+    twPlanChain, TW_PACKAGE_OVERLAP: 0.5
+});
+
+const packs = (moves, size, want, extra = {}) => twPlanPackages(moves, {
+    ft: 4, jointGain: jointGain(), legal: anyLegal, size, ...extra
+}, want);
+
+test('three ways to use two transfers', () => {
+    const m = [mv(10), mv(9), mv(8), mv(7), mv(6), mv(5)];
+    const out = packs(m, 2, 3);
+    assert.equal(out.length, 3);
+    for (const p of out) assert.equal(p.moves.length, 2);
+});
+
+test('no two plans are the same set of moves', () => {
+    const m = [mv(10), mv(9), mv(8), mv(7), mv(6), mv(5)];
+    const sigs = packs(m, 2, 3)
+        .map(p => [...p.moves.map(x => x.out.id)].sort().join('+'));
+    assert.equal(new Set(sigs).size, sigs.length);
+});
+
+test('the best plan comes first', () => {
+    const out = packs([mv(10), mv(9), mv(1), mv(1)], 2, 3);
+    assert.equal(out[0].gross, 19);
+});
+
+test('a plan bigger than the margin supports is shown and flagged', () => {
+    /* The manager asked for three. Refusing would be the engine overruling the
+       question; quietly returning one would be answering a different one. */
+    const out = packs([mv(10), mv(0.5), mv(0.4), mv(0.3)], 3, 2);
+    assert.ok(out.length >= 1);
+    assert.equal(out[0].moves.length, 3);
+    assert.equal(out[0].recommended, false);
+});
+
+test('a plan where every move earns its place is flagged as worth it', () => {
+    assert.equal(packs([mv(10), mv(9), mv(8)], 3, 1)[0].recommended, true);
+});
+
+test('an explicit size can exceed the recommendation ceiling', () => {
+    /* A recommendation stops at one past the free-transfer count, so it never
+       reaches for a second hit nobody asked about. An explicit request is
+       somebody asking about it. */
+    const out = packs([mv(10), mv(9), mv(8)], 3, 1, { ft: 1 });
+    assert.equal(out.length, 1);
+    assert.equal(out[0].moves.length, 3);
+    assert.equal(out[0].gross, 27);
+    assert.equal(out[0].cost, 8, 'two hits beyond one free transfer');
+    assert.equal(out[0].net, 19);
+});
+
+test('a size that cannot be filled returns nothing, not a short plan', () => {
+    assert.equal(packs([mv(10), mv(9)], 4, 3).length, 0);
+});
+
+test('an illegal combination is never offered', () => {
+    const out = twPlanPackages([mv(10), mv(9), mv(8)], {
+        ft: 4, jointGain: jointGain(), legal: ms => ms.length < 2, size: 2
+    }, 3);
+    assert.equal(out.length, 0);
+});
+
+test('want is a ceiling, not a quota', () => {
+    assert.equal(packs([mv(10), mv(9)], 2, 5).length, 1, 'only one disjoint pair exists');
+});
+
+test('nothing in, nothing out', () => {
+    assert.equal(packs([], 2, 3).length, 0);
+    assert.equal(twPlanPackages(null, { ft: 4, jointGain: jointGain(), legal: anyLegal, size: 2 }, 3).length, 0);
 });

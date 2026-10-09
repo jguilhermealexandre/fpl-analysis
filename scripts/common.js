@@ -453,6 +453,50 @@ function sellingPriceTenths(purchaseTenths, nowTenths) {
         : nowTenths;
 }
 
+/* ===== What a squad is worth if you sell it =====
+ *
+ * The picks endpoint has no purchase prices — a pick is { element, position,
+ * multiplier, is_captain, is_vice_captain, element_type } — and the endpoint
+ * that does, my-team/{id}, needs the manager's own login. So a selling price
+ * has to be derived, and entry/{id}/transfers/ is the public source: it stamps
+ * every move with element_in_cost.
+ *
+ * Shared because two surfaces budget against this and had different answers.
+ * The squad page read pick.selling_price, which does not exist, and got NaN.
+ * The dashboard guarded that and fell back to the LIST price, which overstates
+ * what a risen player raises. Same player, two numbers, neither right.
+ */
+function v2BoughtTenths(transferLog) {
+    const out = new Map();
+    (Array.isArray(transferLog) ? transferLog : [])
+        .slice()
+        // Oldest first, so a player bought, sold and bought again ends on the
+        // price he was last bought at.
+        .sort((a, b) => (a.event || 0) - (b.event || 0))
+        .forEach(t => {
+            if (t && t.element_in != null && t.element_in_cost != null) {
+                out.set(t.element_in, t.element_in_cost);
+            }
+        });
+    return out;
+}
+
+/* In millions, like every other price the UI handles.
+   `player` needs .id, .price and .costChangeStart (tenths, as the feed states
+   it). A player with no transfer row was in the squad at the start, so his
+   purchase price is today's price less his whole season's movement. */
+function v2SellPrice(pick, player, boughtTenths) {
+    if (!player) return 0;
+    // A transfer for a round not yet kicked off is applied by
+    // applyPendingTransfers(), which writes a real selling_price on its slot.
+    if (pick && pick.selling_price != null) return pick.selling_price / 10;
+    const nowTenths = Math.round(player.price * 10);
+    const bought = boughtTenths && boughtTenths.has(player.id)
+        ? boughtTenths.get(player.id)
+        : nowTenths - (player.costChangeStart || 0);
+    return sellingPriceTenths(bought, nowTenths) / 10;
+}
+
 // ===== PLAYER PHOTOS =====
 /* The club's headshot for a player, addressed the way premierleague.com
  * addresses it today.
@@ -748,6 +792,73 @@ function v2CrestHTML(player) {
  * practice a .v2-pid-num pill with the player's projection or score. It goes
  * inside the mark rather than beside it so it can be positioned against the
  * face without either of them needing a wrapper of its own. */
+/* ===== Is this player available? One answer, two presentations. =====
+ *
+ * The same fact was being told three different ways. Squad Analysis's pitch
+ * cards carried a text badge — OUT in red, or the percentage in amber. The GW
+ * Draft table carried an icon. The squad TABLE carried nothing at all, so a
+ * doubtful player at 75% read as an ordinary row: his verdict dot said
+ * "Monitor", which is also what a player with mild form worries gets, and
+ * nothing on the row said the word doubtful.
+ *
+ * Splitting it this way rather than forcing one rendering on both: a pitch card
+ * has room under the face for "OUT" and a dense table row does not, so the
+ * PRESENTATION genuinely differs. What must not differ is the classification —
+ * which statuses count, what each is called, and what the chance figure is. So
+ * that lives here once, and both renderers read it.
+ *
+ * FPL's statuses: a available, d doubtful, i injured, s suspended, u
+ * unavailable (which covers loans, transfers out of the league and non-squad).
+ */
+const V2_AVAILABILITY = {
+    // cross for out and bandage for a doubt, matching the squad ticker's own
+    // marks in team-analysis-core.js. Suspension takes the card, because
+    // "banned" and "hurt" are not the same thing to plan around.
+    i: { state: 'out',   word: 'Injured',     icon: 'cross' },
+    u: { state: 'out',   word: 'Unavailable', icon: 'cross' },
+    s: { state: 'out',   word: 'Suspended',   icon: 'card' },
+    d: { state: 'doubt', word: 'Doubtful',    icon: 'bandage' }
+};
+
+function v2Availability(player) {
+    const row = player && V2_AVAILABILITY[player.status];
+    if (!row) return null;
+
+    /* Only meaningful for a doubt. FPL publishes 0 against every injured,
+       suspended and unavailable player, and "0% chance" beside the word
+       Injured is a number that adds nothing. */
+    const raw = player.chanceNextRound;
+    const chance = row.state === 'doubt' && Number.isFinite(raw) && raw > 0 && raw < 100
+        ? raw : null;
+
+    /* A flagged player whose chance FPL has not published is still flagged.
+       The pitch badge used to require a figure and render nothing without one,
+       which hid the flag entirely — unreachable on today's feed, where all 41
+       doubtful players carry a 50 or a 75, but the wrong way round to fail. */
+    return {
+        state: row.state,
+        word: row.word,
+        icon: row.icon,
+        chance,
+        label: chance != null ? `${row.word}, ${chance}% chance of playing` : row.word,
+        // FPL's own words where it has any, the status otherwise.
+        detail: (player.news && String(player.news).trim()) || row.word
+    };
+}
+
+/* The compact form, for a row in a table. Icon, plus the percentage when there
+   is one — so the table says the same thing in the same words as the pitch. */
+function v2AvailMark(player) {
+    const a = v2Availability(player);
+    if (!a) return '';
+    /* The chance figure lives in the label and the tooltip, not as a second
+       number on the row: a squad row already carries an xMins column whose own
+       tooltip gives the chance of starting, and the pitch card — which has room
+       under the face — prints the percentage itself. */
+    return `<span class="v2-avail ${a.state}" role="img" aria-label="${escHTML(a.label)}"`
+        + ` data-tooltip="${escHTML(a.detail)}">${v2Icon(a.icon)}</span>`;
+}
+
 function v2IdentityHTML(player, variant, extra) {
     return `<span class="v2-pid${variant ? ' ' + variant : ''}">`
         + v2AvatarHTML(player) + v2CrestHTML(player) + (extra || '')
@@ -1623,8 +1734,53 @@ const OVERLAY_CLOSE_SELECTORS = [
     '.drawer-close'
 ].join(',');
 
+/* Where each panel already writes its own heading. Used to name the dialog
+   rather than inventing a label, so the accessible name is the same words a
+   sighted user reads — and stays correct when the panel retitles itself, which
+   the report shell does on every open. */
+const OVERLAY_TITLE_SELECTORS = [
+    '.detail-header .player-name',
+    '.compare-modal-header h2',
+    '.modal-header h2',
+    '.modal-title'
+].join(',');
+
+/* Which overlays genuinely seal the page behind them.
+   Everything else here is a DRAWER, and .detail-overlay is pointer-events:none
+   on purpose so the page behind a drawer stays live — see the note above. That
+   is a real distinction and not a shortcut, so it is honoured rather than
+   flattened: a drawer gets role="dialog" and takes focus, but NOT
+   aria-modal="true" and NOT a tab trap, because claiming the rest of the page
+   is unavailable while leaving it clickable is worse than claiming nothing. */
+const OVERLAY_MODAL_SELECTORS = [
+    '.detail-overlay.as-modal',
+    '.compare-modal',
+    '.modal-overlay'
+].join(',');
+
+const FOCUSABLE_SELECTORS = [
+    'a[href]', 'area[href]', 'button:not([disabled])',
+    'input:not([disabled]):not([type="hidden"])',
+    'select:not([disabled])', 'textarea:not([disabled])',
+    'summary', 'iframe', '[contenteditable="true"]',
+    '[tabindex]:not([tabindex="-1"])'
+].join(',');
+
 function openOverlays() {
     return [...document.querySelectorAll(OVERLAY_OPEN_SELECTORS.join(','))];
+}
+
+function overlayPanel(overlay) {
+    return overlay.querySelector(OVERLAY_CONTENT_SELECTORS) || overlay;
+}
+
+function overlayFocusables(root) {
+    return [...root.querySelectorAll(FOCUSABLE_SELECTORS)].filter(el => {
+        if (el.hasAttribute('inert') || el.getAttribute('aria-hidden') === 'true') return false;
+        // offsetParent is null for display:none and for anything inside it,
+        // which is how the hidden halves of these panels are kept out.
+        return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+    });
 }
 
 function dismissOverlay(overlay) {
@@ -1633,34 +1789,241 @@ function dismissOverlay(overlay) {
     overlay.classList.remove('show', 'open');
 }
 
+/* ===== Dialog semantics and focus, for every overlay on the site =====
+ *
+ * There were three role="dialog" attributes on the whole site and the panels
+ * that carry most of the product had none, so to a screen reader a drawer
+ * opening was an unannounced block of text appearing somewhere in the document,
+ * with focus left on the button behind it. Tab then walked the page underneath
+ * from wherever that button sat.
+ *
+ * Done here, in the one place that already knows which overlays are open,
+ * rather than at each of the couple of dozen openers: they all signal by adding
+ * a class, the MutationObserver below already watches for exactly that, and an
+ * opener that forgets to call something is the failure mode this avoids. The
+ * price is that focus moves a frame after the class lands, which is invisible.
+ *
+ * Deliberately NOT marking the page behind aria-hidden: aria-modal="true" is
+ * the attribute that tells assistive technology to ignore everything outside,
+ * and hiding body children by hand breaks the moment two panels overlap.
+ */
+const overlayFocusOrigin = new WeakMap();
+let overlayTitleSeq = 0;
+
+function overlayEnter(overlay) {
+    const panel = overlayPanel(overlay);
+    const isModal = overlay.matches(OVERLAY_MODAL_SELECTORS);
+
+    if (!panel.getAttribute('role')) panel.setAttribute('role', 'dialog');
+    if (isModal) panel.setAttribute('aria-modal', 'true');
+    else panel.removeAttribute('aria-modal');
+
+    if (!panel.hasAttribute('aria-label') && !panel.hasAttribute('aria-labelledby')) {
+        const title = panel.querySelector(OVERLAY_TITLE_SELECTORS);
+        if (title) {
+            if (!title.id) title.id = `v2DialogTitle${++overlayTitleSeq}`;
+            panel.setAttribute('aria-labelledby', title.id);
+        }
+    }
+    // A div is not focusable without this, and the panel is the fallback target
+    // when it holds no control of its own.
+    if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '-1');
+
+    overlayFocusOrigin.set(overlay, document.activeElement);
+    const target = overlayFocusables(panel)[0] || panel;
+    requestAnimationFrame(() => {
+        // Still open, and nothing else has taken focus in the meantime.
+        if (!overlay.matches(OVERLAY_OPEN_SELECTORS.join(','))) return;
+        if (panel.contains(document.activeElement)) return;
+        try { target.focus({ preventScroll: true }); } catch { target.focus(); }
+    });
+}
+
+function overlayExit(overlay) {
+    const panel = overlayPanel(overlay);
+    panel.removeAttribute('aria-modal');
+
+    const origin = overlayFocusOrigin.get(overlay);
+    overlayFocusOrigin.delete(overlay);
+    if (!origin || typeof origin.focus !== 'function') return;
+    if (!document.contains(origin)) return;
+
+    /* Only put focus back if it is still in the panel being closed, or has been
+       dropped on the body. A drawer leaves the page behind usable on purpose, so
+       somebody who tabbed out and is now typing in the squad filter must not
+       have the caret pulled back to whatever opened the drawer. */
+    const active = document.activeElement;
+    if (active && active !== document.body && !overlay.contains(active)) return;
+    try { origin.focus({ preventScroll: true }); } catch { origin.focus(); }
+}
+
+/* ===== What eleven is a legal eleven =====
+ *
+ * FPL's own rule: one goalkeeper, three to five defenders, two to five
+ * midfielders, one to three forwards, eleven in total. Written as the rule
+ * rather than as a list of formations, because the rule is what FPL publishes
+ * and the list is a consequence of it — there are exactly eight, and deriving
+ * them means the two can never disagree.
+ *
+ * Three places encoded this independently. isValidFormation() in
+ * panels-and-tabs.js — which transfer-wizard.js already calls "the rule" —
+ * checked the lower bounds and not the upper, so it accepted fifteen shapes,
+ * 6-3-1 and 3-2-5 among them. isValidLWFormation() in lineup-wizard.js checked
+ * both and accepted eight. solveQuickLineup() in transfer-engine.js carried the
+ * eight as a literal array.
+ *
+ * Measured over every split of ten outfield players: the three disagree on
+ * seven shapes, and every one of the seven is unreachable from a real FPL
+ * squad. A squad is 2 GK, 5 DEF, 5 MID, 3 FWD and transfers are same-position,
+ * so that shape is invariant — 3-2-5 would need five forwards, 6-3-1 six
+ * defenders. The loose version was therefore safe, but only by accident of
+ * something it did not check.
+ */
+const FPL_XI_SHAPE = { 1: [1, 1], 2: [3, 5], 3: [2, 5], 4: [1, 3] };
+const FPL_XI_SIZE = 11;
+
+function v2LegalXI(counts) {
+    if (!counts) return false;
+    let total = 0;
+    for (const pos of [1, 2, 3, 4]) {
+        const n = counts[pos] || 0;
+        const bounds = FPL_XI_SHAPE[pos];
+        if (n < bounds[0] || n > bounds[1]) return false;
+        total += n;
+    }
+    return total === FPL_XI_SIZE;
+}
+
+// The eight, derived from the rule above rather than listed beside it.
+const FPL_FORMATIONS = (function () {
+    const out = [];
+    for (let d = FPL_XI_SHAPE[2][0]; d <= FPL_XI_SHAPE[2][1]; d++) {
+        for (let m = FPL_XI_SHAPE[3][0]; m <= FPL_XI_SHAPE[3][1]; m++) {
+            for (let f = FPL_XI_SHAPE[4][0]; f <= FPL_XI_SHAPE[4][1]; f++) {
+                if (v2LegalXI({ 1: 1, 2: d, 3: m, 4: f })) out.push([d, m, f]);
+            }
+        }
+    }
+    return out;
+})();
+
+/* ===== Enter and Space on anything marked role="button" =====
+ *
+ * A div with an onclick is a mouse-only control. The site has a lot of them —
+ * pitch cards, table rows, search results — because a card you drag and click
+ * is not a <button> in any useful sense, and the fix for those is
+ * role="button" + tabindex="0" + a key handler.
+ *
+ * That key handler was written inline four times in transfer-wizard.js, as the
+ * same thirty characters of `if(event.key==='Enter'||event.key===' ')`. The GW
+ * Draft needed three more, which would have made seven copies of one rule, so
+ * it is delegated once here instead. The markup now only has to say what the
+ * element IS — role="button" tabindex="0" — and the onclick it already carries
+ * does the work.
+ *
+ * Space is prevented from scrolling the page, which is what a real button does.
+ * Enter is not prevented, because a role="button" inside a form should still be
+ * able to submit it if that is what its click does.
+ *
+ * Two things it must not do. It must not fire for real <button> and <a>, which
+ * the browser already activates — hence the role="button" requirement rather
+ * than a tabindex one. And it must not steal Space from a text field that
+ * happens to sit inside a clickable container, which is what the editable
+ * check is for.
+ */
+const KEY_ACTIVATE_SKIP = 'input,textarea,select,button,a[href],[contenteditable="true"]';
+
+function initKeyActivation() {
+    if (window.__keyActivationReady) return;
+    window.__keyActivationReady = true;
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
+        if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+
+        const target = event.target;
+        if (!target || typeof target.closest !== 'function') return;
+        if (target.closest(KEY_ACTIVATE_SKIP)) return;
+
+        const el = target.closest('[role="button"]');
+        if (!el || el.getAttribute('aria-disabled') === 'true') return;
+        /* A site that still writes its own onkeydown keeps it, rather than
+           having this fire the same action a second time. There are none left in
+           the repo; the guard is so that adding one back is merely redundant
+           instead of a double click. */
+        if (el.hasAttribute('onkeydown')) return;
+
+        if (event.key !== 'Enter') event.preventDefault();
+        el.click();
+    });
+}
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initKeyActivation);
+    } else {
+        initKeyActivation();
+    }
+}
+
 function initOverlayDismiss() {
     if (window.__overlayDismissReady) return;
     window.__overlayDismissReady = true;
 
     let armed = false;
+    let tracked = [];
 
     function onDocumentPointerDown(event) {
         if (!armed) return;
         openOverlays().forEach(overlay => {
-            const content = overlay.querySelector(OVERLAY_CONTENT_SELECTORS) || overlay;
-            if (!content.contains(event.target)) dismissOverlay(overlay);
+            if (!overlayPanel(overlay).contains(event.target)) dismissOverlay(overlay);
         });
     }
 
     function onKeyDown(event) {
-        if (event.key !== 'Escape') return;
+        if (event.key === 'Escape') {
+            const open = openOverlays();
+            if (open.length) dismissOverlay(open[open.length - 1]);
+            return;
+        }
+        if (event.key !== 'Tab') return;
+
         const open = openOverlays();
-        if (open.length) dismissOverlay(open[open.length - 1]);
+        const top = open[open.length - 1];
+        // Drawers let Tab reach the page on purpose. Only a modal traps.
+        if (!top || !top.matches(OVERLAY_MODAL_SELECTORS)) return;
+
+        const panel = overlayPanel(top);
+        const items = overlayFocusables(panel);
+        if (!items.length) { event.preventDefault(); panel.focus(); return; }
+
+        const first = items[0];
+        const last = items[items.length - 1];
+        const active = document.activeElement;
+        const outside = !panel.contains(active);
+
+        if (event.shiftKey && (outside || active === first || active === panel)) {
+            event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && (outside || active === last)) {
+            event.preventDefault(); first.focus();
+        }
     }
 
     document.addEventListener('pointerdown', onDocumentPointerDown, true);
     document.addEventListener('keydown', onKeyDown);
 
     /* Arming is driven by the class the openers already set, so no opener has
-       to be told about any of this. */
+       to be told about any of this. The open/closed diff rides along: the same
+       observation that arms the click-away is what hands a panel its dialog
+       role and its focus. */
     const sync = () => {
-        const any = openOverlays().length > 0;
-        if (!any) { armed = false; return; }
+        const open = openOverlays();
+
+        open.forEach(o => { if (tracked.indexOf(o) === -1) overlayEnter(o); });
+        tracked.forEach(o => { if (open.indexOf(o) === -1) overlayExit(o); });
+        tracked = open;
+
+        if (!open.length) { armed = false; return; }
         if (!armed) requestAnimationFrame(() => { armed = openOverlays().length > 0; });
     };
 
@@ -1699,8 +2062,17 @@ const V2_ICON_PATHS = {
     ball: '<circle cx="12" cy="12" r="10"/><path d="m12 7 4.2 3.1-1.6 5H9.4l-1.6-5z"/>'
         + '<path d="M12 2v5"/><path d="m2.6 9.4 5.2.6"/><path d="m21.4 9.4-5.2.6"/>'
         + '<path d="m6.8 20.4 2.6-5.3"/><path d="m17.2 20.4-2.6-5.3"/>',
+    // Finding one — a magnifier. Added because v2Icon('search') was already
+    // being called by the draft planner's replacement finder, and a name with
+    // no path behind it returns an empty string: the heading read "Find a
+    // replacement yourself" with a gap where every other heading has its mark.
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
     // Prices — a line going up.
     trend: '<path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/>',
+    /* The same line mirrored about y=12, with the arrowhead moved to the
+       bottom-right corner. Added because the price ticker had a direction to
+       show and no glyph to show it with — see tm-tick-arrow. */
+    trendDown: '<path d="M22 17 13.5 8.5 8.5 13.5 2 7"/><path d="M16 17h6v-6"/>',
     // Rivals — people.
     users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'
         + '<path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -2350,7 +2722,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=422')
+    fetch('/footer.html?v=451')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

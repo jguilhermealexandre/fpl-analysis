@@ -15,30 +15,14 @@
  * Classic script, one shared global scope, like everything else here.
  */
         // ===== ANALYSIS ENGINE (ported from fpl-my-team-analysis) =====
-        function computePositionAverages(allPlayers, currentGW) {
-            const posAvg = {};
-            // The bar was a flat 200 minutes. One gameweek into a season nobody has
-            // played more than 90, so every position fell through to the hardcoded
-            // fallback below and the whole dashboard scored players against dummy
-            // averages. Scale it with the season instead, as the squad page does.
-            const minMinutes = Math.min(200, Math.max(currentGW - 1, 1) * 60);
-            [1, 2, 3, 4].forEach(pos => {
-                const pp = allPlayers.filter(p => p.position === pos && p.minutes >= minMinutes);
-                if (pp.length === 0) { posAvg[pos] = { form: 3, ppg: 3, ppm: 15, xGIPer90: 0.3, medPrice: 0 }; return; }
-                const avg = (arr, fn) => arr.reduce((s, p) => s + fn(p), 0) / arr.length;
-                const prices = pp.map(p => p.price).sort((x, y) => x - y);
-                posAvg[pos] = {
-                    form: avg(pp, p => p.form),
-                    ppg: avg(pp, p => p.ppg),
-                    ppm: avg(pp, p => p.points / Math.max(p.price, 1)),
-                    xGIPer90: avg(pp, p => p.minutes > 0 ? (p.xGI / p.minutes) * 90 : 0),
-                    // Reference point for the engine's price-quality prior.
-                    medPrice: prices[Math.floor(prices.length / 2)] || 0
-                };
-            });
-            return posAvg;
-        }
-
+        /* computePositionAverages lived here as its own copy of the squad page's
+           version. The squad page's has since become xpBuildPositionAverages in
+           xp-engine.js and this one did not follow, so the two had drifted in one
+           place: the no-sample fallback for xGI/90 was a flat 0.30 for every
+           position here, which is roughly a forward's rate handed to a
+           goalkeeper. It only bites when a position has nobody above the minutes
+           bar — true in GW1, false now — so it was a latent difference rather
+           than a live one. The copy is gone; the caller reads the engine. */
 
         function processFixtures(fixturesData, teams) {
             // Was its own copy, counting fixtures and filtering on `finished`
@@ -1564,10 +1548,16 @@
                    applyPendingTransfers() in scripts/common.js. */
                 const planningGW = planningGameweek(bootData, fixturesData);
                 let planningPicks = picksData;
+                /* Hoisted out of the planningGW branch below. It was fetched only
+                   when a round had not kicked off, but the selling prices derived
+                   from it are wanted every time — without them this page budgets
+                   against the list price while the squad page budgets against the
+                   real figure, and the two disagree about the same player. */
+                const transfersRes = await fetchWithProxy(
+                    `https://fantasy.premierleague.com/api/entry/${teamId}/transfers/`).catch(() => null);
+                const transferLog = transfersRes ? await transfersRes.json().catch(() => null) : null;
+                const boughtTenths = v2BoughtTenths(transferLog);
                 if (planningGW > currentGW) {
-                    const transfersRes = await fetchWithProxy(
-                        `https://fantasy.premierleague.com/api/entry/${teamId}/transfers/`).catch(() => null);
-                    const transferLog = transfersRes ? await transfersRes.json().catch(() => null) : null;
                     const applied = applyPendingTransfers(picksData, transferLog, planningGW,
                         id => (playersById[id] ? Math.round(playersById[id].price * 10) : null));
                     if (applied) {
@@ -1583,7 +1573,7 @@
                     }
                 });
 
-                const posAvg = computePositionAverages(allPlayers, currentGW);
+                const posAvg = xpBuildPositionAverages(allPlayers, currentGW);
                 // Shared with the squad and players pages — see xpBuildTeamScores
                 // in scripts/xp-engine.js. The version that lived here emitted no
                 // home/away splits, so the projection below fell back to the
@@ -1618,7 +1608,11 @@
                     // player would actually raise, not his current list price.
                     return { ...p, isCaptain: pick.is_captain, isViceCaptain: pick.is_vice_captain,
                         multiplier: pick.multiplier, pickPosition: pick.position,
-                        sellPrice: pick.selling_price != null ? pick.selling_price / 10 : p.price };
+                        /* Was `: p.price`, the list price. v2SellPrice() in
+                           common.js is what the squad page uses, so the
+                           recommender here and the wizard there now budget
+                           against the same number. */
+                        sellPrice: v2SellPrice(pick, p, boughtTenths) };
                 }).filter(Boolean);
 
                 /* What FPL says you picked, then what you have arranged since.

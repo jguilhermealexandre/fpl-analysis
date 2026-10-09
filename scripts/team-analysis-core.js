@@ -98,6 +98,15 @@
            See applyPendingTransfers() in scripts/common.js. */
         let reviewPicksData = null;
         let pendingTransfers = null; // { gw, moves:[{out,in,slot}], armband } once applied
+        /* Every transfer the manager has ever made, from
+           /api/entry/{id}/transfers/ — FPL's own record, one row per move with
+           the gameweek it was made for. Optional: it is fetched with a .catch,
+           and the two features that read it say so rather than guessing. */
+        let managerTransferLog = null;
+        /* What buildSuggestedMoves() last produced, so the status card's "Do this
+           week" and the squad report's "What to do this week" are the same list
+           and not two answers to one question. Set in renderTeamAnalysis(). */
+        let squadSuggestedMoves = [];
         let gwEvents = [];        // bootstrap events[] — deadlines, is_current/is_next
         let chipDefinitions = []; // bootstrap chips[] — each chip's start_event/stop_event window
         let maxFreeTransfers = 5; // from game_settings.max_extra_free_transfers + 1
@@ -341,7 +350,12 @@
                 if (typeof v2SetTeamName === 'function') v2SetTeamName(managerData.name);
                 picksData = await picksRes.json();
                 managerHistory = await histRes.json();
-                const transferLog = transfersRes ? await transfersRes.json().catch(() => null) : null;
+                /* Kept rather than consumed. applyPendingTransfers() below only
+                   wants the moves for the round being planned, but the same
+                   response is every transfer the manager has ever made — which
+                   is the only source for what the round just played cost and
+                   returned. The Gameweek Review reads it from here. */
+                managerTransferLog = transfersRes ? await transfersRes.json().catch(() => null) : null;
 
                 // Free Hit fix: if FH was active this GW, the picks endpoint returns
                 // the temporary FH squad. Load the real squad from the previous GW instead.
@@ -372,7 +386,7 @@
                         const el = allPlayersById[id];
                         return el ? Math.round(el.price * 10) : null;
                     };
-                    const applied = applyPendingTransfers(picksData, transferLog, planningGW, nowCost);
+                    const applied = applyPendingTransfers(picksData, managerTransferLog, planningGW, nowCost);
                     if (applied) {
                         picksData = applied.picksData;
                         pendingTransfers = { gw: applied.gw, moves: applied.moves, armband: applied.armband };
@@ -399,12 +413,45 @@
                 const premierLeagueSeason = new Date(bootData.events?.[0]?.deadline_time || Date.now()).getUTCFullYear();
                 await loadPremierLeagueJerseyNumbers(picksData.picks, premierLeagueSeason);
 
+                /* ===== What each player would actually raise if sold =====
+
+                   This read `pick.selling_price`, and the picks endpoint does
+                   not have that field. A pick is { element, position,
+                   multiplier, is_captain, is_vice_captain, element_type } — the
+                   purchase prices live behind my-team/{id}, which needs the
+                   manager's own login and a static site cannot have. So every
+                   player's sellPrice was `undefined / 10`, which is NaN.
+
+                   NaN then split the consumers in two, because the two guards in
+                   use are not equivalent: `sellPrice || price` takes the price
+                   branch and quietly budgets against the LIST price, while
+                   `sellPrice != null ? sellPrice : price` keeps the NaN — NaN is
+                   not null — and renders it. The Transfer Wizard's recommendation
+                   card says "£6.2m is £NaNm more than selling Groß raises."
+
+                   And the help drawer promises the opposite in as many words:
+                   "Replacements are priced against your selling price, not the
+                   list price... a move that looks affordable at list price often
+                   is not." Measured on a real squad, the list price overstates
+                   what 11 of 15 players raise, by £1.4m in total — which is
+                   exactly the £0.1-0.2m margin that decides a transfer.
+
+                   It is derivable from public data, and the page already has it.
+                   FPL banks half of any rise since purchase, rounded down, and
+                   the whole of any fall — sellingPriceTenths() in common.js.
+                   Purchase price comes from entry/{id}/transfers/, already
+                   fetched above for the Gameweek Review, which stamps every move
+                   with element_in_cost. A player never transferred in was there
+                   at the start, so his purchase price is today's price less his
+                   whole season's movement. */
+                const boughtTenths = v2BoughtTenths(managerTransferLog);
+
                 selectedPlayers = picksData.picks.map(pick => {
                     const player = allPlayersById[pick.element];
                     if (!player) return null;
                     return { ...player, isCaptain: pick.is_captain, isVice: pick.is_vice_captain,
                         onBench: pick.position > 11, pickPosition: pick.position,
-                        sellPrice: pick.selling_price / 10, multiplier: pick.multiplier };
+                        sellPrice: v2SellPrice(pick, player, boughtTenths), multiplier: pick.multiplier };
                 }).filter(p => p !== null);
 
                 // Manager name/rank/points/bank are rendered as the right-hand column
@@ -476,30 +523,24 @@
             }
         }
 
+        /* The next five gameweeks per team — from the shared builder, not a
+           local copy.
+
+           This WAS a local copy, and it took the first five FIXTURES rather than
+           the first five GAMEWEEKS. The difference is a double gameweek: two
+           matches in one round spend two of the five slots, so the window ends a
+           round early and the last gameweek drops off the end — silently, since
+           a shorter array still renders. It is the Nxt5 FDR column, the fixture
+           strips and the hard-run detection that read this.
+
+           The dashboard's copy of the same function was migrated to
+           xpBuildTeamFixtures when that bug was found; the page the fix was
+           written for kept its own copy. Measured against today's feed the two
+           agree for all 20 teams, because no side has a double or a blank inside
+           the next five rounds — so this is a latent divergence rather than a
+           live one, and it would have surfaced around the winter doubles. */
         function processFixtures(fixturesData) {
-            teamFixtures = {};
-            
-            const upcoming = fixturesData
-                .filter(f => !f.finished_provisional && f.event !== null)
-                .sort((a, b) => a.event - b.event);
-
-            Object.keys(teams).forEach(teamId => {
-                const tid = parseInt(teamId);
-                const teamFix = upcoming
-                    .filter(f => f.team_h === tid || f.team_a === tid)
-                    .slice(0, 5);
-
-                teamFixtures[tid] = teamFix.map(f => {
-                    const isHome = f.team_h === tid;
-                    return {
-                        opponent: isHome ? teams[f.team_a]?.short_name : teams[f.team_h]?.short_name,
-                        opponentId: isHome ? f.team_a : f.team_h,
-                        difficulty: isHome ? f.team_h_difficulty : f.team_a_difficulty,
-                        isHome: isHome,
-                        event: f.event
-                    };
-                });
-            });
+            teamFixtures = xpBuildTeamFixtures(fixturesData, teams, 5);
         }
 
         // ===== ENHANCED ANALYSIS ENGINE =====
@@ -727,10 +768,17 @@
         ].filter(b => b.count > 0);
 
 
+            /* toughFixtureStarters and poorFormStarters go out with the rest.
+               The squad report names the players behind each count, and the
+               alternative — re-deriving "tough" and "out of form" at the point
+               of writing the sentence — is how a report ends up disagreeing
+               with the number it is explaining. One definition, computed here,
+               where the score that charges for it is computed. */
             return {
                 health: Math.max(0, Math.min(100, Math.round(healthScore))),
                 breakdown: healthBreakdown,
-                starters, bench, injuredStarters, doubtfulStarters, capAnalysis
+                starters, bench, injuredStarters, doubtfulStarters,
+                toughFixtureStarters, poorFormStarters, capAnalysis
             };
         }
 
@@ -740,15 +788,23 @@
             const stars = analysisResults.filter(a => a.verdict === 'star');
             const holds = analysisResults.filter(a => a.verdict === 'hold');
 
-            const { health: teamHealth, breakdown: healthBreakdown, starters,
+            const { health: teamHealth, starters,
                 injuredStarters, doubtfulStarters, capAnalysis } = computeSquadHealth(analysisResults);
-            const suggestedMoves = buildSuggestedMoves(starters, injuredStarters, doubtfulStarters, capAnalysis);
+            /* Kept as well as passed down. The status card renders these as "Do
+               this week"; the squad report behind its button has to answer the
+               same question with the same list, and the only way to guarantee
+               that is for both to read the one array rather than each deriving
+               an answer of its own. Recomputing in the report would also drift:
+               it is called on a click, by which time the bank and the squad may
+               have moved under it. */
+            squadSuggestedMoves = buildSuggestedMoves(starters, injuredStarters, doubtfulStarters, capAnalysis);
+            const suggestedMoves = squadSuggestedMoves;
 
             let html = '';
             if (isPreseason) html += renderSeasonNotice('Showing 2025/26 form &amp; stats — verdicts will update once GW1 is played.');
             html += renderPendingTransfersNotice();
             html += renderSquadTickers();
-            html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, healthBreakdown, suggestedMoves);
+            html += renderTeamOverview(teamHealth, sells, monitors, holds, stars, suggestedMoves);
             /* A trial sits under the numbers it moves, so before and after are
                read in one glance. The picker that starts one sits in the squad
                panel's own header — see renderSquadFilterBar(). */
@@ -825,14 +881,21 @@
         // Transfer pressure itself lives in getTransferPressure() further down —
         // there used to be a second copy here using a hardcoded 11m player count,
         // which never ran, since the later declaration wins for every caller.
+        /* The pitch card's own form of the availability mark: text under the
+           face, where there is room for a word. The classification behind it —
+           which statuses count, what each is called, whether there is a usable
+           chance figure — comes from v2Availability() in common.js, which the
+           squad table and the GW Draft table also read. Three surfaces had been
+           deciding this separately, and the table had decided not to show it.
+
+           Gains a title: "OUT" with no reason was the whole badge, and FPL
+           publishes the reason. */
         function injuryBadge(p) {
-            if (p.status === 'i' || p.status === 'u' || p.status === 's') {
-                return `<span class="pitch-injury-badge">OUT</span>`;
-            }
-            if (p.status === 'd' && p.chanceNextRound != null && p.chanceNextRound < 100) {
-                return `<span class="pitch-injury-badge doubt">${p.chanceNextRound}%</span>`;
-            }
-            return '';
+            const a = typeof v2Availability === 'function' ? v2Availability(p) : null;
+            if (!a) return '';
+            const text = a.state === 'out' ? 'OUT' : `${a.chance != null ? a.chance + '%' : 'DOUBT'}`;
+            return `<span class="pitch-injury-badge${a.state === 'doubt' ? ' doubt' : ''}"`
+                + ` title="${escHTML(a.label + (a.detail !== a.word ? ' — ' + a.detail : ''))}">${text}</span>`;
         }
         // Set-piece duty, as published by FPL. Penalties first — a first-choice
         // taker is the single most valuable non-goal attribute in the game — then
@@ -1114,7 +1177,7 @@
             return `<div class="sq-ticker-row${kind ? ` sq-ticker-${kind}` : ''}">
                 <span class="sq-ticker-label" data-tooltip="${escHTML(tip)}">${escHTML(label)}</span>
                 <div class="tm-ticker">
-                    <div class="tm-ticker-track" style="animation-duration:${secs}s">${run}<span class="tm-tick-sep">•</span>${run}<span class="tm-tick-sep">•</span></div>
+                    <div class="tm-ticker-track" style="animation-duration:${secs}s">${run}<span class="tm-tick-sep">•</span><span aria-hidden="true">${run}<span class="tm-tick-sep">•</span></span></div>
                 </div>
             </div>`;
         }
@@ -1222,7 +1285,7 @@
         /* What the squad needs from you, in one box beside the pitch: the
            counts that read the health score, then the moves, then the way into
            the gameweek that has just been played. */
-        function renderSquadStatusCard(sells, monitors, holds, stars, healthBreakdown, suggestedMoves) {
+        function renderSquadStatusCard(sells, monitors, holds, stars, suggestedMoves) {
             const reviewGW = typeof gwReviewTarget === 'function' ? gwReviewTarget() : null;
             /* computeProjectedXIScore() is the same pure function the pitch uses,
                called rather than read back off the pitch's markup — the card is
@@ -1240,9 +1303,12 @@
                     </span>` : ''}
                 </div>
 
-                <div class="health-breakdown">${healthBreakdown && healthBreakdown.length
-                    ? healthBreakdown.map(b => `${b.count} ${escHTML(b.label)}`).join(' · ')
-                    : 'No injuries or fixture red flags'}</div>
+                <!-- "2 doubtful · 4 tough fixtures · 1 out of form" used to sit
+                     here. Four numbers with no names against them: you could
+                     read it and still not know which two, or what the fixtures
+                     were, or whether the out-of-form one was your captain. It
+                     is the squad report's opening paragraph now, where each
+                     count is followed by the players it counted. -->
 
                 <div class="health-verdict-counts">
                     ${sells.length ? `<span class="hv-count sell">● ${sells.length} Sell</span>` : ''}
@@ -1259,25 +1325,687 @@
                     ${reviewGW
                         ? `<button class="gwr-open" onclick="openGameweekReview()" data-tooltip="How your squad actually did in GW${reviewGW} — the armband, the bench, who delivered, and how it compares with the field.">${v2Icon('report')}Review Gameweek ${reviewGW}</button>`
                         : ''}
+                    <!-- Same class, so it is the same button: a second one of
+                         these rather than a new control to learn. Backwards in
+                         time above, forwards below. -->
+                    <button class="gwr-open" onclick="openSquadReport()" data-tooltip="Every status on this card written out — who is doubtful, who is out of form, who has the hard run, and the reason behind each verdict.">${v2Icon('scales')}Read the squad report</button>
                 </div>
             </div>`;
         }
 
-        function renderTeamOverview(health, sells, monitors, holds, stars, healthBreakdown, suggestedMoves) {
-            /* One set of bands, not two. The colour used to break at 75/50 while the
-               wording broke at 85/70/55/40, so a squad on 72 was labelled "Good
-               Shape" and drawn in warning orange at the same time, and one on 52
-               read "Concerning" in the same orange as a 68. The ring now takes its
-               colour from the band the words already put you in. */
-            const healthText = health >= 85 ? 'Excellent' : health >= 70 ? 'Good Shape' : health >= 55 ? 'Needs Work' : health >= 40 ? 'Concerning' : 'Overhaul Needed';
-            const healthColor = health >= 70 ? 'var(--verdict-hold)' : health >= 55 ? 'var(--verdict-monitor)' : 'var(--verdict-sell)';
+        /* ===== Blanks and doubles =====
+
+           A gameweek is a BLANK for a club with no fixture in it and a DOUBLE
+           for one with two. Neither exists when a season is published: all 380
+           matches start out one per club per round, and they move when a club's
+           league fixture clashes with a cup tie — out of the round it clashed
+           with, and back into some later round once the tie is settled. So both
+           appear mid-season, and the fixture list is the only record of them.
+           There is no published list of affected gameweeks; counting the list is
+           what produces one.
+
+           Counted off fixtures.json, the same file every other fixture on this
+           page comes from, so this cannot disagree with the run shown beside it.
+
+           ONE THING HERE IS EASY TO GET WRONG. A club with no row in a gameweek
+           is only blanking if that gameweek is in the list at all. Keying the
+           result on the gameweeks that actually have fixtures means a truncated
+           or short file reports fewer gameweeks examined — which the caller can
+           say out loud — instead of reporting the entire rest of the season as a
+           blank for all twenty clubs. */
+        function fixtureLoadByGW(from, to) {
+            const out = new Map();            // gw -> Map(teamId -> fixtures)
+            (allFixtures || []).forEach(f => {
+                const gw = f.event;
+                if (gw == null || gw < from || gw > to) return;
+                if (!out.has(gw)) out.set(gw, new Map());
+                const m = out.get(gw);
+                [f.team_h, f.team_a].forEach(t => m.set(t, (m.get(t) || 0) + 1));
+            });
+            return out;
+        }
+
+        /* Which of these players blank and which double, gameweek by gameweek.
+           `players` is whatever squad the caller holds; each needs a teamId.
+           Returns null when the fixture list says nothing about the window —
+           there is a difference between a clean run and no data about one. */
+        function squadFixtureLoad(players, from, to) {
+            const squad = (players || []).filter(p => p && p.teamId != null);
+            if (!squad.length) return null;
+            const load = fixtureLoadByGW(from, to);
+            if (!load.size) return null;
+
+            const gws = [...load.keys()].sort((a, b) => a - b);
+            const blanks = [], doubles = [];
+            gws.forEach(gw => {
+                const m = load.get(gw);
+                const b = squad.filter(p => (m.get(p.teamId) || 0) === 0);
+                const d = squad.filter(p => (m.get(p.teamId) || 0) > 1);
+                if (b.length) blanks.push({ gw, players: b });
+                if (d.length) doubles.push({ gw, players: d });
+            });
+            return {
+                from: gws[0], to: gws[gws.length - 1], examined: gws.length,
+                squadSize: squad.length,
+                blanks, doubles,
+                clean: !blanks.length && !doubles.length
+            };
+        }
+
+        /* ===== The squad report =====
+
+           The status card is six numbers. This is those six numbers with the
+           players behind them, which is the difference between "4 tough
+           fixtures" and knowing it is your captain among them.
+
+           EVERY SENTENCE BELOW IS BUILT FROM A VALUE SOMETHING ELSE ALREADY
+           COMPUTED. No figure is derived here, no threshold is invented here,
+           and nothing is phrased as a likelihood. A synthesis surface is the
+           easiest place on a site to write a true-sounding sentence that is not
+           checkable, so the rule is that each clause names its own source: the
+           form it was judged against, the median it was judged by, the FDR the
+           engine weighted, the reason the verdict engine itself gave. If a
+           value is absent the clause is dropped rather than defaulted — the one
+           exception in the codebase, analyzePlayer's `75% chance` fallback for a
+           doubtful player with no published figure, is deliberately not copied.
+
+           Under 10% owned is the differential line, because that is the number
+           the players page already shows the user ("Differentials — Under 10%
+           owned") and the player card already labels at. There are five
+           different thresholds in this codebase (8, 10, 12 on effective
+           ownership, 15); this picks the one that is stated on screen rather
+           than adding a sixth. */
+        const SQR_DIFFERENTIAL_OWNERSHIP = 10;
+
+        /* ONE set of bands for the health score, and one place they live.
+
+           The colour used to break at 75/50 while the wording broke at
+           85/70/55/40, so a squad on 72 was labelled "Good Shape" and drawn in
+           warning orange at the same time, and one on 52 read "Concerning" in
+           the same orange as a 68. Both now come from here.
+
+           It is a function rather than two lines inside renderTeamOverview()
+           because there are two readers: the ring above the pitch and the hero
+           at the top of the squad report. A second copy would let the same
+           number be called two different things on one screen — which is worse
+           than either name being wrong, because the reader cannot tell which to
+           believe. */
+        function sqHealthBand(health) {
+            /* A missing score is not a bad score, and every comparison below is
+               false for one — so without this the band for NaN comes out
+               "Overhaul Needed" in red, which is a confident verdict about a
+               number nobody has. The squad report now prints this figure at
+               40px, so being loudly wrong is a worse failure than being blank. */
+            if (typeof health !== 'number' || !isFinite(health)) {
+                return { known: false, text: '', color: 'var(--text-muted)' };
+            }
+            return {
+                known: true,
+                text: health >= 85 ? 'Excellent' : health >= 70 ? 'Good Shape'
+                    : health >= 55 ? 'Needs Work' : health >= 40 ? 'Concerning' : 'Overhaul Needed',
+                color: health >= 70 ? 'var(--verdict-hold)'
+                    : health >= 55 ? 'var(--verdict-monitor)' : 'var(--verdict-sell)'
+            };
+        }
+
+        // "Salah", "Salah and Palmer", "Salah, Palmer and Saka".
+        function sqrJoin(parts) {
+            if (!parts.length) return '';
+            if (parts.length === 1) return parts[0];
+            return parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1];
+        }
+
+        function sqrPos(player) {
+            return POSITION_CONFIG[player.position] || { short: '?', formMedian: null };
+        }
+
+
+        /* Per-gameweek rows for one player, from players-data.json.
+
+           Deliberately not shared with the four other copies of this lookup
+           (player-profile.js, pitch-snapshot.js, panels-and-tabs.js and
+           gameweek-review.js each have one). Those files load on pages this one
+           does not — the players page has player-profile.js and no
+           team-analysis-core.js — so a helper defined here and called there is
+           the shape of bug that shipped the help drawer with no stylesheet. */
+        function sqrHistoryRows(playerId) {
+            return (playersDetailData?.players || []).find(p => p.id === playerId)?.history || [];
+        }
+
+        /* ===== Two pictures, each next to the sentence it is about =====
+
+           The report is prose, and prose is the right form for a verdict. It is
+           the wrong form for a shape: "form 1.8, judged at 2.1 against a MID
+           median of 4.0" does not distinguish a player sliding away from one who
+           had a single bad week, and those want different decisions. So each
+           visual goes under the one claim it illustrates and nowhere else —
+           a sparkline under out-of-form, a fixture strip under the hard run.
+
+           Both reuse markup that already exists and is already styled on this
+           page: .twf-spark from the transfer funnel's shortlist cards and
+           .transfer-fdr-strip from the draft planner's replacement cards. No new
+           stylesheet rules, and a player's run looks the same wherever it is
+           drawn. */
+        const SQR_SPARK_WEEKS = 6;
+
+        function sqrSpark(player) {
+            const rows = sqrHistoryRows(player.id).slice(-SQR_SPARK_WEEKS);
+            if (!rows.length) return '';
+            /* A floor of 6 on the scale, so a run of ones and twos draws as a
+               run of ones and twos rather than being stretched to look like a
+               haul by the absence of a bigger week beside it. */
+            const peak = Math.max(6, ...rows.map(h => h.total_points || 0));
+            const bars = rows.map(h => {
+                const pts = h.total_points || 0;
+                const mins = h.minutes || 0;
+                // Blue is a normal week, green a haul, grey a week he did not
+                // play — the same three readings the shortlist card uses.
+                const cls = mins === 0 ? ' out' : pts >= 8 ? ' haul' : '';
+                const what = mins === 0 ? 'did not play' : `${pts} pt${pts === 1 ? '' : 's'}, ${mins} min`;
+                return `<i class="twf-sp${cls}" style="height:${Math.max(8, (pts / peak) * 100)}%"
+                    data-tooltip="GW${h.round}: ${what}"></i>`;
+            }).join('');
+            return `<span class="twf-spark" role="img"
+                aria-label="Points in his last ${rows.length} gameweeks">${bars}</span>`;
+        }
+
+        function sqrFdrStrip(fixtures, teamId) {
+            const fx = (fixtures || []).filter(f => f);
+            if (!fx.length) return '';
+            /* Both venues marked, not just the away ones. The sentence above the
+               strip already writes "next up ARS (A)", and a badge that is silent
+               for home games asks the reader to infer a convention from an
+               absence. A double gameweek renders as two badges on the same round,
+               which is the right picture of it. */
+            const ranks = getDefensiveRanks();
+            return `<span class="transfer-fdr-strip">${fx.map(f => {
+                let tip = `GW${f.event ?? '?'}: ${escHTML(f.opponent || '?')} ${f.isHome ? 'at home' : 'away'}`
+                    + `, difficulty ${f.difficulty ?? '?'} of 5`;
+                // Same measured read as the squad table's own strip, so a fixture
+                // does not mean one thing in the table and another in the report.
+                const ctx = opponentContext(teamId, f, ranks);
+                if (ctx && ctx.ranked) tip += `. They concede ${ctx.conceded.toFixed(1)} a game, ${ordinal(ctx.rank)} leakiest of ${ctx.total}.`;
+                return `<span class="transfer-fdr-badge fdr-${f.difficulty || 3}"
+                    data-tooltip="${tip}"
+                    >${escHTML(f.opponent || '?')} (${f.isHome ? 'H' : 'A'})</span>`;
+            }).join('')}</span>`;
+        }
+
+        /* How far ahead the blank-and-double scan looks.
+
+           Eight gameweeks, stated in the copy so the window can be checked. FPL
+           reschedules a few weeks out rather than months, so a shorter run would
+           miss announcements that are already on the list, and a scan to GW38
+           would flag a blank for players who will not be in this squad by then.
+           Chip windows are the thing this is read for, and eight weeks is about
+           as far as a chip is worth planning. */
+        const SQR_FIXTURE_HORIZON = 8;
+
+        function buildSquadReport() {
+            const results = (typeof analysisResults !== 'undefined' && analysisResults) || [];
+            if (!results.length) return null;
+            const h = computeSquadHealth(results);
+            const starterIds = new Set(h.starters.map(a => a.player.id));
+            const squad = h.starters.concat(h.bench).map(a => a.player);
+
+            /* Price moves, from scripts/price-watch.js rather than from a reading
+               of our own: that file holds FPL's published meter and the two tiers
+               it supports, and a second classification here would let this report
+               call a player due on a night the market ticker did not. Everything
+               below PW_CLOSE comes back null and is simply not mentioned. */
+            const priceMoves = (typeof pwClassify === 'function'
+                ? squad.map(p => pwClassify(p, typeof PW_CLOSE === 'number' ? PW_CLOSE : 80))
+                : []).filter(Boolean).sort((a, b) => Math.abs(b.progress) - Math.abs(a.progress));
+
+            return {
+                squad,
+                /* The status card's list, not a second opinion about it — see the
+                   comment on squadSuggestedMoves. Defaulted so the report still
+                   renders if it is opened before renderTeamAnalysis has run. */
+                moves: (typeof squadSuggestedMoves !== 'undefined' && squadSuggestedMoves) || [],
+                priceMoves,
+                fixtureLoad: typeof squadFixtureLoad === 'function'
+                    ? squadFixtureLoad(squad, planningGW, planningGW + SQR_FIXTURE_HORIZON - 1)
+                    : null,
+                health: h.health,
+                starters: h.starters, bench: h.bench, starterIds,
+                injured: h.injuredStarters,
+                doubtful: h.doubtfulStarters,
+                tough: h.toughFixtureStarters,
+                poorForm: h.poorFormStarters,
+                cap: h.capAnalysis,
+                sells: results.filter(a => a.verdict === 'sell'),
+                monitors: results.filter(a => a.verdict === 'monitor'),
+                stars: results.filter(a => a.verdict === 'star'),
+                holds: results.filter(a => a.verdict === 'hold'),
+                /* Starters only. A differential you are not playing gains you
+                   nothing, so counting the bench in would overstate it. */
+                differentials: h.starters.filter(a =>
+                    typeof a.player.ownership === 'number'
+                    && a.player.ownership < SQR_DIFFERENTIAL_OWNERSHIP)
+            };
+        }
+
+        function sqrSection(icon, title, accent, rows) {
+            if (!rows.length) return '';
+            return `<div class="detail-section" data-accent="${accent}">
+                <div class="detail-section-title">${v2Icon(icon)} ${escHTML(title)}</div>
+                ${rows.join('')}
+            </div>`;
+        }
+
+        function sqrItem(tone, html) {
+            return `<div class="insight-item ${tone}"><div class="insight-text">${html}</div></div>`;
+        }
+
+        /* ===== One player, one row =====
+
+           This report was fourteen .insight-item cards: a 3px left edge and a
+           paragraph of grey text, all the same size, all the same shape. Every
+           fact in it was true and none of it was scannable — you had to read a
+           sentence to find out which player it was about, and the number that
+           decided the verdict was buried mid-clause.
+
+           So it borrows the Gameweek Review's row instead, which already solves
+           this on the next tab across: position badge, face and crest, name,
+           then the reason, then the figure that decided it, right-aligned. Same
+           component, same page, so a player looks like himself in both — and the
+           eye can run down the right-hand column instead of reading prose.
+
+           `sub` is for the one or two findings that genuinely are a sentence.
+           .gwr-row-detail is a single line with an ellipsis, so anything longer
+           than a few words has to go beneath the row rather than be silently
+           cut off in the middle. */
+        function sqrRow(o) {
+            const p = o.player;
+            const cfg = sqrPos(p);
+            const face = typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p) : '';
+            const tags = [];
+            if (p.isCaptain) tags.push('captain');
+            if (o.bench) tags.push('bench');
+            return `<div class="gwr-row sqr-row ${o.tone || ''}">
+                <span class="position-badge ${cfg.class || ''}">${escHTML(cfg.short)}</span>
+                ${face}
+                <span class="gwr-row-name">${escHTML(p.name)}</span>
+                <span class="gwr-row-opp">${escHTML(tags.join(' · '))}</span>
+                <span class="gwr-row-detail">${o.detail || ''}</span>
+                ${o.viz || ''}
+                ${o.right || ''}
+            </div>${o.sub ? `<div class="sqr-sub">${o.sub}</div>` : ''}`;
+        }
+
+        // The decisive figure, right-aligned — the column the eye runs down.
+        function sqrFig(value, unit) {
+            return `<span class="gwr-row-pts">${value}${unit ? `<em>${unit}</em>` : ''}</span>`;
+        }
+
+        function sqrChip(kind, label) {
+            return `<span class="sqr-chip ${kind}">${escHTML(label)}</span>`;
+        }
+
+        function renderSquadReport(d) {
+            if (!d) return `<p class="gwr-line">No squad loaded yet.</p>`;
+
+            /* ===== The hero =====
+
+               The report used to open on a sentence: "Squad health 72/100. Of
+               your 11 starters, 1 is a fitness doubt and 2 face a hard next
+               fixture." Every word of that is still here — it is just no longer
+               the first thing to read, because a paragraph is a poor answer to
+               "how bad is it". The number is the answer, so the number is the
+               size of the answer, in the colour its own band gives it.
+
+               Same hero the Gameweek Review opens on, for the same reason. */
+            const bits = [];
+            if (d.injured.length) bits.push(`${d.injured.length} cannot play`);
+            if (d.doubtful.length) bits.push(`${d.doubtful.length} ${d.doubtful.length === 1 ? 'is' : 'are'} a fitness doubt`);
+            if (d.tough.length) bits.push(`${d.tough.length} ${d.tough.length === 1 ? 'faces' : 'face'} a hard next fixture`);
+            if (d.poorForm.length) bits.push(`${d.poorForm.length} ${d.poorForm.length === 1 ? 'is' : 'are'} out of form`);
+            const band = sqHealthBand(d.health);
+
+            /* The four counts that say what to DO, which is what the sections
+               below are evidence for. They also carry the counts that used to be
+               three separate headings — "Sell (2)", "Monitor (4)", "Star (1)" —
+               so those three collapse into one section further down. */
+            const stat = (value, label, tip, color) =>
+                `<div class="opt-stat"><div class="opt-stat-v"${color ? ` style="color:${color};"` : ''}>${value}</div>
+                    <div class="opt-stat-l" data-tooltip="${escHTML(tip)}">${escHTML(label)}</div></div>`;
+
+            let html = `<div class="detail-section" data-accent="report">
+                <div class="detail-section-title">${v2Icon('activity')} Where the squad stands</div>
+                <div class="gwr-hero">
+                    <div class="gwr-hero-pts" style="color:${band.color};">${band.known ? d.health : '—'}<span>/100</span></div>
+                    <div class="gwr-hero-text">
+                        ${band.known ? `<strong>${escHTML(band.text)}.</strong>` : ''}
+                        ${bits.length
+                            ? `Of your ${d.starters.length} starters, ${sqrJoin(bits)}.`
+                            : `Nothing is flagged against any of your ${d.starters.length} starters — no injuries, no doubts, no hard next fixture, nobody out of form.`}
+                        Health reads availability, form and the next fixture; everything in it has already happened.
+                    </div>
+                </div>
+                <div class="opt-grid">
+                    ${stat(d.sells.length, 'Sell', 'The numbers argue for moving these on. Each one is listed below with the reason the verdict engine gave.', d.sells.length ? 'var(--verdict-sell)' : '')}
+                    ${stat(d.monitors.length, 'Monitor', 'Worth watching rather than acting on this week.', d.monitors.length ? 'var(--verdict-monitor)' : '')}
+                    ${stat(d.stars.length, 'Star', 'Performing well enough that selling would be the mistake.', d.stars.length ? 'var(--verdict-star)' : '')}
+                    ${stat(d.differentials.length, 'Differentials', `Starters owned by under ${SQR_DIFFERENTIAL_OWNERSHIP}% of managers — where your rank can move away from the field.`)}
+                </div>
+            </div>`;
+
+            /* Availability. The status word is the same mapping analyzePlayer
+               uses, and the chance and the news are FPL's own strings — printed
+               only when FPL actually published them. */
+            /* FPL writes the percentage into the news string itself — Konsa's
+               reads "Unspecified injury - 75% chance of playing" — so adding
+               our own chance sentence beside it says the same thing twice in
+               one line. The figure is only printed when the news has not
+               already printed it, or when there is no news to print. */
+            const availBody = (p, prefix) => {
+                const news = p.news ? escHTML(p.news) : '';
+                const pctAlreadyThere = /\d+\s*%/.test(p.news || '');
+                const chance = (p.chanceNextRound != null && !pctAlreadyThere)
+                    ? `${p.chanceNextRound}% chance of playing.` : '';
+                const body = [prefix, chance, news].filter(Boolean).join(' ');
+                return body || 'Flagged, with no detail published.';
+            };
+            const bench = a => !d.starterIds.has(a.player.id);
+            const availRows = [];
+            d.injured.forEach(a => {
+                const p = a.player;
+                const word = p.status === 'i' ? 'Injured' : p.status === 'u' ? 'Unavailable' : 'Suspended';
+                availRows.push(sqrRow({
+                    player: p, bench: bench(a), tone: 'is-bad',
+                    detail: word, right: sqrChip('sell', 'Out'),
+                    /* The detail cell is one line with an ellipsis, so FPL's news
+                       string goes beneath the row rather than being cut off mid
+                       word. It is the one part of this a manager actually needs
+                       to read. */
+                    sub: availBody(p, '')
+                }));
+            });
+            d.doubtful.forEach(a => {
+                availRows.push(sqrRow({
+                    player: a.player, bench: bench(a), tone: 'is-warn',
+                    detail: 'Fitness doubt', right: sqrChip('monitor', 'Doubt'),
+                    sub: availBody(a.player, '')
+                }));
+            });
+            html += sqrSection('warn', 'Availability', 'concerns', availRows);
+
+            /* Form. Both figures, because the card prints the raw one and the
+               verdict is reached on the regressed one — showing only the second
+               would put a number in the report that disagrees with the number
+               on the player's own card for no visible reason. */
+            const formRows = d.poorForm.map(a => {
+                const cfg = sqrPos(a.player);
+                const raw = typeof a.rawForm === 'number' ? a.rawForm : null;
+                const eff = typeof a.effectiveForm === 'number' ? a.effectiveForm : null;
+                const shown = raw != null && eff != null && Math.abs(raw - eff) >= 0.1
+                    ? `form ${raw.toFixed(1)}, judged at ${eff.toFixed(1)} once regressed for matches played`
+                    : `form ${(eff != null ? eff : raw).toFixed(1)}`;
+                const median = cfg.formMedian != null
+                    ? `, against a ${escHTML(cfg.short)} median of ${cfg.formMedian}` : '';
+                return sqrRow({
+                    player: a.player, bench: bench(a), tone: 'is-warn',
+                    /* No detail cell. It carried "FWD median 4.5", which the
+                       sub-line underneath already says in the sentence that
+                       compares him to it — so the row read "FWD median 4.5 …
+                       1.0 form" above "form 1.0, against a FWD median of 4.5".
+                       The same two numbers twice in three inches. */
+                    /* The shape behind the number. Two players on the same form
+                       figure are different problems if one is sliding and the
+                       other had a single bad week, and the figure cannot tell
+                       them apart — so it sits in its own slot beside it. */
+                    viz: sqrSpark(a.player),
+                    // The regressed figure, because that is the one the verdict
+                    // was reached on. The raw one is in the sub-line below.
+                    right: eff != null || raw != null
+                        ? sqrFig((eff != null ? eff : raw).toFixed(1), 'form') : '',
+                    // Verbatim, lower case and all: it is a continuation of the
+                    // row above it, and it is the sentence the player's own card
+                    // has to agree with word for word.
+                    sub: `${shown}${median}.`
+                });
+            });
+            html += sqrSection('trend', 'Out of form', 'concerns', formRows);
+
+            /* Fixtures. avgFDR is the weighted figure analyzePlayer already put
+               on the player — first fixture counts 3, fifth counts 1 — so this
+               is the same number the player card shows, not a mean computed
+               here that would quietly differ from it. */
+            const fixRows = d.tough.map(a => {
+                const f = (a.fixtures || [])[0];
+                const next = f
+                    ? `next up ${escHTML(f.opponent || '???')} ${f.isHome ? '(H)' : '(A)'} at FDR ${f.difficulty}`
+                    : '';
+                const run = typeof a.player.avgFDR === 'number'
+                    ? `weighted FDR ${a.player.avgFDR.toFixed(1)} over his next ${(a.fixtures || []).length}`
+                    : '';
+                return sqrRow({
+                    player: a.player, bench: bench(a), tone: 'is-warn',
+                    /* No detail cell either, and for the same reason: it said
+                       "MUN (A) next" immediately to the left of a strip whose
+                       first badge is MUN (A). */
+                    /* The run itself, in the colours the fixture tables use. The
+                       figure on the right is the weighted average; the strip is
+                       which weeks are the hard ones, which is what decides
+                       whether to sell him now or ride it out. */
+                    viz: sqrFdrStrip(a.fixtures, a.player.teamId),
+                    right: typeof a.player.avgFDR === 'number'
+                        ? sqrFig(a.player.avgFDR.toFixed(1), 'FDR') : '',
+                    sub: `${[next, run].filter(Boolean).join(', ')}.`
+                });
+            });
+            html += sqrSection('calendar', 'The hard run', 'fixtures', fixRows);
+
+            /* ===== Blanks and doubles =====
+
+               Unlike every other section here, this one speaks even when it has
+               found nothing — because "no blanks or doubles are scheduled" is
+               itself the answer to a question a manager asks before spending a
+               chip, and an absent section would be indistinguishable from a
+               broken one. What it must never do is imply that a clean list will
+               stay clean: the reason it is clean in October is that the cup
+               rounds that empty a gameweek have not been drawn yet.
+
+               Silent only when the fixture list cannot answer at all. */
+            const fl = d.fixtureLoad;
+            if (fl) {
+                const names = (players) => sqrJoin(players.slice(0, 6).map(p => `<b>${escHTML(p.name)}</b>`))
+                    + (players.length > 6 ? ` and ${players.length - 6} more` : '');
+                const loadRows = [];
+                fl.doubles.forEach(x => loadRows.push(sqrItem('positive',
+                    `<b>GW${x.gw}</b> is a double for ${x.players.length} of your ${fl.squadSize}: ${names(x.players)}. Two fixtures each, so two chances to score.`)));
+                fl.blanks.forEach(x => loadRows.push(sqrItem('critical',
+                    `<b>GW${x.gw}</b> is a blank for ${x.players.length} of your ${fl.squadSize}: ${names(x.players)}. No fixture at all, so no points.`)));
+                if (fl.clean) {
+                    loadRows.push(sqrItem('positive',
+                        `Across GW${fl.from}–GW${fl.to} every one of your ${fl.squadSize} players has exactly one fixture every week — no blanks and no doubles on the list yet. Gameweeks empty out when a club's league match clashes with a cup tie, so these appear during the season rather than at the start of it.`));
+                }
+                html += sqrSection('calendar',
+                    fl.clean ? 'Blanks and doubles' : `Blanks and doubles (GW${fl.from}–GW${fl.to})`,
+                    'fixtures', loadRows);
+            }
+
+            /* ===== The call on each player =====
+
+               One section, not three. "Sell (2)", "Monitor (4)" and "Star (1)"
+               were three headings over three lists of the same kind of thing,
+               and at one or two rows each the chrome outweighed the content. The
+               counts moved into the grid at the top, where they are read at a
+               glance, and the verdict itself rides on the row as a chip — so the
+               order sell, monitor, star is visible rather than announced.
+
+               The reason is verdictReason, the engine's own sentence for the
+               verdict it reached, and not a second explanation composed here
+               which could disagree with the chip it is explaining. */
+            const CALL = {
+                sell: { chip: 'sell', label: 'Sell', tone: 'is-bad' },
+                monitor: { chip: 'monitor', label: 'Monitor', tone: 'is-warn' },
+                star: { chip: 'star', label: 'Star', tone: 'is-good' }
+            };
+            const callRows = [...d.sells, ...d.monitors, ...d.stars].map(a => {
+                const c = CALL[a.verdict] || CALL.monitor;
+                return sqrRow({
+                    player: a.player, bench: bench(a), tone: c.tone,
+                    right: sqrChip(c.chip, c.label),
+                    sub: a.verdictReason ? escHTML(a.verdictReason) : ''
+                });
+            });
+            html += sqrSection('swap', 'The call on each player', 'concerns', callRows);
+
+            /* ===== Price watch =====
+
+               Every word of this comes out of scripts/price-watch.js — the tier,
+               the label and the sentence — because that file is where the two
+               tiers are defined and the difference between them is the whole
+               point. "Due" means the meter is full and the change fires at the
+               next daily update. "Closing in" means a player is near the line and
+               nothing more: measured over a real overnight window, the game's own
+               next-day projection flagged nineteen players to catch four actual
+               changes. Writing our own sentence here would be writing one that
+               can promise tonight, which that measurement says we cannot.
+
+               The sell list is read for one extra clause and no new judgement.
+               A player you are already minded to sell who is about to drop is a
+               timing fact, not a new recommendation: the 0.1 goes either way
+               depending only on whether the move happens before the update. */
+            const sellIds = new Set(d.sells.map(a => a.player.id));
+            const priceRows = (d.priceMoves || []).map(c => {
+                const falling = c.dir === 'fall';
+                const timing = falling && sellIds.has(c.id)
+                    ? ` He is on your sell list above, so this is a timing question: moving him before the update keeps the 0.1, moving him after it does not.`
+                    : '';
+                // Dropped rather than printed as "£undefinedm" — one bad field
+                // would otherwise take the whole report down with it.
+                const price = typeof c.player.price === 'number' ? `£${c.player.price.toFixed(1)}m` : '';
+                return sqrRow({
+                    player: c.player,
+                    tone: falling ? (c.tier === 'due' ? 'is-bad' : 'is-warn') : 'is-good',
+                    detail: price,
+                    /* The label and the sentence both come out of
+                       scripts/price-watch.js, so the chip can never promise a
+                       night the sentence below it does not. */
+                    right: sqrChip(falling ? 'sell' : 'hold', pwLabel(c)),
+                    sub: `${escHTML(pwDetail(c))}${timing}`
+                });
+            });
+            html += sqrSection('wallet', 'Price watch', 'concerns', priceRows);
+
+            /* Differentials. The threshold is stated on purpose: a count with an
+               unstated cut-off is not a fact the reader can check, and this one
+               has four rivals in the codebase. */
+            // No detail cell: the ownership figure on the right IS the finding,
+            // and "owned by the field" next to it said nothing — every player is.
+            const diffRows = d.differentials.map(a => sqrRow({
+                player: a.player, tone: 'is-good',
+                right: sqrFig(a.player.ownership.toFixed(1), '% owned')
+            }));
+            html += sqrSection('users', 'Differentials', 'positives',
+                diffRows.length
+                    ? diffRows.concat([`<div class="opt-why">${diffRows.length} of your ${d.starters.length}
+                        starters ${diffRows.length === 1 ? 'is' : 'are'} owned by under
+                        ${SQR_DIFFERENTIAL_OWNERSHIP}% of managers — that is where your rank can move
+                        away from the field, in either direction.</div>`])
+                    : [sqrItem('positive', `None of your ${d.starters.length} starters is owned by under ${SQR_DIFFERENTIAL_OWNERSHIP}% — every one of them is a player the field also has.`)]);
+
+            /* ===== What to do this week =====
+
+               The sections above answer one question each. Nobody opens a report
+               to assemble the conclusion themselves, so this is the conclusion —
+               the same closing block the Gameweek Review ends on, and built the
+               same way: only lines with something to act on, every one of them
+               derived from a value a section above has already shown.
+
+               Holds live here now. "The remaining 9 players are a hold" was the
+               last line of the report and read as an apology for the report; as
+               one line of a summary it is simply the good news. */
+            const next = [];
+            if (d.injured.length) {
+                next.push({ tone: 'bad', icon: v2Icon('warn'), text: `${sqrJoin(d.injured.map(a => `<b>${escHTML(a.player.name)}</b>`))} cannot play. A starter who is out scores nothing and the bench only rescues it if the auto-sub order allows, so this is the one thing on the list with a deadline.` });
+            }
+            const dueDrop = (d.priceMoves || []).filter(c => c.dir === 'fall' && c.tier === 'due' && sellIds.has(c.id));
+            if (dueDrop.length) {
+                next.push({ tone: 'bad', icon: v2Icon('wallet'), text: `${sqrJoin(dueDrop.map(c => `<b>${escHTML(c.player.name)}</b>`))} ${dueDrop.length === 1 ? 'is' : 'are'} on your sell list and ${dueDrop.length === 1 ? 'drops' : 'drop'} at the next daily update. Moving before it keeps the 0.1.` });
+            }
+            /* ===== The moves themselves, from the one list that produces them
+               =====
+
+               This block used to count verdicts: "1 player the numbers argue for
+               moving on". The card two inches behind it was naming two concrete
+               upgrades with their xP gains. Both headings say "do this week" and
+               they gave different answers, because they were answering different
+               questions — the card asks the transfer engine "what is the biggest
+               xP gain available at your budget", the report was asking the
+               verdict engine "which of my players has something wrong with him".
+
+               A player can be a perfectly good hold and still be the best
+               upgrade going, because someone far better is affordable; and he can
+               be a sell with no affordable replacement. Both are legitimate, and
+               two legitimate answers under one heading is still a bug. So the
+               report reads d.moves — the same array the card renders — and the
+               verdict counts stay where they belong, as the evidence in the
+               sections above.
+
+               Title and detail are the card's own strings, so the two surfaces
+               cannot drift into describing one move differently. */
+            (d.moves || []).forEach(m => {
+                next.push({
+                    tone: m.urgent ? 'bad' : 'mixed',
+                    icon: m.icon,
+                    text: `<b>${escHTML(m.title)}</b> — ${escHTML(m.detail)}`
+                });
+            });
+            const nearBlank = d.fixtureLoad && d.fixtureLoad.blanks[0];
+            if (nearBlank) {
+                next.push({ tone: 'mixed', icon: v2Icon('calendar'), text: `<b>GW${nearBlank.gw}</b> leaves ${nearBlank.players.length} of your squad without a fixture. That is a chip question rather than a transfer one.` });
+            }
+            /* The closing reassurance, and it has to add up. "The other 6 players
+               are a hold" after a line about one sell implied a squad of seven;
+               holds are one of four verdicts and the other two are not nothing.
+               Counted against the whole squad, which is the only denominator a
+               reader can check. */
+            if (d.squad.length) {
+                const flagged = d.sells.length + d.monitors.length;
+                /* A list rather than a sentence, so there is no verb to agree
+                   with a count that can be one: "1 are a straight hold and 0 are
+                   performing too well" is what the sentence version produced. */
+                next.push({
+                    tone: 'good',
+                    icon: v2Icon('check'),
+                    text: flagged
+                        ? `Of your ${d.squad.length} players: <b>${d.holds.length}</b> to hold, <b>${d.stars.length}</b> performing too well to touch, <b>${flagged}</b> carrying a flag.`
+                        : `Nothing is flagged against any of your ${d.squad.length} players.`
+                });
+            }
+            html += `<div class="detail-section">
+                <div class="detail-section-title">${v2Icon('cap')} What to do this week</div>
+                ${next.length
+                    ? `<div class="gwr-learnings">${next.map(l =>
+                        `<div class="gwr-learning ${l.tone}"><span class="gwr-learning-icon">${l.icon}</span><span>${l.text}</span></div>`).join('')}</div>`
+                    : '<div class="opt-empty">Nothing in the numbers argues for a move this week.</div>'}
+            </div>`;
+
+            return html;
+        }
+
+        /* Reuses the shared report shell, as the Lineup Wizard, the draft planner
+           and the gameweek review all do — see optReportShow() in
+           scripts/pitch-snapshot.js. Opened as a centred modal rather than the
+           520px drawer: the fixture strips and sparklines added to the sections
+           above need the width, and at 520px they wrapped. */
+        function openSquadReport() {
+            optReportShow('Squad report', 'scales', renderSquadReport(buildSquadReport()), { modal: true });
+        }
+
+        function renderTeamOverview(health, sells, monitors, holds, stars, suggestedMoves) {
+            const { text: healthText, color: healthColor } = sqHealthBand(health);
 
             return `
             ${renderSquadKpiStrip(health, healthText, healthColor)}
             <div class="team-overview">
                 ${renderSnapshotBody()}
                 <aside class="sq-side">
-                    ${renderSquadStatusCard(sells, monitors, holds, stars, healthBreakdown, suggestedMoves)}
+                    ${renderSquadStatusCard(sells, monitors, holds, stars, suggestedMoves)}
                     ${renderManagerCard()}
                 </aside>
             </div>`;

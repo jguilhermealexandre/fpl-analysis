@@ -64,15 +64,46 @@
 
 # Someone opening /dashboard without a saved Team ID is sent to the ID page by
 # the gate in common.js; the rewrite here only decides which file answers.
+#
+# THE TRAILING-SLASH RULE BELOW DOES NOT FIRE. Measured against production on
+# 7 Oct 2026, by path:
+#
+#   /dashboard               308 -> /                      works
+#   /dashboard/login         308 -> /welcome               works
+#   /dashboard/players       308 -> /fpl-players-analysis  works
+#   /dashboard/              404                           rule inert
+#   /dashboard/players/      404                           no rule matches
+#   /dashboard/anything      404                           /dashboard/* inert
+#   /squad-analysis/         308                            works
+#   /squad-analysis/anything 308                            /squad-analysis/* works
+#
+# So splats are not broken in general and the named rules are honoured; it is
+# specifically /dashboard/ and /dashboard/* that never match. Note also that
+# every "200" here is served as a 308 to the target's clean URL — Pages
+# normalises an .html rewrite target — which is why the column above says 308.
+#
+# Both rules are left in place: they cost nothing and may start working. What
+# must not happen is code TRUSTING them. Nothing in this repo may emit a bare
+# /dashboard/ — welcome.html's wlNext() strips the slash, sidebar-nav.js links
+# /dashboard, and tests/common.test.mjs fails if either regresses. Eight hrefs
+# across index.html, 404.html, fpl-pricing.html, fpl-accuracy.html and
+# fpl-how-it-works.html pointed at /dashboard/ and were dead links, including
+# the landing page's primary call to action and the 404 page's own way out.
 /dashboard      /index.html   200
 /dashboard/     /index.html   200
 
-# Everything else under /dashboard/ is answered here rather than left to fall
-# through. This rule was deleted for a day and signing in started landing on a
-# 404: the named routes above cover the paths we link, and not the ones a
-# browser, a shared link or Pages' own path normalising can produce —
-# /dashboard/my-team/ with a trailing slash is not /dashboard/my-team, and
-# with nothing matching it there is no page at all.
+# Everything else under /dashboard/ was meant to be answered here rather than
+# left to fall through. This rule was deleted for a day and signing in started
+# landing on a 404: the named routes above cover the paths we link, and not the
+# ones a browser, a shared link or Pages' own path normalising can produce —
+# /dashboard/my-team/ with a trailing slash is not /dashboard/my-team, and with
+# nothing matching it there is no page at all.
+#
+# IT IS NOT DOING THAT JOB. /dashboard/anything and /dashboard/my-team/ both
+# return 404 in production today — see the measurements above. So the paragraph
+# below describes what this rule is FOR, not what it currently achieves, and
+# the trailing-slash hole it was added to close is still open. Treat any claim
+# that a path under /dashboard/ is safe because of this line as unverified.
 #
 # What the rule cost when it was last here is a real problem and is fixed
 # elsewhere rather than by deleting it: every unknown path returned the home

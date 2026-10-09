@@ -224,9 +224,23 @@
         function renderSquadRow(analysis) {
             const { player, verdict, fixtures } = analysis;
             const cols = computePlayerStatColumns(player);
-            const FDR_WORDS = { 1: 'Very easy', 2: 'Easy', 3: 'Average', 4: 'Hard', 5: 'Very hard' };
-            const fixtureChips = fixtures.slice(0, 5).map(f =>
-                `<div class="fixture-chip fdr-${f.difficulty}" data-tooltip="GW${f.event}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent)} — FDR ${f.difficulty} (${FDR_WORDS[f.difficulty] || 'Average'})"><span class="fixture-team">${escHTML(f.opponent)}</span></div>`).join('');
+            /* The band, then what the opponent has actually done — the same
+               opponentContext() the fixture calendar and the pitch cards read, so
+               the three strips on this page explain a fixture the same way. FPL
+               set these ratings in July; the second sentence is this season. */
+            const fdrRanks = getDefensiveRanks();
+            const fixtureChips = fixtures.slice(0, 5).map(f => {
+                let tip = `GW${f.event}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent)}`
+                    + ` — FDR ${f.difficulty} (${FDR_WORDS[f.difficulty] || 'Average'})`;
+                const ctx = opponentContext(player.teamId, f, fdrRanks);
+                if (ctx && ctx.ranked) {
+                    tip += `. ${escHTML(f.opponent)} concede ${ctx.conceded.toFixed(1)} a game,`
+                        + ` ${ordinal(ctx.rank)} leakiest of ${ctx.total}.`;
+                } else if (ctx) {
+                    tip += `. Only ${ctx.matches} ${ctx.matches === 1 ? 'match' : 'matches'} played — too early to rank.`;
+                }
+                return `<div class="fixture-chip fdr-${f.difficulty}" data-tooltip="${tip}"><span class="fixture-team">${escHTML(f.opponent)}</span></div>`;
+            }).join('');
             const rowFlagClass = `sq-row-${verdict}`;
             /* The verdict, in the slot that already exists to keep the names
                aligned. It held a warning triangle for Sell and nothing at all
@@ -253,7 +267,7 @@
                         ${hazardIcon}
                         ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(player) : ''}
                         <div class="sq-row-name-block">
-                            <div class="sq-row-name">${player.isCaptain ? `${v2Icon('crown')} ` : ''}${player.isVice ? 'V ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}${typeof tlBadge === 'function' ? tlBadge(player) : ''}</div>
+                            <div class="sq-row-name">${typeof v2AvailMark === 'function' ? v2AvailMark(player) : ''}${player.isCaptain ? `${v2Icon('crown')} ` : ''}${player.isVice ? 'V ' : ''}${escHTML(player.name)}${player.onBench ? '<span class="bench-tag">BENCH</span>' : ''}${typeof tlBadge === 'function' ? tlBadge(player) : ''}</div>
                             <div class="sq-row-team"><span class="sq-row-club">${escHTML(player.team)} · £${player.price.toFixed(1)}m</span>${priceChangeBadge(player)}</div>
                         </div>
                     </div>

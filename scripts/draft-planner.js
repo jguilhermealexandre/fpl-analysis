@@ -30,6 +30,10 @@
         let draftSlotCount = 1;
         let draftSwapSource = null;
         let draftReplacementTarget = null;
+        /* Which half of the replacement panel is showing. Kept at screen level
+           rather than per player: which list you want to work from is how you
+           are shopping, not a fact about the man you are replacing. */
+        let draftPanelTab = 'best';
         let draftCompareMode = false;
         // 'stats' shows the historical per-90 columns; 'xp' replaces them with a
         // week-by-week projection, which is what a planner is actually for.
@@ -110,7 +114,9 @@
                 startingFT: (typeof deriveFreeTransfers === 'function' ? deriveFreeTransfers().count : 1),
                 usedChips: usedChipRecords,
                 teamId: localStorage.getItem('fpl_team_id') || '',
-                savedAt: null
+                savedAt: null,
+                // Set when a write to localStorage is refused — see saveDraft().
+                saveError: null
             };
 
             // Initialize lineups for each GW (carry-forward model)
@@ -459,42 +465,165 @@
 
             html += `<div id="draftTransferComparison"></div>`;
 
-            // Ranked replacements. One click swaps the player in — unlike the
-            // manual search above, which goes through the compare-then-confirm
-            // flow via selectDraftReplacement, since these are already vetted.
             const squad2 = getDraftSquad(gw);
+
+            /* One card, two lists. The shortlist and the ranked suggestions are
+               the same object with the same click, so they are the same markup;
+               `mark` is what differs — a rank number for the ranked list, a star
+               for a player the manager picked out himself. */
+            const optCard = (r, mark, markClass) => {
+                const rFix = (r.fixtures || []).slice(0, 3);
+                const delta = r.price - player.price;
+                /* A starred player over budget is shown rather than hidden, so
+                   the card has to say so and the click has to be refused — an
+                   enabled button that cannot do what it offers is worse than no
+                   button. The shortfall is the useful number: it says how much
+                   has to come from somewhere else. */
+                const short = r.price - maxAffordable;
+                const overBudget = short > 0.001;
+                /* Refused by a handler that says why, not by the disabled
+                   attribute: .dtp-opt[disabled] has no rule in the stylesheet,
+                   so a disabled card is indistinguishable from a live one and
+                   the click just does nothing. applyDraftTransfer does not check
+                   the budget either — it would have quietly built an
+                   over-budget draft. */
+                return `<button class="dtp-opt"
+                    onclick="${overBudget
+                        ? `draftRefuseUnaffordable(${r.id}, ${short.toFixed(1)})`
+                        : `confirmDraftTransfer(${player.id}, ${r.id})`}"
+                    data-tooltip="${overBudget
+                        ? `${escHTML(r.name)} costs \u00A3${short.toFixed(1)}m more than this slot can afford. Starred, so shown anyway \u2014 free the money elsewhere and he fits.`
+                        : `Bring ${escHTML(r.name)} in for ${escHTML(player.name)} in GW${gw}.`}">
+                    <span class="dtp-opt-rank ${markClass || ''}">${mark}</span>
+                    ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(r, 'v2-pid-portrait dtp-opt-face') : ''}
+                    <span class="dtp-opt-id">
+                        <span class="dtp-opt-name">${escHTML(r.name)}</span>
+                        <span class="dtp-opt-team">${escHTML(r.team)}</span>
+                    </span>
+                    <span class="dtp-opt-price">£${r.price.toFixed(1)}m ${priceChangeBadge(r)}
+                        <span class="dtp-opt-delta ${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}">${delta === 0 ? 'same price' : `${delta > 0 ? '+' : '−'}£${Math.abs(delta).toFixed(1)}m`}</span>
+                    </span>
+                    <span class="dtp-opt-fix">${rFix.length
+                        ? rFix.map(f => `<span class="dtp-fix fdr-${f.difficulty || 3}">${escHTML(f.opponent)} <span class="dtp-fix-ha">(${f.isHome ? 'H' : 'A'})</span></span>`).join('')
+                        : '<span class="dtp-fix dtp-fix-blank">No fixture</span>'}</span>
+                    ${Number.isFinite(r._score)
+                        ? `<span class="dtp-opt-score" data-tooltip="Our ranking for this swap: form, points per game, the projection for the week ahead and the run of fixtures, combined.">${r._score.toFixed(0)}</span>`
+                        : '<span class="dtp-opt-score dtp-opt-score-none" data-tooltip="Not in the ranked list below — starred, so shown anyway.">★</span>'}
+                </button>`;
+            };
+
+            /* ===== The manager's own shortlist, first =====
+
+               He has already told us these interest him, which is a stronger
+               signal than anything this page computes — so they go above the
+               ranked list rather than being left for him to find inside it.
+
+               No minutes floor here, unlike findDraftReplacements(). A star IS
+               the judgement that floor is trying to make, and a manager who has
+               deliberately starred a benched keeper about to take over does not
+               want us quietly dropping him.
+
+               Anyone shown here is removed from the ranked list below: the same
+               player twice in one panel is noise, and the star should win. */
+            const starred = (typeof getTWShortlistIds === 'function') ? getTWShortlistIds() : new Set();
+            const squadIds2 = new Set(squad2.map(p => p.id));
+            /* NO PRICE CAP, and that was a real complaint: the Favourites tab
+               came up empty for a manager who had starred plenty, because every
+               one of them cost more than this slot can afford and they were
+               filtered out in silence.
+
+               The Transfer Wizard made the opposite call and said why — "how
+               does the player I starred compare is worth answering even when he
+               is unaffordable, and the card marks that rather than hiding him".
+               A star IS the judgement a budget filter is trying to make. Two
+               surfaces disagreeing about the same list is the thing Phase 5 was
+               about, so this one follows the wizard: show him, mark him, and let
+               the manager decide whether to free the money. */
+            const shortlist = !starred.size ? [] : allPlayers.filter(r =>
+                starred.has(r.id)
+                && r.position === player.position
+                && r.id !== player.id
+                && !squadIds2.has(r.id)
+                && (r.status === 'a' || r.status === 'd'));
+            // Affordable first, dearest of those at the top; the rest behind.
+            shortlist.sort((a, b) => {
+                const aFits = a.price <= maxAffordable + 0.001;
+                const bFits = b.price <= maxAffordable + 0.001;
+                if (aFits !== bFits) return aFits ? -1 : 1;
+                return b.price - a.price;
+            });
+
+            /* TWO TABS RATHER THAN TWO STACKS.
+
+               Best available and your starred players were two sections one
+               under the other, which on a side panel meant the ranked list
+               started below the fold whenever anything was starred. They are the
+               same question asked two ways \u2014 who can replace this man \u2014 so they
+               belong in one block with a choice, not in a column.
+
+               Best available leads, because it is the answer for a manager who
+               has starred nothing, which is most of them.
+
+               The ranked list no longer drops starred players. It did while both
+               sections were on screen at once, where the same face twice was
+               noise; with tabs you see one list at a time, and knowing that your
+               starred target ranks seventh of eight is worth more than hiding
+               him from the ranking. */
             const suggestions = findDraftReplacements(player, squad2, 8);
-            if (suggestions.length > 0) {
-                html += `<div class="detail-section">
-                    <div class="detail-section-title">${v2Icon('sparkle')} Best available for £${maxAffordable.toFixed(1)}m</div>
-                    <div class="dtp-grid">
-                    ${suggestions.map((r, i) => {
-                        const rFix = (r.fixtures || []).slice(0, 3);
-                        const delta = r.price - player.price;
-                        return `<button class="dtp-opt" onclick="confirmDraftTransfer(${player.id}, ${r.id})"
-                            data-tooltip="Bring ${escHTML(r.name)} in for ${escHTML(player.name)} in GW${gw}.">
-                            <span class="dtp-opt-rank">${i + 1}</span>
-                            ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(r, 'v2-pid-portrait dtp-opt-face') : ''}
-                            <span class="dtp-opt-id">
-                                <span class="dtp-opt-name">${escHTML(r.name)}</span>
-                                <span class="dtp-opt-team">${escHTML(r.team)}</span>
-                            </span>
-                            <span class="dtp-opt-price">£${r.price.toFixed(1)}m ${priceChangeBadge(r)}
-                                <span class="dtp-opt-delta ${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}">${delta === 0 ? 'same price' : `${delta > 0 ? '+' : '−'}£${Math.abs(delta).toFixed(1)}m`}</span>
-                            </span>
-                            <span class="dtp-opt-fix">${rFix.length
-                                ? rFix.map(f => `<span class="dtp-fix fdr-${f.difficulty || 3}">${escHTML(f.opponent)} <span class="dtp-fix-ha">(${f.isHome ? 'H' : 'A'})</span></span>`).join('')
-                                : '<span class="dtp-fix dtp-fix-blank">No fixture</span>'}</span>
-                            <span class="dtp-opt-score" data-tooltip="Our ranking for this swap: form, points per game, the projection for the week ahead and the run of fixtures, combined.">${r._score.toFixed(0)}</span>
-                        </button>`;
-                    }).join('')}
-                    </div>
+            const tab = draftPanelTab === 'favorites' ? 'favorites' : 'best';
+
+            const pill = (key, label, n) => `<button
+                class="filter-pill compact-pill${tab === key ? ' active' : ''}"
+                onclick="setDraftPanelTab('${key}')"
+                aria-pressed="${tab === key}">${label}${n != null ? ` (${n})` : ''}</button>`;
+
+            html += `<div class="detail-section">
+                <div class="apf-controls">
+                    ${pill('best', 'Best available', suggestions.length)}
+                    ${pill('favorites', 'Favourites', shortlist.length || null)}
                 </div>`;
+
+            if (tab === 'best') {
+                html += suggestions.length
+                    ? `<div class="dtp-grid">${suggestions.map((r, i) => optCard(r, String(i + 1))).join('')}</div>`
+                    : `<div class="dtp-star-none">Nothing in the market can replace
+                        ${escHTML(player.name)} for \u00A3${maxAffordable.toFixed(1)}m \u2014 the money or the
+                        three-per-club limit runs out first.</div>`;
+            } else if (shortlist.length) {
+                html += `<div class="dtp-grid">${shortlist.map(r => optCard(r, '\u2605', 'is-star')).join('')}</div>`;
+            } else if (starred.size) {
+                /* He has starred players and none of them can go here. Silence
+                   would read as the feature being broken; one line says which
+                   wall it is \u2014 almost always position or money. */
+                html += `<div class="dtp-star-none">None of your ${starred.size} starred player${starred.size === 1 ? '' : 's'}
+                    can replace ${escHTML(player.name)} \u2014 they are a different position, already in your squad,
+                    or above \u00A3${maxAffordable.toFixed(1)}m.</div>`;
+            } else {
+                html += `<div class="dtp-star-none">You have not starred anyone yet \u2014 use the star on the
+                    Players page and they show up here, ahead of the ranking.</div>`;
             }
+            html += `</div>`;
 
             document.getElementById('draftTransferBody').innerHTML = html;
             if (typeof lucide !== 'undefined') lucide.createIcons();
             document.getElementById('draftTransferOverlay').classList.add('show');
+        }
+
+        /* A starred player the slot cannot afford. Shown on purpose — a star is
+           the judgement a budget filter is trying to make — so the refusal has
+           to name the shortfall rather than do nothing. */
+        function draftRefuseUnaffordable(playerId, shortfall) {
+            const p = allPlayersById[playerId];
+            const name = p ? p.name : 'That player';
+            updateStatus(`${name} costs \u00A3${Number(shortfall).toFixed(1)}m more than this slot can afford — sell someone dearer first, or free the money elsewhere in the draft.`, 'error');
+        }
+
+        function setDraftPanelTab(key) {
+            draftPanelTab = key === 'favorites' ? 'favorites' : 'best';
+            /* Re-open rather than patch: the panel is built in one pass from the
+               player it is about, and openDraftTransferPanel is idempotent —
+               adding .show to an overlay that already has it is a no-op. */
+            if (draftReplacementTarget) openDraftTransferPanel(draftReplacementTarget.id);
         }
 
         function closeDraftTransferPanel(event) {
@@ -503,6 +632,37 @@
             draftReplacementTarget = null;
         }
 
+        /* Who can replace this player in the draft — on projected points, the
+           same as everywhere else.
+
+           THIS USED TO BE A THIRD MODEL. The sort key was a hand-rolled weighted
+           sum:
+
+               (form * 3) + (ppg * 2.5) + (epNext * 2) + ((5 - fdr) * 2.5)
+               + teamBonus + (ownership > 15 ? 1 : 0)
+
+           and the Transfer Wizard answering the same question — replace this
+           player in my squad — ranked on twXPOver over a five-gameweek horizon.
+           Two surfaces, one question, different answers, with nothing on screen
+           to say why. The wizard, quick picks and Squad Analysis all agreed with
+           each other; the draft was the outlier.
+
+           THE OWNERSHIP BONUS IS GONE, and it is worth naming. A flat point for
+           being owned by more than 15% rewarded a player for being popular,
+           which is a thumb on the scale against exactly the differentials the
+           rest of the site is built to surface — the players page has a
+           Differentials tier at *under* 10% owned, so the draft was paying for
+           the opposite of what that page recommends.
+
+           The old score survives as `_score` and breaks ties between candidates
+           that project identically, which is the arrangement
+           findTransferCandidates already uses and for the same reason: it is a
+           number in units of its own, useful for ordering equals and misleading
+           as a headline.
+
+           Projected from the draft's own gameweek rather than from today —
+           "replace him in GW9" is a different question from "replace him now",
+           and twPlanGWs takes the start. */
         function findDraftReplacements(player, currentSquad, count = 8) {
             const ds = getActiveDraft();
             const gw = ds.selectedGW;
@@ -510,9 +670,13 @@
             const squadIds = new Set(currentSquad.map(p => p.id));
             const candidates = allPlayers.filter(p =>
                 p.position === player.position && p.price <= maxPrice && p.id !== player.id &&
-                (p.status === 'a' || p.status === 'd') && p.minutes >= minMinutesForCandidate() &&
+                twPlayerAvailable(p) && p.minutes >= minMinutesForCandidate() &&
                 !squadIds.has(p.id)
             );
+
+            const runGWs = typeof twPlanGWs === 'function' ? twPlanGWs(TW_HORIZON, gw) : [];
+            const canProject = runGWs.length > 0
+                && typeof xpEngineReady === 'function' && xpEngineReady();
 
             candidates.forEach(c => {
                 const fdr = c.fixtures && c.fixtures.length >= 3
@@ -525,9 +689,16 @@
                     if (c.position <= 2) teamBonus += (cTA.defensePower - 50) / 25;
                     teamBonus += (cTA.fixtureScore - 50) / 25;
                 }
-                c._score = (c.form * 3) + (c.ppg * 2.5) + (c.epNext * 2) + ((5 - fdr) * 2.5) + teamBonus + (c.ownership > 15 ? 1 : 0);
+                c._score = (c.form * 3) + (c.ppg * 2.5) + (c.epNext * 2) + ((5 - fdr) * 2.5) + teamBonus;
+                c._xpRun = canProject ? twXPOver(c, runGWs) : null;
             });
-            candidates.sort((a, b) => b._score - a._score);
+
+            /* No engine, or no fixtures left to project: fall back to the old
+               ordering whole rather than sorting everyone by an identical null.
+               Same fallback shape as findTransferCandidates. */
+            candidates.sort(canProject
+                ? (a, b) => (b._xpRun - a._xpRun) || (b._score - a._score)
+                : (a, b) => b._score - a._score);
             return candidates.slice(0, count);
         }
 
@@ -551,7 +722,14 @@
             if (results.length === 0) {
                 dropdown.innerHTML = '<div class="planner-search-item" style="color:var(--text-muted);">No affordable players found</div>';
             } else {
-                dropdown.innerHTML = results.map(p => `<div class="planner-search-item" onclick="selectDraftReplacement(${p.id})">
+                /* Reachable from the input above it. These were mouse-only, which
+                   made the search a dead end for a keyboard: you could type a
+                   name and then had nowhere to go. role="button" is enough —
+                   initKeyActivation() in common.js handles Enter and Space for
+                   everything carrying it. */
+                dropdown.innerHTML = results.map(p => `<div class="planner-search-item" role="button" tabindex="0"
+                    aria-label="${escHTML(`Pick ${p.name}, ${p.team}, £${p.price.toFixed(1)} million`)}"
+                    onclick="selectDraftReplacement(${p.id})">
                     <div><span class="planner-search-item-name">${escHTML(p.name)}</span></div>
                     <span class="planner-search-item-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${p.form} form</span>
                 </div>`).join('');
@@ -1089,10 +1267,8 @@
             const ds = getActiveDraft();
             const report = ds.optimizeReports && ds.optimizeReports[gw];
             if (!report) return;
-            v2SetPanelTitle('optReportTitle', `GW${Number(gw)} optimization report`, 'chart');
-            document.getElementById('optReportBody').innerHTML = renderOptimizeReportModal(report, gw);
-            document.getElementById('optReportOverlay').classList.add('show');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+            optReportShow(`GW${Number(gw)} optimization report`, 'chart',
+                renderOptimizeReportModal(report, gw));
         }
 
         // ===== DRAFT localStorage PERSISTENCE =====
@@ -1131,9 +1307,30 @@
             try {
                 localStorage.setItem(`fpl_draft_${ds.teamId}_plan${slotIndex}`, JSON.stringify(payload));
                 ds.savedAt = payload.savedAt;
+                ds.saveError = null;
                 // Save meta
                 saveDraftMeta();
-            } catch (e) { /* localStorage full */ }
+            } catch (e) {
+                /* Was `catch (e) { /* localStorage full *\/ }` — swallowed whole.
+                   The help drawer promises "a draft is held locally until you
+                   change it", and this is the line that holds it, so a refused
+                   write is the one failure on this tab a manager has to be told
+                   about: they are several gameweeks into a plan that will be
+                   gone when the tab closes.
+
+                   Worse than silent, it was misleading. ds.savedAt keeps its
+                   previous value on a throw, and the indicator below prints
+                   "Plan 1 saved: 14:32" off it — so a failed save left a badge
+                   on screen saying the plan was saved. */
+                ds.saveError = (e && e.name === 'QuotaExceededError') ? 'full' : 'blocked';
+                if (window.reportError) window.reportError(e, 'saveDraft');
+                if (typeof updateStatus === 'function') {
+                    updateStatus(ds.saveError === 'full'
+                        ? 'This plan could not be saved — your browser\u2019s storage for this site is full. It will be lost when you close the tab.'
+                        : 'This plan could not be saved — your browser is blocking storage for this site. It will be lost when you close the tab.',
+                        'error');
+                }
+            }
         }
 
         function saveDraftMeta() {
@@ -1484,8 +1681,11 @@
             html += `</div>`;
             html += `</section>`;
 
-            // Save indicator
-            if (ds.savedAt) {
+            // Save indicator. Says "not saved" when the write was refused,
+            // rather than leaving the last successful time on screen.
+            if (ds.saveError) {
+                html += `<div class="draft-save-indicator is-error" id="draftSaveIndicator">Plan ${activeDraftSlot + 1} NOT SAVED \u2014 browser storage ${ds.saveError === 'full' ? 'is full' : 'is blocked'}</div>`;
+            } else if (ds.savedAt) {
                 html += `<div class="draft-save-indicator" id="draftSaveIndicator">Plan ${activeDraftSlot + 1} saved: ${new Date(ds.savedAt).toLocaleTimeString()}</div>`;
             }
 
@@ -1947,6 +2147,15 @@
                     ? gwFixtures.map(f => `<span class="pcard-fixture fdr-${f.difficulty || 3}" data-tooltip="GW${gw}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3} (${FDR_WORD[f.difficulty || 3] || 'Average'})">${escHTML(f.opponent || '?')} <em>${f.isHome ? 'H' : 'A'}</em></span>`).join('')
                     : `<span class="pcard-fixture fdr-3" data-tooltip="${escHTML(p.team)} have no fixture in GW${gw} — this player scores nothing.">No fixture</span>`;
 
+                /* The card is NOT role="button", and that was a mistake here
+                   for one release. It holds three real buttons — captain, vice
+                   and the replacement panel — and a focusable widget inside an
+                   element that is itself a widget is nested-interactive: a screen
+                   reader announces the card as a button and then finds three
+                   more inside it. The keyboard path is the name below instead,
+                   which is a sibling of those three rather than their parent.
+                   The onclick stays: it is the mouse and touch affordance, and
+                   the whole card being the target is the point of a pitch. */
                 return `<div class="pcard dp-card ${posClass} ${swapClass} ${injured ? 'pcard-injured' : ''} ${benchIndex != null ? 'pcard-bench' : ''}"
                     data-player-id="${p.id}"
                     onclick="handleDraftPitchClick(${p.id})"
@@ -1962,7 +2171,9 @@
                     </div>
                     <div class="pcard-flags">${flags}</div>
                     ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p, 'v2-pid-pitch') : ''}
-                    <div class="pcard-name">${escHTML(p.name)}</div>
+                    <div class="pcard-name" role="button" tabindex="0"
+                        aria-label="${escHTML(`Move ${p.name}, ${p.team}${benchIndex != null ? `, bench ${benchIndex + 1}` : ''}`)}"
+                        onclick="handleDraftPitchClick(${p.id})">${escHTML(p.name)}</div>
                     ${fixtureTag}
                     <div class="pcard-score" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}, from expected minutes, the opponent and this player's underlying rates.">
                         <b>${xp.toFixed(1)}</b><span class="pcard-score-u">xP</span>
@@ -2132,7 +2343,10 @@
             let row = `<tr class="${isBench ? 'bench-row' : ''} ${rowSwapClass}" data-player-id="${player.id}">`;
 
             const captain = player.isCaptain ? '<span class="planner-captain-badge">C</span> ' : player.isVice ? '<span class="planner-captain-badge">V</span> ' : '';
-            const statusIcon = player.status === 'i' ? '' : player.status === 'd' ? '' : '';
+            /* Was three ternary branches all returning '' — see check-icons.mjs.
+               The mark itself is v2AvailMark() in common.js now, shared with the
+               squad table and classified the same way as the pitch cards. */
+            const statusIcon = typeof v2AvailMark === 'function' ? v2AvailMark(player) : '';
             const transferBadge = player.isTransferIn ? '<span class="draft-transfer-badge">IN</span>' : '';
             /* Squad Analysis settled this: fading a benched row says "benched"
                a second time and charges an xP, a form figure and five fixture
@@ -2149,7 +2363,7 @@
                 ${typeof v2PosEdgeClass === 'function' ? `<span class="dp-row-pos ${v2PosEdgeClass(player.position)}"></span>` : ''}
                 ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(player) : ''}
                 <div class="sq-row-name-block">
-                    <div class="sq-row-name" onclick="openDraftTransferPanel(${player.id})" title="Transfer ${escHTML(player.name)} out">${captain}${statusIcon}${escHTML(player.name)}${transferBadge}${benchBadge}</div>
+                    <div class="sq-row-name" role="button" tabindex="0" onclick="openDraftTransferPanel(${player.id})" title="Transfer ${escHTML(player.name)} out" aria-label="${escHTML(`Transfer ${player.name} out`)}">${captain}${statusIcon}${escHTML(player.name)}${transferBadge}${benchBadge}</div>
                     <div class="sq-row-team"><span class="sq-row-club">${escHTML(player.team)} · £${player.price.toFixed(1)}m</span>${typeof priceChangeBadge === 'function' ? priceChangeBadge(player) : ''}</div>
                 </div>
             </div></td>`;
@@ -2333,7 +2547,14 @@
             if (summary && !draftCompareMode) summary.innerHTML = renderDraftTransferSummary();
 
             const saveInd = document.getElementById('draftSaveIndicator');
-            if (saveInd && ds.savedAt) saveInd.textContent = `Plan ${activeDraftSlot + 1} saved: ${new Date(ds.savedAt).toLocaleTimeString()}`;
+            if (saveInd) {
+                saveInd.classList.toggle('is-error', !!ds.saveError);
+                if (ds.saveError) {
+                    saveInd.textContent = `Plan ${activeDraftSlot + 1} NOT SAVED \u2014 browser storage ${ds.saveError === 'full' ? 'is full' : 'is blocked'}`;
+                } else if (ds.savedAt) {
+                    saveInd.textContent = `Plan ${activeDraftSlot + 1} saved: ${new Date(ds.savedAt).toLocaleTimeString()}`;
+                }
+            }
 
             const sideBody = document.getElementById('draftSidebarBody');
             if (sideBody && !draftCompareMode) sideBody.innerHTML = renderDraftSidebarBody();
@@ -3067,10 +3288,7 @@
         }
 
         function openDraftSuggestSummary() {
-            v2SetPanelTitle('optReportTitle', 'Suggested transfers', 'sparkle');
-            document.getElementById('optReportBody').innerHTML = renderDraftSuggestSummaryModal();
-            document.getElementById('optReportOverlay').classList.add('show');
-            if (typeof lucide !== 'undefined') lucide.createIcons();
+            optReportShow('Suggested transfers', 'sparkle', renderDraftSuggestSummaryModal());
         }
 
         function renderDraftSidebarBody() {

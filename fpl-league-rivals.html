@@ -45,24 +45,24 @@
          waiting for the stylesheet to name them: same-origin now, so a
          preload here costs nothing and starts them with the CSS. -->
     <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-ca11fe9ca5.woff2" crossorigin>
-    <link rel="stylesheet" href="/styles/fonts.min.css?v=422">
-    <script src="/scripts/dashboard-gate.min.js?v=422"></script>
-    <link rel="stylesheet" href="/styles/common.min.css?v=422">
-    <link rel="stylesheet" href="/styles/v2-design.min.css?v=422">
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=451">
+    <script src="/scripts/dashboard-gate.min.js?v=451"></script>
+    <link rel="stylesheet" href="/styles/common.min.css?v=451">
+    <link rel="stylesheet" href="/styles/v2-design.min.css?v=451">
     <!-- v2-app.css is the signed-in half of v2-design.css. Asked for here, so
          that the cascade reads the same as it did when the two were one file,
          and only when there is a saved Team ID — see the note at the top of
          v2-design.css. Kept identical on every page by check:appcss. -->
-    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=422';document.head.appendChild(l)})();</script>
-    <link rel="stylesheet" href="/styles/responsive.min.css?v=422">
-    <script src="/scripts/error-monitor.min.js?v=422"></script>
-    <script src="/scripts/auth.min.js?v=422"></script>
-    <script src="/scripts/common.min.js?v=422"></script>
+    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=451';document.head.appendChild(l)})();</script>
+    <link rel="stylesheet" href="/styles/responsive.min.css?v=451">
+    <script src="/scripts/error-monitor.min.js?v=451"></script>
+    <script src="/scripts/auth.min.js?v=451"></script>
+    <script src="/scripts/common.min.js?v=451"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="/scripts/push-alerts.min.js?v=422"></script>
-    <script src="/scripts/notifications.min.js?v=422"></script>
-    <script src="/scripts/sidebar-nav.min.js?v=422"></script>
+    <script src="/scripts/push-alerts.min.js?v=451"></script>
+    <script src="/scripts/notifications.min.js?v=451"></script>
+    <script src="/scripts/sidebar-nav.min.js?v=451"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -2891,7 +2891,7 @@
                 
                 return `<tr class="${isYou ? 'you-row' : ''}">
                     <td style="font-weight:600;">${i + 1}</td>
-                    <td>${isYou ? '' : ''}${escHTML(r.name)}<br><span style="font-size:10px;color:var(--text-muted);">${escHTML(r.teamName)}</span></td>
+                    <td>${isYou ? '<span class="you-badge">You</span> ' : ''}${escHTML(r.name)}<br><span style="font-size:10px;color:var(--text-muted);">${escHTML(r.teamName)}</span></td>
                     <td style="text-align:center;font-weight:600;">${r.lastGwPts}</td>
                     <td style="text-align:center;font-weight:700;font-family:'Space Grotesk',sans-serif;">${r.totalPts}</td>
                     <td style="text-align:center;">${r.totalTransfers}</td>
@@ -2943,7 +2943,7 @@
                     <div class="strength-card ${c.isYou ? 'you-card' : ''}">
                         <div class="strength-card-header">
                             <div>
-                                <div class="strength-card-name">${c.isYou ? '' : ''}${escHTML(c.name)}</div>
+                                <div class="strength-card-name">${c.isYou ? '<span class="you-badge">You</span> ' : ''}${escHTML(c.name)}</div>
                                 <div style="font-size:11px;color:var(--text-muted);">${escHTML(c.teamName)} · Rank #${i + 1} easiest</div>
                             </div>
                             <div class="strength-card-fdr" style="color:${fdrColor};">${c.avgFdrDisplay}</div>
@@ -3066,13 +3066,38 @@
         }
         
         // ===== HELPERS =====
+        /* The message is TEXT, and this used to write it as markup.
+         *
+         * `bar.innerHTML = ...${msg}...` with two callers passing
+         * leagueData.league.name, which is a string another person typed when
+         * they created the league. A league called
+         * `<img src=x onerror=...>` therefore ran its own markup in the browser
+         * of every member who opened this page — and script-src carries
+         * 'unsafe-inline', so an injected handler executes. err.message reaches
+         * it too, from a proxy response nobody here controls.
+         *
+         * escHTML(msg) would have closed it. Building the node and assigning
+         * textContent closes it permanently: there is no longer a path from this
+         * argument to parsed markup, so the next person to add a caller cannot
+         * reopen it by forgetting. The spinner is the only markup, and it is
+         * ours.
+         *
+         * See the comment on escHTML in scripts/common.js, which names this
+         * exact page and this exact source of strings as the reason it escapes
+         * quotes as well as angle brackets. */
         function showStatus(msg, type) {
             const bar = document.getElementById('statusBar');
             bar.style.display = 'flex';
             bar.className = `status-bar ${type}`;
-            bar.innerHTML = type === 'loading' 
-                ? `<div class="spinner"></div><span>${msg}</span>`
-                : `<span>${type === 'success' ? '✓' : ''} ${msg}</span>`;
+            bar.textContent = '';
+            if (type === 'loading') {
+                const spin = document.createElement('div');
+                spin.className = 'spinner';
+                bar.appendChild(spin);
+            }
+            const span = document.createElement('span');
+            span.textContent = type === 'success' ? `✓ ${msg}` : String(msg);
+            bar.appendChild(span);
         }
         
         // Enter key handlers

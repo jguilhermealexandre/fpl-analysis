@@ -89,6 +89,15 @@ jobs:
           # of the file gets the club's name rather than its nickname.
           node tools/normalise-bootstrap.mjs data/bootstrap-static.json
 
+          # The last five gameweeks of minutes per player, copied onto the
+          # bootstrap elements so the projection engine can tell a returning
+          # starter from a fading one. bootstrap has no per-gameweek field of
+          # its own, and the feed that does is 2.6MB and loaded by two scripts —
+          # see tools/attach-minutes-form.mjs. players-data.json is not rewritten
+          # by this job, so this reads the committed one; it degrades to a no-op
+          # if that file is not there yet.
+          node tools/attach-minutes-form.mjs data/bootstrap-static.json data/players-data.json
+
           # Per-player stats for the round in progress. players-data.json also
           # carries this, but only via 610 sequential element-summary calls on the
           # four-hourly job, so a goal scored at 16:20 was not in the site's

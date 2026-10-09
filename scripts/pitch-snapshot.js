@@ -373,7 +373,7 @@
             return {
                 opponent: teams[isHome ? f.team_a : f.team_h]?.short_name || '???',
                 isHome,
-                difficulty: isHome ? f.team_h_difficulty : f.team_a_difficulty,
+                difficulty: xpFixtureDifficulty(player.teamId, f),
                 event: f.event
             };
         }
@@ -1340,16 +1340,86 @@
             </div>`;
         }
 
-        function openOptimizeReport() {
-            v2SetPanelTitle('optReportTitle', 'Optimization report', 'chart');
-            document.getElementById('optReportBody').innerHTML = renderOptimizeReportModal();
-            document.getElementById('optReportOverlay').classList.add('show');
+        /* ===== The one shared report shell =====
+
+           Five features render into #optReportOverlay: this report, the Squad
+           Report, the Gameweek Review, the draft planner's suggestions and its
+           plan comparison. Each repeated the same four lines, and the fifth
+           thing one of them now needs — whether the shell is a side drawer or a
+           centred modal — is a piece of state that cannot be kept correct in
+           five copies. Put it on every open instead, so the shape is always
+           whatever the feature that just opened it asked for.
+
+           Drawer or modal is not a preference. The drawer is 520px, which is
+           right for a column of short verdicts and wrong for anything wider:
+           the Gameweek Review's rows carry position, face, name, opponent,
+           minutes, what he did and his points, and the Squad Report now draws a
+           five-fixture FDR strip and a six-week sparkline inside a sentence.
+           Those two ask for the modal; the other three keep the drawer they
+           were written for. */
+        function optReportShow(title, icon, html, opts) {
+            const o = opts || {};
+            const overlay = document.getElementById('optReportOverlay');
+            if (!overlay) return;
+
+            /* ON <body>, NOT INSIDE THE ARTICLE.
+
+               The overlay is declared inside <div class="v2-main-content">, and
+               that is precisely the element body.v2-blurred blurs. Left there, a
+               modal breaks three ways at once, and the blur is only the visible
+               one:
+
+                 - it is a descendant of the blurred box, so it blurs itself;
+                 - a `filter` on an ancestor makes that ancestor the containing
+                   block for position:fixed children. `inset: 0` therefore stops
+                   meaning the viewport and starts meaning the whole article, so
+                   a vertically centred panel lands halfway down a very tall page
+                   — below the fold;
+                 - the same rule sets pointer-events:none, so nothing inside it
+                   could be clicked either.
+
+               Every other modal on the site is appended to <body> for exactly
+               this reason, and styles/v2-app.css says so where the blur is
+               defined. Moved once, on the first open, and it stays: a fixed
+               overlay positions identically from either parent, so the three
+               drawer callers are unaffected — and from <body> no ancestor can
+               ever acquire a filter or a transform and do this again. */
+            const moved = overlay.parentNode !== document.body;
+            if (moved) document.body.appendChild(overlay);
+
+            v2SetPanelTitle('optReportTitle', title, icon);
+            const body = document.getElementById('optReportBody');
+            if (body) body.innerHTML = html;
+
+            overlay.classList.toggle('as-modal', !!o.modal);
+            /* The page behind blurs for a modal, the way every other modal on
+               the site does, and must not for a drawer — a drawer is read beside
+               the page it is about. */
+            document.body.classList.toggle('v2-blurred', !!o.modal);
+
+            /* A re-inserted node has no previous computed style to transition
+               from, so on the one open that moves it the fade would be skipped
+               and the panel would simply appear. Opened on the next paint
+               instead — the same double frame openSettingsModal() uses in
+               scripts/common.js, and for the same reason. */
+            if (moved) requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('show')));
+            else overlay.classList.add('show');
+
             if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function openOptimizeReport() {
+            optReportShow('Optimization report', 'chart', renderOptimizeReportModal());
         }
 
         function closeOptimizeReport(event) {
             if (event && event.target !== event.currentTarget) return;
             document.getElementById('optReportOverlay').classList.remove('show');
+            document.body.classList.remove('v2-blurred');
+            /* `as-modal` deliberately survives the close. It carries the panel's
+               geometry, so stripping it here would snap a centred card back to a
+               520px right-hand drawer for the length of the fade-out. The next
+               open sets it either way. */
         }
 
         // ===== SHARED: open the AI Scouting Report modal for 2+ specific players =====
