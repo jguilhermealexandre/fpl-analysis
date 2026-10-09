@@ -8995,7 +8995,8 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-row-swap-btn,
 .lw-stat-val,
 .lwc-name,
-.lwm-tm b,
+.lwm-club b,
+.lwm-gv,
 .manager-info,
 .news-card-detail,
 .news-card-hero .news-card-detail,
@@ -9190,15 +9191,14 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwc-off,
 .lwc-stat b,
 .lwc-verdict,
-.lwm-cs-n b,
+.lwm-club em,
+.lwm-draw.is-none,
 .lwm-ex-i b,
 .lwm-gw,
-.lwm-m b,
-.lwm-mine-n,
+.lwm-mine-n b,
 .lwm-p,
 .lwm-p-xp,
 .lwm-sub,
-.lwm-tm em,
 .manager-stat,
 .market-watch-panel,
 .market-watch-panel .mw-empty,
@@ -9463,6 +9463,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwc-team,
 .lwc-xp em,
 .lwm-blend,
+.lwm-club em.is-none,
 .lwm-cs-n em,
 .lwm-ex-i em,
 .lwm-ex.is-none,
@@ -9472,12 +9473,12 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwm-ko,
 .lwm-legend,
 .lwm-m-l,
+.lwm-mine-n,
 .lwm-p-pos,
 .lwm-side-t,
 .lwm-stale,
 .lwm-updated,
 .lwm-wdl-i em,
-.lwm-wdl.is-none,
 .market-watch-panel .mw-arrow,
 .market-watch-panel .mw-net,
 .market-watch-panel .mw-price,
@@ -9647,12 +9648,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwc-stat em,
 .lwc-xp em,
 .lwm-arm,
-.lwm-cs > .lwm-m-l,
-.lwm-cs-n em,
+.lwm-club b i,
 .lwm-draw,
 .lwm-ex-i em,
-.lwm-m em,
-.lwm-mine-n em,
+.lwm-gl,
 .lwm-p-pos,
 .mgr-est,
 .news-card-team-tag,
@@ -9814,7 +9813,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-cap-lead-h,
 .lw-ov-h,
 .lw-summary-label,
-.lwm-side-t,
 .opt-alt-head,
 .opt-capbreak-head,
 .opt-suborder-head,
@@ -9951,7 +9949,12 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    was true but not a decision — which was wrong, because "0 flagged" cannot
    tell you the eleven is three-deep on one club. */
 .lw-ov { container: lwov / inline-size; }
-.lw-ov .lw-kpis { margin-bottom: 12px; }
+/* The three figures and the read on the week, side by side. Stacked, they
+   made the panel twice as tall as either of them needed to be. */
+.lw-ov-head { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 10px; align-items: stretch; margin-bottom: 10px; }
+.lw-ov-head .lw-kpis { margin-bottom: 0; }
+.lw-ov-head .lwc-insight { margin-bottom: 0; display: flex; flex-direction: column; justify-content: center; }
+@container lwov (max-width: 760px) { .lw-ov-head { grid-template-columns: minmax(0, 1fr); } }
 .lw-kpis.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 1100px) { .lw-kpis.is-three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px)  { .lw-kpis.is-three { grid-template-columns: minmax(0, 1fr); } }
@@ -10066,14 +10069,17 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 
    Four panels, two rows, on a twelve-column grid.
 
-       ┌─────────── overview ───────────┬──── captaincy ────┐
-       ├─────────── lineup ─────────────┼──── matchday ─────┤
+       ┌──────────────────── overview ────────────────────┐
+       ├─────────── lineup ─────────────┬─── captaincy ────┤
+       ├──────────────────── matchday ────────────────────┤
 
-   Two thirds and a third. The left column is the thing itself — what the
-   eleven is worth, and the eleven — and the right column is what you check
-   it against. A pitch needs five cards across and will not go below about
-   500px without cutting names in half, so it takes the wide side; captaincy
-   is five small cards and matchday a list, and both read fine in a third.
+   Three bands, in the order the decision is made. The overview reads across
+   rather than down — the figures and the armband call share its top line —
+   so it stays short. The pitch takes two thirds because five cards across
+   will not go below about 500px without cutting names in half, and the
+   armband sits beside it, which is where it is decided. The matches run the
+   full width underneath, three to a row: they are the evidence, and evidence
+   is what you scan last and widest.
 
    One arrangement, not two. The A/C switch this replaces stored a preference
    in localStorage, which meant no two people were looking at the same screen
@@ -10090,10 +10096,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     align-items: start;
 }
 .lw-main > div { min-width: 0; }
-.lw-slot-ov     { grid-column: span 8; }
-.lw-slot-cap    { grid-column: span 4; }
+.lw-slot-ov     { grid-column: span 12; }
 .lw-slot-lineup { grid-column: span 8; }
-.lw-slot-md     { grid-column: span 4; }
+.lw-slot-cap    { grid-column: span 4; }
+.lw-slot-md     { grid-column: span 12; }
 /* The grid's gap is the spacing between panels; .v2-section's own bottom
    margin would add a second, unequal one. */
 .lw-main > div > .v2-section { margin-bottom: 0; }
@@ -10279,9 +10285,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    closing up. Each fixture is self-contained — clubs, odds, your players, the
    market line — so two of them side by side read as two matches rather than as
    one wrapped one, and a seven-match round stops being a scroll. */
-.lwm-day { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; align-items: stretch; }
+.lwm-day { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
 .lwm-day-h { grid-column: 1 / -1; }
-@container lwm (max-width: 520px) { .lwm-day { grid-template-columns: minmax(0, 1fr); } }
+@container lwm (max-width: 980px) { .lwm-day { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container lwm (max-width: 620px) { .lwm-day { grid-template-columns: minmax(0, 1fr); } }
 .lwm-day-h {
     display: flex; align-items: baseline; gap: 8px; margin: 2px 0 0;
     font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
@@ -10296,13 +10303,17 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    so a round of seven looked like seven different components rather than one
    component seven times. The players band is the 1fr, so it absorbs the
    difference and every other band stays where the eye expects it. */
+/* Every match draws the same four bands in the same order, whatever is in it:
+   who is playing and which way it leans, which of your players are in it, the
+   three numbers, and the shape of the game. A card used to change shape with
+   its content — one player or four, priced or not — so a round of seven looked
+   like seven different components rather than one component seven times. The
+   players band is the 1fr, so it absorbs the difference and every other band
+   stays where the eye expects it. */
 .lwm-fix {
     container: lwfix / inline-size;
-    /* Four bands for four children. Five rows put the 1fr on the stats line
-       instead of the players, which is why a one-player match was opening a
-       gap under its own numbers rather than under its pill. */
-    display: grid; grid-template-rows: auto 1fr auto auto;
-    padding: 8px 10px; border-radius: var(--radius-lg);
+    display: grid; grid-template-rows: auto auto 1fr auto auto;
+    padding: 10px 11px 9px; border-radius: var(--radius-lg);
     border: 1px solid var(--border-subtle); background: var(--surface-2);
 }
 /* A single result deciding a third of your week is not the same event as one
@@ -10312,73 +10323,81 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
-.lwm-top { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
-.lwm-ko { flex: 0 0 auto; font-size: 10.5px; font-weight: 700; font-family: var(--font-mono); color: var(--text-muted); }
-.lwm-tm { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 6px; }
-.lwm-tm.is-h { justify-content: flex-end; }
-.lwm-tm.is-a { justify-content: flex-start; }
-.lwm-tm b { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
-.lwm-tm em {
-    font-style: normal; font-size: 11px; font-weight: 700; font-family: var(--font-mono);
-    cursor: help;
-}
-.lwm-tm.is-h em { color: var(--color-primary); }
-.lwm-tm.is-a em { color: var(--color-info); }
-.lwm-crest { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
+.lwm-fix-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.lwm-ko { font-size: 10.5px; font-weight: 700; font-family: var(--font-mono); color: var(--text-muted); }
+.lwm-mine-n { flex-shrink: 0; cursor: help; font-size: 9.5px; font-weight: 600; color: var(--text-muted); }
+.lwm-mine-n b { font-size: 12px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); margin-right: 2px; }
 
-.lwm-wdl { flex: 0 0 74px; display: flex; flex-direction: column; gap: 2px; align-items: center; }
-.lwm-res { display: flex; width: 100%; height: 5px; border-radius: 3px; overflow: hidden; background: var(--surface-3); }
+/* The tie itself: both clubs at the same size with their win price under the
+   badge, and the bar between them. This is the line the eye lands on. */
+.lwm-tie { display: grid; grid-template-columns: minmax(0, 1fr) minmax(86px, 1fr) minmax(0, 1fr); align-items: center; gap: 8px; margin-bottom: 9px; }
+.lwm-club { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.lwm-club b { display: inline-flex; align-items: baseline; gap: 3px; font-size: 14px; font-weight: 700; letter-spacing: .01em; color: var(--text-primary); }
+.lwm-club b i { font-style: normal; font-size: 9px; font-weight: 700; color: var(--text-muted); }
+.lwm-club em {
+    font-style: normal; font-size: 11.5px; font-weight: 700; font-family: var(--font-mono); cursor: help;
+}
+.lwm-club.is-h em { color: var(--color-primary); }
+.lwm-club.is-a em { color: var(--color-info); }
+.lwm-club em.is-none { color: var(--text-muted); font-family: var(--font-body); font-size: 10px; cursor: default; }
+.lwm-crest { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
+
+.lwm-bar { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.lwm-res { display: flex; width: 100%; height: 6px; border-radius: 3px; overflow: hidden; background: var(--surface-3); }
 .lwm-res i { display: block; height: 100%; }
 .lwm-res-h { background: var(--color-primary); }
 .lwm-res-d { background: var(--surface-4, var(--border-emphasis)); }
 .lwm-res-a { background: var(--color-info); }
+.lwm-res.is-none { opacity: .35; }
 .lwm-draw { font-size: 9px; font-weight: 600; color: var(--text-muted); cursor: help; white-space: nowrap; }
-.lwm-wdl.is-none { flex: 0 0 auto; font-size: 10px; font-weight: 600; color: var(--text-muted); }
+.lwm-draw.is-none { font-size: 11px; cursor: default; }
 
-.lwm-mine-n {
-    flex: 0 0 auto; cursor: help;
-    font-size: 12px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary);
+/* Two rows of pills deep whether you own one player in the match or four, so
+   the band below it does not move from card to card. */
+.lwm-players { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px; min-height: 26px; padding-bottom: 2px; }
+
+/* The numbers, read across a centred label. Home left, away right, the label
+   written once between them — the comparison is the point, and laid out this
+   way the eye makes it without being asked. */
+.lwm-grid {
+    display: flex; flex-direction: column; gap: 1px;
+    margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--border-subtle);
 }
-.lwm-mine-n em { font-style: normal; font-size: 9px; font-weight: 600; color: var(--text-muted); margin-left: 3px; }
+.lwm-gr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(86px, auto) minmax(0, 1fr); align-items: baseline; gap: 8px; cursor: help; padding: 1px 0; }
+.lwm-gl { font-style: normal; font-size: 9px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--text-muted); text-align: center; }
+.lwm-gv { font-size: 12.5px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
+/* Values at the card's two edges with the label centred between them, the way
+   a match-stat table is always drawn. Hugging the label left the outer third
+   of the card empty on both sides and made the row look like a caption. */
+.lwm-gv.is-h { text-align: left; }
+.lwm-gv.is-a { text-align: right; }
+.lwm-gr.is-ours .lwm-gv { color: var(--color-primary); }
+.lwm-gr.is-none .lwm-gv { color: var(--text-muted); }
+/* Where the market and our model are ten points or more apart, which is the
+   whole reason for carrying both. */
+.lwm-gr.is-wide .lwm-gv { color: var(--verdict-monitor); }
+.lwm-gr.is-wide .lwm-gl { color: var(--verdict-monitor); }
 
-/* The market numbers, inline on the side of the row their club sits on. */
-.lwm-stats {
-    display: flex; align-items: center; gap: 8px;
+/* The shape of the game rather than who wins it, which is the question a
+   defender's owner is asking. */
+.lwm-ex {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px;
     margin-top: 7px; padding-top: 6px; border-top: 1px solid var(--border-subtle);
 }
-.lwm-side { flex: 1 1 0; min-width: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 3px 9px; }
-.lwm-side.is-away { justify-content: flex-end; }
-.lwm-side-t {
-    font-size: 9.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
-    color: var(--text-muted);
-}
-.lwm-m { display: inline-flex; align-items: baseline; gap: 4px; cursor: help; }
-.lwm-m em { font-style: normal; font-size: 9px; font-weight: 600; color: var(--text-muted); }
-.lwm-m b { font-size: 11.5px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
-
-/* Goals, over 2.5, both teams to score, likeliest scoreline — the shape of the
-   match rather than who wins it, which is the question a defender's owner asks. */
-.lwm-ex { display: flex; flex-wrap: wrap; gap: 2px 10px; margin-top: 5px; }
-.lwm-ex-i { display: inline-flex; align-items: baseline; gap: 4px; cursor: help; min-width: 0; }
-.lwm-ex-i em { font-style: normal; font-size: 9px; font-weight: 600; color: var(--text-muted); }
-.lwm-ex-i b { font-size: 11px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
+.lwm-ex-i { display: inline-flex; flex-direction: column; align-items: center; gap: 0; cursor: help; min-width: 0; }
+.lwm-ex-i b { font-size: 11.5px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
+.lwm-ex-i em { font-style: normal; font-size: 8.5px; font-weight: 600; letter-spacing: .02em; color: var(--text-muted); }
 /* The band stays even when the feed has nothing for it. A card that drops a
    whole row when the odds have not landed is a different shape from the one
    beside it, which is the inconsistency this grid exists to stop. */
-.lwm-ex.is-none { display: block; font-size: 10px; font-weight: 600; color: var(--text-muted); cursor: help; }
+.lwm-ex.is-none { display: block; text-align: center; font-size: 10px; font-weight: 600; color: var(--text-muted); cursor: help; }
 
-/* Market first, ours second, each under its own word. They were "62% vs 55%"
-   with the difference explained only on hover. */
-.lwm-cs { display: inline-flex; align-items: baseline; gap: 6px; cursor: help; }
-.lwm-cs > .lwm-m-l { font-size: 9px; font-weight: 600; color: var(--text-muted); }
-.lwm-cs-n { display: inline-flex; align-items: baseline; gap: 3px; }
-.lwm-cs-n em { font-style: normal; font-size: 8.5px; font-weight: 700; letter-spacing: .03em; color: var(--text-muted); }
-.lwm-cs-n b { font-size: 11.5px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
-.lwm-cs-n.is-ours b { color: var(--color-primary); }
-.lwm-cs-n.is-none b { color: var(--text-muted); }
-/* Where the two disagree by ten points or more, which is the whole reason for
-   showing both. */
-.lwm-cs.is-wide .lwm-cs-n.is-ours b { color: var(--verdict-monitor); }
+/* A card narrow enough that the three columns stop being three columns. */
+@container lwfix (max-width: 250px) {
+    .lwm-tie { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+    .lwm-gr { grid-template-columns: minmax(0, 1fr) minmax(64px, auto) minmax(0, 1fr); }
+    .lwm-ex { justify-content: flex-start; gap: 2px 12px; }
+}
 
 /* What the section says about its own numbers, rather than leaving a blended
    projection silent. */

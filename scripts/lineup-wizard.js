@@ -153,8 +153,8 @@
                          to get here is called Lineup Wizard. -->
                     <div class="lw-main" id="lwMain">
                         <div class="lw-slot-ov" id="lwOverviewPane">${lwRenderOverviewRow()}</div>
-                        <div class="lw-slot-cap" id="lwCaptaincyPane">${lwRenderCaptaincy()}</div>
                         <div class="lw-slot-lineup" id="lwLineupPane">${lwRenderLineupPanel()}</div>
+                        <div class="lw-slot-cap" id="lwCaptaincyPane">${lwRenderCaptaincy()}</div>
                         <div class="lw-slot-md" id="lwMatchdayPane">${lwRenderMatchday()}</div>
                     </div>
                 </div>`;
@@ -334,35 +334,14 @@
                 .sort((a, b) => String(a.f.kickoff_time || '').localeCompare(String(b.f.kickoff_time || '')));
         }
 
-        /* The two clean-sheet numbers, named.
+        /* lwCsCell() lived here and is gone with the two-column card it served.
 
-           They were drawn as "62% vs 55%" with the explanation in a tooltip, so
-           the difference between a bookmaker's price and this site's model was
-           invisible to anyone who did not hover. Both are labelled now and the
-           section carries a one-line legend; the tooltip still holds the long
-           version. */
-        function lwCsCell(teamId, oppId, isHome, marketCs) {
-            let model = null;
-            if (typeof getCleanSheetProb === 'function' && typeof teamAnalysis !== 'undefined') {
-                try { model = getCleanSheetProb(teamId, oppId, isHome); } catch (e) { model = null; }
-            }
-            const pct = v => Math.round(v * 100) + '%';
-            if (marketCs == null && model == null) return '';
-            const gap = (marketCs != null && model != null) ? Math.abs(model - marketCs) : 0;
-            return `<div class="lwm-m lwm-cs${gap >= 0.10 ? ' is-wide' : ''}" data-tooltip="${escHTML(
-                'Chance of a clean sheet. '
-                + (marketCs != null ? `The betting market prices it at ${pct(marketCs)}. ` : 'The market has not priced this fixture. ')
-                + (model != null ? `EasyFPL's own model says ${pct(model)}.` : '')
-                + (gap >= 0.10 ? ' They disagree by ten points or more, which is the interesting case.' : ''))}">
-                <span class="lwm-m-l">CS</span>
-                ${marketCs != null
-                    ? `<span class="lwm-cs-n"><em>Mkt</em><b>${pct(marketCs)}</b></span>`
-                    : `<span class="lwm-cs-n is-none"><em>Mkt</em><b>—</b></span>`}
-                ${model != null
-                    ? `<span class="lwm-cs-n is-ours"><em>Ours</em><b>${pct(model)}</b></span>`
-                    : ''}
-            </div>`;
-        }
+           It drew one club's clean-sheet pair as a labelled cell on its own
+           side of the fixture, which meant the market's number and the model's
+           appeared twice each, with "CS", "Mkt" and "Ours" repeated beside
+           them. lwFixtureStats() draws the same four figures as two rows with
+           the label down the middle, so each label is written once and the
+           comparison the card exists for is the shape of the row. */
 
         function lwCrest(team) {
             if (!team || team.code == null) return '';
@@ -390,41 +369,62 @@
             </span>`;
         }
 
-        /* One club's numbers, on one line.
+        /* The three numbers that decide a match, read across a centred label.
 
-           These were two boxed columns stacked inside each card, which spent a
-           lot of chrome on four figures and forced the two clubs apart so you
-           could not compare them without moving your eyes twice. Inline, on
-           the side of the row the club sits on, they read across. */
-        function lwTeamStats(team, teamId, oppId, isHome, o) {
-            const short = (team && team.short_name) || '?';
-            const name = (team && team.name) || short;
-            const xg = o ? (isHome ? o.lambdaHome : o.lambdaAway) : null;
-            const marketCs = o ? (isHome ? o.csHome : o.csAway) : null;
-            return `<div class="lwm-side${isHome ? '' : ' is-away'}">
-                <span class="lwm-side-t">${escHTML(short)}</span>
-                ${xg != null ? `<span class="lwm-m" data-tooltip="${escHTML(
-                    `Goals ${name} are expected to score, implied by the match and over/under prices.`)}">
-                    <em>xG</em><b>${xg.toFixed(2)}</b></span>` : ''}
-                ${lwCsCell(teamId, oppId, isHome, marketCs)}
+           They used to run along the two edges of the card — home values left,
+           away values right, each with its own repeated "xG" and "CS" labels —
+           which made you read the label twice and compare across the whole
+           width. One label down the middle with a value either side is how a
+           head-to-head is always drawn, and for a reason: the comparison is
+           the point, and the eye makes it without being asked.
+
+                1.60      xG        1.10
+                 34%   CS market     22%
+                 40%   CS EasyFPL    31%
+
+           Both clean-sheet estimates keep their own row. Where the market and
+           our model disagree by ten points or more — the whole reason for
+           carrying both — the model's figure is marked. */
+        function lwStatRow(label, tip, hv, av, cls) {
+            return `<div class="lwm-gr${cls ? ' ' + cls : ''}" data-tooltip="${escHTML(tip)}">
+                <b class="lwm-gv is-h">${hv}</b>
+                <em class="lwm-gl">${escHTML(label)}</em>
+                <b class="lwm-gv is-a">${av}</b>
             </div>`;
         }
 
-        /* One match, as a row rather than a card.
+        function lwFixtureStats(home, away, f, o) {
+            const pct = v => Math.round(v * 100) + '%';
+            const model = (teamId, oppId, isHome) => {
+                if (typeof getCleanSheetProb !== 'function' || typeof teamAnalysis === 'undefined') return null;
+                try { return getCleanSheetProb(teamId, oppId, isHome); } catch (e) { return null; }
+            };
+            const hName = home.name || home.short_name || 'the home side';
+            const aName = away.name || away.short_name || 'the away side';
+            const hOurs = model(f.team_h, f.team_a, true);
+            const aOurs = model(f.team_a, f.team_h, false);
+            const wide = (mkt, ours) => (mkt != null && ours != null && Math.abs(ours - mkt) >= 0.10);
 
-           Seven near-identical cards in a two-up grid gave no hierarchy and no
-           scan path: every match looked as important as every other, the
-           players you own were buried at the bottom of each one, and "not
-           priced yet" repeated itself seven times. A row at full column width
-           can put the clubs, the result odds and your stake on one line, which
-           is the line you are actually reading. Your players come straight
-           after it, because they are why you opened this. The market numbers
-           sit underneath for when you want them.
+            return `<div class="lwm-grid">
+                ${lwStatRow('xG',
+                    `Goals each side is expected to score, implied by the match and over/under prices. ${o ? '' : 'This fixture has no market price yet.'}`,
+                    o ? o.lambdaHome.toFixed(2) : '—', o ? o.lambdaAway.toFixed(2) : '—')}
+                ${lwStatRow('CS market',
+                    o ? `Chance of a clean sheet as the betting market prices it — ${hName} ${pct(o.csHome)}, ${aName} ${pct(o.csAway)}.`
+                      : 'The betting market has not priced this fixture, so it has no clean-sheet view on it yet.',
+                    o ? pct(o.csHome) : '—', o ? pct(o.csAway) : '—', o ? '' : 'is-none')}
+                ${lwStatRow('CS EasyFPL',
+                    `Chance of a clean sheet from EasyFPL's own fixture and defensive model — ${hName} ${hOurs != null ? pct(hOurs) : 'not rated'}, ${aName} ${aOurs != null ? pct(aOurs) : 'not rated'}.`
+                    + ((wide(o && o.csHome, hOurs) || wide(o && o.csAway, aOurs))
+                        ? ' It disagrees with the market by ten points or more here, which is the interesting case.' : ''),
+                    hOurs != null ? pct(hOurs) : '—', aOurs != null ? pct(aOurs) : '—',
+                    'is-ours' + ((wide(o && o.csHome, hOurs) || wide(o && o.csAway, aOurs)) ? ' is-wide' : ''))}
+            </div>`;
+        }
 
-           A match with three or more of your squad in it carries an accent: a
-           single result deciding a third of your week is not the same event as
-           one with a lone defender in it, and the page should not draw them
-           the same. */
+        /* One match. Four bands, always the same four, whatever is in it:
+           who is playing and which way it leans, which of your players are in
+           it, the three numbers, and the shape of the game. */
         function lwRenderFixture(row) {
             const f = row.f, o = row.odds;
             const tm = (typeof teams !== 'undefined' && teams) || {};
@@ -436,47 +436,51 @@
                 return isNaN(d) ? '' : d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
             })();
 
-            const odds = o ? `<span class="lwm-wdl">
-                <span class="lwm-res" aria-hidden="true">
-                    <i class="lwm-res-h" style="width:${(o.market.home * 100).toFixed(1)}%"></i>
-                    <i class="lwm-res-d" style="width:${(o.market.draw * 100).toFixed(1)}%"></i>
-                    <i class="lwm-res-a" style="width:${(o.market.away * 100).toFixed(1)}%"></i>
-                </span>
-                <span class="lwm-draw" data-tooltip="Draw, as the betting market prices it.">Draw ${pc(o.market.draw)}</span>
-            </span>` : /* An empty result track says nothing and looks like a
-                            loading state. A plain "v" says the same nothing,
-                            honestly, and lets the two clubs sit together. */
-                `<span class="lwm-wdl is-none">v</span>`;
+            /* Club, venue and win price. The venue rides with the name the way
+               it does on a fixture chip everywhere else on the site — a lone
+               "H" on its own line under the badge read as a stray letter — and
+               the price keeps the line below to itself, so the slot is the
+               same height whether the match is priced or not. */
+            const club = (t, isHome) => `<span class="lwm-club is-${isHome ? 'h' : 'a'}">
+                ${lwCrest(t)}
+                <b>${escHTML(t.short_name || '?')}<i>${isHome ? 'H' : 'A'}</i></b>
+                ${o ? `<em data-tooltip="${escHTML(`${t.short_name || (isHome ? 'Home' : 'Away')} win, as the betting market prices it.`)}">${pc(isHome ? o.market.home : o.market.away)}</em>`
+                    : `<em class="is-none" data-tooltip="No market price for this match yet.">—</em>`}
+            </span>`;
 
             const top = o && o.scorelines && o.scorelines[0];
-            const shape = o ? `<div class="lwm-ex">
-                <span class="lwm-ex-i" data-tooltip="Total goals the market expects in this match."><em>Goals</em><b>${(o.lambdaHome + o.lambdaAway).toFixed(2)}</b></span>
-                <span class="lwm-ex-i" data-tooltip="Chance of three or more goals in the match."><em>Over 2.5</em><b>${pc(o.over25)}</b></span>
-                <span class="lwm-ex-i" data-tooltip="Chance both teams score."><em>BTTS</em><b>${pc(o.bttsYes)}</b></span>
-                ${top ? `<span class="lwm-ex-i" data-tooltip="${escHTML(`The single likeliest scoreline, at ${pc(top.p)}.`)}"><em>Likeliest</em><b>${top.h}–${top.a}</b></span>` : ''}
-            </div>` : `<div class="lwm-ex is-none" data-tooltip="The betting feed has not priced this fixture yet. Your players and EasyFPL's own clean-sheet model are unaffected.">No market price yet</div>`;
-
             return `<article class="lwm-fix${row.mine.length >= 3 ? ' is-key' : ''}">
-                <div class="lwm-top">
+                <header class="lwm-fix-top">
                     <span class="lwm-ko">${escHTML(ko)}</span>
-                    <span class="lwm-tm is-h">
-                        ${lwCrest(home)}<b>${escHTML(home.short_name || '?')}</b>
-                        ${o ? `<em data-tooltip="${escHTML(`${home.short_name || 'Home'} win, as the market prices it.`)}">${pc(o.market.home)}</em>` : ''}
-                    </span>
-                    ${odds}
-                    <span class="lwm-tm is-a">
-                        ${o ? `<em data-tooltip="${escHTML(`${away.short_name || 'Away'} win, as the market prices it.`)}">${pc(o.market.away)}</em>` : ''}
-                        <b>${escHTML(away.short_name || '?')}</b>${lwCrest(away)}
-                    </span>
                     <span class="lwm-mine-n" data-tooltip="${escHTML(
-                        `${row.mine.length} of your squad play in this match — ${xiCount} in your XI, ${row.mine.length - xiCount} on the bench.`)}">${row.mine.length}<em>yours</em></span>
+                        `${row.mine.length} of your squad play in this match — ${xiCount} in your XI, ${row.mine.length - xiCount} on the bench.`)}"><b>${row.mine.length}</b> yours</span>
+                </header>
+
+                <div class="lwm-tie">
+                    ${club(home, true)}
+                    <span class="lwm-bar">
+                        ${o ? `<span class="lwm-res" aria-hidden="true">
+                            <i class="lwm-res-h" style="width:${(o.market.home * 100).toFixed(1)}%"></i>
+                            <i class="lwm-res-d" style="width:${(o.market.draw * 100).toFixed(1)}%"></i>
+                            <i class="lwm-res-a" style="width:${(o.market.away * 100).toFixed(1)}%"></i>
+                        </span>
+                        <span class="lwm-draw" data-tooltip="Draw, as the betting market prices it.">Draw ${pc(o.market.draw)}</span>`
+                        : `<span class="lwm-res is-none" aria-hidden="true"></span>
+                           <span class="lwm-draw is-none">v</span>`}
+                    </span>
+                    ${club(away, false)}
                 </div>
+
                 <div class="lwm-players">${row.mine.map(lwMatchPlayer).join('')}</div>
-                <div class="lwm-stats">
-                    ${lwTeamStats(home, f.team_h, f.team_a, true, o)}
-                    ${lwTeamStats(away, f.team_a, f.team_h, false, o)}
-                </div>
-                ${shape}
+
+                ${lwFixtureStats(home, away, f, o)}
+
+                ${o ? `<div class="lwm-ex">
+                    <span class="lwm-ex-i" data-tooltip="Total goals the market expects in this match."><b>${(o.lambdaHome + o.lambdaAway).toFixed(2)}</b><em>goals</em></span>
+                    <span class="lwm-ex-i" data-tooltip="Chance of three or more goals in the match."><b>${pc(o.over25)}</b><em>over 2.5</em></span>
+                    <span class="lwm-ex-i" data-tooltip="Chance both teams score."><b>${pc(o.bttsYes)}</b><em>BTTS</em></span>
+                    ${top ? `<span class="lwm-ex-i" data-tooltip="${escHTML(`The single likeliest scoreline, at ${pc(top.p)}.`)}"><b>${top.h}–${top.a}</b><em>likeliest</em></span>` : ''}
+                </div>` : `<div class="lwm-ex is-none" data-tooltip="The betting feed has not priced this fixture yet. Your players and EasyFPL's own clean-sheet model are unaffected.">No market price yet</div>`}
             </article>`;
         }
 
@@ -876,6 +880,10 @@
                 <!-- The summary bar: what the eleven is worth, what it gains
                      over the team already saved on the FPL site, and how many
                      players need a second look. Three figures, one row. -->
+                <!-- The figures and the read side by side: both are things you
+                     take in at a glance, and stacking them made the panel twice
+                     as tall as either of them needed. -->
+                <div class="lw-ov-head">
                 <div class="lw-kpis is-three">
                     ${lwKpiBox('green', 'target', 'Projected points', total.toFixed(1),
                         escHTML(lineupState.formation), 'Your eleven’s projected points this gameweek, with the captain doubled.')}
@@ -888,6 +896,7 @@
                 </div>
 
                 ${lwArmbandRead()}
+                </div>
 
                 <div class="lw-ov-blocks">
                     ${lwRenderRisks()}

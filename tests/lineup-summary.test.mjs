@@ -215,28 +215,35 @@ test('starters and bench are both present and told apart', () => {
     assert.ok(mine.findIndex(m => !m.starting) > mine.findIndex(m => m.starting), 'starters listed first');
 });
 
-/* ===== THE TWO CLEAN SHEET NUMBERS ===== */
+/* ===== THE NUMBERS, READ ACROSS A CENTRED LABEL =====
 
-test('both clean sheet numbers are labelled, not left as "x vs y"', () => {
-    const ctx = wizard(state(XI_442, STRONG_BENCH));
-    const cell = ctx.lwCsCell(1, 2, true, 0.42);
-    assert.match(cell, /<em>Mkt<\/em>/, 'the market half is named');
-    assert.match(cell, /<em>Ours<\/em>/, "and so is EasyFPL's");
-    assert.match(cell, /42%/);
+   Home value, label, away value. They used to run along the two edges of the
+   card with "CS", "Mkt" and "Ours" repeated on each side, so you read every
+   label twice and compared across the whole width. */
+
+test('both clean sheet numbers get their own row, each labelled once', () => {
+    const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderMatchday();
+    assert.match(html, /CS market/, "the market's row");
+    assert.match(html, /CS EasyFPL/, "and EasyFPL's own");
+    const matches = (html.match(/<article class="lwm-fix/g) || []).length;
+    assert.equal((html.match(/CS market/g) || []).length, matches, 'written once per match, not once per club');
+    assert.match(html, /42%|34%/, 'with the market figure on it');
 });
 
-test('an unpriced fixture still shows our own number', () => {
-    const ctx = wizard(state(XI_442, STRONG_BENCH));
-    const cell = ctx.lwCsCell(1, 2, true, null);
-    assert.match(cell, /is-none/, 'the market half is marked absent');
-    assert.match(cell, /<em>Ours<\/em>/, 'ours is shown regardless');
+test('an unpriced fixture keeps the rows and marks the market absent', () => {
+    // One starter moved to a club whose GW5 fixture the feed has not priced.
+    const xi = XI_442.map((p, i) => i === 5 ? { ...p, teamId: 3, team: 'LIV' } : p);
+    const html = wizard(state(xi, STRONG_BENCH)).lwRenderMatchday();
+    assert.match(html, /lwm-gr is-none/, 'the market row is marked absent rather than dropped');
+    assert.match(html, /CS EasyFPL/, "and ours is shown regardless");
+    assert.match(html, /No market price yet/);
 });
 
 test('a wide disagreement between market and model is marked', () => {
-    const ctx = wizard(state(XI_442, STRONG_BENCH));
-    // getCleanSheetProb is stubbed at 0.30, so a market price of 0.55 is 25 points apart.
-    assert.match(ctx.lwCsCell(1, 2, true, 0.55), /lwm-cs is-wide/);
-    assert.doesNotMatch(ctx.lwCsCell(1, 2, true, 0.32), /is-wide/);
+    // getCleanSheetProb is stubbed at 0.30 and the feed prices the home side at
+    // 0.42, so the two are twelve points apart.
+    const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderMatchday();
+    assert.match(html, /is-ours is-wide/);
 });
 
 test('the section carries a legend, so the two numbers need no hover', () => {
@@ -256,18 +263,18 @@ test('the section carries a legend, so the two numbers need no hover', () => {
 
 test('a priced fixture shows each side its own expected goals', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderMatchday();
-    assert.match(html, /lwm-stats/, 'one metrics line, a half per club');
+    assert.match(html, /lwm-grid/, 'one row per figure, a value either side of the label');
     assert.match(html, /1\.80/, "the home side's goal expectation");
     assert.match(html, /0\.90/, "and the away side's");
-    assert.match(html, /<em>xG<\/em>/, 'labelled, not left as a bare number');
+    assert.match(html, /lwm-gl">xG</, 'labelled once, down the middle');
 });
 
 test('the shape of the match is shown, not only the result', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderMatchday();
-    assert.match(html, /Over 2\.5<\/em><b>54%/);
-    assert.match(html, /BTTS<\/em><b>51%/);
-    assert.match(html, /Likeliest<\/em><b>2\u20130/, 'and the single likeliest scoreline');
-    assert.match(html, /Goals<\/em><b>2\.70/, 'with the total the two lambdas make');
+    assert.match(html, /<b>54%<\/b><em>over 2\.5/);
+    assert.match(html, /<b>51%<\/b><em>BTTS/);
+    assert.match(html, /<b>2\u20130<\/b><em>likeliest/, 'and the single likeliest scoreline');
+    assert.match(html, /<b>2\.70<\/b><em>goals/, 'with the total the two lambdas make');
 });
 
 test('an unpriced fixture says so rather than showing a blank row', () => {
@@ -542,10 +549,11 @@ test('the page is four panels in one grid', () => {
     for (const slot of ['lw-slot-ov', 'lw-slot-cap', 'lw-slot-lineup', 'lw-slot-md']) {
         assert.ok(html.includes(slot), `${slot} is present`);
     }
-    // Overview and captaincy share the top row; lineup and matchday the next.
-    assert.ok(html.indexOf('lw-slot-ov') < html.indexOf('lw-slot-cap'));
-    assert.ok(html.indexOf('lw-slot-cap') < html.indexOf('lw-slot-lineup'));
-    assert.ok(html.indexOf('lw-slot-lineup') < html.indexOf('lw-slot-md'));
+    /* Source order is the grid's placement order and the stacked reading
+       order: the read on the week, the eleven, the armband, the evidence. */
+    assert.ok(html.indexOf('lw-slot-ov') < html.indexOf('lw-slot-lineup'));
+    assert.ok(html.indexOf('lw-slot-lineup') < html.indexOf('lw-slot-cap'));
+    assert.ok(html.indexOf('lw-slot-cap') < html.indexOf('lw-slot-md'));
     assert.ok(!/lw-main is-[ac]/.test(html), 'and no layout variant to choose');
     assert.ok(!html.includes('lw-lay-btn'), 'so no switch either');
 });
