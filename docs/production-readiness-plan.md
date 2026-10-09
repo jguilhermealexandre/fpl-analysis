@@ -18,7 +18,7 @@ the decisions, not the log.*
 | availability mark (spans 1 + 3) | done (v445) |
 | 3 — My Team · GW Draft | done (v446) |
 | 4 — My Team · Transfer Wizard | part 2 done (v449): the selling-price defect. The 4146-line split still open |
-| 5 — My Team · Lineup Wizard | |
+| 5 — My Team · Lineup Wizard | done (v450) |
 | 6 — My Team · News | |
 | 7-13 — Players x7 | |
 | 14-18 — Teams x5 | |
@@ -40,6 +40,11 @@ the decisions, not the log.*
   that tab. The invariant check:deferred cannot express is pinned instead by
   tests/tab-group-closure.test.mjs, which also records that the saving depends
   on the tmSellBeforeDrop ordering fix from Surface 2.
+- **nested-interactive on the Transfer Wizard's plan cart.** transfer-wizard.js
+  ~1479: the × is a role="button" span INSIDE a real <button>. Pre-existing, and
+  the fix is a layout change — the × has to become a sibling of the card rather
+  than a child — so it is not an attribute edit. The equivalent on the two pitch
+  cards was fixed in v450 by moving the keyboard path onto the player's name.
 - **61 click handlers on non-interactive elements, site-wide.** Three were on
   the GW Draft and are fixed; the delegated handler that makes the fix a
   two-attribute change is in common.js (initKeyActivation). The rest are

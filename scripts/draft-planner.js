@@ -2147,10 +2147,17 @@
                     ? gwFixtures.map(f => `<span class="pcard-fixture fdr-${f.difficulty || 3}" data-tooltip="GW${gw}: ${f.isHome ? 'home to' : 'away at'} ${escHTML(f.opponent || '?')} — FDR ${f.difficulty || 3} (${FDR_WORD[f.difficulty || 3] || 'Average'})">${escHTML(f.opponent || '?')} <em>${f.isHome ? 'H' : 'A'}</em></span>`).join('')
                     : `<span class="pcard-fixture fdr-3" data-tooltip="${escHTML(p.team)} have no fixture in GW${gw} — this player scores nothing.">No fixture</span>`;
 
+                /* The card is NOT role="button", and that was a mistake here
+                   for one release. It holds three real buttons — captain, vice
+                   and the replacement panel — and a focusable widget inside an
+                   element that is itself a widget is nested-interactive: a screen
+                   reader announces the card as a button and then finds three
+                   more inside it. The keyboard path is the name below instead,
+                   which is a sibling of those three rather than their parent.
+                   The onclick stays: it is the mouse and touch affordance, and
+                   the whole card being the target is the point of a pitch. */
                 return `<div class="pcard dp-card ${posClass} ${swapClass} ${injured ? 'pcard-injured' : ''} ${benchIndex != null ? 'pcard-bench' : ''}"
                     data-player-id="${p.id}"
-                    role="button" tabindex="0"
-                    aria-label="${escHTML(`${p.name}, ${p.team}${benchIndex != null ? `, bench ${benchIndex + 1}` : ''} — move him`)}"
                     onclick="handleDraftPitchClick(${p.id})"
                     onpointerdown="draftPointerDown(event, ${p.id})">
                     ${armband}
@@ -2164,7 +2171,9 @@
                     </div>
                     <div class="pcard-flags">${flags}</div>
                     ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p, 'v2-pid-pitch') : ''}
-                    <div class="pcard-name">${escHTML(p.name)}</div>
+                    <div class="pcard-name" role="button" tabindex="0"
+                        aria-label="${escHTML(`Move ${p.name}, ${p.team}${benchIndex != null ? `, bench ${benchIndex + 1}` : ''}`)}"
+                        onclick="handleDraftPitchClick(${p.id})">${escHTML(p.name)}</div>
                     ${fixtureTag}
                     <div class="pcard-score" data-tooltip="Projected points for ${escHTML(p.name)} in GW${gw}, from expected minutes, the opponent and this player's underlying rates.">
                         <b>${xp.toFixed(1)}</b><span class="pcard-score-u">xP</span>
