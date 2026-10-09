@@ -85,7 +85,7 @@ test('nothing the Transfers tab renders synchronously touches a funnel name', ()
     const synchronous = [
         'renderTransferMarket', 'renderTmWatchRow', 'renderTmWatchLegend',
         'renderTmTransferBoard', 'renderTmTransferRow', 'tmFilterPos',
-        'tmFilterPrice', 'tmSetMarketTab', 'tmSetTransferScope',
+        'tmSetMarketTab', 'tmSetTransferScope',
         'tmSeasonPriceMove', 'startPriceLockCountdown'
     ];
     const offenders = [];

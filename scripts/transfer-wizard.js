@@ -3666,7 +3666,6 @@
 
         let tmMarketTab = 'risers';
         let tmPosFilter = 'all';
-        let tmPriceFilter = 'all'; // 'all', 'premium', 'budget'
         let tmSquadSort = { col: 'pressure', asc: false };
         let tmRisingSort = { col: 'netTransfers', asc: false };
         let tmFallingSort = { col: 'netTransfers', asc: true };
@@ -3713,12 +3712,9 @@
 
             const squadIds = new Set(twSquad().map(p => p.id));
 
-            const filterPlayers = (list) => {
-                let filtered = tmPosFilter === 'all' ? list : list.filter(p => p.position === parseInt(tmPosFilter));
-                if (tmPriceFilter === 'premium') filtered = filtered.filter(p => p.price >= 10);
-                else if (tmPriceFilter === 'budget') filtered = filtered.filter(p => p.price < 5);
-                return filtered;
-            };
+            const filterPlayers = (list) => (
+                tmPosFilter === 'all' ? list : list.filter(p => p.position === parseInt(tmPosFilter))
+            );
 
             let html = '';
 
@@ -3831,24 +3827,27 @@
                reflowing the document. */
             const display = active.list;
 
+            /* Position, and nothing else. The two price pills that used to follow
+               a separator in this row were a second filter that could not combine
+               with the first: picking one cleared the position, picking a position
+               cleared it back. Two controls on one row where only one can be on is
+               a control that undoes its neighbour, and the cheap end of the market
+               already has a list of its own in the tabs above it. */
             html += `<div class="tm-section tm-market-col">
                 <div class="tm-section-header market-header">
                     <h2><i data-lucide="trending-up" style="width:16px;height:16px;display:inline;"></i> The wider market</h2>
                     <span class="tm-section-count green">${active.list.length}</span>
                 </div>
-                <div class="tm-watch-note">Players you do not own, sorted by how close each is to a price change. Pick a list, then narrow it by position or price.</div>
+                <div class="tm-watch-note">Players you do not own, sorted by how close each is to a price change. Pick a list, then narrow it by position.</div>
                 <div class="tm-market-tabs">
                     ${tabs.map(t => `<button class="tm-market-tab ${t.key === active.key ? 'active' : ''}" onclick="tmSetMarketTab('${t.key}')">${t.label} <span class="tm-market-tab-n">${t.list.length}</span></button>`).join('')}
                 </div>
                 <div class="tm-pos-filter">
-                    <button class="tm-pos-btn ${tmPosFilter === 'all' && tmPriceFilter === 'all' ? 'active' : ''}" onclick="tmFilterPos('all')">All</button>
+                    <button class="tm-pos-btn ${tmPosFilter === 'all' ? 'active' : ''}" onclick="tmFilterPos('all')">All</button>
                     <button class="tm-pos-btn pos-gk ${tmPosFilter === '1' ? 'active' : ''}" onclick="tmFilterPos('1')">GK</button>
                     <button class="tm-pos-btn pos-def ${tmPosFilter === '2' ? 'active' : ''}" onclick="tmFilterPos('2')">DEF</button>
                     <button class="tm-pos-btn pos-mid ${tmPosFilter === '3' ? 'active' : ''}" onclick="tmFilterPos('3')">MID</button>
                     <button class="tm-pos-btn pos-fwd ${tmPosFilter === '4' ? 'active' : ''}" onclick="tmFilterPos('4')">FWD</button>
-                    <span class="tm-filter-sep" aria-hidden="true"></span>
-                    <button class="tm-pos-btn ${tmPriceFilter === 'premium' ? 'active' : ''}" onclick="tmFilterPrice('premium')">Premium £10m+</button>
-                    <button class="tm-pos-btn ${tmPriceFilter === 'budget' ? 'active' : ''}" onclick="tmFilterPrice('budget')">Budget &lt;£5m</button>
                 </div>
                 ${display.length
                     ? `${renderTmWatchLegend()}<div class="tm-watch">${display.map(p => renderTmWatchRow(p, true)).join('')}</div>`
@@ -3901,6 +3900,9 @@
            gives the number of transfers made, and the two agree to the unit. */
         let tmTransferScope = 'gw';   // 'gw' | 'season'
 
+        const TB_VOLUME_TIP = 'Each player measured against the biggest number in either column, '
+            + 'so most bought and most sold are drawn on one scale and can be read against each other.';
+
         function tmSetTransferScope(scope) {
             tmTransferScope = scope === 'season' ? 'season' : 'gw';
             transferMarketRendered = false;
@@ -3933,12 +3935,24 @@
             const sold = pool.slice().sort((a, b) => outOf(b) - outOf(a)).slice(0, 10);
             const topCount = Math.max(inOf(bought[0]) || 0, outOf(sold[0]) || 0, 1);
 
+            /* Same shape as the two lists above it on this tab: a named column
+               head, then the rows. These had neither — ten rows of player,
+               number and bar with nothing saying what the number counted, on
+               a page whose other two lists both label their columns and sit
+               their rows on a tinted surface with a position edge. Three
+               lists of players, one of them drawn as something else. */
             const column = (title, icon, cls, list, total, valueOf, otherOf) => `
                 <div class="tm-tb-col">
                     <div class="tm-tb-col-head ${cls}">
                         <span class="tm-tb-col-title">${icon} ${escHTML(title)}</span>
                         <span class="tm-tb-col-total"
                             data-tooltip="Every transfer is one player in and one out, so this is the number of transfers made ${season ? 'this season' : 'ahead of this deadline'} across every FPL manager — your own squad included.">${total.toLocaleString()}<em>total</em></span>
+                    </div>
+                    <div class="tm-tb-legend" aria-hidden="true">
+                        <span>#</span>
+                        <span>Player</span>
+                        <span class="tm-tb-legend-vol" data-tooltip="${escHTML(TB_VOLUME_TIP)}">Volume<i>?</i></span>
+                        <span class="tm-tb-legend-n">Transfers ${cls === 'in' ? 'in' : 'out'}</span>
                     </div>
                     <div class="tm-tb-rows">
                         ${list.map((p, i) => renderTmTransferRow(p, i + 1, cls, valueOf(p), otherOf(p), topCount, squadIds, season)).join('')}
@@ -3997,7 +4011,11 @@
                         £${move.start.toFixed(1)}<i>→</i>£${move.now.toFixed(1)}</span>`
                 : `<span class="tm-tb-price flat" data-tooltip="Unchanged from his opening price.">£${p.price.toFixed(1)}m</span>`;
 
-            return `<div class="tm-tb-row ${cls}">
+            // The same coloured initial down the left that the price-watch and
+            // market rows carry, so a defender reads as a defender in all three.
+            const posEdge = typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(p.position) : '';
+
+            return `<div class="tm-tb-row ${cls} ${posEdge}">
                 <span class="tm-tb-rank">${rank}</span>
                 <div class="tm-tb-ident">
                     ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident) : ''}
@@ -4012,12 +4030,14 @@
                         </div>
                     </div>
                 </div>
-                <div class="tm-tb-num">
-                    <span class="tm-tb-count">${value.toLocaleString()}</span>
+                <div class="tm-tb-meter">
                     <span class="tm-tb-net ${net >= 0 ? 'pos' : 'neg'}"
                         data-tooltip="Transfers in minus transfers out ${period}: ${counter.toLocaleString()} the other way.">
                         net ${net >= 0 ? '+' : '−'}${Math.abs(net).toLocaleString()}</span>
-                    <div class="tm-tb-track"><i class="${cls}" style="width:${width}%"></i></div>
+                    <div class="tm-tb-track" data-tooltip="${escHTML(TB_VOLUME_TIP)}"><i class="${cls}" style="width:${width}%"></i></div>
+                </div>
+                <div class="tm-tb-num">
+                    <span class="tm-tb-count">${value.toLocaleString()}</span>
                 </div>
             </div>`;
         }
@@ -4127,14 +4147,6 @@
 
         function tmFilterPos(pos) {
             tmPosFilter = pos;
-            tmPriceFilter = 'all';
-            transferMarketRendered = false;
-            renderTransferMarket();
-        }
-
-        function tmFilterPrice(tier) {
-            tmPriceFilter = tmPriceFilter === tier ? 'all' : tier;
-            tmPosFilter = 'all';
             transferMarketRendered = false;
             renderTransferMarket();
         }

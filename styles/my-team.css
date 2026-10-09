@@ -1332,19 +1332,29 @@
 
 /* Position Filter Pills */
 .tm-pos-filter { display: flex; align-items: center; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -ms-overflow-style: none; }
-/* Position and price are both "narrow what is already on screen", so they
-   are the same pill; the rule says they are two groups of it. It was an
-   inline style on a bare <span> in the renderer. */
-.tm-filter-sep { flex: 0 0 1px; align-self: stretch; margin: 3px 5px; background: var(--border-emphasis); }
 .tm-pos-filter::-webkit-scrollbar { display: none; }
 /* --border-emphasis, not --border-default: the latter is transparent in this
-   theme, so All, Premium £10m+ and Budget <£5m were pills with an invisible
-   edge — three runs of plain grey text sitting in a row of outlined ones,
-   reading as labels rather than as things you can press. The four position
-   filters looked like controls because they override the colour below. */
-.tm-pos-btn { padding: 6px 14px; border: 1px solid var(--border-emphasis); background: var(--surface-1); border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--text-secondary); font-family: inherit; transition: all 0.15s; white-space: nowrap; }
-.tm-pos-btn:not(.active):hover { background: var(--surface-2); color: var(--text-primary); }
-.tm-pos-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); box-shadow: 0 2px 8px rgba(16,185,129,0.25); }
+   theme, so a pill with no colour of its own had an invisible edge — plain
+   grey text sitting in a row of outlined controls, reading as a label rather
+   than as something you can press. The four position filters looked like
+   controls because they override the colour below.
+
+   THE FILTER PILL, under every name that reaches it. Narrowing a list to one
+   position, choosing which of three lists to see, and choosing whether a
+   count covers the gameweek or the season are the same act — you are telling
+   the panel what to show — so they are one control. The last two were drawn
+   as a segmented grey track instead: a second filter idiom, sitting a few
+   pixels above the pills on the same panel and again at the top of the
+   section below it. Defined once here so a third cannot appear. */
+.tm-pos-btn,
+.tm-market-tab,
+.tm-tb-scope-btn { padding: 6px 14px; border: 1px solid var(--border-emphasis); background: var(--surface-1); border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; color: var(--text-secondary); font-family: inherit; transition: all 0.15s; white-space: nowrap; }
+.tm-pos-btn:not(.active):hover,
+.tm-market-tab:not(.active):hover,
+.tm-tb-scope-btn:not(.active):hover { background: var(--surface-2); color: var(--text-primary); }
+.tm-pos-btn.active,
+.tm-market-tab.active,
+.tm-tb-scope-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); box-shadow: 0 2px 8px rgba(16,185,129,0.25); }
 
 /* Each position filter wears its own colour: an outline at rest, filled when
    it is the one selected. The same --position-* tokens the rows' left edges
@@ -1404,7 +1414,9 @@
 }
 .tm-tb-section .tm-tb-cols { gap: 26px; }
 
-.tm-pos-btn.active::before {
+.tm-pos-btn.active::before,
+.tm-market-tab.active::before,
+.tm-tb-scope-btn.active::before {
     content: '';
     display: inline-block;
     width: 11px; height: 11px;
@@ -3545,22 +3557,29 @@ tr.planner-swap-ineligible { opacity: 0.35; }
    hairline. They are listed here together so the two cannot drift apart again:
    they were a tinted borderless row on one page and a bordered white one on the
    other, which read as two different components. */
+/* .tm-tb-row joins them: the most-bought and most-sold lists at the foot of
+   the same tab are the same object again — ten players, ranked, with a number
+   against each — and were the one drawn as bare text on the panel's own
+   ground, hovering to a flat grey. */
 .sq-position-group .sq-row,
-.tm-watch-row {
+.tm-watch-row,
+.tm-tb-row {
     background: color-mix(in srgb, var(--surface-2) 34%, var(--surface-1));
     border-color: transparent;
     transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
 .sq-position-group .sq-row:hover,
-.tm-watch-row:hover {
+.tm-watch-row:hover,
+.tm-tb-row:hover {
     background: var(--surface-1);
     box-shadow: 0 2px 10px rgba(16, 24, 40, 0.09);
     transform: translateY(-1px);
 }
 
 [data-theme="dark"] .sq-position-group .sq-row:hover,
-[data-theme="dark"] .tm-watch-row:hover {
+[data-theme="dark"] .tm-watch-row:hover,
+[data-theme="dark"] .tm-tb-row:hover {
     background: var(--surface-2);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
@@ -5122,13 +5141,10 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 
 .tm-sell-btn:hover { filter: brightness(1.1); }
 
-/* Picking one of three lists and picking one of two periods are the same
-   kind of choice, so they are the same control — see .tm-tb-scope, which
-   this now shares every rule with. They used to be two: three outlined
-   buttons with the chosen one filled solid green, and a segmented track at
-   the other end of the tab. Two patterns for one decision, in one screen,
-   with a third (the position pills) underneath. */
-.tm-market-tabs { margin-bottom: 9px; max-width: 100%; }
+/* Picking one of three lists, picking one of two periods and picking a
+   position are the same kind of choice, so they are the same control — the
+   filter pill, defined beside .tm-pos-btn. */
+.tm-market-tabs { margin-bottom: 9px; max-width: 100%; padding-bottom: 4px; }
 .tm-market-tab-n { opacity: .65; font-family: var(--font-mono); font-size: 10px; margin-left: 4px; }
 .tm-market-empty { padding: 20px; text-align: center; font-size: 12px; color: var(--text-muted); }
 
@@ -7736,32 +7752,22 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    against each other rather than each filling its own column to 100%.
    ============================================ */
 .tm-tb-section { margin-bottom: 24px; }
-/* The segmented control: one of these, and only one. */
+/* The row the pills sit in — the same row .tm-pos-filter is, so the three
+   filters on this tab line up and scroll the same way. The pills themselves
+   are defined once, far above, beside .tm-pos-btn. */
 .tm-tb-scope,
 .tm-market-tabs {
-    display: inline-flex; gap: 2px; padding: 2px;
-    border-radius: var(--radius-md); background: var(--surface-2);
-    overflow-x: auto; scrollbar-width: none;
+    display: flex; align-items: center; gap: 6px;
+    overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
 }
 .tm-tb-scope::-webkit-scrollbar,
-.tm-market-tabs::-webkit-scrollbar { height: 0; }
-.tm-tb-scope-btn,
-.tm-market-tab {
-    padding: 5px 12px; border: none; border-radius: calc(var(--radius-md) - 2px);
-    background: transparent; color: var(--text-secondary);
-    font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
-    white-space: nowrap;
-    transition: background 140ms ease, color 140ms ease;
-}
-.tm-tb-scope-btn:hover,
-.tm-market-tab:hover { color: var(--text-primary); }
-.tm-tb-scope-btn.active,
-.tm-market-tab.active { background: var(--surface-0); color: var(--text-primary); box-shadow: 0 1px 3px rgba(16,24,40,0.10); }
+.tm-market-tabs::-webkit-scrollbar { display: none; height: 0; }
 
 .tm-tb-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 900px) { .tm-tb-cols { grid-template-columns: 1fr; } }
 
 .tm-tb-col {
+    container: tbcol / inline-size;
     padding: 12px; border-radius: var(--v2-card-radius, 16px);
     background: var(--surface-1); border: 1px solid var(--v2-card-border, var(--border-emphasis));
 }
@@ -7772,13 +7778,41 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tm-tb-col-head.in .tm-tb-col-total { color: var(--color-success); }
 .tm-tb-col-head.out .tm-tb-col-total { color: var(--color-error); }
 
-.tm-tb-rows { display: flex; flex-direction: column; gap: 2px; }
-.tm-tb-row {
-    display: grid; grid-template-columns: 18px minmax(0, 1fr) auto;
-    align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--radius-md);
-    transition: background 140ms ease;
+/* The column header the other two lists on this tab both carry. "1,043,599"
+   with a green bar under it was a number with no name on it — in the most-
+   bought column it is transfers in, in the most-sold column transfers out,
+   and the only thing saying so was the heading two rows up. Its columns
+   match .tm-tb-row's below, the way .tm-watch-legend's match .tm-watch-row's. */
+.tm-tb-legend {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1.4fr) minmax(110px, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    margin-left: 3px;
+    padding: 0 10px 5px 26px;
+    font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-muted);
 }
-.tm-tb-row:hover { background: var(--surface-2); }
+.tm-tb-legend-vol { display: inline-flex; align-items: center; gap: 5px; cursor: help; }
+.tm-tb-legend-vol i {
+    font-style: normal; width: 12px; height: 12px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-3, var(--surface-2)); color: var(--text-secondary);
+    font-size: 8.5px; font-weight: 800; letter-spacing: 0;
+}
+.tm-tb-legend-n { min-width: 92px; text-align: right; }
+
+.tm-tb-rows { display: flex; flex-direction: column; gap: 4px; }
+.tm-tb-row {
+    display: grid; grid-template-columns: 18px minmax(0, 1.4fr) minmax(110px, 1fr) auto;
+    align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--radius-md);
+    /* The left edge stays — it is the position colour and its initial. The
+       other three sides do not, exactly as on .tm-watch-row. */
+    border: 1px solid transparent;
+    border-left: 3px solid transparent;
+}
+/* Room for the edge, same inset the price-watch rows use. */
+.tm-tb-row.v2-pos-edge { padding-left: 26px; }
 .tm-tb-rank { font-family: var(--font-display); font-size: 11px; font-weight: 700; color: var(--text-muted); text-align: center; }
 .tm-tb-ident { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .tm-tb-info { min-width: 0; }
@@ -7795,14 +7829,35 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tm-tb-price.flat { color: var(--text-muted); }
 
 .tm-tb-num { text-align: right; min-width: 92px; }
-.tm-tb-count { display: block; font-family: var(--font-display); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.tm-tb-net { display: block; font-size: 9px; font-variant-numeric: tabular-nums; }
+.tm-tb-count { display: block; font-family: var(--font-display); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* The bar used to be a 92px stub tucked under the figure at the row's right
+   edge, with the whole middle of the row empty — on a list whose neighbours
+   run a meter across exactly that space. It is a column of its own now, and
+   it is the one thing on the row you can compare down the list without
+   reading a digit. */
+.tm-tb-meter { min-width: 0; }
+.tm-tb-net { display: block; font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; margin-bottom: 3px; cursor: help; }
 .tm-tb-net.pos { color: var(--color-success); }
 .tm-tb-net.neg { color: var(--color-error); }
-.tm-tb-track { height: 3px; margin-top: 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
-.tm-tb-track i { display: block; height: 100%; border-radius: 2px; }
+.tm-tb-track { height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; cursor: help; }
+.tm-tb-track i { display: block; height: 100%; border-radius: 3px; }
 .tm-tb-track i.in { background: var(--color-success); }
 .tm-tb-track i.out { background: var(--color-error); }
+
+/* Below this the four columns stop fitting: the rank stays with the player,
+   the meter and the figure share the line under them. A container query, and
+   placed after the rule it narrows — it adds no specificity of its own, so
+   above it the plain .tm-tb-row below would simply win. */
+@container tbcol (max-width: 420px) {
+    .tm-tb-legend { display: none; }
+    .tm-tb-row { grid-template-columns: 18px minmax(0, 1fr) auto; row-gap: 6px; }
+    /* To the end, or the name shares its line with an empty track the figure
+       below has sized to 92px, and gets an ellipsis to pay for it. */
+    .tm-tb-ident { grid-column: 2 / -1; }
+    .tm-tb-meter { grid-column: 2 / 3; }
+    .tm-tb-num { grid-column: 3 / -1; }
+}
 
 /* The ticker marks are SVG now rather than emoji, so they need a size and
    they inherit the row's colour instead of carrying their own. */
@@ -9102,6 +9157,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tl-name,
 .tm-section-header h2,
 .tm-tb-col-total,
+.tm-tb-count,
 .tp-benchmark-name,
 .tr-h-v,
 .transfer-name,
@@ -9195,7 +9251,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tm-player-name,
 .tm-price-main,
 .tm-tb-col-title,
-.tm-tb-count,
 .tp-head-title,
 .tr-move .tr-in,
 .tr-move .tr-out,
@@ -9702,6 +9757,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tm-market-tab-n,
 .tm-player-avatar,
 .tm-price-season,
+.tm-tb-net,
 .tm-tb-sub,
 .tm-team-name,
 .tm-thr-state,
@@ -9861,7 +9917,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tm-player-avatar,
 .tm-price-delta,
 .tm-tb-col-total em,
-.tm-tb-net,
+.tm-tb-legend-vol i,
 .tm-watch-legend-thr i,
 .tr-side em,
 .tw-chart-tab,
@@ -10035,6 +10091,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwc-insight-h,
 .tl-badge,
 .tl-tag,
+.tm-tb-legend,
 .tm-watch-legend,
 .twf-out-l,
 .twr-detail > summary,
