@@ -98,7 +98,9 @@
                     if (!out) return null;
                     const bank = (typeof picksData !== 'undefined' && picksData
                         && picksData.entry_history ? picksData.entry_history.bank : 0) / 10;
-                    const raised = (out.sellPrice != null ? out.sellPrice : out.price) + bank;
+                    // Number.isFinite, not != null: NaN is not null, so the old
+                    // test kept a NaN sellPrice and made `raised` NaN.
+                    const raised = (Number.isFinite(out.sellPrice) ? out.sellPrice : out.price) + bank;
                     return { raised: r1(raised), price: incoming.price, affordable: incoming.price <= raised + 0.001 };
                 })()
             };

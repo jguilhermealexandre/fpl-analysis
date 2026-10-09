@@ -413,12 +413,45 @@
                 const premierLeagueSeason = new Date(bootData.events?.[0]?.deadline_time || Date.now()).getUTCFullYear();
                 await loadPremierLeagueJerseyNumbers(picksData.picks, premierLeagueSeason);
 
+                /* ===== What each player would actually raise if sold =====
+
+                   This read `pick.selling_price`, and the picks endpoint does
+                   not have that field. A pick is { element, position,
+                   multiplier, is_captain, is_vice_captain, element_type } — the
+                   purchase prices live behind my-team/{id}, which needs the
+                   manager's own login and a static site cannot have. So every
+                   player's sellPrice was `undefined / 10`, which is NaN.
+
+                   NaN then split the consumers in two, because the two guards in
+                   use are not equivalent: `sellPrice || price` takes the price
+                   branch and quietly budgets against the LIST price, while
+                   `sellPrice != null ? sellPrice : price` keeps the NaN — NaN is
+                   not null — and renders it. The Transfer Wizard's recommendation
+                   card says "£6.2m is £NaNm more than selling Groß raises."
+
+                   And the help drawer promises the opposite in as many words:
+                   "Replacements are priced against your selling price, not the
+                   list price... a move that looks affordable at list price often
+                   is not." Measured on a real squad, the list price overstates
+                   what 11 of 15 players raise, by £1.4m in total — which is
+                   exactly the £0.1-0.2m margin that decides a transfer.
+
+                   It is derivable from public data, and the page already has it.
+                   FPL banks half of any rise since purchase, rounded down, and
+                   the whole of any fall — sellingPriceTenths() in common.js.
+                   Purchase price comes from entry/{id}/transfers/, already
+                   fetched above for the Gameweek Review, which stamps every move
+                   with element_in_cost. A player never transferred in was there
+                   at the start, so his purchase price is today's price less his
+                   whole season's movement. */
+                const boughtTenths = v2BoughtTenths(managerTransferLog);
+
                 selectedPlayers = picksData.picks.map(pick => {
                     const player = allPlayersById[pick.element];
                     if (!player) return null;
                     return { ...player, isCaptain: pick.is_captain, isVice: pick.is_vice_captain,
                         onBench: pick.position > 11, pickPosition: pick.position,
-                        sellPrice: pick.selling_price / 10, multiplier: pick.multiplier };
+                        sellPrice: v2SellPrice(pick, player, boughtTenths), multiplier: pick.multiplier };
                 }).filter(p => p !== null);
 
                 // Manager name/rank/points/bank are rendered as the right-hand column

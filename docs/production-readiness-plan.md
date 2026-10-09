@@ -17,7 +17,7 @@ the decisions, not the log.*
 | 2 — My Team · Transfers | done (v444) |
 | availability mark (spans 1 + 3) | done (v445) |
 | 3 — My Team · GW Draft | done (v446) |
-| 4 — My Team · Transfer Wizard | part 1 done (v448): weight, the funnel invariant, escaping. Flow bug-bash and the 4146-line split still open |
+| 4 — My Team · Transfer Wizard | part 2 done (v449): the selling-price defect. The 4146-line split still open |
 | 5 — My Team · Lineup Wizard | |
 | 6 — My Team · News | |
 | 7-13 — Players x7 | |

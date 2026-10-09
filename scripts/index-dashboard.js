@@ -1548,10 +1548,16 @@
                    applyPendingTransfers() in scripts/common.js. */
                 const planningGW = planningGameweek(bootData, fixturesData);
                 let planningPicks = picksData;
+                /* Hoisted out of the planningGW branch below. It was fetched only
+                   when a round had not kicked off, but the selling prices derived
+                   from it are wanted every time — without them this page budgets
+                   against the list price while the squad page budgets against the
+                   real figure, and the two disagree about the same player. */
+                const transfersRes = await fetchWithProxy(
+                    `https://fantasy.premierleague.com/api/entry/${teamId}/transfers/`).catch(() => null);
+                const transferLog = transfersRes ? await transfersRes.json().catch(() => null) : null;
+                const boughtTenths = v2BoughtTenths(transferLog);
                 if (planningGW > currentGW) {
-                    const transfersRes = await fetchWithProxy(
-                        `https://fantasy.premierleague.com/api/entry/${teamId}/transfers/`).catch(() => null);
-                    const transferLog = transfersRes ? await transfersRes.json().catch(() => null) : null;
                     const applied = applyPendingTransfers(picksData, transferLog, planningGW,
                         id => (playersById[id] ? Math.round(playersById[id].price * 10) : null));
                     if (applied) {
@@ -1602,7 +1608,11 @@
                     // player would actually raise, not his current list price.
                     return { ...p, isCaptain: pick.is_captain, isViceCaptain: pick.is_vice_captain,
                         multiplier: pick.multiplier, pickPosition: pick.position,
-                        sellPrice: pick.selling_price != null ? pick.selling_price / 10 : p.price };
+                        /* Was `: p.price`, the list price. v2SellPrice() in
+                           common.js is what the squad page uses, so the
+                           recommender here and the wizard there now budget
+                           against the same number. */
+                        sellPrice: v2SellPrice(pick, p, boughtTenths) };
                 }).filter(Boolean);
 
                 /* What FPL says you picked, then what you have arranged since.

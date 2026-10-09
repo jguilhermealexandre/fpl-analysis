@@ -453,6 +453,50 @@ function sellingPriceTenths(purchaseTenths, nowTenths) {
         : nowTenths;
 }
 
+/* ===== What a squad is worth if you sell it =====
+ *
+ * The picks endpoint has no purchase prices — a pick is { element, position,
+ * multiplier, is_captain, is_vice_captain, element_type } — and the endpoint
+ * that does, my-team/{id}, needs the manager's own login. So a selling price
+ * has to be derived, and entry/{id}/transfers/ is the public source: it stamps
+ * every move with element_in_cost.
+ *
+ * Shared because two surfaces budget against this and had different answers.
+ * The squad page read pick.selling_price, which does not exist, and got NaN.
+ * The dashboard guarded that and fell back to the LIST price, which overstates
+ * what a risen player raises. Same player, two numbers, neither right.
+ */
+function v2BoughtTenths(transferLog) {
+    const out = new Map();
+    (Array.isArray(transferLog) ? transferLog : [])
+        .slice()
+        // Oldest first, so a player bought, sold and bought again ends on the
+        // price he was last bought at.
+        .sort((a, b) => (a.event || 0) - (b.event || 0))
+        .forEach(t => {
+            if (t && t.element_in != null && t.element_in_cost != null) {
+                out.set(t.element_in, t.element_in_cost);
+            }
+        });
+    return out;
+}
+
+/* In millions, like every other price the UI handles.
+   `player` needs .id, .price and .costChangeStart (tenths, as the feed states
+   it). A player with no transfer row was in the squad at the start, so his
+   purchase price is today's price less his whole season's movement. */
+function v2SellPrice(pick, player, boughtTenths) {
+    if (!player) return 0;
+    // A transfer for a round not yet kicked off is applied by
+    // applyPendingTransfers(), which writes a real selling_price on its slot.
+    if (pick && pick.selling_price != null) return pick.selling_price / 10;
+    const nowTenths = Math.round(player.price * 10);
+    const bought = boughtTenths && boughtTenths.has(player.id)
+        ? boughtTenths.get(player.id)
+        : nowTenths - (player.costChangeStart || 0);
+    return sellingPriceTenths(bought, nowTenths) / 10;
+}
+
 // ===== PLAYER PHOTOS =====
 /* The club's headshot for a player, addressed the way premierleague.com
  * addresses it today.
@@ -2678,7 +2722,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=448')
+    fetch('/footer.html?v=449')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

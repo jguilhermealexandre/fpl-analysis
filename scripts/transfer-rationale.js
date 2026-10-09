@@ -132,7 +132,10 @@
             }).filter(h => h.gws && h.gws.length);
 
             const outStrip = trFixtures(out.teamId, 5), inStrip = trFixtures(inc.teamId, 5);
-            const sellPrice = out.sellPrice != null ? out.sellPrice : out.price;
+            /* Number.isFinite, not != null. NaN is not null, so the old test
+               kept it — and this is the figure behind "£NaNm more than selling
+               him raises" in the wizard's recommendation card. */
+            const sellPrice = Number.isFinite(out.sellPrice) ? out.sellPrice : out.price;
             const bank = o.bank != null ? o.bank : 0;
 
             return {
