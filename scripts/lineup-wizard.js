@@ -1426,15 +1426,15 @@
             });
         }
 
+        /* Same rule as the squad pitch and the transfer overview, from
+           v2LegalXI() in common.js. This one had the bounds right; what it did
+           not have was any way of staying in step with the other two. Reads
+           .pos rather than .position, which is this file's own shape for a
+           player — hence the wrapper rather than a direct call. */
         function isValidLWFormation(xi) {
-            const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
-            xi.forEach(p => { counts[p.pos] = (counts[p.pos] || 0) + 1; });
-            if (counts[1] !== 1) return false;
-            if (counts[2] < 3 || counts[2] > 5) return false;
-            if (counts[3] < 2 || counts[3] > 5) return false;
-            if (counts[4] < 1 || counts[4] > 3) return false;
-            if (counts[2] + counts[3] + counts[4] !== 10) return false;
-            return true;
+            const counts = {};
+            (xi || []).forEach(p => { counts[p.pos] = (counts[p.pos] || 0) + 1; });
+            return v2LegalXI(counts);
         }
 
         function getFormationString(xi) {

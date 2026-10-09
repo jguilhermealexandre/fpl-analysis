@@ -572,8 +572,7 @@
                 ? '<span class="twr-opt-state is-on">In your plan</span>'
                 : '<span class="twr-opt-state">Use this one</span>';
             const act = isPick ? '' :
-                ` role="button" tabindex="0" onclick="twSelectOption(${slot}, ${a.in.id})"`
-                + ` onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();twSelectOption(${slot}, ${a.in.id});}"`;
+                ` role="button" tabindex="0" onclick="twSelectOption(${slot}, ${a.in.id})"`;
 
             return `
                 <div class="twr-opt${isPick ? ' is-pick' : ''}"${act}>
@@ -1479,7 +1478,6 @@
                     const drop = picked && transferState.sellMode
                         ? `<span class="tw-sqc-x" role="button" tabindex="0"
                             onclick="event.stopPropagation(); twRemoveSlot(${i});"
-                            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();twRemoveSlot(${i});}"
                             data-tooltip="${escHTML(`Take ${p.name} out of the plan`)}" aria-label="${escHTML(`Take ${p.name} out of the plan`)}">\u00d7</span>`
                         : '';
                     return `<button class="tw-outc tw-sqc${picked ? ' is-picked' : ''}${active ? ' is-active' : ''}${inP ? ' is-filled' : ''}"
@@ -1642,7 +1640,6 @@
                     rows += `<div class="twc-row ${twPosEdge} ${sold ? 'is-sold' : ''} ${pending ? 'is-picked' : ''} ${pickable ? 'is-pickable' : ''}"
                         ${pickable ? `role="button" tabindex="0" aria-pressed="${pending}"
                             onclick="twRowPick(${p.id})"
-                            onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();twRowPick(${p.id});}"
                             data-tooltip="${pending ? escHTML(`${p.name} is in the plan — click to take him back out`) : escHTML(`Move ${p.name} on`)}"` : ''}>
                         ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(twIdent) : ''}
                         <div class="twc-who">
@@ -2691,7 +2688,6 @@
                 return `<div class="dp-card twov-card ${posClass}${p.isIncoming ? ' twov-in' : ''}${picked ? ' is-picked' : ''}${target ? ' is-target' : ''}"
                     role="button" tabindex="0" aria-pressed="${picked}"
                     onclick="twOvClick(${p.id})"
-                    onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();twOvClick(${p.id});}"
                     data-tooltip="${escHTML(picked ? `${p.name} is held — click whoever should change places with him`
                         : twOvPick !== null ? (target ? `Swap with ${byId.get(twOvPick).name}` : `${p.name} cannot change places with ${byId.get(twOvPick).name}`)
                         : `${p.name} — click to move him`)}">

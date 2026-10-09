@@ -1813,6 +1813,115 @@ function overlayExit(overlay) {
     try { origin.focus({ preventScroll: true }); } catch { origin.focus(); }
 }
 
+/* ===== What eleven is a legal eleven =====
+ *
+ * FPL's own rule: one goalkeeper, three to five defenders, two to five
+ * midfielders, one to three forwards, eleven in total. Written as the rule
+ * rather than as a list of formations, because the rule is what FPL publishes
+ * and the list is a consequence of it — there are exactly eight, and deriving
+ * them means the two can never disagree.
+ *
+ * Three places encoded this independently. isValidFormation() in
+ * panels-and-tabs.js — which transfer-wizard.js already calls "the rule" —
+ * checked the lower bounds and not the upper, so it accepted fifteen shapes,
+ * 6-3-1 and 3-2-5 among them. isValidLWFormation() in lineup-wizard.js checked
+ * both and accepted eight. solveQuickLineup() in transfer-engine.js carried the
+ * eight as a literal array.
+ *
+ * Measured over every split of ten outfield players: the three disagree on
+ * seven shapes, and every one of the seven is unreachable from a real FPL
+ * squad. A squad is 2 GK, 5 DEF, 5 MID, 3 FWD and transfers are same-position,
+ * so that shape is invariant — 3-2-5 would need five forwards, 6-3-1 six
+ * defenders. The loose version was therefore safe, but only by accident of
+ * something it did not check.
+ */
+const FPL_XI_SHAPE = { 1: [1, 1], 2: [3, 5], 3: [2, 5], 4: [1, 3] };
+const FPL_XI_SIZE = 11;
+
+function v2LegalXI(counts) {
+    if (!counts) return false;
+    let total = 0;
+    for (const pos of [1, 2, 3, 4]) {
+        const n = counts[pos] || 0;
+        const bounds = FPL_XI_SHAPE[pos];
+        if (n < bounds[0] || n > bounds[1]) return false;
+        total += n;
+    }
+    return total === FPL_XI_SIZE;
+}
+
+// The eight, derived from the rule above rather than listed beside it.
+const FPL_FORMATIONS = (function () {
+    const out = [];
+    for (let d = FPL_XI_SHAPE[2][0]; d <= FPL_XI_SHAPE[2][1]; d++) {
+        for (let m = FPL_XI_SHAPE[3][0]; m <= FPL_XI_SHAPE[3][1]; m++) {
+            for (let f = FPL_XI_SHAPE[4][0]; f <= FPL_XI_SHAPE[4][1]; f++) {
+                if (v2LegalXI({ 1: 1, 2: d, 3: m, 4: f })) out.push([d, m, f]);
+            }
+        }
+    }
+    return out;
+})();
+
+/* ===== Enter and Space on anything marked role="button" =====
+ *
+ * A div with an onclick is a mouse-only control. The site has a lot of them —
+ * pitch cards, table rows, search results — because a card you drag and click
+ * is not a <button> in any useful sense, and the fix for those is
+ * role="button" + tabindex="0" + a key handler.
+ *
+ * That key handler was written inline four times in transfer-wizard.js, as the
+ * same thirty characters of `if(event.key==='Enter'||event.key===' ')`. The GW
+ * Draft needed three more, which would have made seven copies of one rule, so
+ * it is delegated once here instead. The markup now only has to say what the
+ * element IS — role="button" tabindex="0" — and the onclick it already carries
+ * does the work.
+ *
+ * Space is prevented from scrolling the page, which is what a real button does.
+ * Enter is not prevented, because a role="button" inside a form should still be
+ * able to submit it if that is what its click does.
+ *
+ * Two things it must not do. It must not fire for real <button> and <a>, which
+ * the browser already activates — hence the role="button" requirement rather
+ * than a tabindex one. And it must not steal Space from a text field that
+ * happens to sit inside a clickable container, which is what the editable
+ * check is for.
+ */
+const KEY_ACTIVATE_SKIP = 'input,textarea,select,button,a[href],[contenteditable="true"]';
+
+function initKeyActivation() {
+    if (window.__keyActivationReady) return;
+    window.__keyActivationReady = true;
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter' && event.key !== ' ' && event.key !== 'Spacebar') return;
+        if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+
+        const target = event.target;
+        if (!target || typeof target.closest !== 'function') return;
+        if (target.closest(KEY_ACTIVATE_SKIP)) return;
+
+        const el = target.closest('[role="button"]');
+        if (!el || el.getAttribute('aria-disabled') === 'true') return;
+        /* A site that still writes its own onkeydown keeps it, rather than
+           having this fire the same action a second time. There are none left in
+           the repo; the guard is so that adding one back is merely redundant
+           instead of a double click. */
+        if (el.hasAttribute('onkeydown')) return;
+
+        if (event.key !== 'Enter') event.preventDefault();
+        el.click();
+    });
+}
+
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initKeyActivation);
+    } else {
+        initKeyActivation();
+    }
+}
+
 function initOverlayDismiss() {
     if (window.__overlayDismissReady) return;
     window.__overlayDismissReady = true;
@@ -2569,7 +2678,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=445')
+    fetch('/footer.html?v=446')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

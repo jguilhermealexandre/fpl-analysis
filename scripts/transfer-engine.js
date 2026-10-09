@@ -27,7 +27,9 @@
    ============================================ */
 
         function solveQuickLineup(squad) {
-            const validFormations = [[3,4,3],[3,5,2],[4,3,3],[4,4,2],[4,5,1],[5,3,2],[5,4,1],[5,2,3]];
+            // Derived from FPL's shape rule in common.js, not listed here. The
+            // literal array this replaced was correct and had no way of saying so.
+            const validFormations = FPL_FORMATIONS;
             const byPos = { 1: [], 2: [], 3: [], 4: [] };
             squad.forEach(p => { if (p.lwScore > -100) byPos[p.pos].push(p); });
             Object.values(byPos).forEach(a => a.sort((a, b) => b.lwScore - a.lwScore));

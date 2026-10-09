@@ -1584,14 +1584,18 @@
             return `${def}-${mid}-${fwd}`;
         }
 
+        /* The rule itself is v2LegalXI() in common.js. This checked the lower
+           bounds and not the upper, so it accepted 6-3-1 and 3-2-5 among fifteen
+           shapes where FPL allows eight. No live difference — those seven need
+           more defenders or forwards than a 2/5/5/3 squad contains — but it was
+           the loosest of the three copies of this rule and the one the other
+           files call the rule. */
         function isValidFormation(lineup) {
-            const starters = lineup.filter(p => !p.onBench);
-            if (starters.length !== 11) return false;
-            const gk = starters.filter(p => p.position === 1).length;
-            const def = starters.filter(p => p.position === 2).length;
-            const mid = starters.filter(p => p.position === 3).length;
-            const fwd = starters.filter(p => p.position === 4).length;
-            return gk === 1 && def >= 3 && mid >= 2 && fwd >= 1;
+            const counts = {};
+            lineup.filter(p => !p.onBench).forEach(p => {
+                counts[p.position] = (counts[p.position] || 0) + 1;
+            });
+            return v2LegalXI(counts);
         }
 
         function renderTeamContextCard(tid, showOpponent) {

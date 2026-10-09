@@ -114,7 +114,9 @@
                 startingFT: (typeof deriveFreeTransfers === 'function' ? deriveFreeTransfers().count : 1),
                 usedChips: usedChipRecords,
                 teamId: localStorage.getItem('fpl_team_id') || '',
-                savedAt: null
+                savedAt: null,
+                // Set when a write to localStorage is refused — see saveDraft().
+                saveError: null
             };
 
             // Initialize lineups for each GW (carry-forward model)
@@ -720,7 +722,14 @@
             if (results.length === 0) {
                 dropdown.innerHTML = '<div class="planner-search-item" style="color:var(--text-muted);">No affordable players found</div>';
             } else {
-                dropdown.innerHTML = results.map(p => `<div class="planner-search-item" onclick="selectDraftReplacement(${p.id})">
+                /* Reachable from the input above it. These were mouse-only, which
+                   made the search a dead end for a keyboard: you could type a
+                   name and then had nowhere to go. role="button" is enough —
+                   initKeyActivation() in common.js handles Enter and Space for
+                   everything carrying it. */
+                dropdown.innerHTML = results.map(p => `<div class="planner-search-item" role="button" tabindex="0"
+                    aria-label="${escHTML(`Pick ${p.name}, ${p.team}, £${p.price.toFixed(1)} million`)}"
+                    onclick="selectDraftReplacement(${p.id})">
                     <div><span class="planner-search-item-name">${escHTML(p.name)}</span></div>
                     <span class="planner-search-item-meta">${escHTML(p.team)} · £${p.price.toFixed(1)}m · ${p.form} form</span>
                 </div>`).join('');
@@ -1298,9 +1307,30 @@
             try {
                 localStorage.setItem(`fpl_draft_${ds.teamId}_plan${slotIndex}`, JSON.stringify(payload));
                 ds.savedAt = payload.savedAt;
+                ds.saveError = null;
                 // Save meta
                 saveDraftMeta();
-            } catch (e) { /* localStorage full */ }
+            } catch (e) {
+                /* Was `catch (e) { /* localStorage full *\/ }` — swallowed whole.
+                   The help drawer promises "a draft is held locally until you
+                   change it", and this is the line that holds it, so a refused
+                   write is the one failure on this tab a manager has to be told
+                   about: they are several gameweeks into a plan that will be
+                   gone when the tab closes.
+
+                   Worse than silent, it was misleading. ds.savedAt keeps its
+                   previous value on a throw, and the indicator below prints
+                   "Plan 1 saved: 14:32" off it — so a failed save left a badge
+                   on screen saying the plan was saved. */
+                ds.saveError = (e && e.name === 'QuotaExceededError') ? 'full' : 'blocked';
+                if (window.reportError) window.reportError(e, 'saveDraft');
+                if (typeof updateStatus === 'function') {
+                    updateStatus(ds.saveError === 'full'
+                        ? 'This plan could not be saved — your browser\u2019s storage for this site is full. It will be lost when you close the tab.'
+                        : 'This plan could not be saved — your browser is blocking storage for this site. It will be lost when you close the tab.',
+                        'error');
+                }
+            }
         }
 
         function saveDraftMeta() {
@@ -1651,8 +1681,11 @@
             html += `</div>`;
             html += `</section>`;
 
-            // Save indicator
-            if (ds.savedAt) {
+            // Save indicator. Says "not saved" when the write was refused,
+            // rather than leaving the last successful time on screen.
+            if (ds.saveError) {
+                html += `<div class="draft-save-indicator is-error" id="draftSaveIndicator">Plan ${activeDraftSlot + 1} NOT SAVED \u2014 browser storage ${ds.saveError === 'full' ? 'is full' : 'is blocked'}</div>`;
+            } else if (ds.savedAt) {
                 html += `<div class="draft-save-indicator" id="draftSaveIndicator">Plan ${activeDraftSlot + 1} saved: ${new Date(ds.savedAt).toLocaleTimeString()}</div>`;
             }
 
@@ -2116,6 +2149,8 @@
 
                 return `<div class="pcard dp-card ${posClass} ${swapClass} ${injured ? 'pcard-injured' : ''} ${benchIndex != null ? 'pcard-bench' : ''}"
                     data-player-id="${p.id}"
+                    role="button" tabindex="0"
+                    aria-label="${escHTML(`${p.name}, ${p.team}${benchIndex != null ? `, bench ${benchIndex + 1}` : ''} — move him`)}"
                     onclick="handleDraftPitchClick(${p.id})"
                     onpointerdown="draftPointerDown(event, ${p.id})">
                     ${armband}
@@ -2319,7 +2354,7 @@
                 ${typeof v2PosEdgeClass === 'function' ? `<span class="dp-row-pos ${v2PosEdgeClass(player.position)}"></span>` : ''}
                 ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(player) : ''}
                 <div class="sq-row-name-block">
-                    <div class="sq-row-name" onclick="openDraftTransferPanel(${player.id})" title="Transfer ${escHTML(player.name)} out">${captain}${statusIcon}${escHTML(player.name)}${transferBadge}${benchBadge}</div>
+                    <div class="sq-row-name" role="button" tabindex="0" onclick="openDraftTransferPanel(${player.id})" title="Transfer ${escHTML(player.name)} out" aria-label="${escHTML(`Transfer ${player.name} out`)}">${captain}${statusIcon}${escHTML(player.name)}${transferBadge}${benchBadge}</div>
                     <div class="sq-row-team"><span class="sq-row-club">${escHTML(player.team)} · £${player.price.toFixed(1)}m</span>${typeof priceChangeBadge === 'function' ? priceChangeBadge(player) : ''}</div>
                 </div>
             </div></td>`;
@@ -2503,7 +2538,14 @@
             if (summary && !draftCompareMode) summary.innerHTML = renderDraftTransferSummary();
 
             const saveInd = document.getElementById('draftSaveIndicator');
-            if (saveInd && ds.savedAt) saveInd.textContent = `Plan ${activeDraftSlot + 1} saved: ${new Date(ds.savedAt).toLocaleTimeString()}`;
+            if (saveInd) {
+                saveInd.classList.toggle('is-error', !!ds.saveError);
+                if (ds.saveError) {
+                    saveInd.textContent = `Plan ${activeDraftSlot + 1} NOT SAVED \u2014 browser storage ${ds.saveError === 'full' ? 'is full' : 'is blocked'}`;
+                } else if (ds.savedAt) {
+                    saveInd.textContent = `Plan ${activeDraftSlot + 1} saved: ${new Date(ds.savedAt).toLocaleTimeString()}`;
+                }
+            }
 
             const sideBody = document.getElementById('draftSidebarBody');
             if (sideBody && !draftCompareMode) sideBody.innerHTML = renderDraftSidebarBody();

@@ -127,8 +127,19 @@ test('exactly one option is the plan, and it is not clickable', () => {
     const html = [chosen, opt(2, 6.0, 4), opt(3, 9.5, 3)]
         .map(a => twrOptionCard(a, chosen, [1], 0, 0)).join('');
     assert.equal(html.split('is-pick').length - 1, 1, 'one card carries the pick');
-    assert.equal(html.split('twSelectOption(').length - 1, 4,
-        'the two alternatives each get a click and a keydown hook');
+    /* This asserted FOUR twSelectOption( occurrences — two alternatives times
+       an onclick and an inline onkeydown each. The keydown is delegated now:
+       initKeyActivation() in common.js activates anything carrying
+       role="button" on Enter or Space, so seven copies of the same inline
+       handler became none. The card is still keyboard-reachable, which is what
+       this was really checking, so that is what it checks. */
+    assert.equal(html.split('twSelectOption(').length - 1, 2,
+        'one click hook per alternative, and none on the pick');
+    assert.equal(html.split('role="button"').length - 1, 2,
+        'both alternatives are reachable by keyboard');
+    assert.equal(html.split('tabindex="0"').length - 1, 2, 'and focusable');
+    assert.ok(!/onkeydown/.test(html),
+        'without an inline key handler — common.js does that for every role="button"');
 });
 
 test('an alternative knows which slot it belongs to and who it brings in', () => {
