@@ -2141,6 +2141,10 @@ const V2_ICON_PATHS = {
        ships, sitting next to a nav and a chip row drawn in one consistent
        1.8px line. Same meanings, drawn the same way. */
     warn: '<path d="M12 3 2 20h20Z"/><path d="M12 10v5M12 18h.01"/>',
+    /* The glyph a legend toggle opens with everywhere else on the site, where
+       it has been an <i data-lucide="info"> — which is an icon only once
+       lucide has loaded and run. Drawn here so it is one either way. */
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/>',
     check: '<path d="m4 12 5 5L20 6"/>',
     close: '<path d="M6 6l12 12M18 6 6 18"/>',
     chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m7 15 3-4 3 3 5-7"/>',
@@ -2722,7 +2726,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=452')
+    fetch('/footer.html?v=453')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

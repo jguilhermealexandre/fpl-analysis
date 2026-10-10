@@ -9421,7 +9421,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwm-draw.is-none,
 .lwm-ex-i b,
 .lwm-gw,
-.lwm-mine-n b,
 .lwm-p,
 .lwm-p-xp,
 .lwm-sub,
@@ -9656,6 +9655,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .insight-move-action,
 .insight-move-do,
 .lw-call-i i,
+.lw-call-i.is-none,
 .lw-call-v,
 .lw-cap-actions .lw-cap-btn,
 .lw-cap-foot,
@@ -9699,10 +9699,11 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwm-ha,
 .lwm-key,
 .lwm-ko,
-.lwm-legend,
+.lwm-legend .legend-panel-item,
+.lwm-legend .legend-panel-note,
 .lwm-m-l,
-.lwm-mine-n,
 .lwm-p-pos,
+.lwm-prov > .legend-toggle,
 .lwm-side-t,
 .lwm-stale,
 .lwm-updated,
@@ -9860,6 +9861,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .h2h-power-label-r,
 .hold-stat .lbl,
 .insight-move-face .v2-pid-initials,
+.lw-call-i em u,
 .lw-cap-rank,
 .lw-cap-row .lw-cap-fdr,
 .lw-cap-team,
@@ -10186,7 +10188,23 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-ov { container: lwov / inline-size; }
 /* The three figures and the read on the week, side by side. Stacked, they
    made the panel twice as tall as either of them needed to be. */
-.lw-ov-head { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 10px; align-items: stretch; margin-bottom: 10px; }
+/* Three things on one line: the figures, and the two close calls. The calls
+   get a shade more room than the figures because each holds two players. */
+.lw-ov-head { display: grid; grid-template-columns: minmax(0, 1.58fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: stretch; margin-bottom: 10px; }
+
+/* Three figures sharing a line with two calls get a third of the room they
+   have on Squad Analysis, where they are the whole band. The tile keeps its
+   icon and its 32px number and gives back the padding around them; the label
+   and its caption wrap rather than ellipsing, because "vs live FPL team"
+   truncated to "vs live FP…" is a tile that has stopped answering anything. */
+.lw-ov-head .sq-kpi { padding: 12px 13px; gap: 10px; }
+.lw-ov-head .sq-kpi-icon { width: 34px; height: 34px; border-radius: 10px; }
+.lw-ov-head .sq-kpi-icon svg { width: 16px; height: 16px; }
+.lw-ov-head .sq-kpi-label { white-space: normal; overflow: visible; line-height: 1.25; }
+/* The column is sized so the longest of the three labels, "vs live FPL team",
+   holds its line. Wrapping is the fallback, not the plan. */
+.lw-ov-head .sq-kpi-sub { white-space: normal; overflow: visible; line-height: 1.3; }
+.lw-ov-head .sq-kpi-value { font-size: 28px; letter-spacing: -1.1px; }
 .lw-ov-head .lw-kpis { margin-bottom: 0; }
 .lw-ov-head .lwc-insight { margin-bottom: 0; display: flex; flex-direction: column; justify-content: center; }
 @container lwov (max-width: 760px) { .lw-ov-head { grid-template-columns: minmax(0, 1fr); } }
@@ -10198,25 +10216,74 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     .lw-ov .lw-kpis.is-three { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* Three across. Risks, what the optimiser moved, and the call it nearly got
-   the other way round are three answers to one question — "is this eleven
-   right?" — so they are read together rather than scrolled through. */
-.lw-ov-blocks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: start; }
-/* The closest call stacks its two players once the block is this narrow. */
-.lw-ov-blocks .lw-call { flex-direction: column; align-items: stretch; gap: 5px; }
-.lw-ov-blocks .lw-call-v { align-self: flex-start; }
+/* Two blocks, not three — the closest call moved up beside the armband call.
+   The changes take the wider half: a round can move six players, and risks,
+   on a clean squad, is one sentence. */
+.lw-ov-blocks { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 10px; align-items: start; }
 /* Keyed to the panel, not the window — the overview is full width on a wide
    screen and a stacked panel on a narrow one, and the viewport cannot tell
    those apart on its own. These follow the base rule because a container query
    carries no extra specificity: source order is what decides. */
-@container lwov (max-width: 700px) { .lw-ov-blocks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@container lwov (max-width: 470px) { .lw-ov-blocks { grid-template-columns: minmax(0, 1fr); } }
+@container lwov (max-width: 620px) { .lw-ov-blocks { grid-template-columns: minmax(0, 1fr); } }
+/* The figures drop under the two calls first, then the calls under each
+   other — the pair is the last thing worth breaking up, because reading them
+   side by side is the whole point of putting them there. */
+/* 1250, because below it the three-up band leaves each call under ~340px and
+   the label beside the figure — "benched", "next best" — starts losing its
+   tail. Measured, not guessed. */
+@container lwov (max-width: 1250px) {
+    .lw-ov-head { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .lw-ov-head .lw-kpis { grid-column: 1 / -1; }
+}
+@container lwov (max-width: 620px) { .lw-ov-head { grid-template-columns: minmax(0, 1fr); } }
+/* Narrower than this and two players will not sit beside each other inside
+   one card either, so they go one above the other and "over" turns the
+   corner with them. */
+@container lwov (max-width: 480px) {
+    .lw-callbox .lw-call { flex-direction: column; align-items: stretch; gap: 5px; }
+    .lw-callbox .lw-call-v { align-self: flex-start; }
+}
 
 
 .lw-sum-block {
     min-width: 0;
     padding: 11px 12px; border-radius: var(--radius-lg);
     border: 1px solid var(--border-subtle); background: var(--surface-2);
+}
+
+/* Heading on the left, body on the right, on one line wherever the body is
+   one line — which, for a squad with nothing wrong with it, it always is.
+   These two blocks used to give a heading a row of its own above a single
+   sentence, so "nothing to report" twice took as much height as the eleven. */
+.lw-sum-block.is-row {
+    display: grid; grid-template-columns: auto minmax(0, 1fr);
+    align-items: center; gap: 4px 14px;
+    padding: 9px 12px;
+}
+.lw-sum-block.is-row .lw-sum-h { margin-bottom: 0; }
+.lw-sum-body { min-width: 0; }
+@container lwov (max-width: 560px) {
+    .lw-sum-block.is-row { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The two close calls. Both cards are the same object — two players a few
+   tenths apart — so they are drawn by one rule and sit side by side. */
+.lw-callbox { display: flex; flex-direction: column; }
+.lw-callbox .lw-call { margin-bottom: 6px; }
+.lw-callbox .lw-sum-note { margin-top: auto; }
+.lw-call-i.is-none {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10.5px; color: var(--text-muted);
+}
+/* Clear or close, and by how much — the one thing you wanted from the
+   paragraph that used to be here. */
+.lw-sum-n.is-close {
+    background: color-mix(in srgb, var(--verdict-monitor) 20%, transparent);
+    color: var(--verdict-monitor-text, var(--verdict-monitor));
+}
+.lw-sum-n.is-clear {
+    background: color-mix(in srgb, var(--color-success) 20%, transparent);
+    color: var(--verdict-hold-text, var(--color-success));
 }
 .lw-sum-h {
     display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin-bottom: 8px;
@@ -10245,24 +10312,25 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* Everyone worth a second look, with the reason beside the name rather than
    behind a tooltip. */
 .lw-sum-flag {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 7px; min-width: 0;
-    padding: 6px 0; font-size: 10.5px; color: var(--text-secondary);
-    border-top: 1px solid var(--border-subtle);
+    display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%;
+    padding: 3px 9px 3px 3px; margin: 2px 6px 2px 0; border-radius: var(--radius-full);
+    font-size: 10.5px; color: var(--text-secondary);
+    background: var(--surface-3); cursor: help;
 }
-.lw-sum-flag:first-of-type { border-top: 0; padding-top: 0; }
 .lw-sum-flag .lw-face { --v2-pid-face: 20px; flex-shrink: 0; }
 .lw-sum-flag strong { color: var(--text-primary); }
-.lw-sum-flag-w { color: var(--text-muted); min-width: 0; overflow-wrap: anywhere; }
+.lw-sum-flag-w { color: var(--text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lw-sum-flag-x {
-    margin-left: auto; flex-shrink: 0; padding: 1px 7px; border-radius: var(--radius-full);
-    font-size: 9px; font-weight: 700; background: var(--surface-3); color: var(--text-muted);
+    flex-shrink: 0; padding: 1px 6px; border-radius: var(--radius-full);
+    font-size: 9px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    background: var(--surface-1); color: var(--text-muted);
 }
 .lw-sum-flag.is-xi .lw-sum-flag-x { background: color-mix(in srgb, var(--verdict-monitor) 18%, transparent); color: var(--verdict-monitor); }
 
 /* What the optimiser changed, grouped by what happened: the question is
    "what do I go and change on the FPL site", and that answers in three lines. */
-.lw-chg-list { display: flex; flex-direction: column; gap: 5px; }
-.lw-chg-row { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.lw-chg-list { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 16px; }
+.lw-chg-row { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
 .lw-chg-badge {
     flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 3px;
     min-width: 38px; padding: 2px 7px; border-radius: var(--radius-full);
@@ -10274,7 +10342,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* 1.38:1 — the worst pair on the site. Amber on a 24% wash of itself is
    nearly invisible in the light theme; the fill stays, the ink moves. */
 .lw-chg-row.is-captain  .lw-chg-badge { background: color-mix(in srgb, var(--color-captain, #facc15) 24%, transparent); color: var(--verdict-monitor-text); }
-.lw-chg-names { display: flex; flex-wrap: wrap; gap: 3px 10px; min-width: 0; padding-top: 1px; }
+.lw-chg-names { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 10px; min-width: 0; }
 .lw-chg-p { font-size: 11.5px; font-weight: 700; color: var(--text-primary); }
 .lw-chg-p em { font-style: normal; margin-left: 3px; font-size: 9px; font-weight: 600; font-family: var(--font-mono); color: var(--text-muted); }
 
@@ -10287,12 +10355,16 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     align-items: center; gap: 0 7px;
     padding: 7px 8px; border-radius: var(--radius-md); background: var(--surface-3);
 }
-.lw-call-i .lw-face { grid-area: face; --v2-pid-face: 26px; }
+/* The face, not the sentence. You know a player by his picture a beat before
+   you have read his name, which is the whole reason this card can be a third
+   the height of the paragraph it replaced. */
+.lw-call-i .lw-face { grid-area: face; --v2-pid-face: 30px; }
 .lw-call-i b { grid-area: name; min-width: 0; }
 .lw-call-i em { grid-area: xp; }
 .lw-call-i i { grid-area: label; }
 .lw-call-i b { font-size: 12px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lw-call-i em { font-style: normal; font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); }
+.lw-call-i em { font-style: normal; font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); white-space: nowrap; }
+.lw-call-i em u { text-decoration: none; margin-left: 2px; font-size: 9px; font-weight: 600; color: var(--text-muted); }
 .lw-call-i i {
     font-style: normal; font-size: 9px; font-weight: 700; letter-spacing: .04em;
     text-transform: uppercase; color: var(--text-muted);
@@ -10497,26 +10569,56 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 
 /* The two clean-sheet numbers are the one thing on this card a first-time
    reader cannot guess, so the key is on the page rather than in a tooltip. */
-.lwm-legend {
-    display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px;
-    margin-bottom: 10px; font-size: 10.5px; color: var(--text-muted);
+/* The key, drawn the way every other key on the site is drawn: a pill that
+   says Legend and a panel that opens under it. It used to be a permanent row
+   of swatches and abbreviations above the cards — reference you have read
+   once and cannot put away. .legend-toggle and .legend-panel come from
+   v2-app.css, so this only has to colour the swatches. */
+/* The toggle sits in the provenance row with the other things the section
+   says about its own numbers; the panel it opens goes last and takes the
+   full width under them all.
+
+   And it is a pill, because the two chips beside it are — the same reason
+   v2-app.css makes it one inside .v2-filter-row-tail. A 6px-radius button in
+   a row of capsules reads as a different kind of control than its
+   neighbours, which is the opposite of what a shared component is for. */
+.lwm-prov { align-items: center; }
+.lwm-prov > .legend-toggle {
+    order: -1;
+    padding: 3px 9px; border-radius: var(--radius-full);
+    border: 1px solid var(--border-subtle); background: var(--surface-2);
+    font-size: 10px; font-weight: 600; color: var(--text-muted); gap: 6px;
 }
-.lwm-key { display: inline-flex; align-items: center; gap: 5px; }
-.lwm-key em { font-style: normal; font-weight: 700; color: var(--text-secondary); }
+.lwm-prov > .legend-toggle svg { width: 12px; height: 12px; }
+.lwm-prov > .legend-toggle:hover,
+.lwm-prov > .legend-toggle.active {
+    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+}
+.lwm-legend.legend-panel { order: 9; flex-basis: 100%; gap: 6px 18px; margin: 2px 0 0; }
+.lwm-legend .legend-panel-item { font-size: 10.5px; }
+.lwm-legend .legend-panel-item b { color: var(--text-primary); font-weight: 700; }
+.lwm-legend .legend-panel-note {
+    flex-basis: 100%; margin-top: 2px;
+    font-size: 10px; line-height: 1.5; color: var(--text-muted);
+}
 .lwm-key-sw { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
 .lwm-key-sw.is-xi { background: var(--color-primary); }
 .lwm-key-sw.is-bench { background: var(--surface-3); border: 1px solid var(--border-default); }
-.lwm-key-cs { cursor: help; }
+.lwm-key-sw.is-home { background: var(--color-primary); }
+.lwm-key-sw.is-away { background: var(--color-info); }
+.lwm-key-sw.is-cs-ours { background: color-mix(in srgb, var(--color-primary) 72%, transparent); }
+.lwm-key-sw.is-wide { background: var(--verdict-monitor); }
 
-/* ===== MATCHDAY, AS ROWS =====
+/* ===== MATCHDAY =====
 
-   This was a two-up grid of cards. Seven near-identical boxes gave no
-   hierarchy and no scan path: every match looked as important as every other,
-   the players you own were buried at the bottom of each one, and "not priced
-   yet" repeated itself seven times. A row at full column width puts the clubs,
-   the result odds and your stake on one line — which is the line you are
-   actually reading — with your players straight after it. */
+   Full width under the pitch, three cards to a row on a desktop. The panel's
+   own width is what the cards respond to, not the window's — the section is
+   full width on a wide screen and a stacked panel on a narrow one, and the
+   viewport cannot tell those apart. */
 .lwm { container: lwm / inline-size; }
+
 .lwm-days { display: flex; flex-direction: column; gap: 12px; }
 /* Two matches across once the column can carry them without the numbers
    closing up. Each fixture is self-contained — clubs, odds, your players, the
@@ -10549,7 +10651,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    stays where the eye expects it. */
 .lwm-fix {
     container: lwfix / inline-size;
-    display: grid; grid-template-rows: auto auto 1fr auto auto;
+    display: grid; grid-template-rows: auto 1fr auto auto;
     padding: 10px 11px 9px; border-radius: var(--radius-lg);
     border: 1px solid var(--border-subtle); background: var(--surface-2);
 }
@@ -10560,10 +10662,12 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
-.lwm-fix-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+/* The kick-off rides on top of the result bar, between the two clubs, where
+   it belongs to the match rather than to the card. It had a band of its own
+   with a "3 yours" counter at the far end — one row per card to carry two
+   small facts, one of which the players listed underneath already answer by
+   name. The band is gone and the card is four rows, not five. */
 .lwm-ko { font-size: 10.5px; font-weight: 700; font-family: var(--font-mono); color: var(--text-muted); }
-.lwm-mine-n { flex-shrink: 0; cursor: help; font-size: 9.5px; font-weight: 600; color: var(--text-muted); }
-.lwm-mine-n b { font-size: 12px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); margin-right: 2px; }
 
 /* The tie itself: both clubs at the same size with their win price under the
    badge, and the bar between them. This is the line the eye lands on. */
@@ -10600,9 +10704,25 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     display: flex; flex-direction: column; gap: 1px;
     margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--border-subtle);
 }
-.lwm-gr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(86px, auto) minmax(0, 1fr); align-items: baseline; gap: 8px; cursor: help; padding: 1px 0; }
+/* Figure, bar, label, bar, figure. The bars grow outward from the label the
+   way a head-to-head is always drawn, so which side is ahead reads before
+   either number does — and because both are drawn to a fixed scale rather
+   than to the row's own maximum, a short bar is short across the whole round
+   and not just against the team it is beside. */
+.lwm-gr { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(86px, auto) minmax(0, 1fr) auto; align-items: center; gap: 7px; cursor: help; padding: 2px 0; }
+.lwm-gt { display: flex; align-items: center; height: 5px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.lwm-gt.is-h { justify-content: flex-end; }
+.lwm-gt.is-a { justify-content: flex-start; }
+.lwm-gt i { display: block; height: 100%; border-radius: 3px; background: var(--text-muted); }
+.lwm-gt.is-h i { background: var(--color-primary); }
+.lwm-gt.is-a i { background: var(--color-info); }
+/* Our own model's row is drawn in the brand green on both sides, so the two
+   clean-sheet rows cannot be mistaken for each other at a glance. */
+.lwm-gr.is-ours .lwm-gt i { background: color-mix(in srgb, var(--color-primary) 72%, transparent); }
+.lwm-gr.is-wide .lwm-gt i { background: var(--verdict-monitor); }
+.lwm-gr.is-none .lwm-gt { opacity: .4; }
 .lwm-gl { font-style: normal; font-size: 9px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--text-muted); text-align: center; }
-.lwm-gv { font-size: 12.5px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); }
+.lwm-gv { font-size: 12.5px; font-weight: 700; font-family: var(--font-mono); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 /* Values at the card's two edges with the label centred between them, the way
    a match-stat table is always drawn. Hugging the label left the outer third
    of the card empty on both sides and made the row look like a caption. */
@@ -10632,7 +10752,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* A card narrow enough that the three columns stop being three columns. */
 @container lwfix (max-width: 250px) {
     .lwm-tie { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+    /* A two-millimetre bar says nothing, so below this the row goes back to
+       two figures and a label and keeps the space for them. */
     .lwm-gr { grid-template-columns: minmax(0, 1fr) minmax(64px, auto) minmax(0, 1fr); }
+    .lwm-gt { display: none; }
     .lwm-ex { justify-content: flex-start; gap: 2px 12px; }
 }
 

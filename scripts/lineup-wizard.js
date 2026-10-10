@@ -394,13 +394,22 @@
            Both clean-sheet estimates keep their own row. Where the market and
            our model disagree by ten points or more — the whole reason for
            carrying both — the model's figure is marked. */
-        function lwStatRow(label, tip, hv, av, cls) {
+        function lwStatRow(label, tip, hv, av, cls, hf, af) {
+            const track = (frac, side) => `<span class="lwm-gt is-${side}" aria-hidden="true">${frac == null ? ''
+                : `<i style="width:${Math.max(2, Math.min(100, frac * 100)).toFixed(0)}%"></i>`}</span>`;
             return `<div class="lwm-gr${cls ? ' ' + cls : ''}" data-tooltip="${escHTML(tip)}">
                 <b class="lwm-gv is-h">${hv}</b>
+                ${track(hf, 'h')}
                 <em class="lwm-gl">${escHTML(label)}</em>
+                ${track(af, 'a')}
                 <b class="lwm-gv is-a">${av}</b>
             </div>`;
         }
+
+        /* Four goals is the top of the scale because a side priced above it is
+           a once-a-season fixture; everything a round actually contains fits
+           underneath, and the bars stay comparable card to card. */
+        const LWM_XG_MAX = 4;
 
         function lwFixtureStats(home, away, f, o) {
             const pct = v => Math.round(v * 100) + '%';
@@ -414,20 +423,30 @@
             const aOurs = model(f.team_a, f.team_h, false);
             const wide = (mkt, ours) => (mkt != null && ours != null && Math.abs(ours - mkt) >= 0.10);
 
+            /* Every bar on every card is drawn to the same two scales — goals
+               against LWM_XG_MAX, clean sheets against a flat 0-100% — so the
+               lengths mean something across the round and not only within one
+               card. A bar normalised to its own row would make the better of
+               two bad defences look like a good one. */
+            const gFrac = v => (v == null ? null : v / LWM_XG_MAX);
+
             return `<div class="lwm-grid">
                 ${lwStatRow('xG',
-                    `Goals each side is expected to score, implied by the match and over/under prices. ${o ? '' : 'This fixture has no market price yet.'}`,
-                    o ? o.lambdaHome.toFixed(2) : '—', o ? o.lambdaAway.toFixed(2) : '—')}
+                    `Goals each side is expected to score, implied by the match and over/under prices. Bars are drawn to ${LWM_XG_MAX.toFixed(1)} goals, the same scale on every card. ${o ? '' : 'This fixture has no market price yet.'}`,
+                    o ? o.lambdaHome.toFixed(2) : '—', o ? o.lambdaAway.toFixed(2) : '—', o ? '' : 'is-none',
+                    o ? gFrac(o.lambdaHome) : null, o ? gFrac(o.lambdaAway) : null)}
                 ${lwStatRow('CS market',
                     o ? `Chance of a clean sheet as the betting market prices it — ${hName} ${pct(o.csHome)}, ${aName} ${pct(o.csAway)}.`
                       : 'The betting market has not priced this fixture, so it has no clean-sheet view on it yet.',
-                    o ? pct(o.csHome) : '—', o ? pct(o.csAway) : '—', o ? '' : 'is-none')}
+                    o ? pct(o.csHome) : '—', o ? pct(o.csAway) : '—', o ? '' : 'is-none',
+                    o ? o.csHome : null, o ? o.csAway : null)}
                 ${lwStatRow('CS EasyFPL',
                     `Chance of a clean sheet from EasyFPL's own fixture and defensive model — ${hName} ${hOurs != null ? pct(hOurs) : 'not rated'}, ${aName} ${aOurs != null ? pct(aOurs) : 'not rated'}.`
                     + ((wide(o && o.csHome, hOurs) || wide(o && o.csAway, aOurs))
                         ? ' It disagrees with the market by ten points or more here, which is the interesting case.' : ''),
                     hOurs != null ? pct(hOurs) : '—', aOurs != null ? pct(aOurs) : '—',
-                    'is-ours' + ((wide(o && o.csHome, hOurs) || wide(o && o.csAway, aOurs)) ? ' is-wide' : ''))}
+                    'is-ours' + ((wide(o && o.csHome, hOurs) || wide(o && o.csAway, aOurs)) ? ' is-wide' : ''),
+                    hOurs, aOurs)}
             </div>`;
         }
 
@@ -438,7 +457,6 @@
             const f = row.f, o = row.odds;
             const tm = (typeof teams !== 'undefined' && teams) || {};
             const home = tm[f.team_h] || {}, away = tm[f.team_a] || {};
-            const xiCount = row.mine.filter(m => m.starting).length;
             const pc = v => Math.round(v * 100) + '%';
             const ko = (() => {
                 const d = new Date(f.kickoff_time);
@@ -457,17 +475,18 @@
                     : `<em class="is-none" data-tooltip="No market price for this match yet.">—</em>`}
             </span>`;
 
+            /* The kick-off sits on top of the result bar rather than in a band
+               of its own above the card. It belongs to the match, not to the
+               card's furniture, and the band it used to share with a "3 yours"
+               counter cost every card a row to carry two small facts — one of
+               which the list of your players underneath already answers by
+               naming them. */
             const top = o && o.scorelines && o.scorelines[0];
             return `<article class="lwm-fix${row.mine.length >= 3 ? ' is-key' : ''}">
-                <header class="lwm-fix-top">
-                    <span class="lwm-ko">${escHTML(ko)}</span>
-                    <span class="lwm-mine-n" data-tooltip="${escHTML(
-                        `${row.mine.length} of your squad play in this match — ${xiCount} in your XI, ${row.mine.length - xiCount} on the bench.`)}"><b>${row.mine.length}</b> yours</span>
-                </header>
-
                 <div class="lwm-tie">
                     ${club(home, true)}
                     <span class="lwm-bar">
+                        <span class="lwm-ko">${escHTML(ko)}</span>
                         ${o ? `<span class="lwm-res" aria-hidden="true">
                             <i class="lwm-res-h" style="width:${(o.market.home * 100).toFixed(1)}%"></i>
                             <i class="lwm-res-d" style="width:${(o.market.draw * 100).toFixed(1)}%"></i>
@@ -506,11 +525,42 @@
             const b = typeof boBlendInfo === 'function' ? boBlendInfo() : { active: false };
             return `${stale ? `<p class="lwm-stale">${v2Icon('warn')} These prices are more than a day old — the odds job has not run since. Treat them as indicative.</p>` : ''}
                 <div class="lwm-prov">
+                    ${lwMatchdayLegend()}
                     ${b.active
                         ? `<span class="lwm-blend is-on" data-tooltip="${escHTML(
                             `Every projection on this page for GW${b.event} is ${Math.round(b.weight * 100)}% the market's goal expectations and ${Math.round((1 - b.weight) * 100)}% EasyFPL's own model. The market's share falls as the season gives the model more of its own evidence — currently ${b.matchesPlayed ?? 0} matches played. Later gameweeks are model-only: bookmakers do not price them yet.`)}">Blended into GW${b.event} projections · market weight ${Math.round(b.weight * 100)}%</span>`
                         : `<span class="lwm-blend is-off" data-tooltip="Projections are model-only. The market is blended in only when every fixture in the round is priced, so that no two players are being compared across different estimators.">Market shown for reference — not blended</span>`}
                     ${updated ? `<span class="lwm-updated" data-tooltip="${escHTML(`Odds feed last refreshed ${updated.toLocaleString()}.`)}">Odds updated ${escHTML(updated.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }))}</span>` : ''}
+                </div>`;
+        }
+
+        /* The key, as the rest of the site draws a key: a pill that says Legend
+           and a panel that opens under it. This was a row of swatches and
+           abbreviations printed above every card, permanently — a legend you
+           have read once and cannot put away, in a component the Routes tab,
+           the fixture calendar and the rising board all share and none of them
+           draws this way. Being collapsible is most of the point: it is three
+           lines of reference above the thing you came to look at. */
+        function lwMatchdayLegend() {
+            const item = (swatch, name, note) =>
+                `<div class="legend-panel-item"><span class="legend-panel-dot lwm-key-sw ${swatch}"></span>
+                    <span><b>${escHTML(name)}</b>${note ? ` — ${escHTML(note)}` : ''}</span></div>`;
+            return `<button type="button" class="legend-toggle" aria-expanded="false"
+                    onclick="this.classList.toggle('active');this.setAttribute('aria-expanded',this.classList.contains('active'));document.getElementById('lwmLegend').classList.toggle('show')">
+                    <span>${v2Icon('info')} Legend</span><span class="legend-caret">▾</span>
+                </button>
+                <div class="legend-panel lwm-legend" id="lwmLegend">
+                    ${item('is-xi', 'Starting', 'one of your eleven')}
+                    ${item('is-bench', 'Bench', 'in your squad, not in the eleven')}
+                    ${item('is-home', 'Home side', 'the left-hand figure and bar on every row')}
+                    ${item('is-away', 'Away side', 'the right-hand figure and bar')}
+                    ${item('is-cs-ours', 'CS EasyFPL', "our own model's row, in its own green")}
+                    ${item('is-wide', 'Marked amber', 'market and model ten points or more apart on that match')}
+                    <div class="legend-panel-note">
+                        <b>CS market</b> is the betting market's own clean-sheet price; <b>CS EasyFPL</b> is our fixture and
+                        defensive model. Goal bars are drawn to ${LWM_XG_MAX.toFixed(1)} goals and clean-sheet bars to 100% —
+                        the same scale on every card, so a bar can be read across the round and not only against the team beside it.
+                    </div>
                 </div>`;
         }
 
@@ -550,12 +600,6 @@
                     <span class="lwm-sub">${rows.length} ${rows.length === 1 ? 'fixture' : 'fixtures'} · ${counted} of your ${(lineupState.squad || []).length}</span>
                 </div>
                 ${lwMatchdayProvenance()}
-                <div class="lwm-legend">
-                    <span class="lwm-key"><i class="lwm-key-sw is-xi"></i>Starting</span>
-                    <span class="lwm-key"><i class="lwm-key-sw is-bench"></i>Bench</span>
-                    <span class="lwm-key lwm-key-cs" data-tooltip="Clean sheet chance. Mkt is the betting market's price; Ours is EasyFPL's own model from our fixture and defensive analysis.">
-                        CS · <em>Mkt</em> market · <em>Ours</em> EasyFPL</span>
-                </div>
                 <div class="lwm-days">
                     ${lwMatchdayDays(rows).map(day => `<section class="lwm-day">
                         <h3 class="lwm-day-h">${escHTML(day.label)}<span>${day.rows.length} ${day.rows.length === 1 ? 'match' : 'matches'}</span></h3>
@@ -678,8 +722,22 @@
                 .sort((a, b) => b.gwScore - a.gwScore).slice(0, 5);
         }
 
-        /* The one line that says whether the ranking below is a verdict or a
-           coin toss — and, when you have overruled it, by how much.
+        /* ===== THE TWO CLOSE CALLS =====
+
+           Both of them are the same object: two players, a few tenths apart,
+           and a line saying what separates them. The armband call was a
+           paragraph and the bench call was a stack, so the page drew one
+           question two ways and spent three times the height on it. They are
+           one component now, side by side, with the faces doing the naming —
+           you recognise a player before you read him. */
+        function lwCallSide(p, value, unit, cls, label, tip) {
+            return `<span class="lw-call-i ${cls}" data-tooltip="${escHTML(tip)}">
+                ${lwFace(p)}<b>${escHTML(p.web_name)}</b><em>${value}<u>${escHTML(unit)}</u></em><i>${escHTML(label)}</i>
+            </span>`;
+        }
+
+        /* Whether the captaincy ranking below is a verdict or a coin toss —
+           and, when you have overruled it, by how much.
 
            It lives in the Overview rather than on the captaincy panel. It is a
            read on the week, not a control, and the Overview is where the reads
@@ -688,30 +746,52 @@
         function lwArmbandRead() {
             const candidates = lwCaptainCandidates();
             if (!candidates.length) return '';
-            const lead = candidates.length > 1 ? candidates[0].gwScore - candidates[1].gwScore : 0;
+            const top = candidates[0];
+            const next = candidates[1] || null;
+            const lead = next ? top.gwScore - next.gwScore : 0;
             const picked = (lineupState.squad || []).find(p => p.id === lineupState.captain);
-            const topRisk = typeof optMinutesRisk === 'function' ? optMinutesRisk(candidates[0]) : null;
-            const verdict = candidates.length < 2
-                ? `${escHTML(candidates[0].web_name)} is your only outfield option.`
-                : lead > 0.8
-                    ? `<strong>${escHTML(candidates[0].web_name)}</strong> is the clear call, ${lead.toFixed(1)} projected points clear of ${escHTML(candidates[1].web_name)} before the armband doubles it.`
-                    : `Close call: <strong>${escHTML(candidates[0].web_name)}</strong> leads ${escHTML(candidates[1].web_name)} by only ${lead.toFixed(1)} projected points, so fixture and minutes risk decide it more than projection does.`;
+            const topRisk = typeof optMinutesRisk === 'function' ? optMinutesRisk(top) : null;
+            const clear = lead > 0.8;
+            const owns = q => picked && picked.id === q.id;
 
             /* The off-pick line reads by sign. A captained keeper is never in
                the candidate list, so the subtraction can land either way and a
                bare minus sign read as a bug. */
-            let off = '';
-            if (picked && picked.id !== candidates[0].id) {
-                const d = candidates[0].gwScore - picked.gwScore;
-                off = ` You have the armband on <strong>${escHTML(picked.web_name)}</strong>, ${Math.abs(d) < 0.05
-                    ? `level with ${escHTML(candidates[0].web_name)}.`
-                    : d > 0
-                        ? `${d.toFixed(1)} projected points behind ${escHTML(candidates[0].web_name)}.`
-                        : `${Math.abs(d).toFixed(1)} projected points ahead of ${escHTML(candidates[0].web_name)} — he is outside the outfield list because of his position.`}`;
+            const notes = [];
+            if (!next) {
+                notes.push(`${escHTML(top.web_name)} is your only outfield option.`);
+            } else if (clear) {
+                notes.push(`<strong>${lead.toFixed(1)}</strong> clear before the armband doubles it.`);
+            } else {
+                notes.push(`<strong>${lead.toFixed(1)}</strong> apart — fixture and minutes risk decide it.`);
             }
-            return `<div class="lwc-insight">
-                <span class="lwc-insight-h">${v2Icon('crown')} The armband call</span>
-                <p class="lwc-insight-t">${verdict}${topRisk && topRisk.pct < 80 ? ` Worth noting he is only ${topRisk.pct}% likely to start.` : ''}${off}</p>
+            if (topRisk && topRisk.pct < 80) notes.push(`Only ${topRisk.pct}% likely to start.`);
+            if (picked && picked.id !== top.id && (!next || picked.id !== next.id)) {
+                const d = top.gwScore - picked.gwScore;
+                notes.push(`Yours is on <strong>${escHTML(picked.web_name)}</strong>, ${Math.abs(d) < 0.05
+                    ? 'level with him.'
+                    : d > 0
+                        ? `${d.toFixed(1)} behind.`
+                        : `${Math.abs(d).toFixed(1)} ahead — outside the list because of his position.`}`);
+            }
+
+            return `<div class="lw-sum-block lw-callbox">
+                <div class="lw-sum-h">${v2Icon('crown')} The armband call
+                    ${next ? `<span class="lw-sum-n ${clear ? 'is-clear' : 'is-close'}"
+                        data-tooltip="${escHTML(clear
+                            ? 'A gap wide enough that projection decides it on its own.'
+                            : 'Under 0.8 projected points between them, which is inside the noise of a single match.')}"
+                        >${clear ? 'Clear' : 'Close'} ${lead.toFixed(1)}</span>` : ''}</div>
+                <div class="lw-call">
+                    ${lwCallSide(top, top.gwScore.toFixed(1), 'pts', 'is-in', owns(top) ? 'yours' : 'top pick',
+                        `${top.web_name} projects ${top.gwScore.toFixed(1)} points this gameweek before the armband doubles it.`)}
+                    <span class="lw-call-v">over</span>
+                    ${next
+                        ? lwCallSide(next, next.gwScore.toFixed(1), 'pts', 'is-out', owns(next) ? 'yours' : 'next best',
+                            `${next.web_name} projects ${next.gwScore.toFixed(1)} points this gameweek.`)
+                        : `<span class="lw-call-i is-none">nobody else</span>`}
+                </div>
+                <div class="lw-sum-note">${notes.join(' ')}</div>
             </div>`;
         }
 
@@ -772,24 +852,27 @@
             const pos = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
             const names = list => list.map(p =>
                 `<span class="lw-chg-p">${escHTML(p.web_name)} <em>${pos[p.pos] || ''}</em></span>`).join('');
+            /* The three groups run along one line and wrap only when they
+               have to, instead of each claiming a row of its own whether it
+               holds four names or none. */
             const body = c.total
                 ? `<div class="lw-chg-list">
-                    ${c.promoted.length ? `<div class="lw-chg-row is-promoted">
-                        <span class="lw-chg-badge">IN</span><span class="lw-chg-names">${names(c.promoted)}</span></div>` : ''}
-                    ${c.benched.length ? `<div class="lw-chg-row is-benched">
-                        <span class="lw-chg-badge">OUT</span><span class="lw-chg-names">${names(c.benched)}</span></div>` : ''}
-                    ${(c.cap || c.vice) ? `<div class="lw-chg-row is-captain">
+                    ${c.promoted.length ? `<span class="lw-chg-row is-promoted">
+                        <span class="lw-chg-badge">IN</span><span class="lw-chg-names">${names(c.promoted)}</span></span>` : ''}
+                    ${c.benched.length ? `<span class="lw-chg-row is-benched">
+                        <span class="lw-chg-badge">OUT</span><span class="lw-chg-names">${names(c.benched)}</span></span>` : ''}
+                    ${(c.cap || c.vice) ? `<span class="lw-chg-row is-captain">
                         <span class="lw-chg-badge">${v2Icon('crown')}</span>
                         <span class="lw-chg-names">${[
                             c.cap ? `<span class="lw-chg-p">${escHTML(c.cap.web_name)} <em>C</em></span>` : '',
                             c.vice ? `<span class="lw-chg-p">${escHTML(c.vice.web_name)} <em>VC</em></span>` : ''
-                        ].filter(Boolean).join('')}</span></div>` : ''}
+                        ].filter(Boolean).join('')}</span></span>` : ''}
                 </div>`
-                : `<div class="lw-sum-quiet">${v2Icon('check')} Your FPL lineup already matches this one — nothing to change.</div>`;
-            return `<div class="lw-sum-block">
+                : `<span class="lw-sum-quiet">${v2Icon('check')} Your FPL lineup already matches this one — nothing to change.</span>`;
+            return `<div class="lw-sum-block is-row">
                 <div class="lw-sum-h">${v2Icon('swap')} Optimiser changes <span class="lw-sum-sub">vs your live FPL team</span>
                     ${c.total ? `<span class="lw-sum-n">${c.total}</span>` : ''}</div>
-                ${body}
+                <div class="lw-sum-body">${body}</div>
             </div>`;
         }
 
@@ -817,16 +900,24 @@
             </div>`;
         }
 
+        /* Heading on the left, content on the right, on one line where the
+           content is one line — which, for a clean squad, it always is. Both
+           of these blocks used to put a heading on its own row above a body
+           that was often a single sentence, so two lists of nothing took as
+           much height as the eleven. */
         function lwRenderRisks() {
             const risks = lwRiskList();
-            return `<div class="lw-sum-block${risks.length ? ' is-alert' : ''}">
+            return `<div class="lw-sum-block is-row${risks.length ? ' is-alert' : ''}">
                 <div class="lw-sum-h">${v2Icon('warn')} Risks &amp; flags
                     ${risks.length ? `<span class="lw-sum-n">${risks.length}</span>` : ''}</div>
-                ${risks.length
-                    ? risks.map(r => `<div class="lw-sum-flag${r.inXI ? ' is-xi' : ''}">${lwFace(r.p)}<strong>${escHTML(r.p.web_name)}</strong>
+                <div class="lw-sum-body">${risks.length
+                    ? risks.map(r => `<span class="lw-sum-flag${r.inXI ? ' is-xi' : ''}"
+                        data-tooltip="${escHTML(`${r.p.web_name} — ${r.why}. ${r.inXI ? 'In your XI.' : 'On your bench.'}`)}"
+                        >${lwFace(r.p)}<strong>${escHTML(r.p.web_name)}</strong>
                         <span class="lw-sum-flag-w">${escHTML(r.why)}</span>
-                        <span class="lw-sum-flag-x">${r.inXI ? 'in your XI' : 'on your bench'}</span></div>`).join('')
-                    : `<div class="lw-sum-quiet">${v2Icon('check')} No injuries, suspensions or rotation risks to work around.</div>`}
+                        <span class="lw-sum-flag-x">${r.inXI ? 'XI' : 'bench'}</span></span>`).join('')
+                    : `<span class="lw-sum-quiet">${v2Icon('check')} No injuries, suspensions or rotation risks to work around.</span>`}
+                </div>
             </div>`;
         }
 
@@ -836,26 +927,32 @@
         function lwRenderClosestCall() {
             const call = lwClosestCall();
             if (!call) {
-                return `<div class="lw-sum-block">
+                return `<div class="lw-sum-block lw-callbox">
                     <div class="lw-sum-h">${v2Icon('scales')} Closest bench call</div>
                     <div class="lw-sum-quiet">No outfield substitutes, so there is no bench call to make.</div>
                 </div>`;
             }
             const gap = call.margin;
-            const line = Math.abs(gap) < 0.05
-                ? `They are level on this gameweek's projection, so the bench order is the only thing separating them.`
+            const level = Math.abs(gap) < 0.05;
+            const line = level
+                ? `Level on this gameweek's projection, so the bench order is the only thing separating them.`
                 : gap > 0
-                    ? `<strong>+${gap.toFixed(1)} xP</strong> difference.`
+                    ? `<strong>${gap.toFixed(1)} xP</strong> between them.`
                     /* A negative gap is not a bug: the XI is picked on the longer
                        run, so the optimiser can start the man who projects lower
                        this week. Say that rather than print a minus sign. */
-                    : `${escHTML(call.sub.web_name)} projects <strong>${Math.abs(gap).toFixed(1)}</strong> higher this gameweek — ${escHTML(call.starter.web_name)} starts because the eleven is picked across the run, not on one week.`;
-            return `<div class="lw-sum-block">
-                <div class="lw-sum-h">${v2Icon('scales')} Closest bench call</div>
+                    : `${escHTML(call.sub.web_name)} projects <strong>${Math.abs(gap).toFixed(1)}</strong> higher this week — the eleven is picked across the run, not on one week.`;
+            return `<div class="lw-sum-block lw-callbox">
+                <div class="lw-sum-h">${v2Icon('scales')} Closest bench call
+                    ${level ? '' : `<span class="lw-sum-n ${Math.abs(gap) < 0.5 ? 'is-close' : 'is-clear'}"
+                        data-tooltip="${escHTML('The projected points between the last man in the eleven and the first man out of it.')}"
+                        >${Math.abs(gap) < 0.5 ? 'Close' : 'Clear'} ${Math.abs(gap).toFixed(1)}</span>`}</div>
                 <div class="lw-call">
-                    <span class="lw-call-i is-in">${lwFace(call.starter)}<b>${escHTML(call.starter.web_name)}</b><em>${call.starter.gwScore.toFixed(1)} xP</em><i>starts</i></span>
+                    ${lwCallSide(call.starter, call.starter.gwScore.toFixed(1), 'xP', 'is-in', 'starts',
+                        `${call.starter.web_name} is in the eleven, projecting ${call.starter.gwScore.toFixed(1)} points this gameweek.`)}
                     <span class="lw-call-v">over</span>
-                    <span class="lw-call-i is-out">${lwFace(call.sub)}<b>${escHTML(call.sub.web_name)}</b><em>${call.sub.gwScore.toFixed(1)} xP</em><i>benched</i></span>
+                    ${lwCallSide(call.sub, call.sub.gwScore.toFixed(1), 'xP', 'is-out', 'benched',
+                        `${call.sub.web_name} is the first man out of the eleven, projecting ${call.sub.gwScore.toFixed(1)} points this gameweek.`)}
                 </div>
                 <div class="lw-sum-note">${line}${call.legal ? '' : ' No legal formation lets them swap, so the shape is what decides it.'}</div>
             </div>`;
@@ -889,9 +986,11 @@
                 <!-- The summary bar: what the eleven is worth, what it gains
                      over the team already saved on the FPL site, and how many
                      players need a second look. Three figures, one row. -->
-                <!-- The figures and the read side by side: both are things you
-                     take in at a glance, and stacking them made the panel twice
-                     as tall as either of them needed. -->
+                <!-- The figures and the two calls on one line: all three are
+                     things you take in at a glance, and stacking them made the
+                     panel three times as tall as any of them needed. The two
+                     calls are the same question asked twice — who, of two
+                     players a few tenths apart — so they sit together. -->
                 <div class="lw-ov-head">
                 <div class="lw-kpis is-three">
                     ${lwKpiBox('green', 'target', 'Projected points', total.toFixed(1),
@@ -905,12 +1004,12 @@
                 </div>
 
                 ${lwArmbandRead()}
+                ${lwRenderClosestCall()}
                 </div>
 
                 <div class="lw-ov-blocks">
                     ${lwRenderRisks()}
                     ${lwRenderChanges()}
-                    ${lwRenderClosestCall()}
                 </div>
             </section>`;
         }

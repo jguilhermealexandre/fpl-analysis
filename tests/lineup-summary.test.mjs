@@ -20,7 +20,7 @@
    anyway. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { loadScript } from './helpers/load.mjs';
+import { loadScript, loadFunction } from './helpers/load.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 const read = f => fs.readFileSync(path.resolve(import.meta.dirname, '..', f), 'utf8');
@@ -49,6 +49,10 @@ function el() {
 /* lineup-wizard.js is page code: it reads a lot of globals that live on the My
    Team page. Everything it touches on the way to rendering the Overview is
    stubbed to the shape the real page supplies. */
+const LEGAL_XI = loadFunction('scripts/common.js', 'v2LegalXI', {
+    FPL_XI_SHAPE: { 1: [1, 1], 2: [3, 5], 3: [2, 5], 4: [1, 3] }, FPL_XI_SIZE: 11
+});
+
 function wizard(state) {
     const nodes = {};
     const ctx = {
@@ -69,6 +73,12 @@ function wizard(state) {
         XP_PLAN_HORIZON: 5,
         expectedMinutesModel: p => ({ pStart: p.pStart == null ? 1 : p.pStart }),
         optFdrFor: () => 3,
+        /* The real rule, lifted out of common.js rather than restated here.
+           isValidLWFormation() defers to it, so a stub that merely returned
+           true would let this file pass on an illegal eleven — and one that
+           restated the bounds would be a second copy of the thing the whole
+           point of v2LegalXI is to have only once. */
+        v2LegalXI: LEGAL_XI,
         optXpBreakdown: () => ({ parts: [{ key: 'Mins', v: 2 }, { key: 'Attack', v: 1.5 }] }),
         teams: { 1: { short_name: 'ARS', code: 3 }, 2: { short_name: 'CHE', code: 8 },
             3: { short_name: 'LIV', code: 14 }, 4: { short_name: 'EVE', code: 11 } },
@@ -76,6 +86,10 @@ function wizard(state) {
         POSITION_CONFIG: { 1: { class: 'gk', short: 'GK' }, 2: { class: 'def', short: 'DEF' },
             3: { class: 'mid', short: 'MID' }, 4: { class: 'fwd', short: 'FWD' } },
         v2IdentityHTML: () => '', buildOptimizeSummary: () => '', renderBOMatchdayPanel: () => 'ODDS',
+        /* Returns markup, because lwFace() checks the function exists and then
+           wraps whatever it gives back — a stub returning '' makes "does this
+           card carry a face" unanswerable from the HTML. */
+        v2AvatarHTML: p => `<span class="v2-pid-avatar">${p && p.name ? p.name[0] : '?'}</span>`,
         projectPlayerPointsDetailed: () => ({}), projectPlayerPointsForGW: () => 0,
         xpIsUnavailable: () => false, isPreseason: false, currentGW: 5, planningGW: 5,
         seasonStats: {}, positionAverages: { 1: {}, 2: {}, 3: {}, 4: {} },
@@ -226,7 +240,8 @@ test('both clean sheet numbers get their own row, each labelled once', () => {
     assert.match(html, /CS market/, "the market's row");
     assert.match(html, /CS EasyFPL/, "and EasyFPL's own");
     const matches = (html.match(/<article class="lwm-fix/g) || []).length;
-    assert.equal((html.match(/CS market/g) || []).length, matches, 'written once per match, not once per club');
+    const cards = html.slice(html.indexOf('<article class="lwm-fix'));
+    assert.equal((cards.match(/CS market/g) || []).length, matches, 'written once per match, not once per club');
     assert.match(html, /42%|34%/, 'with the market figure on it');
 });
 
@@ -246,12 +261,48 @@ test('a wide disagreement between market and model is marked', () => {
     assert.match(html, /is-ours is-wide/);
 });
 
-test('the section carries a legend, so the two numbers need no hover', () => {
+/* The key is the site's own collapsible legend — .legend-toggle opening a
+   .legend-panel, the component the Routes tab, the fixture calendar and the
+   rising board all use. It was a permanent row of swatches and abbreviations
+   above the cards: reference you have read once and cannot put away, drawn a
+   way nothing else on the site draws it. */
+test('the key is the collapsible legend the rest of the site uses', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderMatchday();
-    assert.match(html, /market<\/span>|<em>Mkt<\/em> market/);
-    assert.match(html, /EasyFPL<\/span>|<em>Ours<\/em> EasyFPL/);
-    assert.match(html, /Starting/);
-    assert.match(html, /Bench/);
+    assert.match(html, /class="legend-toggle"/, 'the pill');
+    assert.match(html, /class="legend-panel lwm-legend" id="lwmLegend"/, 'and the panel it opens');
+    assert.match(html, /aria-expanded="false"/, 'which says whether it is open');
+    assert.match(html, /legend-panel-item/, 'with the shared item, not a local one');
+    for (const key of ['Starting', 'Bench', 'Home side', 'Away side', 'CS EasyFPL', 'Marked amber']) {
+        assert.ok(html.includes(key), `the key names ${key}`);
+    }
+    assert.ok(!/class="lwm-key"/.test(html), 'and the old always-on row is gone');
+});
+
+/* The kick-off belongs to the match, so it sits on the result bar between the
+   two clubs. It had a band of its own above the card, shared with a "3 yours"
+   counter — a row per card for two small facts, one of which the list of your
+   players underneath already answers by naming them. */
+test('the kick-off rides on the result bar and the band above it is gone', () => {
+    const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderMatchday();
+    assert.ok(!/lwm-fix-top/.test(html), 'no band of its own');
+    assert.ok(!/yours<\/span>|lwm-mine-n/.test(html), 'and no "N yours" counter');
+    const bar = html.slice(html.indexOf('class="lwm-bar"'));
+    assert.ok(bar.indexOf('lwm-ko') < bar.indexOf('lwm-res'),
+        'the time is the first thing inside the bar block, above the bar itself');
+    assert.match(html, /lwm-ko/, 'the time is still shown');
+});
+
+/* Bars, not bare figures. Drawn outward from the centred label and to a fixed
+   scale on every card, so a short bar is short across the round rather than
+   only against the team beside it. */
+test('each number is drawn as well as printed', () => {
+    const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderMatchday();
+    const matches = (html.match(/<article class="lwm-fix/g) || []).length;
+    assert.equal((html.match(/class="lwm-gt is-h"/g) || []).length, matches * 3,
+        'three rows a card, each with a home track');
+    assert.equal((html.match(/class="lwm-gt is-a"/g) || []).length, matches * 3, 'and an away one');
+    assert.match(html, /lwm-gt is-h" aria-hidden="true"><i style="width:4[05]%/,
+        '1.80 goals of a 4.0 scale is 45% of the track');
 });
 
 /* ===== EVERY MARKET NUMBER THE OLD PANEL CARRIED =====
@@ -315,11 +366,24 @@ test('the overview carries no figure you cannot act on this gameweek', () => {
     assert.ok(!/next \d+ GWs|GW\d+–GW\d+/.test(html), 'nothing summed over a multi-gameweek run');
 });
 
-test('the overview is risks, then changes, then the closest call', () => {
+/* Two bands: the figures and the two close calls on one line, then the two
+   lists under them. The calls are the same question asked twice — which of
+   two players, a few tenths apart — so they sit together, and the lists that
+   used to flank them each get a row of their own that is one line tall. */
+test('the overview is figures and the two calls, then the two lists', () => {
     const html = wizard(state(XI_442, STRONG_BENCH)).lwRenderOverviewRow();
-    const order = ['Risks &amp; flags', 'Optimiser changes', 'Closest bench call'].map(h => html.indexOf(h));
-    assert.ok(order.every(i => i > -1), 'all three blocks are present');
-    assert.deepEqual(order, [...order].sort((a, b) => a - b), 'and in the order the brief sets');
+    const at = h => html.indexOf(h);
+    const order = ['Projected points', 'The armband call', 'Closest bench call',
+        'Risks &amp; flags', 'Optimiser changes'].map(at);
+    assert.ok(order.every(i => i > -1), 'all five are present');
+    assert.deepEqual(order, [...order].sort((a, b) => a - b), 'and in that order');
+    const head = html.slice(at('lw-ov-head'), at('lw-ov-blocks'));
+    assert.ok(head.includes('The armband call') && head.includes('Closest bench call'),
+        'both calls are in the top band, side by side');
+    const blocks = html.slice(at('lw-ov-blocks'));
+    assert.ok(!blocks.includes('Closest bench call'), 'and the bench call has left the lower band');
+    assert.equal((blocks.match(/lw-sum-block is-row/g) || []).length, 2,
+        'both lower blocks put their heading beside their body');
 });
 
 test('the changes are grouped by what happened, not listed per player', () => {
@@ -411,13 +475,19 @@ test('the noise the brief named is gone from the captaincy cards', () => {
 /* The read on the armband is a read on the week, not a control, so it sits in
    the Overview where the reads are. A sentence above a grid of cards was
    competing with the cards for the same glance. */
-test('the armband read is an alert box in the Overview', () => {
+test('the armband read is a head-to-head in the Overview, not a paragraph', () => {
     const ctx = wizard(state(XI_442, STRONG_BENCH));
     const ov = ctx.lwRenderOverviewRow();
-    assert.match(ov, /lwc-insight/);
     assert.match(ov, /The armband call/);
-    assert.match(ov, /lwc-insight-t/);
-    assert.ok(!ctx.lwRenderCaptaincy().includes('lwc-insight'), 'and not on the captaincy panel too');
+    /* The same component the bench call is drawn with — two faces, a value
+       each, and a word for what separates them. It was a sentence. */
+    const box = ov.slice(ov.indexOf('The armband call'), ov.indexOf('Closest bench call'));
+    assert.match(box, /lw-call-i is-in/, 'the pick');
+    assert.match(box, /lw-call-i is-out/, 'and who he is picked over');
+    assert.equal((box.match(/class="lw-face"/g) || []).length, 2, 'both carry a face');
+    assert.match(box, /lw-call-v">over</, 'with the same word between them as the bench call');
+    assert.ok(!ov.includes('lwc-insight'), 'the old prose box is gone');
+    assert.ok(!ctx.lwRenderCaptaincy().includes('The armband call'), 'and it is not on the captaincy panel too');
 });
 
 test('the captaincy header carries the ranking caveat, not a how-to', () => {
