@@ -36,7 +36,11 @@ const sqrJoin = loadFunction(SRC, 'sqrJoin');
 const sqrPos = loadFunction(SRC, 'sqrPos', { POSITION_CONFIG });
 const sqrItem = loadFunction(SRC, 'sqrItem');
 const sqrSection = loadFunction(SRC, 'sqrSection', { escHTML, v2Icon });
-const computeSquadHealth = loadFunction(SRC, 'computeSquadHealth');
+/* V2_DOUBT_HEALTH_PENALTY is in common.js now rather than being the literal 3
+   written here — the dashboard used 2 for the same thing, so the same squad
+   scored differently depending on which page you opened. Stubbed at My Team's
+   value, which is the one the score was tuned on and the one that was kept. */
+const computeSquadHealth = loadFunction(SRC, 'computeSquadHealth', { V2_DOUBT_HEALTH_PENALTY: 3 });
 const sqHealthBand = loadFunction(SRC, 'sqHealthBand');
 
 /* The row that replaced fourteen paragraphs. Loaded for real, because what it

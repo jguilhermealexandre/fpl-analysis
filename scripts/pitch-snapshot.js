@@ -110,7 +110,8 @@
             const teamId = snapshotTeamId();
             if (!teamId) return false;
 
-            const saved = lsLoad(teamId, planningGW);
+            const saved = lsLoad(teamId, planningGW, null,
+                typeof planningGWDeadline !== 'undefined' ? planningGWDeadline : null);
             if (!saved || !Array.isArray(saved.xi)) return false;
 
             const inSquad = new Set(analysisResults.map(a => a.player.id));

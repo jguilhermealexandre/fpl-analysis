@@ -103,7 +103,8 @@
                 let teamId = null;
                 try { teamId = localStorage.getItem('fpl_team_id'); } catch (e) { return; }
                 if (!teamId) return;
-                const saved = lsLoad(teamId, planningGW);
+                const saved = lsLoad(teamId, planningGW, null,
+                    typeof planningGWDeadline !== 'undefined' ? planningGWDeadline : null);
                 if (saved) lsApply(lineupState, saved);
             })();
 

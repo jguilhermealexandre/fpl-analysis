@@ -252,6 +252,28 @@ function fixturePlayed(f) {
    need, and it lives here because common.js is the file every page loads.
 
    Pure: `now` is a parameter, so any point in a season is testable. */
+/* What a fitness doubt in your starting eleven costs the squad health score.
+
+   Was 3 on My Team and 2 on the dashboard — the same squad scoring differently
+   depending on which page you opened, for the same reason and with no reason
+   for the difference. Unify only: the VALUE is unchanged from My Team's, which
+   is the surface the score was tuned on. Whether 3 is the right number is a
+   separate question from whether there should be two of them. */
+const V2_DOUBT_HEALTH_PENALTY = 3;
+
+/* When a gameweek stops accepting changes, in milliseconds.
+
+   Used to decide whether a saved arrangement is still a plan or has been
+   superseded by what was actually submitted — see lsLoad() in
+   scripts/lineup-store.js. Returns null when the round is unknown, which the
+   callers treat as "not locked" rather than guessing. */
+function gwDeadlineMs(bootData, gw) {
+    const ev = ((bootData && bootData.events) || []).find(e => e && e.id === gw);
+    if (!ev || !ev.deadline_time) return null;
+    const t = Date.parse(ev.deadline_time);
+    return Number.isFinite(t) ? t : null;
+}
+
 function planningGameweek(bootData, fixturesData, now) {
     const events = ((bootData && bootData.events) || [])
         .filter(e => e && e.id != null && e.deadline_time)
@@ -2726,7 +2748,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=454')
+    fetch('/footer.html?v=455')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
