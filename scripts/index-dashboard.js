@@ -322,9 +322,14 @@
         function renderLeagueSlot(leagueInfo) {
             const slot = document.getElementById('v2LeagueSlot');
             if (!slot) return;
-            const esc = t => String(t == null ? '' : t)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            /* The eight local copies of escHTML in this file are gone. They were
+               hand-rolled .replace chains, and three of them — including both news
+               card renderers — omitted the apostrophe, so the file carried two
+               different escapers under one name. No live hole: every call site is
+               text or a double-quoted attribute, where a bare ' is inert. But this
+               is third-party RSS going into markup, escHTML() is a page-loaded
+               global on this page, and it is the one the rest of the site and its
+               tests use. One escaper. */
             if (!leagueInfo) {
                 if (localStorage.getItem('fpl_league_prompt_dismissed') === '1') { slot.innerHTML = ''; return; }
                 slot.innerHTML = `<div class="v2-league-prompt" id="v2LeaguePrompt">
@@ -346,7 +351,7 @@
             }
             slot.innerHTML = `<a href="/dashboard/rivals" class="v2-league-card">
                 <div>
-                    <div class="v2-league-name"><i data-lucide="trophy" class="icon"></i> ${esc(leagueInfo.name)}</div>
+                    <div class="v2-league-name"><i data-lucide="trophy" class="icon"></i> ${escHTML(leagueInfo.name)}</div>
                     <div class="v2-league-rank">#${leagueInfo.rank ? leagueInfo.rank.toLocaleString() : '-'}</div>
                     <div class="v2-league-gap" id="v2LeagueGap">Loading gap to 1st…</div>
                 </div>
@@ -398,8 +403,6 @@
         async function renderDeskFeed() {
             const el = document.getElementById('v2Desk');
             if (!el) return;
-            const esc = t => String(t == null ? '' : t)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
             let idx = [];
             try {
@@ -448,8 +451,8 @@
                     ${debriefFirst.map(a => `<a class="v2-desk-card" href="articles/${encodeURIComponent(a.slug)}.html">
                         ${typeof sdArtwork === 'function' ? `<span class="v2-desk-art">${sdArtwork(a, 'thumb')}</span>` : ''}
                         <span class="v2-desk-text">
-                            <span class="v2-desk-kicker">${esc(a.category || 'Scout\u2019s Desk')}${a.gw ? ` \u00b7 GW${a.gw}` : ''}</span>
-                            <span class="v2-desk-headline">${esc(a.title)}</span>
+                            <span class="v2-desk-kicker">${escHTML(a.category || 'Scout\u2019s Desk')}${a.gw ? ` \u00b7 GW${a.gw}` : ''}</span>
+                            <span class="v2-desk-headline">${escHTML(a.title)}</span>
                             <span class="v2-desk-meta">${a.readTime ? `${a.readTime} min read` : ''}${a.words ? ` \u00b7 ${Number(a.words).toLocaleString()} words` : ''}</span>
                         </span>
                     </a>`).join('')}
@@ -529,9 +532,6 @@
         function renderPitchView({ squad, analysisResults, currentGW, fixtures, teams, eventLive, liveById }) {
             const wrap = document.getElementById('v2PitchWrap');
             if (!squad || !squad.length) { wrap.innerHTML = ''; return; }
-            const esc = t => String(t == null ? '' : t)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             const verdictMap = {};
             analysisResults.forEach((a, i) => { if (squad[i]) verdictMap[squad[i].id] = a; });
 
@@ -634,9 +634,9 @@
                 const oppTxt = act
                     ? gwFixturesOf(p).map(f => {
                         const home = f.team_h === p.teamId;
-                        return `${esc((teams || {})[home ? f.team_a : f.team_h]?.short_name || '?')}${home ? ' (H)' : ' (A)'}`;
+                        return `${escHTML((teams || {})[home ? f.team_a : f.team_h]?.short_name || '?')}${home ? ' (H)' : ' (A)'}`;
                       }).join(' · ')
-                    : (fx ? `${esc(fx.opponent || '?')}${fx.isHome ? ' (H)' : ' (A)'}` : 'Blank');
+                    : (fx ? `${escHTML(fx.opponent || '?')}${fx.isHome ? ' (H)' : ' (A)'}` : 'Blank');
                 // The star marks who to captain, which is a question about the
                 // next match — so it goes away once the card is reporting the
                 // last one instead of predicting anything.
@@ -651,10 +651,10 @@
                     if (mins) minsTxt = ` · ${Math.round(mins.pStart * 100)}% to start, ~${Math.round(mins.expMins)} mins`;
                 }
                 const tip = act
-                    ? `${esc(p.name)} — ${act.pts} point${act.pts === 1 ? '' : 's'} in ${act.mins} minute${act.mins === 1 ? '' : 's'} against ${oppTxt}, GW${currentGW}${act.done ? '' : ' (still in play)'}`
+                    ? `${escHTML(p.name)} — ${act.pts} point${act.pts === 1 ? '' : 's'} in ${act.mins} minute${act.mins === 1 ? '' : 's'} against ${oppTxt}, GW${currentGW}${act.done ? '' : ' (still in play)'}`
                     : xp != null
-                    ? `${esc(p.name)} — ${xp.toFixed(1)} projected points against ${oppTxt}${minsTxt}${isBestCap ? '. Highest projection in your XI.' : ''}`
-                    : `${esc(p.name)} — ${posLabel}${minsTxt}`;
+                    ? `${escHTML(p.name)} — ${xp.toFixed(1)} projected points against ${oppTxt}${minsTxt}${isBestCap ? '. Highest projection in your XI.' : ''}`
+                    : `${escHTML(p.name)} — ${posLabel}${minsTxt}`;
                 /* The face is the card. It used to be a 30px disc sharing a
                    row with a 20px club badge, so the pair of them was narrower
                    than the name underneath and the photo — the one thing here
@@ -667,7 +667,7 @@
                   <div class="v2-pitch-token-flags">${verdictMark}${statusIcon}</div>
                   ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(p, 'v2-pid-pitch') : ''}
                   ${badge}
-                    <span class="v2-pitch-token-name">${esc(p.name)}${isBestCap ? `<span class="v2-pitch-token-star" title="Highest projected points in your XI">${v2Icon('star')}</span>` : ''}</span>
+                    <span class="v2-pitch-token-name">${escHTML(p.name)}${isBestCap ? `<span class="v2-pitch-token-star" title="Highest projected points in your XI">${v2Icon('star')}</span>` : ''}</span>
                     <span class="v2-pitch-token-score${act ? ` actual${act.done ? '' : ' live'}` : ''}">${act
                         ? `<b>${act.pts}</b><span class="u">pts</span>`
                         : xp != null
@@ -750,7 +750,7 @@
                          does now too, and cannot silently lose it. -->
                     <span class="v2-pitch-title v2-section-title"><svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.4 3.5 16 2a4 4 0 0 1-8 0L3.6 3.5a2 2 0 0 0-1.3 2.2l.6 3.5a1 1 0 0 0 1 .8H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.1a1 1 0 0 0 1-.8l.6-3.5a2 2 0 0 0-1.3-2.2z"/></svg>Squad Snapshot</span>
                     <span class="v2-pitch-head-right">
-                        ${xiXpLabel ? `<span class="v2-pitch-xitotal${xiTotalClass}" title="${esc(xiTotalTip)}">${xiXpLabel}</span>` : ''}
+                        ${xiXpLabel ? `<span class="v2-pitch-xitotal${xiTotalClass}" title="${escHTML(xiTotalTip)}">${xiXpLabel}</span>` : ''}
                         <span class="v2-pitch-formation">${formationStr}</span>
                         <a class="v2-pitch-more" href="/dashboard/my-team">Full squad analysis <i data-lucide="arrow-right" class="icon"></i></a>
                     </span>
@@ -957,33 +957,29 @@
         function v2NewsCrest(item) {
             const pair = (typeof CLUB_COLOURS !== 'undefined' && CLUB_COLOURS[item.clubCode])
                 || ['#6366F1', '#FFFFFF'];
-            const esc = t => String(t == null ? '' : t)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
             return `<span class="v2-news-crest" style="background:linear-gradient(135deg, ${pair[0]} 0%, ${pair[0]}dd 60%, ${pair[0]}99 100%);color:${pair[1]}">
                 <img class="v2-news-crest-badge" alt="" loading="lazy"
                     src="https://resources.premierleague.com/premierleague/badges/100/t${encodeURIComponent(item.clubCode)}.png"
                     onerror="this.remove()">
-                ${item.source ? `<span class="v2-news-crest-club">${esc(item.source)}</span>` : ''}
+                ${item.source ? `<span class="v2-news-crest-club">${escHTML(item.source)}</span>` : ''}
             </span>`;
         }
 
         function v2NewsCard(item) {
-            const esc = t => String(t == null ? '' : t)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
             const when = item.timestamp ? new Date(item.timestamp) : null;
             const age = when && !isNaN(when) ? v2NewsAge(Date.now() - when.getTime()) : '';
-            return `<a class="v2-news-card" href="${esc(item.link)}" target="_blank" rel="noopener noreferrer">
+            return `<a class="v2-news-card" href="${escHTML(item.link)}" target="_blank" rel="noopener noreferrer">
                 <span class="v2-news-thumb">${item.thumbnail && /^https?:\/\//i.test(item.thumbnail)
-                    ? `<img src="${esc(item.thumbnail)}" alt="" loading="lazy"
-                        onerror="this.parentElement.innerHTML = ${esc(JSON.stringify(item.clubCode != null ? v2NewsCrest(item) : v2NewsFallback(item.badge)))}">`
+                    ? `<img src="${escHTML(item.thumbnail)}" alt="" loading="lazy"
+                        onerror="this.parentElement.innerHTML = ${escHTML(JSON.stringify(item.clubCode != null ? v2NewsCrest(item) : v2NewsFallback(item.badge)))}">`
                     : item.clubCode != null
                         ? v2NewsCrest(item)
                         : v2NewsFallback(item.badge)}</span>
                 <span class="v2-news-meta">
-                    <span class="news-card-category cat-${esc(item.badge || 'external')}">${esc(item.source || '')}</span>
-                    ${age ? `<span class="v2-news-age">${esc(age)}</span>` : ''}
+                    <span class="news-card-category cat-${escHTML(item.badge || 'external')}">${escHTML(item.source || '')}</span>
+                    ${age ? `<span class="v2-news-age">${escHTML(age)}</span>` : ''}
                 </span>
-                <span class="v2-news-head">${esc(item.headline || '')}</span>
+                <span class="v2-news-head">${escHTML(item.headline || '')}</span>
             </a>`;
         }
 
@@ -1093,9 +1089,6 @@
             const top3 = externalItems.filter(i => i.headline && i.headline.trim().length >= 10).slice(0, 3);
             if (!top3.length) return;
 
-            const escH = s => String(s == null ? '' : s)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             // The same mark and the same palette the news cards above use.
             const newspaperSVG = V2_NEWS_MARK;
             const sourceColors = V2_NEWS_COLORS;
@@ -1111,19 +1104,19 @@
 
             list.innerHTML = top3.map(item => {
                 const teams = matchTeamsHL(item.headline);
-                const crestsHTML = teams.length ? `<div class="hl-crests">${teams.map(t=>`<img src="${badgeUrl(t.code)}" alt="${escH(t.short_name)}">`).join('')}</div>` : '';
+                const crestsHTML = teams.length ? `<div class="hl-crests">${teams.map(t=>`<img src="${badgeUrl(t.code)}" alt="${escHTML(t.short_name)}">`).join('')}</div>` : '';
                 const sc = sourceColors[item.badge] || '#6366F1';
                 const validLink = item.link && /^https?:\/\//i.test(item.link);
-                const href = validLink ? escH(item.link) : '#';
+                const href = validLink ? escHTML(item.link) : '#';
                 const thumbHTML = item.thumbnail
-                    ? `<div class="hl-thumb"><img src="${escH(item.thumbnail)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=hl-thumb-fallback style=background:${sc}>${newspaperSVG}</div>'"></div>`
+                    ? `<div class="hl-thumb"><img src="${escHTML(item.thumbnail)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=hl-thumb-fallback style=background:${sc}>${newspaperSVG}</div>'"></div>`
                     : `<div class="hl-thumb"><div class="hl-thumb-fallback" style="background:${sc}">${newspaperSVG}</div></div>`;
                 return `<a class="hl-item" href="${href}" target="_blank" rel="noopener noreferrer">
                     ${thumbHTML}
                     <div class="hl-body">
-                        <div class="hl-headline">${escH(item.headline)}</div>
+                        <div class="hl-headline">${escHTML(item.headline)}</div>
                         <div class="hl-meta">
-                            <span class="hl-source cat-${escH(item.badge)}">${escH(item.source)}</span>
+                            <span class="hl-source cat-${escHTML(item.badge)}">${escHTML(item.source)}</span>
                             <span class="hl-time">${tAgo(item.timestamp)}</span>
                             ${crestsHTML}
                         </div>
@@ -1296,14 +1289,11 @@
         }
 
         function tickerItems(ctx) {
-            const esc = t => String(t == null ? '' : t)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             const out = [];
             const add = (cls, label, value) => out.push(
                 `<span class="pticker-item ${cls}">
-                    <span class="pticker-name">${esc(label)}</span>
-                    <span class="pticker-arrow">${esc(value)}</span>
+                    <span class="pticker-name">${escHTML(label)}</span>
+                    <span class="pticker-arrow">${escHTML(value)}</span>
                 </span><span class="pticker-sep">\u2502</span>`);
 
             if (ctx.phase === 'live' || ctx.phase === 'results') {
@@ -1374,9 +1364,6 @@
             if (!bar || !track) return;
             const squadIds = new Set(squad.map(p => p.id));
             const totalFpl = 11000000;
-            const esc = t => String(t == null ? '' : t)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
             /* The market strip reads the game's own price meter rather than
                inferring pressure from net transfers. Transfers are the cause;
@@ -1427,9 +1414,9 @@
                 const state = c.legacy
                     ? `${net > 0 ? '+' : '-'}${netK}k`
                     : (c.tier === 'due' ? (rising ? 'RISE DUE' : 'DROP DUE') : `${Math.round(Math.abs(c.progress))}%`);
-                const tip = c.legacy ? '' : ` data-tooltip="${esc(pwDetail(c))}"`;
+                const tip = c.legacy ? '' : ` data-tooltip="${escHTML(pwDetail(c))}"`;
                 return `<span class="pticker-item ${cls}${c.legacy ? '' : ' tier-' + c.tier}"${tip}>
-                    <span class="pticker-name">${esc(p.name)}${squadBadge}</span>
+                    <span class="pticker-name">${escHTML(p.name)}${squadBadge}</span>
                     <span class="pticker-price">\u00A3${p.price.toFixed(1)}m</span>
                     <span class="pticker-arrow">${arrow} ${state}</span>
                 </span><span class="pticker-sep">\u2502</span>`;
