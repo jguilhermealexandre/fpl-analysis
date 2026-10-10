@@ -52,7 +52,13 @@
                 // (lwScore), the same horizon the draft and the transfer
                 // recommender already plan against.
                 const detailed = computeQuickLineupScoreDetailed(p);
-                const gwScore = predictedGWPoints(p);
+                /* The next OPEN gameweek, for every player in the squad —
+                   not each player's next unfinished fixture, which mid-round
+                   splits the squad across two rounds. */
+                const openGW = typeof xpNextOpenGW === 'function' ? xpNextOpenGW() : null;
+                const gwScore = (openGW != null && typeof projectPlayerPointsForGW === 'function')
+                    ? projectPlayerPointsForGW(p, openGW)
+                    : predictedGWPoints(p);
                 const runScore = typeof xpOver === 'function' ? xpOver(p, xpPlanGWs(XP_PLAN_HORIZON)) : gwScore;
                 const lwScore = detailed.total <= -100 ? -1000 : runScore;
                 return { ...p, pos: p.position, web_name: p.name, pickPos: pick.position,
@@ -207,7 +213,7 @@
                shown here so the pick explains itself instead of just asserting it. */
             const lwRun = typeof xpPlanGWs === 'function' ? xpPlanGWs(XP_PLAN_HORIZON) : [];
             const lwRunXP = unavailable ? 0 : p.lwScore;
-            const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
+            const fx = lwFixtureForOpenGW(p);
             const posClass = `pos-${POSITION_CONFIG[p.pos]?.class || 'mid'}`;
             const selected = lineupState.selectedPlayers.includes(p.id);
             /* The same marks lwPaintSelection() and the drag both use, so a
@@ -623,7 +629,7 @@
            gameweek — the XI itself is picked on a longer run, which is a
            different question. */
         function lwCaptainReason(p) {
-            const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
+            const fx = lwFixtureForOpenGW(p);
             if (!fx) return 'No fixture this gameweek.';
             const where = fx.isHome ? 'at home to' : 'away at';
             const opp = fx.opponent || 'opponent';
@@ -658,7 +664,7 @@
            form, ownership and how many the opponent concedes a game, which is
            what you would ask a friend. */
         function lwCaptainRow(p, i, ranks) {
-            const fx = (p.fixtures || teamFixtures[p.teamId] || [])[0];
+            const fx = lwFixtureForOpenGW(p);
             const ctx = fx ? opponentContext(p.teamId, fx, ranks) : null;
             const form = isPreseason ? (p.ppg || 0) : (parseFloat(p.form) || 0);
             const isCap = lineupState.captain === p.id, isVC = lineupState.viceCaptain === p.id;
@@ -1549,6 +1555,21 @@
            not have was any way of staying in step with the other two. Reads
            .pos rather than .position, which is this file's own shape for a
            player — hence the wrapper rather than a direct call. */
+/* The fixture for the round the Wizard is actually planning.
+
+   Was `[0]` — the player's next unfinished fixture — at three call sites, which
+   is what put a GW6 opponent on one card and a GW7 opponent on the next. Falls
+   back to [0] only when no round is open, so between gameweeks nothing changes. */
+        function lwFixtureForOpenGW(p) {
+            const list = (p && p.fixtures) || (p && teamFixtures[p.teamId]) || [];
+            const gw = typeof xpNextOpenGW === 'function' ? xpNextOpenGW() : null;
+            if (gw != null) {
+                const match = list.find(f => f && f.event === gw);
+                if (match) return match;
+            }
+            return list[0] || null;
+        }
+
         function isValidLWFormation(xi) {
             const counts = {};
             (xi || []).forEach(p => { counts[p.pos] = (counts[p.pos] || 0) + 1; });
