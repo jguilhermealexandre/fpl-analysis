@@ -119,14 +119,39 @@ test('the halo turns against the ink, so the number survives either stripe', () 
 
 /* ===== What goes where the number goes ===== */
 
-test('FPL still publishes no squad numbers, which is why these are initials', () => {
-    const withNumber = bootstrap.elements.filter(p => p.squad_number != null);
-    assert.equal(withNumber.length, 0,
-        'squad_number is populated again — v2KitNumber will now print it, and this test can go');
+/* This test used to assert the opposite — that squad_number was null for all
+   667 players, which it was, and that the initials were therefore the honest
+   thing to print. It was written to fail the day real numbers arrived. They
+   have: tools/fetch-shirt-numbers.mjs reads the league's own squad pages and
+   joins them to FPL's elements on the Opta id. */
+test('the squad numbers are there, and enough of them to be the default', () => {
+    const numbered = bootstrap.elements.filter(p => p.squad_number != null);
+    assert.ok(numbered.length > bootstrap.elements.length * 0.6,
+        `only ${numbered.length}/${bootstrap.elements.length} players carry a number — has the fetch stopped working?`);
+    for (const p of numbered.slice(0, 50)) {
+        assert.ok(Number.isInteger(p.squad_number) && p.squad_number > 0 && p.squad_number < 100,
+            `${p.web_name} wears ${p.squad_number}, which is not a squad number`);
+    }
 });
 
-test('the shirt carries initials until there is a real number to carry', () => {
-    assert.equal(kit.v2KitNumber({ name: 'Bruno Fernandes' }), 'BF');
+test('a player the league has not numbered keeps his initials', () => {
+    /* A new signing or a youth call-up has no number for days or weeks, and
+       giving him one would be the invention this whole thing avoids. */
+    const anon = bootstrap.elements.find(p => p.squad_number == null);
+    assert.ok(anon, 'nobody is unnumbered, so this case is no longer reachable');
+    assert.equal(kit.v2KitNumber({ name: anon.web_name, code: anon.code }),
+        kit.v2Initials(anon.web_name));
+});
+
+test('the number is learned from the bootstrap, not threaded through the callers', () => {
+    const src = read('scripts/common.js');
+    assert.match(src, /function v2LearnShirtNumbers\(boot\)/);
+    assert.match(src, /key\.endsWith\('\/bootstrap-static\.json'\)/,
+        'DataCache.fetchJSON is the one seam every page\u2019s bootstrap passes through');
+});
+
+test('a real number wins, and the initials are the fallback', () => {
+    assert.equal(kit.v2KitNumber({ name: 'Bruno Fernandes' }), 'BF', 'nothing known about him');
     assert.equal(kit.v2KitNumber({ name: 'Saka' }), 'S');
     assert.equal(kit.v2KitNumber({ name: 'Bruno Fernandes', shirt: 8 }), '8',
         'a real number wins the moment one exists');
