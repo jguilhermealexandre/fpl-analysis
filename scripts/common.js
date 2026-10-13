@@ -675,6 +675,31 @@ function v2TeamCode(teamId, fallbackCode) {
     return null;
 }
 
+/* The identity object every mark is drawn from, built from whatever shape of
+   player the caller happens to hold. Fourteen places used to assemble this by
+   hand, each picking a different four of the fields — which is why the
+   goalkeepers were drawn in their outfield kit for a day: the position was
+   simply not in most of them, and nothing said it had to be.
+
+   Deliberately tolerant about names. `pos`, `position`, `element_type` and
+   `elementType` all mean element type here, and `web_name` and `name` are the
+   same name; this is the seam between a dozen call sites and one renderer, so
+   it is the right place to absorb that rather than the wrong place to insist. */
+function v2Ident(p) {
+    if (!p) return null;
+    return {
+        name: p.web_name != null ? p.web_name : p.name,
+        code: p.code,
+        teamId: p.teamId != null ? p.teamId : p.team_id,
+        teamCode: p.teamCode != null ? p.teamCode : p.team_code,
+        team: p.teamShort || p.team_short_name || p.teamName || (typeof p.team === 'string' ? p.team : ''),
+        pos: p.pos != null ? p.pos
+            : p.position != null ? p.position
+            : p.element_type != null ? p.element_type : p.elementType,
+        shirt: p.shirt != null ? p.shirt : p.squadNumber
+    };
+}
+
 function v2Initials(name) {
     return String(name || '')
         .split(/[\s.'\u2019-]+/)
@@ -948,10 +973,65 @@ const CLUB_KITS = {
 // nothing: wrong colours at worst, never an empty disc.
 const CLUB_KIT_FALLBACK = ['plain', '#37003C', '#37003C', '#FFFFFF', '#00FF87'];
 
+/* THE KEEPER'S SHIRT.
+ *
+ * A goalkeeper does not play in the outfield kit, and drawing him in it was
+ * the one thing on these cards that was flatly wrong rather than simplified.
+ * He is also the one player on the pitch whose shirt is meant to be unlike
+ * everybody else's, which is useful here for exactly the same reason it is
+ * useful to a referee: in a row of eleven, the keeper reads as the keeper.
+ *
+ * Not the club's real goalkeeper kit. There is no feed for it — FPL publishes
+ * none and the league's own pages are markup, not data — so a table of twenty
+ * would be hand-written from memory, wrong somewhere, wrong everywhere by next
+ * August, and nothing here would ever catch it. That is the same objection as
+ * an invented squad number.
+ *
+ * What this does instead is a keeper kit that is clearly a keeper kit and
+ * says so: a colour chosen to be nothing like the club's outfield shirt,
+ * carrying the club's own trim so he is still placed.
+ */
+/* Three, in order of preference, and the first one far enough from the club's
+   own outfield shirt wins. Amber leads because it is the colour a keeper has
+   worn since Zamora, and because nobody in this division plays in it but
+   Hull — who get the teal, which is why there is a list rather than a pair. */
+const GK_KITS = [
+    ['plain', '#E8A317', '#E8A317', '#1B1B1B', '#1B1B1B'],
+    ['plain', '#0F7173', '#0F7173', '#FFFFFF', '#FFFFFF'],
+    ['plain', '#4B4B4B', '#4B4B4B', '#FFFFFF', '#FFFFFF']
+];
+
+/* Distance in plain RGB, which is crude and is the right amount of machinery
+   for "are these two obviously different colours". 120 of a possible 441
+   separates amber from Hull's amber and keeps everything else apart. */
+function v2ColourGap(a, b) {
+    const rgb = h => [1, 3, 5].map(i => parseInt(String(h).slice(i, i + 2), 16) || 0);
+    const [r1, g1, b1] = rgb(a), [r2, g2, b2] = rgb(b);
+    return Math.hypot(r1 - r2, g1 - g2, b1 - b2);
+}
+
 function clubKit(player) {
     const code = v2TeamCode(player && player.teamId, player && player.teamCode);
     const k = (code != null && CLUB_KITS[code]) || CLUB_KIT_FALLBACK;
+    if (isGoalkeeper(player)) {
+        const gk = GK_KITS.find(g => v2ColourGap(g[1], k[1]) > 120
+            && v2ColourGap(g[1], k[2]) > 120) || GK_KITS[GK_KITS.length - 1];
+        // The club's own trim, so he is still placed even in a neutral shirt.
+        return { pattern: gk[0], main: gk[1], second: gk[2], ink: gk[3], trim: k[4] };
+    }
     return { pattern: k[0], main: k[1], second: k[2], ink: k[3], trim: k[4] };
+}
+
+/* FPL calls the position element_type and the app calls it half a dozen
+   things on the way to here, so all of them are asked. 1 is the keeper. */
+function isGoalkeeper(player) {
+    if (!player) return false;
+    const pos = player.pos != null ? player.pos
+        : player.position != null ? player.position
+        : player.element_type != null ? player.element_type
+        : player.elementType;
+    if (Number(pos) === 1) return true;
+    return typeof pos === 'string' && pos.toUpperCase() === 'GK';
 }
 
 /* Light ink wants a dark halo and dark ink a light one, so the number holds
@@ -2820,7 +2900,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=462')
+    fetch('/footer.html?v=463')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

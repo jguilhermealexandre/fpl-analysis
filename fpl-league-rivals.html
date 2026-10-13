@@ -45,24 +45,24 @@
          waiting for the stylesheet to name them: same-origin now, so a
          preload here costs nothing and starts them with the CSS. -->
     <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-ca11fe9ca5.woff2" crossorigin>
-    <link rel="stylesheet" href="/styles/fonts.min.css?v=462">
-    <script src="/scripts/dashboard-gate.min.js?v=462"></script>
-    <link rel="stylesheet" href="/styles/common.min.css?v=462">
-    <link rel="stylesheet" href="/styles/v2-design.min.css?v=462">
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=463">
+    <script src="/scripts/dashboard-gate.min.js?v=463"></script>
+    <link rel="stylesheet" href="/styles/common.min.css?v=463">
+    <link rel="stylesheet" href="/styles/v2-design.min.css?v=463">
     <!-- v2-app.css is the signed-in half of v2-design.css. Asked for here, so
          that the cascade reads the same as it did when the two were one file,
          and only when there is a saved Team ID — see the note at the top of
          v2-design.css. Kept identical on every page by check:appcss. -->
-    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=462';document.head.appendChild(l)})();</script>
-    <link rel="stylesheet" href="/styles/responsive.min.css?v=462">
-    <script src="/scripts/error-monitor.min.js?v=462"></script>
-    <script src="/scripts/auth.min.js?v=462"></script>
-    <script src="/scripts/common.min.js?v=462"></script>
+    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=463';document.head.appendChild(l)})();</script>
+    <link rel="stylesheet" href="/styles/responsive.min.css?v=463">
+    <script src="/scripts/error-monitor.min.js?v=463"></script>
+    <script src="/scripts/auth.min.js?v=463"></script>
+    <script src="/scripts/common.min.js?v=463"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="/scripts/push-alerts.min.js?v=462"></script>
-    <script src="/scripts/notifications.min.js?v=462"></script>
-    <script src="/scripts/sidebar-nav.min.js?v=462"></script>
+    <script src="/scripts/push-alerts.min.js?v=463"></script>
+    <script src="/scripts/notifications.min.js?v=463"></script>
+    <script src="/scripts/sidebar-nav.min.js?v=463"></script>
     <style>
         /* ===== MAIN CONTENT ===== */
         .main-content {
@@ -2241,7 +2241,7 @@
             const code = typeof v2TeamCode === 'function' ? v2TeamCode(pl.teamId, pl.teamCode) : pl.teamCode;
             const cols = (typeof CLUB_COLOURS !== 'undefined' && CLUB_COLOURS[code])
                 || (typeof CLUB_COLOURS_FALLBACK !== 'undefined' ? CLUB_COLOURS_FALLBACK : ['#37003C', '#FFFFFF']);
-            const ident = { name: pl.name, code: pl.code, teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName };
+            const ident = v2Ident(pl);
 
             return `
                 <div class="player-card ${type}">
@@ -2389,7 +2389,7 @@
                a grey box — the same identity pair as the differential rows
                directly underneath it. */
             const capBox = (label, pl, side) => {
-                const ident = pl && { name: pl.name, code: pl.code, teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName };
+                const ident = pl && v2Ident(pl);
                 return `<div class="rv-cap-box ${side}">
                     <span class="rv-cap-label">${label}</span>
                     <span class="rv-cap-who">
@@ -2442,7 +2442,7 @@
             const rows = players.length
                 ? players.map(p => {
                     const benched = !starters.has(p.id);
-                    const ident = { name: p.name, code: p.code, teamId: p.teamId, teamCode: p.teamCode, team: p.teamName };
+                    const ident = v2Ident(p);
                     return `<div class="rv-diff-card${benched ? ' is-benched' : ''}">
                         ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident) : ''}
                         <span class="rv-diff-main">
@@ -2622,7 +2622,7 @@
                the one place in this table a player had no face. */
             const capCell = (pl, bits, cls) => {
                 if (!pl) return '<span class="cap-p-sub">?</span>';
-                const ident = { name: pl.name, code: pl.code, teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName };
+                const ident = v2Ident(pl);
                 const sub = bits.filter(Boolean).map(escHTML).join(' · ');
                 return `<span class="cap-p${cls ? ' ' + cls : ''}">
                     ${typeof v2IdentityHTML === 'function' ? v2IdentityHTML(ident) : ''}
@@ -3005,7 +3005,7 @@
             function renderRow(players) {
                 return `<div class="dp-row">${players.map(p => {
                     const pl = p.player;
-                    const ident = { name: pl.name, code: pl.code, teamId: pl.teamId, teamCode: pl.teamCode, team: pl.teamName };
+                    const ident = v2Ident(pl);
                     const pct = allManagerIds.length ? Math.round((p.startCount / allManagerIds.length) * 100) : 0;
                     return `<div class="dp-card rv-card ${p.youOwn ? 'you-have' : 'you-missing'}"
                         data-tooltip="${escHTML(pl.name)} — ${escHTML(pl.teamName)}, ${escHTML(pl.posName)}. ${p.youOwn ? 'In your squad.' : 'Not in your squad.'}">

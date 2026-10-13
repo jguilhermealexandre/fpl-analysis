@@ -89,6 +89,20 @@ function wizard(state) {
         POSITION_CONFIG: { 1: { class: 'gk', short: 'GK' }, 2: { class: 'def', short: 'DEF' },
             3: { class: 'mid', short: 'MID' }, 4: { class: 'fwd', short: 'FWD' } },
         v2IdentityHTML: () => '', buildOptimizeSummary: () => '', renderBOMatchdayPanel: () => 'ODDS',
+        /* The one identity builder, lifted from common.js rather than
+           restated: it is the seam that absorbs the half-dozen names this app
+           gives a player's position, and a stub that forgot one is how the
+           goalkeepers ended up in their outfield kit. */
+        v2Ident: p => (p ? {
+            name: p.web_name != null ? p.web_name : p.name,
+            code: p.code,
+            teamId: p.teamId != null ? p.teamId : p.team_id,
+            teamCode: p.teamCode != null ? p.teamCode : p.team_code,
+            team: p.teamShort || p.team_short_name || p.teamName || (typeof p.team === 'string' ? p.team : ''),
+            pos: p.pos != null ? p.pos : p.position != null ? p.position
+                : p.element_type != null ? p.element_type : p.elementType,
+            shirt: p.shirt != null ? p.shirt : p.squadNumber
+        } : null),
         /* Returns markup, because lwFace() checks the function exists and then
            wraps whatever it gives back — a stub returning '' makes "does this
            card carry a face" unanswerable from the HTML. */

@@ -178,8 +178,7 @@
         function lwFace(p) {
             if (!p || typeof v2AvatarHTML !== 'function') return '';
             // teamId, or the shirt would be the league's purple rather than his club's.
-            return `<span class="lw-face">${v2AvatarHTML(
-                { name: p.web_name, code: p.code, teamId: p.teamId, team: p.team })}</span>`;
+            return `<span class="lw-face">${v2AvatarHTML(v2Ident(p))}</span>`;
         }
 
         /* The armband controls for one card, on their own so they can be
@@ -273,7 +272,7 @@
                comes against. This pitch had the number as a pill laid over
                the photo and a coloured stripe along the top of the card —
                enough that the two screens did not read as the same object. */
-            const lwIdent = { name: p.web_name, code: p.code, teamId: p.teamId, team: p.team };
+            const lwIdent = v2Ident(p);
             /* Drag to swap, as well as click to swap — the same operation,
                lwSwapPlayers(), reached two ways. The drag is built on pointer
                events rather than HTML5 drag-and-drop, which never fires from a
@@ -491,7 +490,14 @@
                which the list of your players underneath already answers by
                naming them. */
             const top = o && o.scorelines && o.scorelines[0];
-            return `<article class="lwm-fix${row.mine.length >= 3 ? ' is-key' : ''}">
+            /* The green edge means something and said so nowhere: three or
+               more of your squad in one match. It is in the legend now and on
+               the card's own tooltip, because a colour that carries meaning
+               and has no key is just decoration that worries people. */
+            const key = row.mine.length >= 3;
+            return `<article class="lwm-fix${key ? ' is-key' : ''}"${key
+                ? ` data-tooltip="${escHTML(`${row.mine.length} of your squad play in this match — a third of your gameweek turns on it.`)}"`
+                : ''}>
                 <div class="lwm-tie">
                     ${club(home, true)}
                     <span class="lwm-bar">
@@ -565,6 +571,7 @@
                     ${item('is-away', 'Away side', 'the right-hand figure and bar')}
                     ${item('is-cs-ours', 'CS EasyFPL', "our own model's row, in its own green")}
                     ${item('is-wide', 'Marked amber', 'market and model ten points or more apart on that match')}
+                    ${item('is-key', 'Green edge', 'three or more of your squad play in that match')}
                     <div class="legend-panel-note">
                         <b>CS market</b> is the betting market's own clean-sheet price; <b>CS EasyFPL</b> is our fixture and
                         defensive model. Goal bars are drawn to ${LWM_XG_MAX.toFixed(1)} goals and clean-sheet bars to 100% —
@@ -697,7 +704,7 @@
                column entirely — it labels the card rather than being one more
                thing on it, so it reads as a corner mark and does not compete
                with the points for the same glance. */
-            const capIdent = { name: p.web_name, code: p.code, teamId: p.teamId, team: p.team };
+            const capIdent = v2Ident(p);
             return `<li class="lwc-row${isCap ? ' is-cap' : ''}${isVC ? ' is-vc' : ''}" data-tooltip="${escHTML(
                 `${p.web_name} — ${lwCaptainReason(p).replace(/<[^>]+>/g, '')}. ${p.gwScore.toFixed(1)} projected, ${(p.gwScore * 2).toFixed(1)} with the armband.`)}">
                 <span class="lwc-rank">${i + 1}</span>
@@ -1875,7 +1882,7 @@
         function renderLWSummaryPitchPlayer(p) {
             const isCap = lineupState.captain === p.id;
             const isVC = lineupState.viceCaptain === p.id;
-            const ident = { name: p.web_name, code: p.code, teamId: p.team || p.teamId, team: p.teamShort || p.team_short_name || '' };
+            const ident = v2Ident({ ...p, teamId: p.teamId != null ? p.teamId : p.team });
 
             return `<div class="lw-pitch-player${isCap ? ' is-captain' : ''}">
                 ${isCap ? '<span class="lw-pitch-arm">C</span>' : ''}

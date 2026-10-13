@@ -10195,21 +10195,45 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    holds its line. Wrapping is the fallback, not the plan. */
 .lw-ov-head .sq-kpi-sub { white-space: normal; overflow: visible; line-height: 1.3; }
 .lw-ov-head .sq-kpi-value { font-size: 28px; letter-spacing: -1.1px; }
+
+/* THREE ACROSS, ALL THE WAY DOWN. They used to break to two and then to one,
+   so a phone got the three figures stacked down a third of the screen —
+   three headings, three numbers and three captions where the whole point of
+   them is that you take them in together.
+
+   What gives at a narrow width is the tile's furniture, not the count: the
+   icon goes (it tells the three apart, and on one line they are already
+   apart), the padding halves, and the number comes down from 28px to 20px.
+   The figures and their labels are untouched. Keyed to the panel rather than
+   the window, like everything else in here, and stated after the base rules
+   because a container query carries no specificity of its own. */
+@container lwov (max-width: 640px) {
+    .lw-ov-head .lw-kpis.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+    .lw-ov-head .sq-kpi { padding: 9px 9px; gap: 0; border-radius: 12px; }
+    .lw-ov-head .sq-kpi-icon { display: none; }
+    .lw-ov-head .sq-kpi-value { font-size: 20px; letter-spacing: -0.7px; margin-top: 1px; }
+    .lw-ov-head .sq-kpi-label { font-size: 9px; letter-spacing: 0.4px; }
+    .lw-ov-head .sq-kpi-sub { font-size: 9.5px; margin-top: 2px; }
+}
+@container lwov (max-width: 400px) {
+    .lw-ov-head .sq-kpi { padding: 8px 6px; }
+    .lw-ov-head .sq-kpi-value { font-size: 17px; }
+    .lw-ov-head .sq-kpi-label { font-size: 8.5px; letter-spacing: 0.2px; }
+}
 .lw-ov-head .lw-kpis { margin-bottom: 0; }
 .lw-ov-head .lwc-insight { margin-bottom: 0; display: flex; flex-direction: column; justify-content: center; }
 @container lwov (max-width: 760px) { .lw-ov-head { grid-template-columns: minmax(0, 1fr); } }
 .lw-kpis.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 1100px) { .lw-kpis.is-three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px)  { .lw-kpis.is-three { grid-template-columns: minmax(0, 1fr); } }
-/* The blocks go one-up when the column cannot carry two. */
-@container lwov (max-width: 460px) {
-    .lw-ov .lw-kpis.is-three { grid-template-columns: minmax(0, 1fr); }
-}
 
-/* Two blocks, not three — the closest call moved up beside the armband call.
-   The changes take the wider half: a round can move six players, and risks,
-   on a clean squad, is one sentence. */
-.lw-ov-blocks { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 10px; align-items: start; }
+/* Two blocks, not three — the closest call moved up beside the armband call —
+   and an even half each. They were 1fr and 1.45fr on the reasoning that a
+   round moves six players and a clean squad has nothing to report, which is
+   true of the content and wrong about the page: two panels of the same kind,
+   side by side, at two different widths read as a mistake. */
+.lw-ov-blocks { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: stretch; }
+.lw-ov-blocks > .lw-sum-block { height: 100%; }
 /* Keyed to the panel, not the window — the overview is full width on a wide
    screen and a stacked panel on a narrow one, and the viewport cannot tell
    those apart on its own. These follow the base rule because a container query
@@ -10600,6 +10624,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwm-key-sw.is-away { background: var(--color-info); }
 .lwm-key-sw.is-cs-ours { background: color-mix(in srgb, var(--color-primary) 72%, transparent); }
 .lwm-key-sw.is-wide { background: var(--verdict-monitor); }
+.lwm-key-sw.is-key { background: var(--color-primary); }
 
 /* ===== MATCHDAY =====
 

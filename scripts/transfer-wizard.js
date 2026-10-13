@@ -1626,7 +1626,7 @@
                         : p.status === 'd' ? `<span class="twc-flag doubt" data-tooltip="${escHTML(p.news || 'Fitness doubt')}">?</span>` : '';
 
                     const twPosEdge = typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(p.position) : '';
-                    const twIdent = { name: p.name, code: p.code, teamId: p.teamId, team: p.team };
+                    const twIdent = v2Ident(p);
 
                     /* The row is the button.
 
@@ -2679,7 +2679,7 @@
 
             const card = (p, benchIdx) => {
                 const posClass = `pos-${(typeof V2_POS_CLASS !== 'undefined' && V2_POS_CLASS[p.position]) || 'mid'}`;
-                const ident = { name: p.name, code: p.code, teamId: p.teamId, team: p.team };
+                const ident = v2Ident(p);
                 const fx = (teamFixtures[p.teamId] || p.fixtures || [])[0];
                 const picked = twOvPick === p.id;
                 // A held player marks every legal partner, so the second click
@@ -2751,7 +2751,7 @@
                this squad look like" the one that looked like nothing else. */
             const card = p => {
                 const posClass = `pos-${(typeof V2_POS_CLASS !== 'undefined' && V2_POS_CLASS[p.position]) || 'mid'}`;
-                const ident = { name: p.name, code: p.code, teamId: p.teamId, team: p.team };
+                const ident = v2Ident(p);
                 const fx = (teamFixtures[p.teamId] || p.fixtures || [])[0];
                 return `<div class="dp-card ${posClass}${p.isIncoming ? ' twp-in-card' : ''}">
                     ${p.isIncoming ? '<div class="dp-badges"><span class="dp-badge in">IN</span></div>' : ''}
@@ -3990,7 +3990,7 @@
         }
 
         function renderTmTransferRow(p, rank, cls, value, counter, topCount, squadIds, season) {
-            const ident = { name: p.name, code: p.code, teamId: p.teamId, team: p.teamShort };
+            const ident = v2Ident(p);
             // Net over the same period the column is counting, or the two numbers
             // in one row would be measuring different spans of the season.
             const net = season
@@ -4061,7 +4061,7 @@
                the two agree — and the club is its badge rather than three
                letters in a circle. */
             const posEdge = typeof v2PosEdgeClass === 'function' ? v2PosEdgeClass(p.position) : '';
-            const ident = { name: p.name, code: p.code, teamId: p.teamId, team: p.teamShort };
+            const ident = v2Ident(p);
 
             return `<div class="tm-watch-row ${st.cls} ${posEdge}">
                 <div class="tm-watch-player">
