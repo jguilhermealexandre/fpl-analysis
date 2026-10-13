@@ -56,6 +56,7 @@ export default [
                 CHIP_LABELS: 'writable',
                 CLUB_COLOURS: 'writable',
                 CLUB_COLOURS_FALLBACK: 'writable',
+                CLUB_GK_KITS: 'writable',
                 CLUB_KITS: 'writable',
                 CLUB_KIT_FALLBACK: 'writable',
                 COLS_STORAGE_KEY: 'writable',

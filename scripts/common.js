@@ -987,14 +987,29 @@ const CLUB_KIT_FALLBACK = ['plain', '#37003C', '#37003C', '#FFFFFF', '#00FF87'];
  * August, and nothing here would ever catch it. That is the same objection as
  * an invented squad number.
  *
- * What this does instead is a keeper kit that is clearly a keeper kit and
- * says so: a colour chosen to be nothing like the club's outfield shirt,
- * carrying the club's own trim so he is still placed.
+ * SINCE CORRECTED, mostly. There is no JSON field of kit colours, but FPL
+ * draws its own pitch with per-club shirt sprites and has a separate one for
+ * the goalkeeper — so the colours are there, they just have to be read off
+ * the picture. tools/fetch-gk-kits.mjs does exactly that and writes the
+ * generated CLUB_GK_KITS below.
+ *
+ * What remains below it is the fallback for a club whose sprite the game has
+ * not drawn: a keeper kit that is clearly a keeper kit, in a colour chosen to
+ * be nothing like the club's outfield shirt, carrying the club's own trim.
  */
 /* Three, in order of preference, and the first one far enough from the club's
    own outfield shirt wins. Amber leads because it is the colour a keeper has
    worn since Zamora, and because nobody in this division plays in it but
    Hull — who get the teal, which is why there is a list rather than a pair. */
+/* === GENERATED: goalkeeper kits — node tools/fetch-gk-kits.mjs === */
+/* Read off FPL's own goalkeeper shirt sprites — see tools/fetch-gk-kits.mjs.
+   Do not hand-edit: the next run overwrites it. A club missing from here
+   wears the generic keeper kit, which is the correct answer for a club whose
+   sprite the game has not drawn yet. Empty until the job has run once. */
+const CLUB_GK_KITS = {
+};
+/* === END GENERATED GOALKEEPER KITS === */
+
 const GK_KITS = [
     ['plain', '#E8A317', '#E8A317', '#1B1B1B', '#1B1B1B'],
     ['plain', '#0F7173', '#0F7173', '#FFFFFF', '#FFFFFF'],
@@ -1014,10 +1029,14 @@ function clubKit(player) {
     const code = v2TeamCode(player && player.teamId, player && player.teamCode);
     const k = (code != null && CLUB_KITS[code]) || CLUB_KIT_FALLBACK;
     if (isGoalkeeper(player)) {
-        const gk = GK_KITS.find(g => v2ColourGap(g[1], k[1]) > 120
+        /* His club's real keeper colours where we have them — read off the
+           game's own shirt art by tools/fetch-gk-kits.mjs — and the generic
+           keeper kit where we do not. */
+        const real = code != null && CLUB_GK_KITS[code];
+        const gk = real || GK_KITS.find(g => v2ColourGap(g[1], k[1]) > 120
             && v2ColourGap(g[1], k[2]) > 120) || GK_KITS[GK_KITS.length - 1];
-        // The club's own trim, so he is still placed even in a neutral shirt.
-        return { pattern: gk[0], main: gk[1], second: gk[2], ink: gk[3], trim: k[4] };
+        // Falls back to the club's outfield trim, so he is still placed.
+        return { pattern: gk[0], main: gk[1], second: gk[2], ink: gk[3], trim: gk[4] || k[4] };
     }
     return { pattern: k[0], main: k[1], second: k[2], ink: k[3], trim: k[4] };
 }
@@ -2938,7 +2957,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=465')
+    fetch('/footer.html?v=466')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

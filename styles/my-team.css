@@ -10166,7 +10166,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     gap: 12px;
     margin-bottom: 16px;
 }
-@media (max-width: 1100px) { .lw-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px)  { .lw-kpis { grid-template-columns: minmax(0, 1fr); } }
 
 /* ===== THE OVERVIEW PANEL =====
@@ -10223,17 +10222,22 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-ov-head .lw-kpis { margin-bottom: 0; }
 .lw-ov-head .lwc-insight { margin-bottom: 0; display: flex; flex-direction: column; justify-content: center; }
 @container lwov (max-width: 760px) { .lw-ov-head { grid-template-columns: minmax(0, 1fr); } }
+/* Three across, and the window is not consulted about it.
+ *
+ * There were two @media rules here, at 1100px and 520px of VIEWPORT, on a row
+ * whose width comes from the panel. At a 1100px window the Overview's own
+ * container is 766px — room for three 250px tiles — and the media query broke
+ * it to two anyway, so a tablet got two tiles and a third sitting alone in a
+ * half-width box under them. The viewport cannot answer this question; the
+ * container queries further down do, and they are the only ones left. */
 .lw-kpis.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 1100px) { .lw-kpis.is-three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 520px)  { .lw-kpis.is-three { grid-template-columns: minmax(0, 1fr); } }
 
 /* Two blocks, not three — the closest call moved up beside the armband call —
    and an even half each. They were 1fr and 1.45fr on the reasoning that a
    round moves six players and a clean squad has nothing to report, which is
    true of the content and wrong about the page: two panels of the same kind,
    side by side, at two different widths read as a mistake. */
-.lw-ov-blocks { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: stretch; }
-.lw-ov-blocks > .lw-sum-block { height: 100%; }
+.lw-ov-blocks { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: start; }
 /* Keyed to the panel, not the window — the overview is full width on a wide
    screen and a stacked panel on a narrow one, and the viewport cannot tell
    those apart on its own. These follow the base rule because a container query
@@ -10269,16 +10273,22 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    one line — which, for a squad with nothing wrong with it, it always is.
    These two blocks used to give a heading a row of its own above a single
    sentence, so "nothing to report" twice took as much height as the eleven. */
+/* Flex, not grid, and this is the whole reason: the heading column was `auto`,
+   which is max-content, and the heading carries a title, a count and a line of
+   sub-text. Given a narrow block it took the lot and left `minmax(0, 1fr)` at
+   nothing, so the optimiser's names were laid out one per line in a column of
+   zero width — outside the panel, down the right-hand side of the page.
+
+   A flex basis says what the body needs rather than what the heading wants,
+   and flex-wrap turns "it does not fit" into the heading sitting above the
+   body, which is the answer, instead of an overflow. */
 .lw-sum-block.is-row {
-    display: grid; grid-template-columns: auto minmax(0, 1fr);
-    align-items: center; gap: 4px 14px;
+    display: flex; flex-wrap: wrap; align-items: flex-start;
+    gap: 6px 14px;
     padding: 9px 12px;
 }
-.lw-sum-block.is-row .lw-sum-h { margin-bottom: 0; }
-.lw-sum-body { min-width: 0; }
-@container lwov (max-width: 560px) {
-    .lw-sum-block.is-row { grid-template-columns: minmax(0, 1fr); }
-}
+.lw-sum-block.is-row .lw-sum-h { flex: 0 0 auto; max-width: 100%; margin-bottom: 0; padding-top: 1px; }
+.lw-sum-body { flex: 1 1 220px; min-width: 0; }
 
 /* The two close calls. Both cards are the same object — two players a few
    tenths apart — so they are drawn by one rule and sit side by side. */
@@ -10343,8 +10353,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 
 /* What the optimiser changed, grouped by what happened: the question is
    "what do I go and change on the FPL site", and that answers in three lines. */
-.lw-chg-list { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 16px; }
-.lw-chg-row { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.lw-chg-list { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 5px 16px; min-width: 0; }
+/* min-width:0 and shrink, or a group whose names are wider than the block
+   refuses to narrow and takes the whole list out of the panel with it. */
+.lw-chg-row { display: inline-flex; align-items: flex-start; gap: 7px; min-width: 0; flex: 0 1 auto; }
 .lw-chg-badge {
     flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 3px;
     min-width: 38px; padding: 2px 7px; border-radius: var(--radius-full);

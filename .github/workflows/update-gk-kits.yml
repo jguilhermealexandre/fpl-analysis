@@ -1,0 +1,73 @@
+name: Update Goalkeeper Kits
+
+# The clubs' real goalkeeper colours, read off FPL's own shirt sprites. There
+# is no feed of kit colours — but the game draws its pitch with a per-club
+# keeper sprite, so the colours are there to be read off the picture.
+#
+# Monthly and on demand. A kit changes once a season; the manual trigger is
+# what gets used, in August and after a mid-season third-kit launch.
+on:
+  schedule:
+    - cron: '23 5 2 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gk-kit-write
+  cancel-in-progress: false
+
+jobs:
+  update-gk-kits:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: Install image tooling
+        run: npm install --no-save sharp@^0.35.4 esbuild@^0.25.0 lightningcss@^1.30.0
+
+      # Exits non-zero without writing if fewer than three quarters of the
+      # clubs could be read, so a bad afternoon cannot blank the table.
+      - name: Read the keeper colours
+        run: node tools/fetch-gk-kits.mjs
+
+      # The generated block is in a source file, so the minified copy has to
+      # follow it or check:min goes red on the next push.
+      - name: Rebuild minified assets
+        run: node tools/minify.mjs
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+          cp scripts/common.js /tmp/common.js
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/common.js scripts/common.js
+            node tools/minify.mjs
+            git add scripts/common.js scripts/common.min.js
+            if git diff --staged --quiet; then
+              echo "No keeper kit changed"
+              exit 0
+            fi
+            git commit -m "Update goalkeeper kits - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt — main moved, re-applying."
+            sleep 5
+          done
+          echo "::error::Could not push after 5 attempts."
+          exit 1
