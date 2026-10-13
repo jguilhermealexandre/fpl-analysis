@@ -1555,6 +1555,7 @@ export default [
                 showNavTeamInput: 'writable',
                 showStatus: 'writable',
                 showTab: 'writable',
+                sidebarAdminHinted: 'writable',
                 snapPointer: 'writable',
                 snapshotBenchOrder: 'writable',
                 snapshotCaptainId: 'writable',
