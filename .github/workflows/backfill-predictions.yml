@@ -32,7 +32,8 @@ on:
         type: boolean
         default: false
 
-# Writes data/model-log/*.json and data/model-accuracy.json.
+# Writes data/model-log/*.json, data/model-accuracy.json and the public
+# data/model-summary.json derived from it.
 permissions:
   contents: write
 
@@ -87,13 +88,13 @@ jobs:
           #
           # Unlike the grader this writes a DIRECTORY as well as a file, so the
           # stash is a tarball rather than a cp.
-          tar czf /tmp/backfill.tgz data/model-log data/model-accuracy.json
+          tar czf /tmp/backfill.tgz data/model-log data/model-accuracy.json data/model-summary.json
 
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             git reset --hard origin/main
             tar xzf /tmp/backfill.tgz
-            git add data/model-log data/model-accuracy.json
+            git add data/model-log data/model-accuracy.json data/model-summary.json
             if git diff --staged --quiet; then
               echo "Nothing to backfill."
               exit 0

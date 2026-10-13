@@ -29,6 +29,20 @@
       to compute. If the model cannot beat those it is not a model, and this
       file should be what says so.
 
+   TWO OUTPUTS, AND THE DIFFERENCE IS THE POINT
+
+   data/model-accuracy.json is the full archive — every population, every
+   position, the calibration curve, the per-round history, the reconstructed
+   backtest. It is admin-gated (functions/lib/admin.js), because it is the
+   working data of a model that is still being corrected and half of it is
+   meaningless without the notes beside it.
+
+   data/model-summary.json is six numbers and a sentence, and it is public. The
+   accuracy page reads it and nothing else, so that page works for a visitor
+   rather than fetching a gated file and rendering the login screen. The summary
+   is DERIVED, never typed: summarise() below is the only thing that writes it,
+   so the public claim and the private evidence cannot drift apart.
+
    Usage:
      node tools/grade-predictions.mjs [--out data/model-accuracy.json] [--quiet]
 */
@@ -38,6 +52,7 @@ import { REPO_ROOT } from './xp-engine-host.mjs';
 
 const LOG_DIR = 'data/model-log';
 const OUT = 'data/model-accuracy.json';
+const SUMMARY_OUT = 'data/model-summary.json';
 
 /* A round is only graded once FPL says its data is checked — bonus applied,
    appeals settled. Grading a live round would record a number that changes
@@ -487,6 +502,53 @@ export function gradeAll({ boot, playersData, snapshots }) {
     };
 }
 
+/* ---- the public summary -------------------------------------------------- */
+
+/* Six numbers for the accuracy page, derived from the graded archive.
+ *
+ * THE POPULATION IS "STARTERS", AND THAT IS THE HARSHER CHOICE. Pooled over
+ * everyone, the model beats points-per-game by 14% — but most of that is
+ * correctly predicting that a fourth-choice full back will score nothing, which
+ * nobody needed a model for. Over the players it projected to start, the margin
+ * drops to single digits. That is the number that corresponds to a decision a
+ * reader actually makes, so it is the one published.
+ *
+ * SEALED ONLY. result.overall already excludes reconstructed rounds, and the
+ * page's headline claim — written down before kick-off — is only true of those.
+ * The backtest is real work and belongs in the admin view; it is not evidence
+ * and it never reaches this file.
+ *
+ * Nothing is rounded or relabelled on the way through. If the public figure
+ * looks bad, that is the figure. */
+export function summarise(result) {
+    const meta = result.metadata || {};
+    const starters = ((result.overall || {}).populations || {}).starters || null;
+    const beats = key => {
+        const b = starters && starters.baselines && starters.baselines[key];
+        return b && Number.isFinite(b.modelBeatsBy) ? b.modelBeatsBy : null;
+    };
+    const graded = (meta.gameweeksGraded || []).length;
+
+    return {
+        lastUpdated: meta.lastUpdated,
+        gameweeksGraded: graded,
+        playerFixturesGraded: meta.playerFixturesGraded || 0,
+        startersGraded: starters ? starters.n : 0,
+        mae: starters ? starters.mae : null,
+        vsEp: beats('ep'),
+        vsPpg: beats('ppg'),
+        /* Said here rather than on the page, because the page is static and the
+           sample is not. Ten rounds is where a per-round edge stops being
+           indistinguishable from variance. */
+        provisional: graded > 0 && graded < 10,
+        note: 'The public scoreboard. Measured over the players the model projected to start, '
+            + 'pooled by player-fixture across every round that was played, scored and sealed '
+            + 'before kick-off. vsEp and vsPpg are reductions in squared error against FPL\'s '
+            + 'own ep_next and against points per game. Derived from data/model-accuracy.json '
+            + 'by tools/grade-predictions.mjs — never edited by hand.'
+    };
+}
+
 /* ---- cli ----------------------------------------------------------------- */
 
 export function loadSnapshots(dir = LOG_DIR) {
@@ -513,17 +575,34 @@ function main() {
     /* A daily job whose only change is its own timestamp would commit every day
        forever and bury the days something actually moved. Rounds are graded
        once and never change afterwards, so an identical file apart from
-       lastUpdated means nothing happened — leave it alone. */
-    const withoutStamp = o => JSON.stringify({ ...o, metadata: { ...o.metadata, lastUpdated: null } });
-    const existing = readJSON(outRel, null);
-    if (existing && withoutStamp(existing) === withoutStamp(result)) {
+       lastUpdated means nothing happened — leave it alone.
+
+       Each file is compared on its own. The summary is six numbers out of a
+       47 KB archive, so the common case is that the archive moved and the
+       summary did not; writing both would churn the public file for nothing.
+       The uncommon case matters more and is why this is not one check: the
+       summary was ADDED after the archive already existed, and a single
+       combined guard would have seen "no change" and never written it at all. */
+    const writeIfChanged = (rel, obj, unstamp) => {
+        const existing = readJSON(rel, null);
+        if (existing && JSON.stringify(unstamp(existing)) === JSON.stringify(unstamp(obj))) return false;
+        const text = JSON.stringify(obj, null, 1) + '\n';
+        JSON.parse(text);
+        fs.writeFileSync(path.join(REPO_ROOT, rel), text);
+        return true;
+    };
+
+    // The archive's stamp is nested one level down; the summary's is top level.
+    // Only the stamp is blanked, so every other field still counts as a change.
+    const detailWritten = writeIfChanged(outRel, result,
+        o => ({ ...o, metadata: { ...o.metadata, lastUpdated: null } }));
+    const summaryWritten = writeIfChanged(SUMMARY_OUT, summarise(result),
+        o => ({ ...o, lastUpdated: null }));
+
+    if (!detailWritten && !summaryWritten) {
         if (!argv.includes('--quiet')) console.log(`No change since the last run; ${outRel} left as it is.`);
         return;
     }
-
-    const text = JSON.stringify(result, null, 1) + '\n';
-    JSON.parse(text);
-    fs.writeFileSync(path.join(REPO_ROOT, outRel), text);
 
     const g = result.metadata.gameweeksGraded;
     if (!argv.includes('--quiet')) {
@@ -538,7 +617,8 @@ function main() {
                     + `vs season average ${s.baselines.ppg.modelBeatsBy}.`);
             }
         }
-        console.log(`Wrote ${outRel}.`);
+        const wrote = [detailWritten && outRel, summaryWritten && SUMMARY_OUT].filter(Boolean);
+        console.log(`Wrote ${wrote.join(' and ')}.`);
     }
 }
 

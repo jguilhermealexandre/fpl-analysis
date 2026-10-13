@@ -60,6 +60,63 @@ test('the data the dashboard draws is gated too', () => {
     // a gate rather than a gate.
 });
 
+/* The public half of the same numbers.
+ *
+ * data/model-summary.json is derived from the gated archive and deliberately
+ * is not gated, because fpl-accuracy.html is a public page that has to be able
+ * to read it. The pair of assertions below is the line between the two, and it
+ * is worth a test of its own: gate the summary and the accuracy page goes blank
+ * for every visitor, un-gate the archive and the model's working data — every
+ * per-round residual, every correction still being argued about — is one fetch
+ * from the open internet.
+ *
+ * What makes the un-gated file safe is that nothing is in it but six pooled
+ * figures and a sentence, and that summarise() in tools/grade-predictions.mjs
+ * is the only thing that writes it. */
+test('the derived public summary is NOT gated, and the archive it comes from still is', () => {
+    assert.equal(adminReason('/data/model-summary.json'), null,
+        'gating this blanks the public accuracy page');
+    assert.equal(adminReason('/data/model-accuracy.json'), 'data',
+        'and un-gating this publishes the working data');
+});
+
+test('the public accuracy page reads the summary and never the archive', () => {
+    /* The bug this pins shipped. The accuracy page fetched the archive, which
+       is admin-gated — so a visitor got the login shell, with a 200 on it,
+       which parses as JSON and renders as four dashes. It looked correct to
+       whoever was signed in, which is the only person who never saw it.
+
+       The renderer is scripts/accuracy-page.js since it came out of the
+       markup, and the page is checked too: a public page that stopped loading
+       it would be just as blank, and the test would still pass on the script
+       alone. */
+    const page = read('fpl-accuracy.html');
+    const script = read('scripts/accuracy-page.js');
+    assert.match(page, /<script src="\/scripts\/accuracy-page\.min\.js/,
+        'the page has to load the renderer it was extracted into');
+    assert.match(script, /fetch\('\/data\/model-summary\.json/,
+        'the public page must read the public file');
+    for (const [where, src] of [['fpl-accuracy.html', page], ['scripts/accuracy-page.js', script]]) {
+        assert.equal(/fetch\([^)]*model-accuracy\.json/.test(src), false,
+            `${where} cannot fetch an admin-gated file`);
+    }
+});
+
+test('every field the public renderer reads is one the summary actually carries', () => {
+    /* The two files have different shapes, and the renderer was moved from one
+       to the other. A field read off the old shape — d.overall.vsEp, as it was
+       — is not an error anywhere: it is undefined, and renders as an em dash
+       that looks like "no data yet". */
+    const script = read('scripts/accuracy-page.js');
+    const summary = JSON.parse(read('data/model-summary.json'));
+    const used = new Set([...script.matchAll(/\bd\.([A-Za-z]\w*)/g)].map(m => m[1]));
+    assert.ok(used.size >= 4, `expected the renderer to read several fields, saw ${[...used]}`);
+    for (const key of used) {
+        assert.ok(key in summary,
+            `scripts/accuracy-page.js reads d.${key}, which is not in data/model-summary.json`);
+    }
+});
+
 test('the rest of the site is untouched', () => {
     for (const p of [
         '/', '/index.html', '/fpl-news.html', '/fpl-scouts-desk.html',

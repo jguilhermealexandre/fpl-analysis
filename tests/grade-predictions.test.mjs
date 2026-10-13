@@ -14,7 +14,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { errorStats, ranks, spearman, actualsFor, gradeRound, gradeAll, gradeRising } from '../tools/grade-predictions.mjs';
+import { errorStats, ranks, spearman, actualsFor, gradeRound, gradeAll, gradeRising, summarise } from '../tools/grade-predictions.mjs';
 import { REPO_ROOT } from '../tools/xp-engine-host.mjs';
 
 // ---- the arithmetic
@@ -366,4 +366,127 @@ test('every round says which kind it is, so the page cannot guess wrong', () => 
     });
     assert.equal(out.rounds[0].reconstructed, false);
     assert.equal(out.backtest.rounds[0].reconstructed, true);
+});
+
+/* ---- the public summary --------------------------------------------------- */
+
+/* summarise() is the only thing allowed to write a public accuracy figure, so
+   what it needs testing for is not its arithmetic — it does none — but that it
+   copies rather than chooses. Three ways a summary like this goes wrong:
+   quoting the flattering population, letting a reconstructed round into a claim
+   about sealed ones, and drifting out of step with the archive it came from. */
+
+test('the published figures are the starters figures, copied unchanged', () => {
+    const out = gradeAll({
+        boot: twoRoundBoot, playersData: twoRoundResults,
+        snapshots: [sealedSnap(6), sealedSnap(7, { reconstructed: true })]
+    });
+    out.metadata.lastUpdated = '2026-10-13T15:00:00.000Z';
+    const s = summarise(out);
+    const starters = out.overall.populations.starters;
+
+    assert.equal(s.mae, starters.mae);
+    assert.equal(s.vsEp, starters.baselines.ep.modelBeatsBy);
+    assert.equal(s.vsPpg, starters.baselines.ppg.modelBeatsBy);
+    assert.equal(s.startersGraded, starters.n);
+    assert.equal(s.lastUpdated, '2026-10-13T15:00:00.000Z', 'the stamp carries across');
+});
+
+test('it quotes the harder population, not the kind one', () => {
+    /* Over everyone, most of the model's advantage is correctly predicting that
+       a reserve will score nothing — which nobody needed a model for, and which
+       no reader is making a decision about. The published margin has to be the
+       one measured on players it said would play, even though it is smaller.
+
+       This is built as a case where the two genuinely differ: the model is
+       perfect on the starter and badly wrong on the bench player, so pooling
+       everyone would make it look WORSE here. The test is that it takes the
+       starters number either way, rather than the better of the two. */
+    const snap = {
+        gw: 6, deadlineTime: '2026-10-10T10:00:00Z', takenAt: '2026-10-10T08:00:00Z',
+        players: [
+            { id: 1, pos: 3, sel: 1, pStart: 0.9, fx: [{ o: 2, h: 1, d: 3 }], xp: 6, ep: 2, ppg: 2, form: 2 },
+            { id: 2, pos: 3, sel: 1, pStart: 0.9, fx: [{ o: 2, h: 1, d: 3 }], xp: 6, ep: 2, ppg: 2, form: 2 },
+            { id: 3, pos: 3, sel: 1, pStart: 0.1, fx: [{ o: 2, h: 1, d: 3 }], xp: 0, ep: 0, ppg: 0, form: 0 }
+        ]
+    };
+    const results = { players: [
+        { id: 1, history: [{ round: 6, total_points: 6, minutes: 90 }] },
+        { id: 2, history: [{ round: 6, total_points: 6, minutes: 90 }] },
+        { id: 3, history: [{ round: 6, total_points: 9, minutes: 90 }] }
+    ] };
+    const out = gradeAll({
+        boot: { events: [{ id: 6, finished: true, data_checked: true }] },
+        playersData: results, snapshots: [snap]
+    });
+    const s = summarise(out);
+    assert.equal(s.startersGraded, 2, 'two of the three were projected to start');
+    assert.equal(s.mae, out.overall.populations.starters.mae);
+    assert.notEqual(s.mae, out.overall.populations.all.mae,
+        'this fixture is built so the two differ; if they stop differing the test is dead');
+});
+
+test('a reconstructed round reaches the fixture count but never the claim', () => {
+    /* metadata.playerFixturesGraded is already sealed-only upstream, and
+       overall.populations excludes rebuilt rows. Both are asserted here because
+       the summary is what a visitor reads, and "scored before kick-off" has to
+       be true of every number beside those words. */
+    const out = gradeAll({
+        boot: twoRoundBoot, playersData: twoRoundResults,
+        snapshots: [sealedSnap(6), sealedSnap(7, { reconstructed: true })]
+    });
+    const s = summarise(out);
+    assert.equal(s.gameweeksGraded, 1, 'one sealed round, not two');
+    assert.equal(s.playerFixturesGraded, 2, 'the rebuilt round contributes nothing');
+});
+
+test('nothing graded yet summarises to nulls, never to zeroes', () => {
+    /* A zero here would render as "0.0% better than FPL", which is a claim.
+       Nothing-yet is not a claim and has to stay distinguishable from one. */
+    const out = gradeAll({
+        boot: { events: [{ id: 6, finished: false, data_checked: false }] },
+        playersData: twoRoundResults, snapshots: [sealedSnap(6)]
+    });
+    const s = summarise(out);
+    assert.equal(s.gameweeksGraded, 0);
+    assert.equal(s.mae, null);
+    assert.equal(s.vsEp, null);
+    assert.equal(s.vsPpg, null);
+    assert.equal(s.provisional, false, 'nothing to be provisional about');
+});
+
+test('the sample-size caveat is on until there are ten rounds', () => {
+    const at = (n) => {
+        const events = [], history = [];
+        for (let gw = 1; gw <= n; gw++) {
+            events.push({ id: gw, finished: true, data_checked: true });
+            history.push({ round: gw, total_points: 4, minutes: 90 });
+        }
+        return summarise(gradeAll({
+            boot: { events },
+            playersData: { players: [{ id: 1, history }, { id: 2, history }] },
+            snapshots: Array.from({ length: n }, (_, i) => sealedSnap(i + 1))
+        }));
+    };
+    assert.equal(at(1).provisional, true);
+    assert.equal(at(9).provisional, true);
+    assert.equal(at(10).provisional, false, 'ten rounds is where it comes off');
+});
+
+test('the committed summary is what the current grader would write for it', () => {
+    /* The public file and the archive are produced by one run of one tool, and
+       this is what says they did not come apart — a hand-edited summary, or a
+       summarise() changed without regrading, fails here.
+
+       lastUpdated is excluded: the two files are written independently, so the
+       archive can be rewritten on a day the six public figures did not move,
+       and their stamps legitimately differ. */
+    const archive = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'data/model-accuracy.json'), 'utf8'));
+    const onDisk = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'data/model-summary.json'), 'utf8'));
+    const expected = summarise(archive);
+    delete expected.lastUpdated;
+    const actual = { ...onDisk };
+    delete actual.lastUpdated;
+    assert.deepEqual(actual, expected,
+        'data/model-summary.json disagrees with data/model-accuracy.json');
 });
