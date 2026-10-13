@@ -1,0 +1,86 @@
+name: Update Squad Numbers
+
+# FPL's own squad_number has been null for every player for seasons, so the
+# shirts this site draws had the player's initials where the number goes.
+# These come from the league's squad pages — the same Pulselive API
+# premierleague.com reads — joined to FPL's elements on the Opta id, which
+# both feeds carry.
+#
+# Weekly, because a number changes when a player signs or a squad is
+# renumbered in the window, and neither happens on a Tuesday. The result is
+# written into data/bootstrap-static.json, which every page already loads.
+on:
+  schedule:
+    - cron: '41 5 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Shares the data-write group with the player-data and live-data jobs: all
+# three write data/ on main, so they queue rather than racing.
+concurrency:
+  group: fpl-data-write
+  cancel-in-progress: false
+
+jobs:
+  update-shirt-numbers:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      # Exits non-zero without writing if fewer than three quarters of the
+      # clubs answered, so a bad afternoon at the API cannot blank the numbers.
+      - name: Fetch the squad numbers
+        run: node tools/fetch-shirt-numbers.mjs data/bootstrap-static.json
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+          cp data/bootstrap-static.json /tmp/bootstrap.json
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            # Re-applied on top of wherever main has moved to: the data jobs
+            # rewrite this file every few hours and a plain push would lose a
+            # whole run to whoever landed first.
+            node tools/fetch-shirt-numbers.mjs /tmp/bootstrap.json --dry-run > /dev/null || true
+            node -e '
+              const fs = require("fs");
+              const fresh = JSON.parse(fs.readFileSync("/tmp/bootstrap.json", "utf8"));
+              const live = JSON.parse(fs.readFileSync("data/bootstrap-static.json", "utf8"));
+              const byCode = new Map(fresh.elements.filter(e => e.squad_number != null)
+                .map(e => [e.code, e.squad_number]));
+              let n = 0;
+              for (const el of live.elements) {
+                const s = byCode.get(el.code);
+                if (s != null && el.squad_number !== s) { el.squad_number = s; n++; }
+              }
+              fs.writeFileSync("data/bootstrap-static.json", JSON.stringify(live));
+              console.log(`${n} number(s) applied to the current bootstrap`);
+            '
+            git add data/bootstrap-static.json
+            if git diff --staged --quiet; then
+              echo "No number changed"
+              exit 0
+            fi
+            git commit -m "Update squad numbers - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt — main moved, re-applying."
+            sleep 5
+          done
+          echo "::error::Could not push after 5 attempts."
+          exit 1

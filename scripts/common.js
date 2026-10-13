@@ -1047,11 +1047,43 @@ function v2KitHalo(ink) {
     return lum > 0.55 ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.6)';
 }
 
-/* What goes where the squad number goes. A real number when the feed ever
-   carries one, the initials until then. */
+/* The squad numbers, by the player's photo code — which is also his Opta id,
+   which is how tools/fetch-shirt-numbers.mjs joins the league's own squad
+   pages to FPL's elements.
+ *
+ * Learned from the bootstrap as it passes through DataCache rather than
+ * threaded through the thirty-odd places that draw a shirt. Every page on
+ * this site loads bootstrap-static.json through that one call, so hooking it
+ * there is one edit instead of thirty, and a renderer that never sees the
+ * number is simply one that has not been given it. */
+const V2_SHIRT_BY_CODE = new Map();
+
+function v2LearnShirtNumbers(boot) {
+    const els = boot && Array.isArray(boot.elements) ? boot.elements : null;
+    if (!els) return;
+    for (const el of els) {
+        if (el && el.code != null && el.squad_number != null) {
+            V2_SHIRT_BY_CODE.set(Number(el.code), Number(el.squad_number));
+        }
+    }
+}
+
+/* What goes where the squad number goes.
+ *
+ * A real number whenever there is one, and his initials until then. FPL's own
+ * squad_number has been null for every player for seasons; the numbers come
+ * from the league's squad pages via the job above, and a player it has not
+ * numbered yet — a new signing, a youth call-up — keeps the two letters
+ * rather than being given a number nobody gave him. */
 function v2KitNumber(player) {
-    const n = player && (player.shirt != null ? player.shirt : player.squadNumber);
-    if (n != null && n !== '' && Number.isFinite(Number(n))) return String(Number(n));
+    const explicit = player && (player.shirt != null ? player.shirt : player.squadNumber);
+    if (explicit != null && explicit !== '' && Number.isFinite(Number(explicit))) {
+        return String(Number(explicit));
+    }
+    const code = player && player.code;
+    if (code != null && V2_SHIRT_BY_CODE.has(Number(code))) {
+        return String(V2_SHIRT_BY_CODE.get(Number(code)));
+    }
     return v2Initials(player && player.name);
 }
 
@@ -2613,8 +2645,14 @@ const DataCache = {
         const key = url.replace(/\?v=\d+$/, '');
         const pending = this._inflight.get(key);
         if (pending) return pending;
-        const run = this._fetchJSONUncached(url, key)
+        let run = this._fetchJSONUncached(url, key)
             .finally(() => { this._inflight.delete(key); });
+        /* The shirts need the squad numbers and every page loads the bootstrap
+           through here, so this is where they are picked up — rather than in
+           each of the eight callers, one of which would be forgotten. */
+        if (key.endsWith('/bootstrap-static.json')) {
+            run = run.then(data => { v2LearnShirtNumbers(data); return data; });
+        }
         this._inflight.set(key, run);
         return run;
     },
@@ -2900,7 +2938,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=463')
+    fetch('/footer.html?v=464')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
