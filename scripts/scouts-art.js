@@ -78,56 +78,21 @@ function sdArtTemplate(category) {
     return SD_ART_TEMPLATES[sdArtKey(category)] || SD_ART_TEMPLATES.build;
 }
 
-/* The photo, with the same fallback chain the rest of the site uses: the
-   current season's library first, then the frozen one, and if neither has
-   the player the <img> removes itself and the card is the no-face variant.
+/* NO PHOTOGRAPH. The league's headshots are the league's, and the rest of the
+   site now draws a player as the back of his club's shirt instead — see THE
+   SHIRT in common.js. The artwork takes that same drawing when it is there.
 
-   Written out here rather than calling playerPhotoLargeHTML() because that
-   lives in common.js, which the static article builder does not load. */
-/* Every address the club headshots have lived at, newest first.
-
-   The season segment is read from common.js when it is there rather than
-   written out again. It was hardcoded, which meant the one edit that moves the
-   whole site to premierleague26 would have left this file pointing at the
-   previous season's library for good. The literals are the fallback for the
-   static article builder, which loads this file alone.
-
-   Four URLs, not three. The frozen library is tried at both sizes: the site's
-   own large-photo helper skips its 250x250 directory, and that is the address
-   most likely to still hold a player the current library has not republished.
-   A recent signing is exactly the case that needs the extra try — the old
-   library is no longer being reshot, so anyone who moved clubs since it froze
-   is the player these fall through for.
-
-   If all four miss, the card drops to its faceless state and keeps the name,
-   which is the whole reason the name is set in type rather than being left to
-   the photograph. */
-function sdArtPhotoUrls(code) {
-    const base = typeof PLAYER_PHOTO_BASE !== 'undefined'
-        ? PLAYER_PHOTO_BASE : 'https://resources.premierleague.com';
-    const season = typeof PLAYER_PHOTO_SEASON !== 'undefined'
-        ? PLAYER_PHOTO_SEASON : 'premierleague25';
-    return [
-        `${base}/${season}/photos/players/250x250/${code}.png`,
-        `${base}/${season}/photos/players/110x140/${code}.png`,
-        `${base}/premierleague/photos/players/250x250/p${code}.png`,
-        `${base}/premierleague/photos/players/110x140/p${code}.png`
-    ];
-}
-
-/* The chain is walked by index rather than by a named attribute per step, so
-   adding a fifth address later is one entry in the list above and nothing
-   here. Inline handler because these cards are rebuilt by innerHTML on every
-   render and a listener would have to be reattached each time — same reasoning
-   as playerPhotoHTML() in common.js, and the CSP already allows it. */
-function sdArtPhoto(code, cls) {
-    if (code == null || code === '') return '';
-    const urls = sdArtPhotoUrls(code);
-    return `<img class="${cls}" alt="" loading="lazy" decoding="async" draggable="false"`
-        + ` src="${urls[0]}" data-photo-alts="${sdArtEsc(urls.slice(1).join(' '))}"`
-        + ` onerror="var a=(this.dataset.photoAlts||'').split(' ').filter(Boolean);`
-        + ` if (a.length) { this.src = a.shift(); this.dataset.photoAlts = a.join(' '); }`
-        + ` else { this.remove(); }">`;
+   It is not always there. This file is also loaded on its own by the static
+   article builder, which has no common.js and so no v2KitSVG, and the
+   archived posters it writes fall back to the monogram underneath. That
+   fallback is not new: the portrait has always been initials with something
+   laid over them, and `is-faceless` has always been a designed state rather
+   than a failure. */
+function sdArtKitOr(subject) {
+    if (!subject) return '';
+    return typeof v2KitSVG === 'function'
+        ? v2KitSVG({ name: subject.name, team: subject.team, teamCode: subject.teamCode })
+        : '';
 }
 
 /* The same rule as v2Initials() in common.js, written out because the static
@@ -183,7 +148,7 @@ function sdArtwork(article, variant) {
     const faceless = !name;
     const portrait = faceless ? '' : `<span class="sd-art-portrait">`
         + `<b class="sd-art-initials" aria-hidden="true">${sdArtEsc(sdArtInitials(name))}</b>`
-        + (subject.code != null ? sdArtPhoto(subject.code, 'sd-art-face') : '')
+        + sdArtKitOr(subject)
         + `</span>`;
 
     /* The kicker carries the round when there is one. "Man of the Match"
@@ -203,7 +168,7 @@ function sdArtwork(article, variant) {
         + ` style="--art-ink:${t.ink};--art-accent:${t.accent};--art-wash:${t.wash}"`
         + ` data-variant="${v}" aria-hidden="true">`
         + `<span class="sd-art-bars"></span>`
-        + (faceless || subject.code == null ? '' : `<span class="sd-art-ghost">${sdArtPhoto(subject.code, 'sd-art-ghost-img')}</span>`)
+        + (faceless ? '' : `<span class="sd-art-ghost">${sdArtKitOr(subject)}</span>`)
         + (isThumb ? '' : `<span class="sd-art-text">`
             + `<span class="sd-art-kicker">${sdArtEsc(kicker)}</span>`
             + (name ? `<span class="sd-art-name">${sdArtEsc(name)}</span>` : '')

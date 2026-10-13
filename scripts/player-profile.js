@@ -2013,9 +2013,7 @@
 
             return `<div class="pdm-hero" style="--club:${shirt};--club-ink:${ink};">
                 <div class="pdm-hero-shape" aria-hidden="true"></div>
-                <div class="pdm-hero-photo">
-                    ${typeof playerPhotoLargeHTML === 'function' ? playerPhotoLargeHTML(player.code, 'pdm-hero-face') : ''}
-                </div>
+                <div class="pdm-hero-photo">${v2KitSVG(player)}</div>
                 <div class="pdm-hero-text">
                     ${first ? `<span class="pdm-hero-first">${escHTML(first)}</span>` : ''}
                     <span class="pdm-hero-last">${escHTML(last)}</span>

@@ -170,7 +170,9 @@
            where the shared avatar expects name. */
         function lwFace(p) {
             if (!p || typeof v2AvatarHTML !== 'function') return '';
-            return `<span class="lw-face">${v2AvatarHTML({ name: p.web_name, code: p.code })}</span>`;
+            // teamId, or the shirt would be the league's purple rather than his club's.
+            return `<span class="lw-face">${v2AvatarHTML(
+                { name: p.web_name, code: p.code, teamId: p.teamId, team: p.team })}</span>`;
         }
 
         /* The armband controls for one card, on their own so they can be

@@ -75,9 +75,19 @@ function sdPlayers() {
    `stat` is the one number the artwork prints under the name, on the featured
    size only. Kept short: it is set in 11px caps and there is no room for a
    sentence. */
+/* teamCode rides along so the artwork can draw the right club's shirt. The
+   photo code stays for archived articles written before the shirts, whose
+   stored subjects carry nothing else to identify a club by. */
 function sdSubject(player, stat) {
     if (!player || !player.name) return null;
-    return { name: player.name, code: player.code == null ? null : player.code, stat: stat || '' };
+    return {
+        name: player.name,
+        code: player.code == null ? null : player.code,
+        team: player.team || '',
+        teamCode: player.teamCode != null ? player.teamCode
+            : (player.teamId != null && typeof v2TeamCode === 'function' ? v2TeamCode(player.teamId) : null),
+        stat: stat || ''
+    };
 }
 
 // How many gameweeks are actually in the books. Every claim on this page is
@@ -1657,13 +1667,16 @@ function sdFaceIndex() {
     if (_sdFaceIndex && _sdFaceSource === sdBoot) return _sdFaceIndex;
     _sdFaceSource = sdBoot;
     _sdFaceIndex = new Map();
+    /* team_code, not the photo code: the cell wears his club's shirt now
+       rather than his photograph — see THE SHIRT in common.js. */
     (sdBoot?.elements || []).forEach(e => {
-        if (e.code == null) return;
         const key = String(e.web_name || '').toLowerCase();
         /* First writer wins. Two players can share a web_name; the earlier
            element id is the longer-standing one, and a coin toss between two
-           faces is worse than either, so it is at least a stable coin toss. */
-        if (key && !_sdFaceIndex.has(key)) _sdFaceIndex.set(key, e.code);
+           shirts is worse than either, so it is at least a stable coin toss. */
+        if (key && !_sdFaceIndex.has(key)) {
+            _sdFaceIndex.set(key, { name: e.web_name, teamCode: e.team_code });
+        }
     });
     return _sdFaceIndex;
 }
@@ -1673,27 +1686,13 @@ function sdFaceIndex() {
 function sdFaceFor(cellHtml) {
     const text = String(cellHtml).replace(/<[^>]*>/g, '').trim();
     if (!text || text.length > 30) return null;
-    const code = sdFaceIndex().get(text.toLowerCase());
-    return code == null ? null : code;
+    return sdFaceIndex().get(text.toLowerCase()) || null;
 }
 
 function sdFaceCell(cellHtml) {
-    const code = sdFaceFor(cellHtml);
-    if (code == null) return cellHtml;
-    const base = 'https://resources.premierleague.com';
-    const alts = [
-        `${base}/premierleague25/photos/players/110x140/${code}.png`,
-        `${base}/premierleague/photos/players/250x250/p${code}.png`,
-        `${base}/premierleague/photos/players/110x140/p${code}.png`
-    ];
-    /* Same fall-through the artwork uses, and the same ending: a player the
-       league has not photographed loses the image and keeps his name, rather
-       than leaving a grey square in the column. */
-    return `<span class="sd-face-cell"><img class="sd-face" alt="" loading="lazy" decoding="async"`
-        + ` src="${base}/premierleague25/photos/players/250x250/${code}.png"`
-        + ` data-photo-alts="${alts.join(' ')}"`
-        + ` onerror="var a=(this.dataset.photoAlts||'').split(' ').filter(Boolean);`
-        + ` if (a.length) { this.src = a.shift(); this.dataset.photoAlts = a.join(' '); } else { this.remove(); }">`
+    const who = sdFaceFor(cellHtml);
+    if (!who || typeof v2KitSVG !== 'function') return cellHtml;
+    return `<span class="sd-face-cell"><span class="sd-face">${v2KitSVG(who)}</span>`
         + `<span>${cellHtml}</span></span>`;
 }
 

@@ -868,32 +868,33 @@ html.v2-shell-app .footer-mail .icon {
 
 [data-theme="dark"] .v2-pid-avatar { background: rgba(255, 255, 255, 0.07); }
 
-.v2-pid-initials {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-muted);
+/* ===== THE SHIRT =====
+   What used to be a photograph. Drawn in common.js (see THE SHIRT there for
+   why), and it only needs three things from the stylesheet: fill the disc,
+   carry an edge that keeps a white kit off a white page, and set the number
+   in the site's own display face rather than the browser's default serif.
+
+   Everything else — the club's colours, its stripes, where the collar sits —
+   is in the SVG, because it is the club's and not the theme's. */
+.v2-kit { display: block; width: 100%; height: 100%; }
+
+/* Leeds, Spurs and Fulham play in white. Without this their shirts have no
+   outline at all on a light page and the disc reads as empty. */
+.v2-kit-edge { stroke: rgba(0, 0, 0, 0.3); stroke-width: 1.3; stroke-linejoin: round; }
+[data-theme="dark"] .v2-kit-edge { stroke: rgba(0, 0, 0, 0.45); }
+
+/* Where the squad number goes — initials until FPL publishes numbers again.
+   paint-order puts the halo behind the glyph instead of over it, which is how
+   a real outlined number is printed and the only way two letters survive a
+   stripe running through them. */
+.v2-kit-n {
+    font-family: var(--font-display, system-ui, sans-serif);
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    stroke-width: 2.4;
+    paint-order: stroke fill;
 }
-
-/* The club photos are cut-outs on transparency framed head-and-shoulders, so
-   the circle crops high rather than centring on the chest. */
-.v2-pid-face {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-    object-fit: cover;
-    object-position: 50% 12%;
-}
-
-/* Only ever seen when no photo arrives.
-
-   Asked of the DOM rather than set by an onload handler: the handler ran a
-   frame after the card was inserted, so every re-render showed initials and
-   then replaced them with a face, which is the flicker. The <img> removes
-   itself when both photo URLs 404 (see playerPhotoHTML), so "no face element"
-   is the real condition and it needs nothing to fire. */
-.v2-pid-initials { display: none; }
-.v2-pid-avatar:not(:has(.v2-pid-face)) .v2-pid-initials { display: block; }
-/* Kept for anything still setting it; the rule above already covers it. */
-.v2-pid-avatar.has-photo .v2-pid-initials { display: none; }
 
 .v2-pid-crest {
     position: relative;
@@ -932,7 +933,6 @@ html.v2-shell-app .footer-mail .icon {
     background: rgba(15, 23, 42, 0.07);
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 1px 4px rgba(0, 0, 0, 0.16);
 }
-.v2-pid-pitch .v2-pid-initials { font-size: 13px; }
 
 /* ===== The portrait form =====
    On a pitch card the face is the subject, not a bullet beside the name — so
@@ -961,7 +961,6 @@ html.v2-shell-app .footer-mail .icon {
     background: rgba(15, 23, 42, 0.07);
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 2px 5px rgba(0, 0, 0, 0.18);
 }
-.v2-pid-portrait .v2-pid-initials { font-size: 14px; }
 .v2-pid-portrait .v2-pid-crest {
     position: absolute;
     right: calc(var(--v2-pid-crest) * -0.19);
@@ -1111,8 +1110,12 @@ html.v2-shell-app .footer-mail .icon {
    a photo. :has() asks the question that was actually meant — is there a
    face in here — and :empty is kept for the case where there is not even
    whitespace left. */
+/* ...and svg, since the portrait is a drawn shirt now rather than a
+   photograph that could remove itself. The rule still earns its place: a
+   subject with no club at all renders nothing, and a 178px hole is worse
+   than no column. */
 .pdm-hero-photo:empty,
-.pdm-hero-photo:not(:has(img)) { width: 0; }
+.pdm-hero-photo:not(:has(img, svg)) { width: 0; }
 /* A fixed box, and the photo fitted inside it.
  *
  * It was `height: 176px; width: auto`, which sizes the element from the
@@ -1130,6 +1133,14 @@ html.v2-shell-app .footer-mail .icon {
     object-fit: contain; object-position: bottom center;
     filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .3));
 }
+/* The shirt in a hero. The SVG is square and the smaller heroes' boxes are
+   not, so it is left to fit itself — preserveAspectRatio does that for free —
+   and only picks up the drop shadow that lifted the photograph off the wash. */
+.pdm-hero-photo .v2-kit {
+    width: 100%; height: 100%;
+    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .3));
+}
+.pdm-hero-photo .v2-kit-n { font-size: 19px; }
 .pdm-hero-text {
     position: relative; z-index: 1;
     display: flex; flex-direction: column; gap: 1px;
@@ -3063,8 +3074,7 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 .cap-hero-pct,
 .dp-xp,
 .pdm-hero.is-mini .pdm-hero-price,
-.v2-page-help,
-.v2-pid-portrait .v2-pid-initials {
+.v2-page-help {
     letter-spacing: 0.005em !important;
 }
 .apf-menu-btn,
@@ -3086,7 +3096,6 @@ body.v2-blurred .v2-main-content .main-content { filter: none; }
 .v2-menu-btn,
 .v2-menu-opt,
 .v2-nav-item,
-.v2-pid-pitch .v2-pid-initials,
 .v2-search input,
 .v2-set-check,
 .v2-set-input,
@@ -3121,7 +3130,6 @@ html.v2-shell-app .footer-mail {
 .v2-acct-row,
 .v2-flyout-desc,
 .v2-login .v2-set-hint code,
-.v2-pid-initials,
 .v2-plan-cta,
 .v2-plan-list li,
 .v2-plan-price span,

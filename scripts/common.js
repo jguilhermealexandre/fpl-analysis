@@ -498,90 +498,6 @@ function v2SellPrice(pick, player, boughtTenths) {
 }
 
 // ===== PLAYER PHOTOS =====
-/* The club's headshot for a player, addressed the way premierleague.com
- * addresses it today.
- *
- * The path moved and the filename changed with it. What the site serves now is
- *   /premierleague25/photos/players/110x140/219168.png
- * where the older library was
- *   /premierleague/photos/players/110x140/p219168.png
- * — a season-scoped directory, and no "p" in front of the number. Reading the
- * old one is why a transferred player still wore his previous club's kit (that
- * library is no longer being reshot) and why anyone signed since it froze —
- * Cherki among them — had no photo at all.
- *
- * Both are tried, newest first, because the old library still answers for
- * players the new one has not needed to republish. A player neither can serve
- * removes the image, which uncovers the initials underneath it.
- *
- * The season segment is the one thing here with a shelf life: when the league
- * rolls to premierleague26, this constant is the only edit.
- */
-const PLAYER_PHOTO_BASE = 'https://resources.premierleague.com';
-const PLAYER_PHOTO_SEASON = 'premierleague25';
-
-function playerPhotoSrc(code) {
-    return `${PLAYER_PHOTO_BASE}/${PLAYER_PHOTO_SEASON}/photos/players/110x140/${code}.png`;
-}
-
-function playerPhotoLegacySrc(code) {
-    return `${PLAYER_PHOTO_BASE}/premierleague/photos/players/110x140/p${code}.png`;
-}
-
-/* Renders the <img> with its own fallback chain. Inline handlers rather than a
- * listener because these cards are rebuilt by innerHTML on every render, and a
- * listener would have to be reattached each time — the CSP already allows
- * inline handlers, and the rest of the codebase uses them. */
-/* The players the photo library has never heard of.
- *
- * A code that 404s through both URLs above ends with the <img> removing
- * itself, which uncovers the initials. That is the right picture — but it is
- * arrived at, every single time, by two failed round trips. And a 404 is not
- * cached the way a 200 is, so re-rendering the list runs them again.
- *
- * On a page that re-renders on every click, one player therefore blinks on
- * every click: his avatar goes empty, two requests fail, and the initials come
- * back — while everybody else, served from cache, never moves. It looks like
- * that one card is reloading itself, because it is.
- *
- * So the first failure is remembered and afterwards he is rendered as initials
- * directly, with no <img> to fail. Deliberately only for this page load: the
- * league does add photos, and a missing face should come back on the next
- * visit rather than being written off for good. */
-const PLAYER_PHOTO_MISSING = new Set();
-
-function playerPhotoMissing(code) {
-    PLAYER_PHOTO_MISSING.add(Number(code));
-}
-
-function playerPhotoHTML(code, className) {
-    if (code == null) return '';
-    if (PLAYER_PHOTO_MISSING.has(Number(code))) return '';
-    /* draggable="false" matters on the squad pitch: a .pcard is draggable so
-       you can substitute by dragging it, and an <img> inside a draggable
-       element is itself draggable by default — so grabbing a card by the
-       player's face started an image drag and the substitution never began.
-       The crest below opts out for the same reason. */
-    /* No loading="lazy", and no class set on load.
-
-       Both were causing the flicker you see when a list re-renders. A lazy
-       image that is re-created starts unloaded however warm the cache is, so
-       the browser re-runs its in-viewport check before it will even look at
-       the bytes — on a 30px avatar that is all cost and no saving, since these
-       are almost always on screen already. And hiding the initials from an
-       onload handler means every freshly-inserted card shows initials for a
-       frame and then swaps them for the face: the flash is the handler, not
-       the network.
-
-       The initials are hidden by default now and revealed by CSS only when
-       there is no <img> in the avatar at all — which is the case this exists
-       for, since a photo that 404s through both URLs removes itself below.
-       Nothing has to fire for the common path to look right. */
-    return `<img class="${className}" alt="" decoding="async" draggable="false"
-        src="${playerPhotoSrc(code)}"
-        data-photo-fallback="${playerPhotoLegacySrc(code)}"
-        onerror="if (this.dataset.photoFallback) { this.src = this.dataset.photoFallback; delete this.dataset.photoFallback; } else { playerPhotoMissing(${Number(code)}); this.remove(); }">`;
-}
 
 // ===== NEWS THUMBNAILS =====
 /* Pulling a picture out of an RSS item.
@@ -746,14 +662,10 @@ function v2Initials(name) {
         .join('');
 }
 
-/* The avatar on its own — a photo over its initials. */
+/* The avatar on its own — the back of the player's club shirt. See THE SHIRT
+   below for why it is drawn rather than photographed. */
 function v2AvatarHTML(player) {
-    const esc = typeof escHTML === 'function' ? escHTML : (t => String(t == null ? '' : t));
-    return `<span class="v2-pid-avatar">`
-        + `<b class="v2-pid-initials" aria-hidden="true">${esc(v2Initials(player && player.name))}</b>`
-        + (player && player.code != null && typeof playerPhotoHTML === 'function'
-            ? playerPhotoHTML(player.code, 'v2-pid-face') : '')
-        + `</span>`;
+    return `<span class="v2-pid-avatar">${v2KitSVG(player)}</span>`;
 }
 
 /* The club badge, with its short name behind it for a club the badge endpoint
@@ -910,17 +822,160 @@ function clubColours(player) {
     return { shirt: pair[0], ink: pair[1] };
 }
 
-/* The 250px portrait. The 110x140 one every row uses is a thumbnail, and at
-   the size a hero card wants it is visibly soft. Same fallback chain. */
-function playerPhotoLargeHTML(code, className) {
-    if (code == null) return '';
-    const big = `${PLAYER_PHOTO_BASE}/${PLAYER_PHOTO_SEASON}/photos/players/250x250/${code}.png`;
-    // Same reasoning as playerPhotoHTML() above.
-    return `<img class="${className}" alt="" decoding="async" draggable="false"
-        src="${big}"
-        data-photo-fallback="${playerPhotoSrc(code)}"
-        data-photo-fallback2="${playerPhotoLegacySrc(code)}"
-        onerror="if (this.dataset.photoFallback) { this.src = this.dataset.photoFallback; delete this.dataset.photoFallback; } else if (this.dataset.photoFallback2) { this.src = this.dataset.photoFallback2; delete this.dataset.photoFallback2; } else { this.remove(); }">`;
+/* ===== THE SHIRT =====
+ *
+ * Every face on this site used to be a club headshot served from
+ * resources.premierleague.com. They are the league's photographs, we have no
+ * licence to republish them, and the chain of fallback URLs around them was
+ * four requests deep for a player the library had never shot. So there are no
+ * photographs here any more: a player is drawn as the back of his club's
+ * shirt, with his initials where the squad number goes.
+ *
+ * Drawn rather than fetched, which buys three things beyond the licence. It
+ * is about 700 bytes of inline SVG and no request, so a list of thirty is
+ * thirty fewer round trips and nothing pops in late. It cannot 404, so the
+ * "remember who has no photo so he stops blinking on every render" machinery
+ * goes with it. And it is legible at 20px, which a cropped head never was.
+ *
+ * ON THE NUMBER. FPL publishes a squad_number field and it is null for all
+ * 667 players in this season's bootstrap — the game stopped filling it in. A
+ * number would therefore have to be invented, and an invented squad number
+ * printed on a shirt is a lie that looks exactly like a fact. The initials go
+ * there instead: same two letters the old no-photo fallback showed, in the
+ * place and the weight a number would have had. v2KitNumber() takes a real
+ * one the moment there is a real one to take.
+ */
+
+/* ONE SILHOUETTE, drawn once and shared. Back view, set-in sleeves: collar
+   dip, shoulder seam, the long outer edge of each sleeve down to its cuff,
+   the underarm seam back up, and the body straight to the hem.
+   Everything sits inside the 64-unit circle the avatar crops to, with room
+   for the strokes laid over it: the furthest point of the drawing is the top
+   of a cuff at r=27.6 of 32, and the 3.4-wide cuff trim centred on that edge
+   reaches 29.3. The first draft put it at 31.4 and the sleeves came back
+   flattened on every card. */
+const V2_KIT_SHIRT = 'M23.5 14L17.2 15.4L6.4 21.6L10.8 33.2L18.2 26.6L17.2 56'
+    + 'L46.8 56L45.8 26.6L53.2 33.2L57.6 21.6L46.8 15.4L40.5 14C38 19.2 26 19.2 23.5 14Z';
+const V2_KIT_COLLAR = 'M23.5 14C26 19.2 38 19.2 40.5 14';
+const V2_KIT_SLEEVE_L = 'M17.2 15.4L6.4 21.6L10.8 33.2L18.2 26.6Z';
+const V2_KIT_SLEEVE_R = 'M46.8 15.4L57.6 21.6L53.2 33.2L45.8 26.6Z';
+const V2_KIT_CUFF_L = 'M6.4 21.6L10.8 33.2';
+const V2_KIT_CUFF_R = 'M57.6 21.6L53.2 33.2';
+
+/* [pattern, main, second, ink, trim] for each club's home shirt, keyed by the
+ * league's team code like CLUB_COLOURS above — not by the FPL team id, which
+ * is alphabetical position in this season's twenty and is reassigned every
+ * August.
+ *
+ * pattern   'plain'   one colour
+ *           'stripes' vertical stripes of `second` over `main`
+ *           'sleeves' body `main`, sleeves `second`
+ * main      the shirt
+ * second    whatever the pattern needs; same as `main` when it needs nothing
+ * ink       the number, picked to read on the shirt rather than to be the
+ *           club's own second colour
+ * trim      collar and cuffs
+ *
+ * Simplified, deliberately: four stripes across a 20px disc is a striped
+ * shirt and nine is a grey smudge. What is kept is what tells two clubs
+ * apart at the size this is actually rendered.
+ */
+const CLUB_KITS = {
+    1:  ['plain',   '#DA291C', '#DA291C', '#FFFFFF', '#FFFFFF'],  // Man Utd
+    2:  ['plain',   '#FFFFFF', '#FFFFFF', '#1D428A', '#1D428A'],  // Leeds
+    3:  ['sleeves', '#EF0107', '#FFFFFF', '#FFFFFF', '#FFFFFF'],  // Arsenal
+    4:  ['stripes', '#241F20', '#FFFFFF', '#FFFFFF', '#FFFFFF'],  // Newcastle
+    6:  ['plain',   '#FFFFFF', '#FFFFFF', '#132257', '#132257'],  // Spurs
+    7:  ['sleeves', '#670E36', '#95BFE5', '#FFFFFF', '#95BFE5'],  // Aston Villa
+    8:  ['plain',   '#034694', '#034694', '#FFFFFF', '#FFFFFF'],  // Chelsea
+    9:  ['plain',   '#5FB3E4', '#5FB3E4', '#10233A', '#10233A'],  // Coventry
+    11: ['plain',   '#003399', '#003399', '#FFFFFF', '#FFFFFF'],  // Everton
+    14: ['plain',   '#C8102E', '#C8102E', '#FFFFFF', '#FFFFFF'],  // Liverpool
+    17: ['plain',   '#DD0000', '#DD0000', '#FFFFFF', '#FFFFFF'],  // Nott'm Forest
+    31: ['stripes', '#1B458F', '#C4122E', '#FFFFFF', '#FFFFFF'],  // Crystal Palace
+    36: ['stripes', '#0057B8', '#FFFFFF', '#FFFFFF', '#0057B8'],  // Brighton
+    40: ['plain',   '#3A64A3', '#FFFFFF', '#FFFFFF', '#FFFFFF'],  // Ipswich
+    43: ['plain',   '#6CABDD', '#6CABDD', '#0B1B3C', '#0B1B3C'],  // Man City
+    54: ['plain',   '#FFFFFF', '#FFFFFF', '#1B1B1B', '#1B1B1B'],  // Fulham
+    56: ['stripes', '#EB172B', '#FFFFFF', '#FFFFFF', '#1B1B1B'],  // Sunderland
+    88: ['stripes', '#F18A00', '#1F1F1F', '#FFFFFF', '#1F1F1F'],  // Hull
+    91: ['stripes', '#DA291C', '#111111', '#FFFFFF', '#111111'],  // Bournemouth
+    94: ['stripes', '#E30613', '#FFFFFF', '#FFFFFF', '#E30613']   // Brentford
+};
+// A club we have not drawn yet wears the league's own purple rather than
+// nothing: wrong colours at worst, never an empty disc.
+const CLUB_KIT_FALLBACK = ['plain', '#37003C', '#37003C', '#FFFFFF', '#00FF87'];
+
+function clubKit(player) {
+    const code = v2TeamCode(player && player.teamId, player && player.teamCode);
+    const k = (code != null && CLUB_KITS[code]) || CLUB_KIT_FALLBACK;
+    return { pattern: k[0], main: k[1], second: k[2], ink: k[3], trim: k[4] };
+}
+
+/* Light ink wants a dark halo and dark ink a light one, so the number holds
+   its shape over a stripe of either colour — which is exactly what a real
+   shirt's outlined number is for. Computed rather than listed, so a kit added
+   to the table above needs four colours and no fifth decision. */
+function v2KitHalo(ink) {
+    const hex = String(ink || '').replace('#', '');
+    if (hex.length !== 6) return 'rgba(0,0,0,0.5)';
+    const lum = (parseInt(hex.slice(0, 2), 16) * 0.299
+        + parseInt(hex.slice(2, 4), 16) * 0.587
+        + parseInt(hex.slice(4, 6), 16) * 0.114) / 255;
+    return lum > 0.55 ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.6)';
+}
+
+/* What goes where the squad number goes. A real number when the feed ever
+   carries one, the initials until then. */
+function v2KitNumber(player) {
+    const n = player && (player.shirt != null ? player.shirt : player.squadNumber);
+    if (n != null && n !== '' && Number.isFinite(Number(n))) return String(Number(n));
+    return v2Initials(player && player.name);
+}
+
+/* Each instance clips to its own copy of the silhouette. An id per render
+   rather than one shared id: these are rebuilt by innerHTML constantly, and
+   two elements answering to the same id is the kind of thing that works until
+   one page renders two lists at once. */
+let V2_KIT_SEQ = 0;
+
+function v2KitSVG(player, opts) {
+    const o = opts || {};
+    const esc = typeof escHTML === 'function' ? escHTML : (t => String(t == null ? '' : t));
+    const kit = clubKit(player);
+    const id = 'vk' + (++V2_KIT_SEQ);
+    const club = (player && player.team) || '';
+
+    let pattern = '';
+    if (kit.pattern === 'stripes') {
+        // Period 8 across the 64-unit frame: four bands over the body at any
+        // size this renders at, and still four at 20px.
+        pattern = [4, 20, 36, 52].map(x =>
+            `<rect x="${x}" y="0" width="8" height="64" fill="${kit.second}"/>`).join('');
+    } else if (kit.pattern === 'sleeves') {
+        pattern = `<path d="${V2_KIT_SLEEVE_L}" fill="${kit.second}"/>`
+            + `<path d="${V2_KIT_SLEEVE_R}" fill="${kit.second}"/>`;
+    }
+
+    /* The silhouette is written once, into <defs>, and the three places that
+       need it — the fill, the clip the pattern is cut to, and the outline —
+       are <use> references to it. Spelling the path out three times cost 270
+       bytes a shirt, and a list on the Players tab draws 275 of them. */
+    const num = o.number === false ? '' : esc(v2KitNumber(player));
+    const inner = pattern
+        + `<path d="${V2_KIT_CUFF_L}" fill="none" stroke="${kit.trim}" stroke-width="3.4"/>`
+        + `<path d="${V2_KIT_CUFF_R}" fill="none" stroke="${kit.trim}" stroke-width="3.4"/>`
+        + `<path d="${V2_KIT_COLLAR}" fill="none" stroke="${kit.trim}" stroke-width="3.6"/>`;
+    return `<svg class="v2-kit" viewBox="0 0 64 64" role="img" aria-label="${
+        esc(club ? `${club} shirt` : 'Club shirt')}">`
+        + `<defs><path id="${id}" d="${V2_KIT_SHIRT}"/>`
+        + `<clipPath id="${id}c"><use href="#${id}"/></clipPath></defs>`
+        + `<use href="#${id}" fill="${kit.main}"/>`
+        + `<g clip-path="url(#${id}c)">${inner}</g>`
+        + `<use href="#${id}" class="v2-kit-edge" fill="none"/>`
+        + (num ? `<text class="v2-kit-n" x="32" y="47" text-anchor="middle"`
+            + ` fill="${kit.ink}" stroke="${v2KitHalo(kit.ink)}">${num}</text>` : '')
+        + `</svg>`;
 }
 
 /* The class that paints a position colour down a row's leading edge, replacing
@@ -1577,10 +1632,7 @@ function v2PlayerHeroHTML(player, opts) {
 
     return `<div class="pdm-hero${sizeClass}" style="--club:${colours.shirt};--club-ink:${colours.ink};">
         <div class="pdm-hero-shape" aria-hidden="true"></div>
-        <div class="pdm-hero-photo">
-            ${typeof playerPhotoLargeHTML === 'function' && player.code != null
-                ? playerPhotoLargeHTML(player.code, 'pdm-hero-face') : ''}
-        </div>
+        <div class="pdm-hero-photo">${v2KitSVG(player)}</div>
         <div class="pdm-hero-text">
             ${first ? `<span class="pdm-hero-first">${esc(first)}</span>` : ''}
             <span class="pdm-hero-last">${esc(last)}</span>
@@ -2726,7 +2778,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=454')
+    fetch('/footer.html?v=455')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

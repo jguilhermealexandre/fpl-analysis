@@ -1,20 +1,21 @@
-/* The one card on the page that reloads itself on every click.
+/* The one badge on the page that reloads itself on every click.
  *
- * A player photo and a club badge each render an <img> that removes itself if
- * the request fails, uncovering the initials or the club's short name. That is
- * the right picture — but it is arrived at by a failed round trip, and a 404
- * is not cached the way a 200 is. So on a page that re-renders on every click,
- * the one player the photo library has never heard of blinks every single
- * time: his face goes empty, the requests fail again, the initials come back,
- * while everyone else is served from cache and never moves.
+ * A club badge renders an <img> that removes itself if the request fails,
+ * uncovering the club's short name. That is the right picture — but it is
+ * arrived at by a failed round trip, and a 404 is not cached the way a 200
+ * is. So on a page that re-renders on every click, a club the badge endpoint
+ * has never had blinks every single time: the badge goes empty, the request
+ * fails again, the short name comes back, while every other club is served
+ * from cache and never moves.
  *
  * Measured on the GW Draft with every image failing, that was 38 requests per
  * re-render, for ever. Remembering the failures for the page load takes it to
  * nought after the first.
  *
- * These tests hold the mechanism in place: a memo consulted before the <img>
- * is written, and an onerror that fills it. They are read out of the shipped
- * source rather than restated, so a rewrite that drops either half fails here.
+ * This used to cover the player photographs too, which had the same memo for
+ * the same reason. There are no photographs now — a player is drawn as his
+ * club's shirt, which cannot 404 — so the whole apparatus went with them and
+ * only the badge's half is left. tests/club-kits.test.mjs has the shirt.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -35,17 +36,6 @@ function lift(name) {
     return src.slice(open, i + 1);
 }
 
-test('a player photo is not written again once both URLs have failed', () => {
-    const body = lift('playerPhotoHTML');
-    assert.match(body, /PLAYER_PHOTO_MISSING\.has\(/,
-        'playerPhotoHTML must check the memo before emitting an <img>');
-    assert.match(body, /playerPhotoMissing\(/,
-        'the final onerror must record the failure, or the memo never fills');
-    // The check has to come before the <img> is built, not after.
-    assert.ok(body.indexOf('PLAYER_PHOTO_MISSING.has(') < body.indexOf('<img'),
-        'the memo is consulted after the <img> is written — which does nothing');
-});
-
 test('a club badge is not written again once it has failed', () => {
     const body = lift('v2CrestHTML');
     assert.match(body, /CREST_MISSING\.has\(/,
@@ -58,7 +48,7 @@ test('the memos are per page load, not persisted', () => {
     /* A photo that is missing today can be published tomorrow, so writing one
        off in localStorage would hide a face that had come back. The Set is
        deliberately in module scope and nowhere else. */
-    for (const name of ['PLAYER_PHOTO_MISSING', 'CREST_MISSING']) {
+    for (const name of ['CREST_MISSING']) {
         const decl = new RegExp(`const ${name} = new Set\\(\\);`);
         assert.match(src, decl, `${name} should be a plain module-scope Set`);
         const persisted = new RegExp(`(localStorage|sessionStorage)[^\\n]*${name}`);
@@ -66,13 +56,13 @@ test('the memos are per page load, not persisted', () => {
     }
 });
 
-test('neither image is lazy', () => {
+test('the badge is not lazy', () => {
     /* A lazy <img> that is re-created starts unloaded however warm the cache
        is: the browser re-runs its in-viewport check before it will look at the
-       bytes. On a 30px avatar that is all cost and no saving, and it is the
-       other half of the same flicker — see the note in playerPhotoHTML. */
-    for (const name of ['playerPhotoHTML', 'v2CrestHTML']) {
-        /* The emitted markup only. Both functions carry notes that mention an
+       bytes. On an 18px badge that is all cost and no saving, and it is the
+       other half of the same flicker. */
+    for (const name of ['v2CrestHTML']) {
+        /* The emitted markup only. The function carries notes that mention an
            <img> and the word "lazy" — reading the whole body would be testing
            the prose, which is how this assertion failed the first time. */
         const body = lift(name);

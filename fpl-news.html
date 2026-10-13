@@ -46,16 +46,16 @@
          waiting for the stylesheet to name them: same-origin now, so a
          preload here costs nothing and starts them with the CSS. -->
     <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-ca11fe9ca5.woff2" crossorigin>
-    <link rel="stylesheet" href="/styles/fonts.min.css?v=454">
-    <script src="/scripts/dashboard-gate.min.js?v=454"></script>
-    <link rel="stylesheet" href="/styles/common.min.css?v=454">
-    <link rel="stylesheet" href="/styles/v2-design.min.css?v=454">
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=455">
+    <script src="/scripts/dashboard-gate.min.js?v=455"></script>
+    <link rel="stylesheet" href="/styles/common.min.css?v=455">
+    <link rel="stylesheet" href="/styles/v2-design.min.css?v=455">
     <!-- v2-app.css is the signed-in half of v2-design.css. Asked for here, so
          that the cascade reads the same as it did when the two were one file,
          and only when there is a saved Team ID — see the note at the top of
          v2-design.css. Kept identical on every page by check:appcss. -->
-    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=454';document.head.appendChild(l)})();</script>
-    <link rel="stylesheet" href="/styles/responsive.min.css?v=454">
+    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=455';document.head.appendChild(l)})();</script>
+    <link rel="stylesheet" href="/styles/responsive.min.css?v=455">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -862,7 +862,7 @@
             display: grid; place-items: center;
             position: relative;
         }
-        .news-row-face { width: 38px; height: 38px; object-fit: cover; object-position: top center; }
+        .news-row-face { display: block; width: 38px; height: 38px; }
         .news-row-crest { width: 22px; height: 22px; object-fit: contain; }
         .news-row-body { flex: 1 1 auto; min-width: 0; }
         .news-row-head {
@@ -1022,14 +1022,17 @@
            generic tile uses, because a face wants one side of the frame and
            the labels the other. */
         .news-card-graphic.is-player { justify-content: flex-start; padding: 0 14px; gap: 12px; }
+        /* A drawn shirt rather than a photograph — see THE SHIRT in common.js.
+           It is square and sized from its height, so the width follows and the
+           tile keeps the asymmetry a face gave it. */
         .news-card-face {
             position: relative; z-index: 1;
-            height: 118px; width: auto;
+            height: 118px; width: 118px;
             align-self: flex-end;
-            object-fit: contain; object-position: bottom;
+            display: block;
             filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .34));
         }
-        .news-card-hero .news-card-face { height: 190px; }
+        .news-card-hero .news-card-face { height: 190px; width: 190px; }
 
         .news-card-graphic-id {
             position: relative; z-index: 1;
@@ -1054,9 +1057,9 @@
         .news-card-hero .news-card-graphic-mark { width: 38px; height: 38px; }
         .news-card-hero .news-card-graphic-mark svg { width: 20px; height: 20px; }
 
-        /* A player the photo library cannot serve removes the <img>, and the
-           tile then has only its labels — which is the right thing to fall
-           back to, but it should not leave them adrift in the middle. */
+        /* An item about no particular player has no shirt, and the tile then
+           has only its labels — which is the right thing to fall back to, but
+           it should not leave them adrift in the middle. */
         .news-card-graphic.is-player:not(:has(.news-card-face)) { justify-content: center; }
         .news-card-graphic.is-player:not(:has(.news-card-face)) .news-card-graphic-id { align-items: center; }
         .news-card-content { padding: 16px 18px; display: flex; flex-direction: column; flex: 1; }
@@ -1225,15 +1228,15 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="/scripts/error-monitor.min.js?v=454"></script>
-    <script src="/scripts/auth.min.js?v=454"></script>
-    <script src="/scripts/injury-feed.min.js?v=454"></script>
-    <script src="/scripts/common.min.js?v=454"></script>
+    <script src="/scripts/error-monitor.min.js?v=455"></script>
+    <script src="/scripts/auth.min.js?v=455"></script>
+    <script src="/scripts/injury-feed.min.js?v=455"></script>
+    <script src="/scripts/common.min.js?v=455"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="/scripts/push-alerts.min.js?v=454"></script>
-    <script src="/scripts/notifications.min.js?v=454"></script>
-    <script src="/scripts/sidebar-nav.min.js?v=454"></script>
+    <script src="/scripts/push-alerts.min.js?v=455"></script>
+    <script src="/scripts/notifications.min.js?v=455"></script>
+    <script src="/scripts/sidebar-nav.min.js?v=455"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1977,8 +1980,7 @@
                     const iconSVG = CAT_ICONS[item.category] || CAT_ICONS.external;
                     const pos = p ? (posShortNames[p.position] || '') : '';
                     const teamName = p ? escHTML(p.team) : '';
-                    const photo = (p && p.code != null && typeof playerPhotoHTML === 'function')
-                        ? playerPhotoHTML(p.code, 'news-card-face') : '';
+                    const photo = p ? `<span class="news-card-face">${v2KitSVG(p)}</span>` : '';
                     const crest = (p && p.teamCode != null)
                         ? `<img class="news-card-crest" alt="" loading="lazy" src="https://resources.premierleague.com/premierleague/badges/100/t${p.teamCode}.png" onerror="this.remove()">`
                         : '';
@@ -2125,8 +2127,7 @@
 
                 function renderDeskRow(item) {
                     const p = item.player;
-                    const face = (p && p.code != null && typeof playerPhotoHTML === 'function')
-                        ? playerPhotoHTML(p.code, 'news-row-face') : '';
+                    const face = p ? `<span class="news-row-face">${v2KitSVG(p, { number: false })}</span>` : '';
                     const colors = p ? (TEAM_COLORS[p.teamId] || ['#6366F1', '#FFF']) : ['#64748B', '#FFF'];
                     const crest = (p && p.teamCode != null)
                         ? `<img class="news-row-crest" alt="" loading="lazy" src="https://resources.premierleague.com/premierleague/badges/100/t${p.teamCode}.png" onerror="this.remove()">`
