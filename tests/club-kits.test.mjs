@@ -199,7 +199,15 @@ function shippedSource() {
 test('the badge path is written once and points at our own origin', () => {
     const offenders = shippedSource().filter(f => /premierleague\.com\/premierleague[\w-]*\/badges/.test(read(f)));
     assert.deepEqual(offenders, [], 'a hot-linked club badge is back in the source');
-    assert.match(read('scripts/common.js'), /function v2CrestSrc\(code\) \{\s*return `\/assets\/crests\/t\$\{Number\(code\)\}\.svg`;/);
+    assert.match(read('scripts/common.js'), /function v2CrestSrc\(code\) \{\s*return `\/assets\/crests\/t\$\{Number\(code\)\}\.png`;/);
+
+    /* Served as a raster, kept as a vector. The league's badges average 35KB
+       of Illustrator export for something drawn at 14px; at 160px they are
+       4.8KB each and identical at every size this site renders one. */
+    const served = fs.readdirSync(path.join(ROOT, 'assets', 'crests')).filter(f => f.endsWith('.png'));
+    assert.ok(served.length >= 20, `only ${served.length} badges are served`);
+    const heaviest = Math.max(...served.map(f => fs.statSync(path.join(ROOT, 'assets', 'crests', f)).size));
+    assert.ok(heaviest < 16 * 1024, `the heaviest badge is ${(heaviest / 1024).toFixed(1)}KB — raster them smaller`);
 });
 
 test('nothing in the shipped source asks for a player photograph', () => {

@@ -16,7 +16,7 @@ const md = loadScript('scripts/matchday.js', browserStubs({
     /* The badges are ours now, under assets/crests/ — one path, written once
        in common.js. Stubbed to the same shape so a renderer that draws one is
        exercised rather than throwing. */
-    v2CrestSrc: code => `/assets/crests/t${Number(code)}.svg`
+    v2CrestSrc: code => `/assets/crests/t${Number(code)}.png`
 }));
 const { mdGameweekState, mdCountdown, mdExpandLiveRow } = md;
 
@@ -173,7 +173,7 @@ const { mdCrest } = md;
 
 test('the crest is built from the team code, not the team id', () => {
     const html = mdCrest({ id: 7, code: 43, short_name: 'MCI' });
-    assert.match(html, /\/assets\/crests\/t43\.svg/, 'our own copy, not the league CDN');
+    assert.match(html, /\/assets\/crests\/t43\.png/, 'our own copy, not the league CDN');
     assert.doesNotMatch(html, /t7\./);
     assert.doesNotMatch(html, /resources\.premierleague\.com/,
         'the badge path is written once, in v2CrestSrc');

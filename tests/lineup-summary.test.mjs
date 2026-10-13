@@ -70,7 +70,7 @@ function wizard(state) {
         v2Icon: n => `<svg data-icon="${n}"></svg>`,
         /* The badges are ours now, under assets/crests/ — one path, written
            once in common.js. */
-        v2CrestSrc: code => `/assets/crests/t${Number(code)}.svg`,
+        v2CrestSrc: code => `/assets/crests/t${Number(code)}.png`,
         planningGameweek: () => 5,
         xpPlanGWs: () => [5, 6, 7, 8, 9],
         XP_PLAN_HORIZON: 5,

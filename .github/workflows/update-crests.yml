@@ -34,7 +34,13 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Fetch and sanitise the badges
+      # sharp rasterises the vector down to the 160px the site actually
+      # serves. --no-save for the same reason every other workflow here does
+      # it: the lockfile describes the site, not this job.
+      - name: Install image tooling
+        run: npm install --no-save sharp@^0.35.4
+
+      - name: Fetch, sanitise and rasterise the badges
         run: node tools/fetch-crests.mjs
 
       # Fails the job if any club in the current bootstrap still has no badge.

@@ -6,11 +6,20 @@
  * say over whether the path keeps working, and a 404-and-remove dance in the
  * markup for the clubs it has never had. Twenty files is 60KB. We hold them.
  *
- * SVG only, deliberately. A badge is line art and it is drawn at 14px in a
- * table and at 26px on a hero; a 100px PNG is soft at one end and wasteful at
- * the other. A club with no SVG is not written at all and is reported — the
- * runtime already falls back to the club's short name, which is a correct
- * picture rather than a broken one.
+ * FETCHED AS SVG, SERVED AS PNG. The league's badges are Illustrator exports
+ * of the real crest: 35KB on average, 169KB for Coventry's, for something the
+ * site draws at 14px in a table and at most 52px on a hero. Rasterised to
+ * 160px — which covers 52 CSS pixels on a 3x display — the same twenty come to
+ * 95KB in total, 4.8KB each, and are indistinguishable at every size this site
+ * draws them.
+ *
+ * So the vector is kept under assets/crests/src/ as the source it is, and the
+ * PNG beside it is what v2CrestSrc() points the browser at. Changing the
+ * served size later is a re-run of this, not a re-fetch of anything.
+ *
+ * A club with no SVG is not written at all and is reported — the runtime
+ * already falls back to the club's short name, which is a correct picture
+ * rather than a broken one.
  *
  * WHAT IS STRIPPED. Everything that is not drawing: the XML declaration and
  * any doctype, comments, <metadata>, <title> and <desc>, plus <script> and any
@@ -26,7 +35,13 @@ import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const OUT = path.join(ROOT, 'assets', 'crests');
+const SRC = path.join(OUT, 'src');
 const CHECK = process.argv.includes('--check');
+
+/* 160, not 128: the biggest a badge is drawn is the 52px disc on a hero, and
+   a 3x display asks for 156 device pixels of it. Above that it is bytes
+   nobody can see. */
+const RASTER = 160;
 
 const boot = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'bootstrap-static.json'), 'utf8'));
 const clubs = (boot.teams || []).map(t => ({ code: t.code, name: t.short_name }));
@@ -90,9 +105,9 @@ async function get(url) {
 }
 
 if (CHECK) {
-    const missing = clubs.filter(c => !fs.existsSync(path.join(OUT, `t${c.code}.svg`)));
+    const missing = clubs.filter(c => !fs.existsSync(path.join(OUT, `t${c.code}.png`)));
     if (missing.length) {
-        for (const c of missing) console.error(`::error::no crest for ${c.name} (t${c.code}.svg)`);
+        for (const c of missing) console.error(`::error::no crest for ${c.name} (t${c.code}.png)`);
         console.error(`✗ ${missing.length} club(s) have no badge; they fall back to the short name`);
         process.exit(1);
     }
@@ -100,7 +115,8 @@ if (CHECK) {
     process.exit(0);
 }
 
-fs.mkdirSync(OUT, { recursive: true });
+const { default: sharp } = await import('sharp');
+fs.mkdirSync(SRC, { recursive: true });
 const failed = [];
 let written = 0, unchanged = 0;
 
@@ -123,11 +139,26 @@ for (const club of clubs) {
         continue;
     }
     const leftovers = leftoverNames(svg);
-    const file = path.join(OUT, `t${club.code}.svg`);
-    const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
-    if (existing === svg) { unchanged++; } else { fs.writeFileSync(file, svg + '\n'); written++; }
-    console.log(`  ${club.name.padEnd(4)} t${String(club.code).padEnd(3)} ${String(svg.length).padStart(6)}b`
-        + ` ${existing === svg ? 'unchanged' : 'written  '}`
+    const srcFile = path.join(SRC, `t${club.code}.svg`);
+    const pngFile = path.join(OUT, `t${club.code}.png`);
+    const existing = fs.existsSync(srcFile) ? fs.readFileSync(srcFile, 'utf8') : null;
+    const same = existing === svg && fs.existsSync(pngFile);
+    if (!same) {
+        fs.writeFileSync(srcFile, svg + '\n');
+        /* density, because librsvg rasterises from the document's own units: a
+           200-unit crest scaled up from 96dpi is a blurry 160px. */
+        const png = await sharp(Buffer.from(svg), { density: 400 })
+            .resize(RASTER, RASTER, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+            .png({ compressionLevel: 9, palette: true, quality: 90 })
+            .toBuffer();
+        fs.writeFileSync(pngFile, png);
+        written++;
+    } else { unchanged++; }
+    const pngSize = fs.existsSync(pngFile) ? fs.statSync(pngFile).size : 0;
+    console.log(`  ${club.name.padEnd(4)} t${String(club.code).padEnd(3)}`
+        + ` svg ${String((svg.length / 1024).toFixed(1)).padStart(6)}KB`
+        + ` -> png ${String((pngSize / 1024).toFixed(1)).padStart(5)}KB`
+        + ` ${same ? 'unchanged' : 'written  '}`
         + (removed.length ? `  stripped: ${removed.join(', ')}` : '')
         + (leftovers.length ? `  ⚠ still mentions: ${leftovers.join(', ')}` : '')
         + `  <- ${from.replace('https://resources.premierleague.com', '')}`);
