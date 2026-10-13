@@ -1005,8 +1005,28 @@ const CLUB_KIT_FALLBACK = ['plain', '#37003C', '#37003C', '#FFFFFF', '#00FF87'];
 /* Read off FPL's own goalkeeper shirt sprites — see tools/fetch-gk-kits.mjs.
    Do not hand-edit: the next run overwrites it. A club missing from here
    wears the generic keeper kit, which is the correct answer for a club whose
-   sprite the game has not drawn yet. Empty until the job has run once. */
+   sprite the game has not drawn yet. */
 const CLUB_GK_KITS = {
+    1:   ['plain', '#141414', '#4F4F4F', '#FFFFFF', '#4F4F4F'],  // MUN
+    2:   ['plain', '#7DFD84', '#4FC150', '#1B1B1B', '#4FC150'],  // LEE
+    3:   ['plain', '#DFDEDC', '#A1A09D', '#1B1B1B', '#A1A09D'],  // ARS
+    4:   ['plain', '#FCF40D', '#BDB205', '#1B1B1B', '#BDB205'],  // NEW
+    6:   ['plain', '#FD5F8F', '#C0305B', '#1B1B1B', '#C0305B'],  // TOT
+    7:   ['plain', '#FCF40D', '#423F0B', '#1B1B1B', '#423F0B'],  // AVL
+    8:   ['plain', '#111C21', '#5D6164', '#FFFFFF', '#5D6164'],  // CHE
+    9:   ['plain', '#134B2F', '#537A64', '#FFFFFF', '#537A64'],  // COV
+    11:  ['plain', '#80FD00', '#52AE02', '#1B1B1B', '#52AE02'],  // EVE
+    14:  ['plain', '#1E523F', '#6D8E82', '#FFFFFF', '#6D8E82'],  // LIV
+    17:  ['plain', '#3DADFE', '#0174D2', '#1B1B1B', '#0174D2'],  // NFO
+    31:  ['plain', '#71DD4C', '#328E1F', '#1B1B1B', '#328E1F'],  // CRY
+    36:  ['plain', '#FD5F8F', '#C0315D', '#1B1B1B', '#C0315D'],  // BHA
+    40:  ['plain', '#6CE1D1', '#409D92', '#1B1B1B', '#409D92'],  // IPS
+    43:  ['plain', '#301B1A', '#FF635A', '#FFFFFF', '#FF635A'],  // MCI
+    54:  ['plain', '#2FAAEA', '#0F609F', '#1B1B1B', '#0F609F'],  // FUL
+    56:  ['plain', '#FED419', '#AE920C', '#1B1B1B', '#AE920C'],  // SUN
+    88:  ['plain', '#093223', '#556B62', '#FFFFFF', '#556B62'],  // HUL
+    91:  ['plain', '#6E5EAF', '#1F9EAF', '#FFFFFF', '#1F9EAF'],  // BOU
+    94:  ['plain', '#F1B2FC', '#B383C0', '#1B1B1B', '#B383C0'],  // BRE
 };
 /* === END GENERATED GOALKEEPER KITS === */
 
