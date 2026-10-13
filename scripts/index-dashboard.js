@@ -1614,7 +1614,7 @@
                  *
                  * Applied to this local squad only. Nothing is written back:
                  * this is the dashboard reading a decision, not making one. */
-                applySavedArrangement(squad, planningGW);
+                applySavedArrangement(squad, planningGW, gwDeadlineMs(bootData, planningGW));
 
                 // Load sensitivity preset from squad analysis settings
                 const savedPreset = localStorage.getItem('fpl_active_preset') || 'balanced';
@@ -1697,7 +1697,8 @@
                 const injuredStarters = starterPairs.filter(x => x.sq.status === 'i' || x.sq.status === 'u' || x.sq.status === 's');
                 if (injuredStarters.length) healthScoreRaw -= injuredStarters.length * 5;
                 const doubtfulStarters = starterPairs.filter(x => x.sq.status === 'd');
-                if (doubtfulStarters.length) healthScoreRaw -= doubtfulStarters.length * 2;
+                // Was * 2 here and * 3 on My Team. One constant now, in common.js.
+                if (doubtfulStarters.length) healthScoreRaw -= doubtfulStarters.length * V2_DOUBT_HEALTH_PENALTY;
                 // Captain reliability — starters only (matches fpl-my-team-analysis)
                 const capPair = starterPairs.find(x => x.sq.isCaptain);
                 if (capPair) {

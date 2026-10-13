@@ -1538,6 +1538,30 @@
         }
 
         // Convenience for the common case: the next three, optionally from a gameweek.
+/* The next gameweek that has not started — the only round a lineup tool can
+   still do anything about.
+
+   NOT the same as planningGameweek(), and the difference is a real bug this
+   fixes. planningGameweek() keeps naming the current round until its last match
+   ends, which is right for "how am I doing" on Squad Analysis. But the Lineup
+   Wizard answers "what should I do", and once the deadline passes there is
+   nothing left to do about this round.
+
+   Worse, the Wizard's per-gameweek figure came from predictedGWPoints(), which
+   passes no fixture and so falls back to each player's NEXT UNFINISHED one.
+   Mid-round that is per TEAM, not per gameweek: with 8 of 20 clubs yet to play
+   GW6, a squad was shown half on GW6 and half on GW7 — Haaland against
+   Liverpool this week beside Palmer against Everton next week, in one column
+   headed xP.
+
+   xpPlanGWs() already had the right rule (it drops any round with a fixture
+   started), so the run score was always consistent. This exposes the same rule
+   for the one-gameweek case. */
+        function xpNextOpenGW() {
+            const gws = typeof xpPlanGWs === 'function' ? xpPlanGWs(1) : null;
+            return gws && gws.length ? gws[0] : null;
+        }
+
         function xpNext3(player, fromGW) {
             return xpOver(player, xpPlanGWs(XP_PLAN_HORIZON, fromGW));
         }

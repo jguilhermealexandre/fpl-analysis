@@ -1,0 +1,112 @@
+name: Backfill Predictions
+
+# Reconstructs what the CURRENT model would have said for rounds that were
+# played before the snapshot pipeline existed, then grades everything.
+#
+# WHY THIS EXISTS AT ALL. tools/backfill-predictions.mjs was written, tested and
+# committed, and then had no way to run: no workflow invoked it. So the accuracy
+# page sat at gameweeksGraded: [] with playerFixturesGraded: 0 while the site
+# shipped six rounds of advice. The snapshot job has been sealing predictions
+# hourly since GW6; everything before that can only be reconstructed, and this
+# is what reconstructs it.
+#
+# MANUAL ONLY, no schedule. A reconstructed round is not evidence the way a
+# sealed one is — the tool's own header is blunt about it: the inputs come from
+# git and carry no hindsight, but the MODEL is today's, and the model has been
+# edited since those rounds were played. So this is a thing you run deliberately
+# when the history changes, not a thing that quietly rewrites the record every
+# night. The daily Grade Predictions job keeps the sealed figures current on its
+# own.
+#
+# It refuses to overwrite a sealed snapshot. A real one always wins.
+on:
+  workflow_dispatch:
+    inputs:
+      gw:
+        description: 'One gameweek only (blank = every finished, data-checked round)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Compute and report, write nothing'
+        required: false
+        type: boolean
+        default: false
+
+# Writes data/model-log/*.json, data/model-accuracy.json and the public
+# data/model-summary.json derived from it.
+permissions:
+  contents: write
+
+# Shared with the other data jobs: they all write data/ on main, so they queue
+# rather than race.
+concurrency:
+  group: fpl-data-write
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+
+    steps:
+      # FULL HISTORY, and this is the one thing this job cannot do without.
+      # The backfill rebuilds each round's inputs from the committed data files
+      # as they stood an hour or two before that deadline, which means reading
+      # back through every data refresh. A shallow clone has none of that and
+      # the tool would find nothing to reconstruct from.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      # No install step: no dependencies, same as the other data tools.
+      - name: Reconstruct the rounds
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.gw }}" ]; then ARGS="$ARGS --gw ${{ inputs.gw }}"; fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          echo "node tools/backfill-predictions.mjs$ARGS"
+          node tools/backfill-predictions.mjs$ARGS
+
+      # Grading in the same job rather than waiting for the nightly run, so a
+      # dispatch gives an answer rather than a promise of one tomorrow.
+      - name: Mark the homework
+        if: ${{ inputs.dry_run != true }}
+        run: node tools/grade-predictions.mjs
+
+      - name: Commit and push what was reconstructed
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+          # Same re-apply-and-retry the other data jobs use: several workflows
+          # write data/ on main, and a plain push would be rejected and silently
+          # drop the result whenever one of them lands first.
+          #
+          # Unlike the grader this writes a DIRECTORY as well as a file, so the
+          # stash is a tarball rather than a cp.
+          tar czf /tmp/backfill.tgz data/model-log data/model-accuracy.json data/model-summary.json
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            tar xzf /tmp/backfill.tgz
+            git add data/model-log data/model-accuracy.json data/model-summary.json
+            if git diff --staged --quiet; then
+              echo "Nothing to backfill."
+              exit 0
+            fi
+            git commit -m "Backfill model predictions - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt — main moved, re-applying."
+            sleep 5
+          done
+
+          echo "Could not push after 5 attempts."
+          exit 1

@@ -80,6 +80,9 @@
            recommended belongs to planningGW; anything scored belongs to
            currentGW. See planningGameweek() in scripts/common.js. */
         let currentGW = 1, planningGW = 1, selectedPlayers = [], managerData = null, picksData = null, analysisResults = [];
+        /* When planningGW locks. Read by the three places that restore a saved
+           arrangement, so none of them has to find the event list itself. */
+        let planningGWDeadline = null;
         let isPreseason = false; // true until the season's first fixture kicks off — see computeIsPreseason() in scripts/common.js
         let positionAverages = {};
         let teamAnalysis = {}; // Team analysis scores (attack, defence, form, fixture) keyed by team ID
@@ -284,6 +287,7 @@
                 currentGW = currEvent ? currEvent.id : 1;
                 // Equal to currentGW until the round's last whistle, one ahead after it.
                 planningGW = planningGameweek(bootData, fixturesData);
+                planningGWDeadline = gwDeadlineMs(bootData, planningGW);
                 gwEvents = bootData.events || [];
                 chipDefinitions = bootData.chips || [];
                 // The cap on banked transfers is a game setting, not a constant —
@@ -748,7 +752,7 @@
 
         // Each of these is now the only place its factor is charged.
         healthScore -= injuredStarters.length * 8;
-        healthScore -= doubtfulStarters.length * 3;
+        healthScore -= doubtfulStarters.length * V2_DOUBT_HEALTH_PENALTY;
         healthScore -= poorFormStarters.length * 3;
         healthScore -= Math.min(6, toughFixtureStarters.length * 1.5);
 

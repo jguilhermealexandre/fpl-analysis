@@ -20,7 +20,7 @@ the decisions, not the log.*
 | 4 — My Team · Transfer Wizard | part 2 done (v449): the selling-price defect. The 4146-line split still open |
 | 5 — My Team · Lineup Wizard | done (v450) |
 | 6 — My Team · News | done (v453) — and the tab itself is unreachable, see below |
-| 7-13 — Players x7 | |
+| 7-13 — Players x7 | inline JS extracted (v456); the seven surfaces still to do |
 | 14-18 — Teams x5 | |
 | 19-24 — Rivals x6 | |
 | 25-27 — Dashboard, Scout's Desk, News Hub | |
@@ -28,6 +28,11 @@ the decisions, not the log.*
 | 36-47 — static and auth | |
 
 ## Open decisions
+
+- **DECLINED by the owner (2026-10-10):** a data-freshness indicator on My Team,
+  and naming the reason a player was benched on his card. Both were proposed
+  after a live-gameweek incident and both were turned down. Recorded so they
+  read as decisions rather than as things nobody noticed.
 
 - **The My Team News tab is unreachable and 307 lines ship for it.** The button
   is `class="tab hidden"` in fpl-my-team-analysis.html and nothing anywhere

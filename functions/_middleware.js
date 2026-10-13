@@ -32,6 +32,7 @@
  */
 import { premiumReason, PAYWALL_ENABLED } from './lib/premium.js';
 import { adminReason, isAdminUser } from './lib/admin.js';
+import { ADMIN_COOKIE, verifyAdminToken } from './lib/admin-key.js';
 import { isPremiumProfile } from './lib/entitlement.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, ACCESS_COOKIE, REFRESH_COOKIE } from './lib/supabase.js';
 
@@ -143,7 +144,8 @@ function adminRefusal(reason) {
         + '<style>body{font:16px/1.6 system-ui,sans-serif;margin:12vh auto;max-width:34rem;padding:0 1.5rem;'
         + 'color:#100F0F;background:#EAEAE8}a{color:#065F46}@media(prefers-color-scheme:dark)'
         + '{body{color:#F2F2F0;background:#15191F}a{color:#00E57D}}</style>'
-        + '<h1>Restricted</h1><p>This part of EasyFPL is not open to your account.</p>'
+        + '<h1>Restricted</h1><p>This part of EasyFPL is internal.</p>'
+        + '<p>If you hold the admin key, open <code>/unlock?k=\u2026</code> and come back.</p>'
         + '<p><a href="/">Back to your dashboard</a></p>',
         {
             status: 403,
@@ -152,40 +154,47 @@ function adminRefusal(reason) {
     );
 }
 
-/* The admin area: a verified identity on a short list, and nothing else.
+/* The admin area: two keys, either of which opens it, and nothing else.
+ *
+ * THE KEY IS TRIED FIRST, and not only because it is cheaper. It is the one
+ * that works: this site has no way to become a Supabase user — welcome.html
+ * tells every visitor there is no account and no password — so the id list
+ * below is a door with no corridor leading to it. See lib/admin-key.js.
+ *
+ * The id list stays because it is correct and costs nothing, and because an
+ * account system may come back. Neither key weakens the other: both are
+ * checked against something the browser cannot forge, and a request carrying
+ * neither gets the same refusal as a request carrying a bad one.
  *
  * Note what is NOT consulted here — the plan. Admin is not the top tier of
  * premium, it is a different question, and wiring it to entitlement would mean
  * anyone who ever pays inherits it. */
-async function adminGate(request, next, url, reason) {
+async function adminGate(request, next, reason, env) {
     if (reason === 'unreadable') {
         return new Response('Bad request', { status: 400, headers: { 'Cache-Control': 'no-store' } });
     }
 
     const cookies = request.headers.get('Cookie');
-    const token = readCookie(cookies, ACCESS_COOKIE);
-    const toLogin = () => new Response(null, {
-        status: 302,
-        headers: {
-            Location: `/login.html?next=${encodeURIComponent(url.pathname + url.search)}`,
-            'Cache-Control': 'private, no-store'
-        }
-    });
 
-    /* No access token — lapsed, or never signed in on this browser. Both go to
-       sign-in rather than to a refusal: the edge cannot run the refresh, and a
-       reader who is about to become an admin one redirect from now should not
-       be told they are not one. */
-    if (!token) return toLogin();
+    /* The unlock cookie: one HMAC, no network, and it fails closed when
+       ADMIN_KEY is not configured. */
+    const unlocked = await verifyAdminToken(
+        env && env.ADMIN_KEY, readCookie(cookies, ADMIN_COOKIE), Date.now());
+    if (unlocked) return uncacheable(await next());
+
+    const token = readCookie(cookies, ACCESS_COOKIE);
+
+    /* No session either. This used to redirect to /login.html, which is a dead
+       end now that nothing in the product leads there — it sent the one person
+       the area exists for to sign in to an account the site says it does not
+       have. The honest refusal, which names the unlock, replaces it. */
+    if (!token) return adminRefusal(reason);
 
     let who;
     try { who = await verifiedUserId(token); } catch { who = { verdict: 'down' }; }
 
-    if (who.verdict === 'ok') {
-        return isAdminUser(who.id) ? uncacheable(await next()) : adminRefusal(reason);
-    }
-    if (who.verdict === 'stale') return toLogin();
-    return adminRefusal(reason);       // unreachable is not permission
+    if (who.verdict === 'ok' && isAdminUser(who.id)) return uncacheable(await next());
+    return adminRefusal(reason);       // not an admin, lapsed, or unreachable
 }
 
 /* One answer per token, briefly, and only when the answer was yes.
@@ -376,7 +385,7 @@ export async function onRequest(context) {
        people" — and the admin paths are not premium paths, so neither list can
        answer for the other. */
     const admin = adminReason(url.pathname);
-    if (admin) return adminGate(request, next, url, admin);
+    if (admin) return adminGate(request, next, admin, context.env);
 
     /* After the admin gate, and the order is load-bearing. Two of the paths
        adminReason() protects are .json — /data/model-accuracy.json and

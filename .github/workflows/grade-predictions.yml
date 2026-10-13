@@ -1,7 +1,10 @@
 name: Grade Predictions
 
 # Marks every sealed round in data/model-log/ against what FPL recorded, and
-# writes data/model-accuracy.json.
+# writes two files: data/model-accuracy.json, the admin-gated archive, and
+# data/model-summary.json, the six public figures derived from it. Both or
+# neither — the public claim is only honest if it was produced by the same run
+# as the evidence behind it.
 #
 # Daily rather than hourly: a round can only be graded once FPL has finished
 # checking it, which from 2026/27 happens at 09:00 UK the day after the last
@@ -16,7 +19,7 @@ on:
     - cron: '0 11 * * *'
   workflow_dispatch:
 
-# Writes data/model-accuracy.json and nothing else.
+# Writes data/model-accuracy.json and data/model-summary.json, nothing else.
 permissions:
   contents: write
 
@@ -50,15 +53,21 @@ jobs:
 
           # Same re-apply-and-retry as the other data jobs: several workflows
           # write data/ on main, and a plain push would be rejected and silently
-          # drop the result whenever one of them lands first. The file is a
-          # whole-file replacement, so there is nothing to merge.
+          # drop the result whenever one of them lands first. Both files are
+          # whole-file replacements, so there is nothing to merge.
+          #
+          # Either can be unchanged on a given run — the grader compares them
+          # separately — so each cp is allowed to find nothing, and the reset
+          # leaves whichever one did not move at the version already on main.
           cp data/model-accuracy.json /tmp/model-accuracy.json 2>/dev/null || true
+          cp data/model-summary.json /tmp/model-summary.json 2>/dev/null || true
 
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             git reset --hard origin/main
             cp /tmp/model-accuracy.json data/model-accuracy.json 2>/dev/null || true
-            git add data/model-accuracy.json
+            cp /tmp/model-summary.json data/model-summary.json 2>/dev/null || true
+            git add data/model-accuracy.json data/model-summary.json
             if git diff --staged --quiet; then
               echo "Nothing newly graded."
               exit 0

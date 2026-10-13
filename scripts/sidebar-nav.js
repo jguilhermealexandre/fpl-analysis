@@ -44,7 +44,7 @@ function v2IsAppShell() {
 function loadSidebarNav() {
     if (!v2IsAppShell()) return loadLandingNav();
     document.documentElement.classList.add('v2-shell-app');
-    return fetch('/sidebar-nav.html?v=455')
+    return fetch('/sidebar-nav.html?v=460')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);
@@ -133,9 +133,30 @@ const SIDEBAR_ADMIN_USER_IDS = [
     '20987bc9-ea9b-4149-ac84-06a4e7251fee'
 ];
 
+/* Drawing the link is not granting anything.
+ *
+ * The gate is functions/_middleware.js, which reads a cookie this code cannot:
+ * the unlock cookie is HttpOnly, so the browser is told nothing about it. That
+ * leaves the nav with no way to know the area is reachable — and an admin who
+ * unlocked successfully staring at a sidebar with no Admin in it.
+ *
+ * So /unlock sets a second cookie that is deliberately readable and carries
+ * nothing: no key, no signature, no expiry worth forging. Anyone can write it
+ * by hand and all they get is a link that 403s one click later, which is the
+ * same thing they could already get by typing /admin.html. It is a hint to the
+ * user interface, and the comment is here so it is never mistaken for a check.
+ */
+function sidebarAdminHinted() {
+    try {
+        return document.cookie.split(';').some(c => c.trim().startsWith('easyfpl_admin_ui='));
+    } catch (e) { return false; }
+}
+
 async function revealAdminLink() {
     const item = document.getElementById('v2NavAdmin');
-    if (!item || typeof auSession !== 'function') return;
+    if (!item) return;
+    if (sidebarAdminHinted()) { item.hidden = false; return; }
+    if (typeof auSession !== 'function') return;
     try {
         const session = await auSession();
         const id = session && session.userId ? String(session.userId).trim().toLowerCase() : null;
@@ -160,7 +181,7 @@ async function revealAdminLink() {
 /* The landing shell: a top bar rather than a rail. */
 function loadLandingNav() {
     document.documentElement.classList.add('v2-shell-landing');
-    return fetch('/landing-nav.html?v=455')
+    return fetch('/landing-nav.html?v=460')
         .then(r => r.text())
         .then(html => {
             document.body.insertAdjacentHTML('afterbegin', html);

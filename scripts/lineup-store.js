@@ -98,13 +98,39 @@
            gameweek. Every mismatch returns null rather than something adapted:
            there is no sensible way to translate an eleven from one gameweek to
            the next, and pretending otherwise is how a stale lineup gets fielded. */
-        function lsLoad(teamId, gw, now) {
+        function lsLoad(teamId, gw, now, lockedAt) {
             let raw;
             try { raw = JSON.parse(localStorage.getItem(LS_STORE) || 'null'); } catch (e) { return null; }
             if (!raw || !raw.arrangement) return null;
             if (String(raw.teamId) !== String(teamId)) return null;
             if (raw.gw !== gw) return null;
-            const age = (now != null ? now : Date.now()) - (raw.savedAt || 0);
+            const t = now != null ? now : Date.now();
+
+            /* ===== A plan stops being a plan at the deadline =====
+
+               The gameweek check above was not enough, and the gap is the whole
+               bug. An arrangement saved for GW6 on Friday night is still "for
+               GW6" on Saturday afternoon — same team, same round — so it kept
+               being restored over the squad all the way through the round.
+
+               But once the deadline passes, the picks endpoint returns the
+               eleven that was actually SUBMITTED, and that is the only truth
+               about a round in progress. The thing in storage is what somebody
+               was considering beforehand; FPL knows what they went with. Laying
+               the draft back over the real team means the site shows a bench
+               that does not exist, on every page that reads this, until the
+               round ends.
+
+               Cleared rather than ignored: a locked gameweek can never unlock,
+               so leaving it there is only an invitation to restore it again on
+               the next render.
+
+               lockedAt is optional so a caller with no bootstrap to hand still
+               gets the old behaviour rather than an exception — but every caller
+               in the app passes it. */
+            if (lockedAt != null && t >= lockedAt) { lsClear(); return null; }
+
+            const age = t - (raw.savedAt || 0);
             if (age > LS_MAX_AGE_DAYS * 86400000) return null;
             return raw.arrangement;
         }
@@ -162,12 +188,12 @@
 
         /* The two steps a caller almost always wants together: find this team's
            saved arrangement for this gameweek, and lay it over the squad. */
-        function applySavedArrangement(squad, gw) {
+        function applySavedArrangement(squad, gw, lockedAt) {
             if (!Array.isArray(squad) || !squad.length || gw == null) return false;
             let teamId = null;
             try { teamId = localStorage.getItem('fpl_team_id'); } catch (e) { return false; }
             if (!teamId) return false;
-            const saved = lsLoad(teamId, gw);
+            const saved = lsLoad(teamId, gw, null, lockedAt);
             return saved ? lsApplyToSquad(squad, saved) : false;
         }
 
