@@ -959,7 +959,7 @@
                 || ['#6366F1', '#FFFFFF'];
             return `<span class="v2-news-crest" style="background:linear-gradient(135deg, ${pair[0]} 0%, ${pair[0]}dd 60%, ${pair[0]}99 100%);color:${pair[1]}">
                 <img class="v2-news-crest-badge" alt="" loading="lazy"
-                    src="https://resources.premierleague.com/premierleague/badges/100/t${encodeURIComponent(item.clubCode)}.png"
+                    src="${v2CrestSrc(item.clubCode)}"
                     onerror="this.remove()">
                 ${item.source ? `<span class="v2-news-crest-club">${escHTML(item.source)}</span>` : ''}
             </span>`;
@@ -1084,7 +1084,7 @@
                 return results;
             }
 
-            function badgeUrl(code) { return `https://resources.premierleague.com/premierleague/badges/70/t${code}.png`; }
+            function badgeUrl(code) { return v2CrestSrc(code); }
 
             const top3 = externalItems.filter(i => i.headline && i.headline.trim().length >= 10).slice(0, 3);
             if (!top3.length) return;

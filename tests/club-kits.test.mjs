@@ -183,12 +183,26 @@ test('the number can be left off where the shirt is too small to carry one', () 
 
 /* ===== And no photograph anywhere ===== */
 
-test('nothing in the shipped source asks for a player photograph', () => {
-    const files = ['scripts', 'styles'].flatMap(d =>
+function shippedSource() {
+    return ['scripts', 'styles'].flatMap(d =>
         fs.readdirSync(path.join(ROOT, d))
             .filter(f => /\.(js|css)$/.test(f) && !f.includes('.min.'))
             .map(f => `${d}/${f}`))
         .concat(fs.readdirSync(ROOT).filter(f => /^(index|fpl-|welcome|premium|login|register)[\w-]*\.html$/.test(f)));
-    const offenders = files.filter(f => /photos\/players/.test(read(f)));
+}
+
+/* The badges are ours too now — assets/crests/, fetched by
+   tools/fetch-crests.mjs and kept current by .github/workflows/update-crests.yml.
+   The path is written once, in v2CrestSrc; it used to be spelled out in
+   sixteen places across ten files, which is how one of them ends up on a
+   stale URL and nobody notices for a season. */
+test('the badge path is written once and points at our own origin', () => {
+    const offenders = shippedSource().filter(f => /premierleague\.com\/premierleague[\w-]*\/badges/.test(read(f)));
+    assert.deepEqual(offenders, [], 'a hot-linked club badge is back in the source');
+    assert.match(read('scripts/common.js'), /function v2CrestSrc\(code\) \{\s*return `\/assets\/crests\/t\$\{Number\(code\)\}\.svg`;/);
+});
+
+test('nothing in the shipped source asks for a player photograph', () => {
+    const offenders = shippedSource().filter(f => /photos\/players/.test(read(f)));
     assert.deepEqual(offenders, [], 'a player photo URL is back in the source');
 });

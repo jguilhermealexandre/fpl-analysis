@@ -1941,6 +1941,7 @@ export default [
                 v2ChangeTeam: 'writable',
                 v2CloseNavPanels: 'writable',
                 v2CrestHTML: 'writable',
+                v2CrestSrc: 'writable',
                 v2DashboardAssets: 'writable',
                 v2EnterAppShell: 'writable',
                 v2FlashTarget: 'writable',

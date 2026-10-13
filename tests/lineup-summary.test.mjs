@@ -68,6 +68,9 @@ function wizard(state) {
         setTimeout() {}, MutationObserver: function () { this.observe = () => {}; this.disconnect = () => {}; },
         escHTML: x => String(x == null ? '' : x),
         v2Icon: n => `<svg data-icon="${n}"></svg>`,
+        /* The badges are ours now, under assets/crests/ — one path, written
+           once in common.js. */
+        v2CrestSrc: code => `/assets/crests/t${Number(code)}.svg`,
         planningGameweek: () => 5,
         xpPlanGWs: () => [5, 6, 7, 8, 9],
         XP_PLAN_HORIZON: 5,

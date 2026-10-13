@@ -12,7 +12,11 @@ import { loadScript, loadFunction, browserStubs } from './helpers/load.mjs';
 const md = loadScript('scripts/matchday.js', browserStubs({
     escHTML: s => String(s ?? ''),
     // Both come from common.js, which the browser always loads first.
-    v2Icon: name => `<svg data-icon="${name}"></svg>`
+    v2Icon: name => `<svg data-icon="${name}"></svg>`,
+    /* The badges are ours now, under assets/crests/ — one path, written once
+       in common.js. Stubbed to the same shape so a renderer that draws one is
+       exercised rather than throwing. */
+    v2CrestSrc: code => `/assets/crests/t${Number(code)}.svg`
 }));
 const { mdGameweekState, mdCountdown, mdExpandLiveRow } = md;
 
@@ -169,8 +173,10 @@ const { mdCrest } = md;
 
 test('the crest is built from the team code, not the team id', () => {
     const html = mdCrest({ id: 7, code: 43, short_name: 'MCI' });
-    assert.match(html, /badges\/100\/t43\.png/);
-    assert.doesNotMatch(html, /t7\.png/);
+    assert.match(html, /\/assets\/crests\/t43\.svg/, 'our own copy, not the league CDN');
+    assert.doesNotMatch(html, /t7\./);
+    assert.doesNotMatch(html, /resources\.premierleague\.com/,
+        'the badge path is written once, in v2CrestSrc');
 });
 
 test('a team with no code renders no image rather than a broken one', () => {

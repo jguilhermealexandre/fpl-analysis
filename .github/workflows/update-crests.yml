@@ -1,0 +1,75 @@
+name: Update Club Crests
+
+# The twenty club badges, fetched once and committed. They used to be
+# hot-linked from resources.premierleague.com on every render, from sixteen
+# places that each spelled the URL out; they are ours now, served from our own
+# origin, and this is what keeps them current.
+#
+# Monthly rather than hourly: a badge changes when a club rebrands or when the
+# division changes, and the division changes in August. The manual trigger is
+# what gets used — after promotion and relegation, or when check:crests goes
+# red because a promoted club has arrived with no badge.
+on:
+  schedule:
+    - cron: '17 4 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: crest-write
+  cancel-in-progress: false
+
+jobs:
+  update-crests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: Fetch and sanitise the badges
+        run: node tools/fetch-crests.mjs
+
+      # Fails the job if any club in the current bootstrap still has no badge.
+      # Not fatal to the commit — whatever DID come back is worth keeping, and
+      # the runtime falls back to the club's short name for the rest — so the
+      # check runs after the push and only decides the job's colour.
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+          mkdir -p /tmp/crests
+          cp -R assets/crests/. /tmp/crests/ 2>/dev/null || true
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p assets/crests
+            cp -R /tmp/crests/. assets/crests/ 2>/dev/null || true
+            git add assets/crests
+            if git diff --staged --quiet; then
+              echo "No badge changed"
+              exit 0
+            fi
+            git commit -m "Update club crests - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt — main moved, re-applying."
+            sleep 5
+          done
+          echo "::error::Could not push after 5 attempts."
+          exit 1
+
+      - name: Fail if a club has no badge
+        if: always()
+        run: node tools/fetch-crests.mjs --check

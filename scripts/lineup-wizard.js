@@ -366,7 +366,7 @@
             // alt is empty on purpose: the short name sits beside it.
             return `<img class="lwm-crest" width="24" height="24" loading="lazy" alt=""
                 onerror="this.remove()"
-                src="https://resources.premierleague.com/premierleague/badges/100/t${team.code}.png">`;
+                src="${v2CrestSrc(team.code)}">`;
         }
 
         function lwMatchPlayer(m) {

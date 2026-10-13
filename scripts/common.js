@@ -699,6 +699,20 @@ function v2AvatarHTML(player) {
    every click across the whole squad. Remembered for this page load only. */
 const CREST_MISSING = new Set();
 
+/* Our own copy, not the league's CDN. tools/fetch-crests.mjs puts the twenty
+   SVGs under assets/crests/ and .github/workflows/update-crests.yml keeps them
+   there; this is the only place the path is written down, which is sixteen
+   fewer than it was.
+ *
+ * A club whose badge has not been fetched yet 404s once, the <img> removes
+ * itself, the short name behind it shows through and CREST_MISSING stops it
+ * being asked for again this page load — exactly what used to happen for a
+ * club the league had never drawn, so nothing has to land before this is
+ * safe to ship. */
+function v2CrestSrc(code) {
+    return `/assets/crests/t${Number(code)}.svg`;
+}
+
 function crestMissing(code) {
     CREST_MISSING.add(Number(code));
 }
@@ -709,7 +723,7 @@ function v2CrestHTML(player) {
     return `<span class="v2-pid-crest">`
         + `<span class="v2-pid-crest-fallback">${esc((player && player.team) || '')}</span>`
         + (code != null && !CREST_MISSING.has(Number(code))
-            ? `<img src="https://resources.premierleague.com/premierleague/badges/100/t${code}.png"
+            ? `<img src="${v2CrestSrc(code)}"
                  alt="" draggable="false" onerror="crestMissing(${Number(code)}); this.remove()">`
             : '')
         + `</span>`;
@@ -1659,7 +1673,7 @@ function v2PlayerHeroHTML(player, opts) {
             ${first ? `<span class="pdm-hero-first">${esc(first)}</span>` : ''}
             <span class="pdm-hero-last">${esc(last)}</span>
             <span class="pdm-hero-meta">
-                ${code != null ? `<img class="pdm-hero-crest" src="https://resources.premierleague.com/premierleague/badges/100/t${code}.png" alt="" draggable="false" onerror="this.remove()">` : ''}
+                ${code != null ? `<img class="pdm-hero-crest" src="${v2CrestSrc(code)}" alt="" draggable="false" onerror="this.remove()">` : ''}
                 <span>${esc(player.team || '')}</span>
                 ${o.sub ? `<em>•</em><span>${esc(o.sub)}</span>` : ''}
             </span>
@@ -2800,7 +2814,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=460')
+    fetch('/footer.html?v=461')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

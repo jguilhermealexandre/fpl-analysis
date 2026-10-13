@@ -46,16 +46,16 @@
          waiting for the stylesheet to name them: same-origin now, so a
          preload here costs nothing and starts them with the CSS. -->
     <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-ca11fe9ca5.woff2" crossorigin>
-    <link rel="stylesheet" href="/styles/fonts.min.css?v=460">
-    <script src="/scripts/dashboard-gate.min.js?v=460"></script>
-    <link rel="stylesheet" href="/styles/common.min.css?v=460">
-    <link rel="stylesheet" href="/styles/v2-design.min.css?v=460">
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=461">
+    <script src="/scripts/dashboard-gate.min.js?v=461"></script>
+    <link rel="stylesheet" href="/styles/common.min.css?v=461">
+    <link rel="stylesheet" href="/styles/v2-design.min.css?v=461">
     <!-- v2-app.css is the signed-in half of v2-design.css. Asked for here, so
          that the cascade reads the same as it did when the two were one file,
          and only when there is a saved Team ID — see the note at the top of
          v2-design.css. Kept identical on every page by check:appcss. -->
-    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=460';document.head.appendChild(l)})();</script>
-    <link rel="stylesheet" href="/styles/responsive.min.css?v=460">
+    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=461';document.head.appendChild(l)})();</script>
+    <link rel="stylesheet" href="/styles/responsive.min.css?v=461">
     <style>
         /* ===== PAGE HEADER ===== */
         .news-page-header {
@@ -1228,15 +1228,15 @@
 
     </div><!-- /.v2-main-content -->
 
-    <script src="/scripts/error-monitor.min.js?v=460"></script>
-    <script src="/scripts/auth.min.js?v=460"></script>
-    <script src="/scripts/injury-feed.min.js?v=460"></script>
-    <script src="/scripts/common.min.js?v=460"></script>
+    <script src="/scripts/error-monitor.min.js?v=461"></script>
+    <script src="/scripts/auth.min.js?v=461"></script>
+    <script src="/scripts/injury-feed.min.js?v=461"></script>
+    <script src="/scripts/common.min.js?v=461"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="/scripts/push-alerts.min.js?v=460"></script>
-    <script src="/scripts/notifications.min.js?v=460"></script>
-    <script src="/scripts/sidebar-nav.min.js?v=460"></script>
+    <script src="/scripts/push-alerts.min.js?v=461"></script>
+    <script src="/scripts/notifications.min.js?v=461"></script>
+    <script src="/scripts/sidebar-nav.min.js?v=461"></script>
     <script>
         loadSidebarNav();
         initIcons();
@@ -1313,7 +1313,7 @@
         }
 
         function getBadgeUrl(teamCode) {
-            return `https://resources.premierleague.com/premierleague/badges/70/t${teamCode}.png`;
+            return v2CrestSrc(teamCode);
         }
 
         // ===== FPL RELEVANCE TAGGER =====
@@ -1967,7 +1967,7 @@
                     return `<div class="news-card-graphic is-crest" style="background:linear-gradient(135deg, ${colors[0]} 0%, ${colors[0]}dd 60%, ${colors[0]}99 100%);color:${colors[1]}">
                         <div class="news-card-graphic-bg" style="background:radial-gradient(circle at 30% 40%,${colors[1]} 0%,transparent 70%)"></div>
                         <img class="news-card-badge" alt="" loading="lazy"
-                            src="https://resources.premierleague.com/premierleague/badges/100/t${item.clubCode}.png"
+                            src="${v2CrestSrc(item.clubCode)}"
                             onerror="this.remove()">
                         <span class="news-card-graphic-mark">${CAT_ICONS.injury}</span>
                         ${item.source ? `<span class="news-card-graphic-club">${escHTML(item.source)}</span>` : ''}
@@ -1982,7 +1982,7 @@
                     const teamName = p ? escHTML(p.team) : '';
                     const photo = p ? `<span class="news-card-face">${v2KitSVG(p)}</span>` : '';
                     const crest = (p && p.teamCode != null)
-                        ? `<img class="news-card-crest" alt="" loading="lazy" src="https://resources.premierleague.com/premierleague/badges/100/t${p.teamCode}.png" onerror="this.remove()">`
+                        ? `<img class="news-card-crest" alt="" loading="lazy" src="${v2CrestSrc(p.teamCode)}" onerror="this.remove()">`
                         : '';
                     return `<div class="news-card-graphic is-player" style="background:linear-gradient(135deg, ${colors[0]} 0%, ${colors[0]}dd 60%, ${colors[0]}99 100%);color:${colors[1]}">
                         <div class="news-card-graphic-bg" style="background:radial-gradient(circle at 30% 40%,${colors[1]} 0%,transparent 70%)"></div>
@@ -2130,7 +2130,7 @@
                     const face = p ? `<span class="news-row-face">${v2KitSVG(p, { number: false })}</span>` : '';
                     const colors = p ? (TEAM_COLORS[p.teamId] || ['#6366F1', '#FFF']) : ['#64748B', '#FFF'];
                     const crest = (p && p.teamCode != null)
-                        ? `<img class="news-row-crest" alt="" loading="lazy" src="https://resources.premierleague.com/premierleague/badges/100/t${p.teamCode}.png" onerror="this.remove()">`
+                        ? `<img class="news-row-crest" alt="" loading="lazy" src="${v2CrestSrc(p.teamCode)}" onerror="this.remove()">`
                         : '';
                     const meta = [
                         p ? escHTML(p.team) : '',
