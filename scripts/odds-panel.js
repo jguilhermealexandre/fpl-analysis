@@ -37,6 +37,34 @@
         let boOddsPromise = null;     // in-flight load, so N callers cause one fetch
         let boOddsError = null;
 
+        /* The feed's own metadata, kept even when it prices nothing.
+         *
+         * boOdds is null whenever there are no prices — see boHasMatches below —
+         * and that is what every consumer wants to branch on. But the metadata
+         * is still a fact worth having in that case: when the job last ran, and
+         * what it found. Holding it here is what lets a screen say "the feed ran
+         * this morning and the bookmakers have not priced this round yet"
+         * instead of "no odds", which are very different sentences. */
+        let boOddsMetadata = null;
+
+        function boOddsMeta() { return boOddsMetadata; }
+
+        /* ONE definition of "there are prices to show".
+         *
+         * There were two, and they disagreed on the case that actually happens.
+         * boLoadOdds() tested Array.isArray(d.matches), so a feed carrying
+         * `matches: []` — exactly what football-data.co.uk yields between
+         * rounds, and what it has yielded since 18 October — produced a TRUTHY
+         * boOdds with nothing in it; boSetOdds() tested .length as well and
+         * produced null. So whether the Lineup Wizard drew its legend and its
+         * provenance depended on which of the two paths had run, and
+         * boMatchesForEvent() could reach Math.min.apply(null, []) = Infinity.
+         *
+         * An empty feed is no feed. Both paths go through here now. */
+        function boHasMatches(data) {
+            return !!(data && Array.isArray(data.matches) && data.matches.length);
+        }
+
         /* Loaded once and shared. Absence is a normal state, not an error: the
            feed is written by a scheduled job, so on a fresh deploy — or if
            football-data.co.uk is down — the file simply is not there, and the
@@ -49,7 +77,8 @@
                 : fetch(url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
             boOddsPromise = load
                 .then(d => {
-                    boOdds = (d && Array.isArray(d.matches)) ? d : null;
+                    if (d && d.metadata) boOddsMetadata = d.metadata;
+                    boOdds = boHasMatches(d) ? d : null;
                     if (!boOdds) boOddsError = 'the odds feed is present but empty';
                     return boOdds;
                 })
@@ -140,7 +169,8 @@
         let _boPricedRounds = null;
 
         function boSetOdds(data) {
-            boOdds = (data && Array.isArray(data.matches) && data.matches.length) ? data : null;
+            if (data && data.metadata) boOddsMetadata = data.metadata;
+            boOdds = boHasMatches(data) ? data : null;
             if (!boOdds && data) boOddsError = 'the odds feed is present but empty';
             boOddsPromise = Promise.resolve(boOdds);
             _boIndex = null;

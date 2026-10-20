@@ -345,9 +345,23 @@
                             || ((a.p.pickPos || 99) - (b.p.pickPos || 99)));
                     return { f, mine, odds: priced[f.id] || null };
                 })
-                /* A fixture with none of your players is noise on a screen
-                   whose only question is which of your players to start. */
-                .filter(r => r.mine.length)
+                /* EVERY fixture in the round, including the ones none of your
+                   players are in.
+                 *
+                 * They used to be filtered out, on the argument that this
+                 * screen's only question is which of your players to start.
+                 * That argument is wrong twice over. A squad spans nine or ten
+                 * clubs, so the filter silently removed four of GW8's ten
+                 * matches and the section called itself "Matchday" while
+                 * showing most of one — and the fixtures it dropped are where
+                 * the players you are about to buy, and the ones your rivals
+                 * own, are playing. A round is ten matches; this draws ten.
+                 *
+                 * Chronological, not yours-first: the day grouping below is
+                 * how a gameweek is actually experienced, and reordering
+                 * within a day to float your own matches would break the one
+                 * thing the grouping is for. The cards with none of your
+                 * players are drawn quieter instead — see is-spare. */
                 .sort((a, b) => String(a.f.kickoff_time || '').localeCompare(String(b.f.kickoff_time || '')));
         }
 
@@ -495,7 +509,11 @@
                the card's own tooltip, because a colour that carries meaning
                and has no key is just decoration that worries people. */
             const key = row.mine.length >= 3;
-            return `<article class="lwm-fix${key ? ' is-key' : ''}"${key
+            /* No players of yours in it. Still a real match in the round, and
+               still worth its numbers — it is where a transfer target or a
+               rival's captain is playing — so it is drawn, quieter. */
+            const spare = row.mine.length === 0;
+            return `<article class="lwm-fix${key ? ' is-key' : ''}${spare ? ' is-spare' : ''}"${key
                 ? ` data-tooltip="${escHTML(`${row.mine.length} of your squad play in this match — a third of your gameweek turns on it.`)}"`
                 : ''}>
                 <div class="lwm-tie">
@@ -514,7 +532,9 @@
                     ${club(away, false)}
                 </div>
 
-                <div class="lwm-players">${row.mine.map(lwMatchPlayer).join('')}</div>
+                <div class="lwm-players">${spare
+                    ? '<span class="lwm-none">None of your squad</span>'
+                    : row.mine.map(lwMatchPlayer).join('')}</div>
 
                 ${lwFixtureStats(home, away, f, o)}
 
@@ -533,15 +553,26 @@
            comes from. Shown rather than assumed — a blended projection should
            never be a silent one. */
         function lwMatchdayProvenance() {
-            if (typeof boOdds === 'undefined' || !boOdds) return '';
-            const meta = boOdds.metadata || {};
+            /* The legend and the provenance belong to the SECTION, not to the
+               odds — they were gated on boOdds being present, so on a round the
+               bookmakers have not priced yet the whole explanation vanished and
+               the user got a screen of dashes with nothing saying why. */
+            const meta = (typeof boOddsMeta === 'function' && boOddsMeta()) || {};
             const updated = meta.lastUpdated ? new Date(meta.lastUpdated) : null;
-            const stale = updated ? (Date.now() - updated.getTime()) > 36 * 3600 * 1000 : false;
+            /* Stale means OUR feed is old, which can only be said of a feed
+               that has something in it. An empty feed is not stale: the job ran
+               and football-data.co.uk had no Premier League rows in it — saying
+               "the odds job has not run since" there is simply false, and it
+               sends you to look at a workflow that is green. */
+            const priced = (typeof boOdds !== 'undefined' && boOdds && boOdds.matches) ? boOdds.matches.length : 0;
+            const stale = priced && updated ? (Date.now() - updated.getTime()) > 36 * 3600 * 1000 : false;
             const b = typeof boBlendInfo === 'function' ? boBlendInfo() : { active: false };
-            return `${stale ? `<p class="lwm-stale">${v2Icon('warn')} These prices are more than a day old — the odds job has not run since. Treat them as indicative.</p>` : ''}
+            return `${stale ? `<p class="lwm-stale">${v2Icon('warn')} These prices are more than a day old — the odds feed has not been refreshed since. Treat them as indicative.</p>` : ''}
                 <div class="lwm-prov">
                     ${lwMatchdayLegend()}
-                    ${b.active
+                    ${priced === 0
+                        ? `<span class="lwm-blend is-off" data-tooltip="The betting feed carries no prices for this round yet, so every projection here is EasyFPL's own model. It is blended with the market only when a whole round is priced.">Model only — no market prices yet</span>`
+                        : b.active
                         ? `<span class="lwm-blend is-on" data-tooltip="${escHTML(
                             `Every projection on this page for GW${b.event} is ${Math.round(b.weight * 100)}% the market's goal expectations and ${Math.round((1 - b.weight) * 100)}% EasyFPL's own model. The market's share falls as the season gives the model more of its own evidence — currently ${b.matchesPlayed ?? 0} matches played. Later gameweeks are model-only: bookmakers do not price them yet.`)}">Blended into GW${b.event} projections · market weight ${Math.round(b.weight * 100)}%</span>`
                         : `<span class="lwm-blend is-off" data-tooltip="Projections are model-only. The market is blended in only when every fixture in the round is priced, so that no two players are being compared across different estimators.">Market shown for reference — not blended</span>`}
@@ -600,7 +631,10 @@
         function lwRenderMatchday() {
             const rows = lwMatchdayRows();
             if (!rows.length) {
-                return `<section class="v2-section lwm"><div class="lw-side-empty">No fixtures this gameweek involve your players.</div></section>`;
+                /* Reached only when the round itself has no fixtures — the
+                   message used to say "none involve your players", which was
+                   true of the old filtered list and is now impossible. */
+                return `<section class="v2-section lwm"><div class="lw-side-empty">No fixtures scheduled for GW${planningGW} yet.</div></section>`;
             }
             /* Asked for once, here, rather than by the panel that used to own
                this section — the odds only ever enrich these rows now, so a
@@ -609,11 +643,12 @@
                 boLoadOdds().then(d => { if (d) refreshLWView(); });
             }
             const counted = rows.reduce((s, r) => s + r.mine.length, 0);
+            const withMine = rows.filter(r => r.mine.length).length;
             const unpriced = rows.filter(r => !r.odds).length;
             return `<section class="v2-section lwm">
                 <div class="section-header">
                     <h2>${v2Icon('ball')} Matchday <span class="lwm-gw">GW${planningGW}</span></h2>
-                    <span class="lwm-sub">${rows.length} ${rows.length === 1 ? 'fixture' : 'fixtures'} · ${counted} of your ${(lineupState.squad || []).length}</span>
+                    <span class="lwm-sub">${rows.length} ${rows.length === 1 ? 'fixture' : 'fixtures'} · ${counted} of your ${(lineupState.squad || []).length} ${withMine < rows.length ? `· ${withMine} with your players` : ''}</span>
                 </div>
                 ${lwMatchdayProvenance()}
                 <div class="lwm-days">
@@ -622,7 +657,9 @@
                         ${day.rows.map(lwRenderFixture).join('')}
                     </section>`).join('')}
                 </div>
-                ${unpriced ? `<p class="lwm-foot">${unpriced} of these ${unpriced === 1 ? 'fixtures has' : 'fixtures have'} no market price yet — bookmakers publish a round in instalments. Your players and EasyFPL's own numbers are shown regardless.</p>` : ''}
+                ${unpriced ? `<p class="lwm-foot">${unpriced === rows.length
+                    ? `No market prices for GW${planningGW} yet. football-data.co.uk publishes a round's odds in the days before it starts, so these appear mid-week; EasyFPL's own clean-sheet and goal model is shown regardless, and nothing on this page depends on them.`
+                    : `${unpriced} of these ${unpriced === 1 ? 'fixtures has' : 'fixtures have'} no market price yet — bookmakers publish a round in instalments. Your players and EasyFPL's own numbers are shown regardless.`}</p>` : ''}
                 <p class="lwm-foot">Market numbers are derived from de-vigged 1X2 and over/under 2.5 prices, fitted to independent Poisson. Nobody quotes a clean-sheet percentage; those are derived the same way. Odds describe one gameweek only. Source: football-data.co.uk.</p>
             </section>`;
         }

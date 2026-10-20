@@ -24,7 +24,12 @@ import fs from 'node:fs';
 import { deriveMatch } from './odds-model.mjs';
 import { calibrationSample, appendRound, summarise } from './odds-calibration.mjs';
 
-const FIXTURES_URL = 'https://www.football-data.co.uk/fixtures.csv';
+/* The apex, not www. football-data.co.uk moved: www.football-data.co.uk/
+   fixtures.csv now answers 302 to https://football-data.co.uk/fixtures.csv.
+   Node's fetch follows that, so this kept working — but a fetch that depends on
+   a redirect staying in place is one server change away from a silent empty
+   feed, which is the exact failure this file is written to avoid. */
+const FIXTURES_URL = 'https://football-data.co.uk/fixtures.csv';
 const DIVISION = 'E0';                 // Premier League
 
 /* football-data.co.uk's club names against FPL's. Only the genuine
