@@ -1327,6 +1327,8 @@
                                     key: 'rec-tier', icon: 'coins', label: 'Tier',
                                     value: recActiveTier(), onPick: 'setRecTier',
                                     options: [
+                                        { value: 'all', label: 'All', note: 'Every price, ranked together',
+                                          tip: 'The whole position ranked on one score, with no price band at all. Budget and Premium are the same list split at a per-position cap; this is it unsplit, which is what you want when the question is "who is best" rather than "who is best for £5.0m".' },
                                         { value: 'budget', label: 'Budget', note: 'Cheap enough to free money elsewhere' },
                                         { value: 'premium', label: 'Premium', note: 'The players worth building around' },
                                         { value: 'differential', label: 'Differentials', note: 'Under 10% owned' }
@@ -1499,6 +1501,17 @@
             const capFor = p => (isAll ? getBudgetCap(POSITIONS[p.position]) : config.budgetCap);
             const shown = isAll ? 12 : 7;
 
+            /* Every price. The only filter left is the minutes one every tier
+               applies — a recommendation to buy somebody who does not play is
+               not a recommendation — so this is the position ranked on its own
+               score with the price band taken off, which is exactly what
+               "regardless of price" has to mean here. Budget and Premium are
+               still this list split at capFor(). */
+            const allPlayers = scoredPlayers
+                .filter(p => (p.l5.minutes / p.l5.games) >= 60)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, shown);
+
             const budgetPlayers = scoredPlayers
                 .filter(p => p.price <= capFor(p) && (p.l5.minutes / p.l5.games) >= 60)
                 .sort((a, b) => b.score - a.score)
@@ -1520,10 +1533,13 @@
                 .slice(0, shown);
 
             // Default active category preserved per position
-            const activeRecCat = window._activeRecCat?.[pos] || 'budget';
+            const activeRecCat = window._activeRecCat?.[pos] || 'all';
 
             return `
                 <div class="pos-rec-section">
+                    <div class="rec-category-panel ${activeRecCat === 'all' ? 'active' : ''}" id="recCat-${pos}-all">
+                        ${allPlayers.length > 0 ? recCardList(allPlayers, pos, false) : '<div class="no-players">No players found</div>'}
+                    </div>
                     <div class="rec-category-panel ${activeRecCat === 'budget' ? 'active' : ''}" id="recCat-${pos}-budget">
                         ${budgetPlayers.length > 0 ? recCardList(budgetPlayers, pos, false) : '<div class="no-players">No players found</div>'}
                     </div>
@@ -2320,8 +2336,11 @@
             return BUDGET_CAPS[pos] || 6.0;
         }
 
-        // Track active rec category per position
-        window._activeRecCat = { ALL: 'budget', GK: 'budget', DEF: 'budget', MID: 'budget', FWD: 'budget' };
+        /* The active tier per position. Seeded to 'all', and this is the line
+           that actually decides what the tab opens on — recActiveTier()'s `||`
+           fallback never fires once this object exists, so changing one without
+           the other silently does nothing. */
+        window._activeRecCat = { ALL: 'all', GK: 'all', DEF: 'all', MID: 'all', FWD: 'all' };
 
         function switchRecCategory(pos, category) {
             setRecTier(category);
@@ -2334,8 +2353,14 @@
            tab — you do not want budget forwards and premium defenders at the
            same time, and nothing in the page ever let you see both at once
            anyway. */
+        /* ALL is the default. The tab used to open on Budget, which is a price
+           band — so the first thing the page said about a position was its
+           cheapest players, and the best player in it was two clicks away
+           behind a filter nobody had asked for. A price ceiling is an answer
+           to a question about money; the question this tab is for is who is
+           playing well. */
         function recActiveTier() {
-            return (window._activeRecCat && window._activeRecCat[activeGlobalPosition]) || 'budget';
+            return (window._activeRecCat && window._activeRecCat[activeGlobalPosition]) || 'all';
         }
 
         function setRecTier(category) {
@@ -2345,7 +2370,7 @@
                 document.getElementById(`recCat-${pos}-${category}`)?.classList.add('active');
             });
             if (typeof v2MenuCloseAll === 'function') v2MenuCloseAll();
-            const label = { budget: 'Budget', premium: 'Premium', differential: 'Differentials' }[category] || category;
+            const label = { all: 'All', budget: 'Budget', premium: 'Premium', differential: 'Differentials' }[category] || category;
             const host = document.getElementById('v2menu-rec-tier');
             if (host) {
                 const v = host.querySelector('.v2-menu-v');
@@ -2726,6 +2751,21 @@
                 `;
             }).join('');
 
+            /* NOTHING TO FILTER, SO NO FILTERS.
+             *
+             * Purple Patch needs eight gameweeks of history before it can say
+             * anything — a player cannot be "well above his own baseline" until
+             * there is a baseline — and before that every position panel was
+             * empty. The panel drew its position pills and its Legend anyway,
+             * so the screen offered five ways to slice a list that did not
+             * exist and a key to colours that were nowhere on the page, with
+             * the explanation buried underneath as a per-position empty state
+             * repeated five times.
+             *
+             * One explanation instead, and no controls. The controls come back
+             * with the data, which is the only thing they can act on. */
+            if (ppTooEarly()) return ppEarlySeasonPanel();
+
             return `
               <div class="pa-panel">
                 <div class="pa-panel-head">
@@ -2756,6 +2796,52 @@
                         <span class="legend-panel-item"><span class="legend-panel-dot" style="background:#F87171"></span> Consistency (0-15)</span>
                     </div>
                     ${panels}
+                </div>
+              </div>
+            `;
+        }
+
+        /* Eight gameweeks, and the same question seasonTooYoungNotice() asks —
+           asked as a boolean so the whole panel can branch on it rather than
+           every one of its five position tabs printing the same paragraph.
+           A demo has its thresholds scaled down, so it is never too early. */
+        const PP_MIN_SEASON_GAMES = 8;
+
+        function ppTooEarly() {
+            if (typeof demoPreview === 'function' && demoPreview()) return false;
+            return seasonGamesPlayed < PP_MIN_SEASON_GAMES;
+        }
+
+        /* What the panel is, why it is empty, and when it will not be.
+         *
+         * Three facts and a way out, in that order: the thing it measures, the
+         * arithmetic that makes it impossible this early, the gameweek it
+         * starts, and the board that already works today. The last one matters
+         * most — "come back in three weeks" is not an answer to somebody who
+         * opened this tab to find a player. */
+        function ppEarlySeasonPanel() {
+            const played = seasonGamesPlayed;
+            const toGo = Math.max(0, PP_MIN_SEASON_GAMES - played);
+            return `
+              <div class="pa-panel">
+                <div class="pa-panel-head">
+                    <span class="pa-panel-title">${paIcon('flame')}Purple patch</span>
+                    <p class="pa-panel-note">Players scoring well above their own baseline, rated on whether the run is backed by process or is about to regress.</p>
+                </div>
+                <div class="pp-section">
+                    <div class="no-players season-young">
+                        <strong>Not yet — this needs ${PP_MIN_SEASON_GAMES} gameweeks and the season has played ${played}.</strong><br>
+                        A purple patch is a player scoring well above <em>his own</em> average, so the average has to exist
+                        first. With ${played} ${played === 1 ? 'gameweek' : 'gameweeks'} on record a hot streak and a good
+                        player are the same shape, and anything this board said now would be telling you that whoever
+                        started well is about to keep going — which is the one thing it is built to disprove.
+                        <br><br>
+                        It fills in from <strong>GW${PP_MIN_SEASON_GAMES + 1}</strong>${toGo
+                            ? `, so ${toGo} more ${toGo === 1 ? 'round' : 'rounds'} from now`
+                            : ''}. Until then the board worth reading is
+                        <strong>Rising Form</strong>, which asks a question five gameweeks can answer — who is trending
+                        up right now — rather than one that needs a season of baseline behind it.
+                    </div>
                 </div>
               </div>
             `;
