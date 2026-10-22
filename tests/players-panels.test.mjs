@@ -17,6 +17,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { loadFunction } from './helpers/load.mjs';
+import { stripComments } from '../tools/scan-globals.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const read = rel => fs.readFileSync(path.join(ROOT, rel), 'utf8');
@@ -195,4 +196,62 @@ test('the order is total, so cards do not reshuffle between renders', () => {
     assert.deepEqual(rows.slice().sort(cmp).map(r => r.teamName), ['Alpha', 'Zulu']);
     assert.deepEqual(rows.slice().reverse().sort(cmp).map(r => r.teamName), ['Alpha', 'Zulu'],
         'same answer whatever order it arrives in');
+});
+
+/* ---- the dashboard, and the odds feed's own staleness -------------------- */
+
+test('the transfer row names who goes, not who to buy', () => {
+    /* It read "Szoboszlai → Mbeumo, Gvardiol → De Cuyper, Groß → Tavernier" in
+       a lane called "Needs a look". Groß was there on 22 October with 58
+       points and 8.3 a game, traded for a same-price midfielder with better
+       underlying numbers and an easier run — a defensible proposal, and an
+       accusation when it sits under that heading with an arrow after it. */
+    const src = read('scripts/readiness.js');
+    const rd = src.slice(src.indexOf("const rec = c.transferRec;"), src.indexOf("--- sell:"));
+    assert.match(rd, /name: outs\.map\(p => p\.name\)\.join\(', '\)/, 'the out players alone');
+    assert.equal(/\$\{m\.out\.name\} → \$\{m\.in\.name\}/.test(rd), false,
+        'no incoming player is named on this row any more');
+    assert.match(rd, /sellIds/, 'and the ones actually rated Sell lead it');
+    assert.match(rd, /\$\{moves\.length\} move/,
+        'the move count is stated, so one package gain is not read as per-player');
+});
+
+test('the dashboard ticker is gone, and took its five renderers with it', () => {
+    const dash = read('scripts/index-dashboard.js');
+    const page = read('index.html');
+    for (const fn of ['function tickerPhase', 'function tickerNum', 'function tickerLiveSquad',
+        'function tickerItems', 'function renderPriceTicker']) {
+        assert.equal(dash.includes(fn), false, `${fn} should be deleted`);
+    }
+    assert.equal(page.includes('priceTickerBar'), false, 'and the bar is out of the markup');
+    assert.equal(page.includes('priceTickerTrack'), false);
+    /* The one that stays, and the reason it is easy to delete by mistake: the
+       name says ticker and it builds the whole dashboard's analysisResults. */
+    assert.match(dash, /function analyzePlayerForTicker/);
+    assert.match(dash, /squad\.map\(p => analyzePlayerForTicker\(/);
+});
+
+test('the odds feed records when ITS file was written, not just when we fetched', () => {
+    const tool = read('tools/fetch-odds.mjs');
+    assert.match(tool, /sourceUpdated = res\.headers\.get\('last-modified'\)/,
+        'read off the response, because the file can be older than the fetch');
+    assert.match(tool, /sourceUpdated: sourceUpdated \? new Date\(sourceUpdated\)\.toISOString\(\) : null/);
+    assert.match(tool, /const FIXTURES_URL = 'https:\/\/football-data\.co\.uk\/fixtures\.csv';/,
+        'and the apex, so the fetch does not depend on a redirect');
+});
+
+test('an unpriced round no longer claims a publishing schedule', () => {
+    /* The old line asserted the odds "appear mid-week". On Thursday 22 October,
+       with GW8 starting the next day, their file had not moved since Tuesday
+       10:57 and held only matches already played. */
+    /* Comments stripped: the sentence is quoted in the note that records why
+       it went, and a check that cannot tell prose from output would forbid
+       writing the reason down. */
+    const src = stripComments(read('scripts/lineup-wizard.js'));
+    assert.equal(src.includes("so these appear mid-week"), false);
+    const fn = src.slice(src.indexOf('function lwNoPricesLine'));
+    assert.match(fn, /meta\.sourceUpdated/, 'it reads the feed file date');
+    assert.match(fn, /has not been updated since/, 'and can say the feed itself is stale');
+    assert.match(fn, /nothing on this page depends on the market/,
+        'while making clear the page still works');
 });

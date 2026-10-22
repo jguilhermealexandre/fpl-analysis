@@ -215,9 +215,43 @@
                 const b = rec.best;
                 const span = `GW${rec.gws[0]}–GW${rec.gws[rec.gws.length - 1]}`;
                 const moves = b.moves || [];
+
+                /* THE PLAYERS TO MOVE ON, not the players to buy.
+                 *
+                 * This row read "Szoboszlai → Mbeumo, Gvardiol → De Cuyper,
+                 * Groß → Tavernier": three named buys on a checklist, inside a
+                 * lane headed "Needs a look". Two things were wrong with that.
+                 *
+                 * Naming the incoming player commits the row to one package out
+                 * of several the recommender scores within a tenth of a point
+                 * of each other, and the page this links to is where that choice
+                 * is actually made, with the budget in front of you.
+                 *
+                 * And an arrow after a name reads as a verdict on it. Groß was
+                 * in that list on 22 October with 58 points, 8.3 a game and 46%
+                 * ownership — there because a same-price midfielder had better
+                 * underlying numbers (xGI 4.01 against 3.32) and a materially
+                 * easier run (average FDR 3.00 against 3.40, with Liverpool and
+                 * City away in the next two). That is a legitimate thing for the
+                 * model to propose and a terrible thing to put under "needs a
+                 * look" without a word of it. The row names who would go; the
+                 * reasoning lives where the move is made.
+                 *
+                 * Sell-rated players lead, because they are what opened this row
+                 * at all — see the gate above. Paired by index with squad, which
+                 * is how the sell check below reads the same two lists. */
+                const sellIds = new Set(squad
+                    .filter((_, i) => analysisResults[i] && analysisResults[i].verdict === 'sell')
+                    .map(p => p.id));
+                const outs = moves.map(m => m.out)
+                    .sort((x, y) => (sellIds.has(y.id) ? 1 : 0) - (sellIds.has(x.id) ? 1 : 0));
+
                 add('transfer', {
-                    name: moves.map(m => `${m.out.name} → ${m.in.name}`).join(', '),
-                    reason: `+${b.net.toFixed(1)} xP across ${span}${b.cost > 0 ? `, after a −${b.cost} hit` : ' on a free transfer'}`,
+                    name: outs.map(p => p.name).join(', '),
+                    /* The move count is stated because the gain belongs to the
+                       whole package, and without it "+2.4 xP" beside three
+                       names reads as 2.4 each. */
+                    reason: `${moves.length} move${moves.length === 1 ? '' : 's'} worth +${b.net.toFixed(1)} xP across ${span}${b.cost > 0 ? `, after a −${b.cost} hit` : ' on a free transfer'}`,
                     severity: 'move',
                     href: '/dashboard/my-team#transfers?' + moves.map(m => `out=${m.out.id}&in=${m.in.id}`).join('&')
                 });

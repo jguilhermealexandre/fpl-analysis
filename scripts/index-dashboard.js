@@ -1218,223 +1218,17 @@
            game's availability flags. Anything not yet known is left out rather
            than estimated — a ticker is the last place to put a guess, because
            it is read at a glance and believed. */
-        function tickerPhase(fixturesData, bootData, currentGW, now) {
-            /* Whether a round is being played is a question this site already
-               answers, in mdGameweekState() — the same call the matchday panel
-               and the news feed use. Asking it again here in slightly different
-               words is how two parts of one screen end up disagreeing about
-               whether the football has started, so this delegates and only adds
-               the one distinction matchday does not draw: between a round that
-               has just ended and a week spent preparing for the next. */
-            let st = null;
-            try {
-                if (typeof mdGameweekState === 'function') {
-                    st = mdGameweekState(bootData.events, fixturesData, now);
-                }
-            } catch (e) { /* fall through to the fixture flags below */ }
+        /* THE TICKER IS GONE, and so are the five functions that drew it:
+           tickerPhase, tickerNum, tickerLiveSquad, tickerItems and
+           renderPriceTicker. It was a scrolling strip of the deadline, the
+           rank, the bank and a price meter — every figure on it either sits in
+           a card on this page already or is one that nobody reads sideways at
+           4 words a second.
 
-            if (st && (st.phase === 'live' || st.phase === 'locked')) return 'live';
-            if (st && (st.phase === 'preseason' || st.phase === 'season-over')) return 'prep';
-
-            /* The round is over. FPL sets data_checked once bonus and the final
-               numbers are in; until then the score is still settling and worth
-               showing. After that it is history, and the week ahead matters more. */
-            const done = st && st.currentGW ? st.currentGW : currentGW;
-            const ev = (bootData.events || []).find(e => e.id === done);
-            if (ev && ev.finished && !ev.data_checked) return 'results';
-            if (!st) {
-                // No matchday helper: fall back to the fixture flags directly.
-                const round = (fixturesData || []).filter(f => f.event === currentGW);
-                if (round.some(f => f.started && !f.finished_provisional)) return 'live';
-            }
-            return 'prep';
-        }
-
-        function tickerNum(n) { return Number(n).toLocaleString(); }
-
-        /* Your eleven, as the round stands. Bench excluded and the armband
-           counted, which is what the score on the pitch does — a ticker that
-           disagreed with the panel below it would just look broken. */
-        function tickerLiveSquad(squad, liveRows, fixtures, gw) {
-            const xi = (squad || []).filter(p => p.pickPosition <= 11);
-            /* "Still to play" has to mean football that has not happened yet,
-               not "no row in the live feed". A player left on his club's bench
-               all afternoon never appears in that feed either, and counting him
-               as still to come promises points that are never arriving. So ask
-               the fixtures: a player has football left only while one of his
-               club's matches this round is unfinished. */
-            const round = (fixtures || []).filter(f => f.event === gw);
-            const toCome = tid => round.some(f =>
-                (f.team_h === tid || f.team_a === tid) && !f.finished_provisional);
-            let pts = 0, pending = 0;
-            const returns = [];
-            xi.forEach(p => {
-                if (toCome(p.teamId)) pending++;
-                const row = liveRows[p.id];
-                if (!row) return;
-                const mult = p.multiplier || 1;
-                pts += (row.pts || 0) * mult;
-                const bits = [];
-                if (row.g) bits.push(row.g + (row.g > 1 ? ' goals' : ' goal'));
-                if (row.a) bits.push(row.a + (row.a > 1 ? ' assists' : ' assist'));
-                /* A clean sheet only counts as a return for the people paid
-                   four points for it. For a midfielder it is worth one, and
-                   billing it alongside a goal overstates what happened. */
-                if (!bits.length && row.cs && row.min >= 60 && p.position <= 2) bits.push('clean sheet');
-                if (bits.length) returns.push({ name: p.name, detail: bits.join(', '),
-                                                pts: (row.pts || 0) * mult, isCaptain: p.isCaptain });
-            });
-            returns.sort((a, b) => b.pts - a.pts);
-            return { pts, pending, total: xi.length, returns };
-        }
-
-        function tickerItems(ctx) {
-            const out = [];
-            const add = (cls, label, value) => out.push(
-                `<span class="pticker-item ${cls}">
-                    <span class="pticker-name">${escHTML(label)}</span>
-                    <span class="pticker-arrow">${escHTML(value)}</span>
-                </span><span class="pticker-sep">\u2502</span>`);
-
-            if (ctx.phase === 'live' || ctx.phase === 'results') {
-                const l = tickerLiveSquad(ctx.squad, ctx.liveRows, ctx.fixtures, ctx.currentGW);
-                const final = ctx.phase === 'results';
-                add('bull', `GW${ctx.currentGW} ${final ? 'FINAL' : 'LIVE'}`, `${l.pts} pts`);
-
-                const cap = l.returns.find(r => r.isCaptain);
-                if (cap) add('bull', `${cap.name} (C)`, `${cap.detail} \u00B7 ${cap.pts} pts`);
-                l.returns.filter(r => !r.isCaptain).slice(0, 4)
-                    .forEach(r => add('bull', r.name, `${r.detail} \u00B7 ${r.pts} pts`));
-                if (!l.returns.length) add('', 'No returns yet', `${l.total - l.pending}/${l.total} played`);
-
-                if (!final && l.pending > 0) {
-                    add('', 'Still to play', `${l.pending} of your XI`);
-                } else if (final) {
-                    add('', 'Bonus', 'not yet final');
-                }
-                if (final && ctx.rankDelta) {
-                    const up = ctx.rankDelta > 0;
-                    add(up ? 'bull' : 'bear', 'Overall rank',
-                        `${up ? '\u25B2' : '\u25BC'} ${tickerNum(Math.abs(ctx.rankDelta))}`);
-                }
-                return out;
-            }
-
-            // ---- prep
-            if (ctx.deadlineTime) {
-                const left = Date.parse(ctx.deadlineTime) - (ctx.now != null ? ctx.now : Date.now());
-                if (left > 0) {
-                    const h = Math.floor(left / 3600000);
-                    const label = h >= 48 ? `${Math.floor(h / 24)} days`
-                        : h >= 1 ? `${h}h ${Math.floor((left % 3600000) / 60000)}m`
-                            : `${Math.max(1, Math.round(left / 60000))} min`;
-                    add(h < 24 ? 'bear' : '', `GW${ctx.deadlineGW} deadline`, `in ${label}`);
-                }
-            }
-            if (Number.isFinite(ctx.rank)) {
-                const d = ctx.rankDelta;
-                add(d > 0 ? 'bull' : d < 0 ? 'bear' : '', 'Overall rank',
-                    tickerNum(ctx.rank) + (d ? ` ${d > 0 ? '\u25B2' : '\u25BC'} ${tickerNum(Math.abs(d))}` : ''));
-            }
-            if (ctx.leagueInfo && ctx.leagueInfo.rank) {
-                const li = ctx.leagueInfo;
-                const moved = li.lastRank ? li.lastRank - li.rank : 0;
-                add(moved > 0 ? 'bull' : moved < 0 ? 'bear' : '', li.name,
-                    `${li.rank}${moved ? ` ${moved > 0 ? '\u25B2' : '\u25BC'} ${Math.abs(moved)}` : ''}`);
-            }
-            if (Number.isFinite(ctx.freeTransfers)) {
-                add('', 'Free transfers', String(ctx.freeTransfers));
-            }
-            if (Number.isFinite(ctx.bank)) add('', 'In the bank', `\u00A3${Number(ctx.bank).toFixed(1)}m`);
-
-            /* Only the eleven, and only what the game itself flags. A doubt on
-               the bench is not something to read at a glance on a Tuesday. */
-            (ctx.squad || []).filter(p => p.pickPosition <= 11)
-                .filter(p => p.status && p.status !== 'a')
-                .slice(0, 3)
-                .forEach(p => add('bear', p.name,
-                    p.chanceNextRound != null ? `${p.chanceNextRound}% to play` : 'doubt'));
-
-            return out;
-        }
-
-        function renderPriceTicker(allPlayers, squad, ctx) {
-            const bar = document.getElementById('priceTickerBar');
-            const track = document.getElementById('priceTickerTrack');
-            if (!bar || !track) return;
-            const squadIds = new Set(squad.map(p => p.id));
-            const totalFpl = 11000000;
-
-            /* The market strip reads the game's own price meter rather than
-               inferring pressure from net transfers. Transfers are the cause;
-               the meter is the thing that actually decides the price, and it is
-               published. Net transfers stay on as context, not as the signal.
-
-               Older cached data files predate these fields, so if the meter is
-               missing everywhere we fall back to the transfer-net view rather
-               than showing an empty strip. */
-            const movers = [];
-            if (typeof pwMovers === 'function' && allPlayers.some(p => p.priceProgress)) {
-                const m = pwMovers(allPlayers, 10, PW_TICKER_FLOOR);
-                const maxLen = Math.max(m.risers.length, m.fallers.length);
-                for (let i = 0; i < maxLen; i++) {
-                    if (i < m.risers.length) movers.push(m.risers[i]);
-                    if (i < m.fallers.length) movers.push(m.fallers[i]);
-                }
-            } else {
-                const withPressure = allPlayers.map(p => {
-                    const owners = Math.max(totalFpl * (p.ownership / 100), 1);
-                    const net = p.transfersIn - p.transfersOut;
-                    return { player: p, legacy: true, net: net, pressure: net / owners };
-                });
-                const fallers = withPressure.filter(x => x.net < -20000).sort((a, b) => a.net - b.net);
-                const risers = withPressure.filter(x => x.net > 20000).sort((a, b) => b.net - a.net);
-                const maxLen = Math.max(fallers.length, risers.length);
-                for (let i = 0; i < maxLen; i++) {
-                    if (i < risers.length) movers.push(risers[i]);
-                    if (i < fallers.length) movers.push(fallers[i]);
-                }
-            }
-            /* The phase items lead, and on a matchday they are the whole strip:
-               nobody watching their captain wants a price meter scrolling past.
-               Movers are the market, which is a between-rounds question. */
-            const lead = (typeof tickerItems === 'function' && ctx) ? tickerItems(ctx) : [];
-            const wantMovers = !ctx || ctx.phase === 'prep';
-            if (!lead.length && (!wantMovers || movers.length === 0)) return;
-
-            const moverItems = !wantMovers ? '' : movers.map(c => {
-                const p = c.player;
-                const rising = c.legacy ? c.net > 0 : c.dir === 'rise';
-                const cls = rising ? 'bull' : 'bear';
-                const arrow = rising ? '\u25B2' : '\u25BC';
-                const net = (p.transfersIn || 0) - (p.transfersOut || 0);
-                const netK = Math.round(Math.abs(net) / 1000);
-                const squadBadge = squadIds.has(p.id) ? ' <span class="pticker-squad"></span>' : '';
-                // "Due" earns a word; anything short of it only ever shows a number.
-                const state = c.legacy
-                    ? `${net > 0 ? '+' : '-'}${netK}k`
-                    : (c.tier === 'due' ? (rising ? 'RISE DUE' : 'DROP DUE') : `${Math.round(Math.abs(c.progress))}%`);
-                const tip = c.legacy ? '' : ` data-tooltip="${escHTML(pwDetail(c))}"`;
-                return `<span class="pticker-item ${cls}${c.legacy ? '' : ' tier-' + c.tier}"${tip}>
-                    <span class="pticker-name">${escHTML(p.name)}${squadBadge}</span>
-                    <span class="pticker-price">\u00A3${p.price.toFixed(1)}m</span>
-                    <span class="pticker-arrow">${arrow} ${state}</span>
-                </span><span class="pticker-sep">\u2502</span>`;
-            }).join('');
-
-            const contentHtml = `<span class="price-ticker-content">${lead.join('') + moverItems}</span>`;
-            track.innerHTML = contentHtml + contentHtml;
-            bar.classList.remove('hidden');
-
-            requestAnimationFrame(() => {
-                const contentEl = track.querySelector('.price-ticker-content');
-                if (contentEl) {
-                    const w = contentEl.offsetWidth;
-                    const duration = Math.max(20, w / 55);
-                    track.style.animationDuration = duration + 's';
-                }
-            });
-        }
+           analyzePlayerForTicker() is NOT part of it despite the name. It
+           builds analysisResults for the whole dashboard (see its call below)
+           and the name is a leftover from when the ticker was the only thing
+           that needed a verdict. */
 
         // ===== LOAD TICKER (main data loader) =====
         let deadlineInterval = null;
@@ -1946,14 +1740,6 @@
                             ntRenderInto({ squad, live: liveRows, phase, gw: currentGW, injuries });
                         });
                 }
-                renderPriceTicker(allPlayers, squad, {
-                    phase: tickerPhase(fixturesData, bootData, currentGW),
-                    currentGW, deadlineGW, deadlineTime,
-                    liveRows: (eventLiveData && eventLiveData.event === currentGW)
-                        ? (eventLiveData.elements || {}) : {},
-                    fixtures: fixturesData,
-                    squad, rank: rankRaw, rankDelta, leagueInfo, freeTransfers, bank
-                });
 
                 /* The news strip and headlines widget stay off — they were
                    disabled rather than hidden so the four RSS fetches would not

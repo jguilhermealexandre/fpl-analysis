@@ -240,6 +240,7 @@ async function main() {
     const calibPath = args.includes('--calibration') ? args[args.indexOf('--calibration') + 1] : 'data/odds-calibration.json';
 
     let csv;
+    let sourceUpdated = null;
     if (csvArg) {
         csv = fs.readFileSync(csvArg, 'utf8');
     } else {
@@ -248,6 +249,21 @@ async function main() {
             signal: AbortSignal.timeout(30000)
         });
         if (!res.ok) fail(`fixtures.csv returned HTTP ${res.status} — keeping the existing odds`);
+        /* When the FILE was last written, which is not when we fetched it.
+         *
+         * On 22 October this job ran every few hours and succeeded every time,
+         * and the page said "bookmakers publish a round's odds in the days
+         * before it starts, so these appear mid-week" — on the Thursday before
+         * a Friday round, with nothing priced. Both statements were true and
+         * the conclusion was wrong: fixtures.csv had not been rewritten since
+         * Tuesday 10:57 UTC and held only the midweek slate, which had already
+         * been played.
+         *
+         * "We have no prices" and "their file has not moved since Tuesday" are
+         * different facts and only one of them is ours. Recording the header
+         * lets the site say which, instead of inferring a publishing schedule
+         * it cannot see. */
+        sourceUpdated = res.headers.get('last-modified') || null;
         csv = await res.text();
     }
     if (!csv || csv.length < 500) fail('fixtures.csv came back empty or truncated — keeping the existing odds');
@@ -374,6 +390,11 @@ async function main() {
             lastUpdated: new Date().toISOString(),
             source: 'football-data.co.uk',
             sourceUrl: FIXTURES_URL,
+            /* Last-Modified on their file, as an ISO string, or null when we
+               read a local CSV or they sent no header. Not the same thing as
+               lastUpdated above, which is when THIS job ran — see the note at
+               the fetch. */
+            sourceUpdated: sourceUpdated ? new Date(sourceUpdated).toISOString() : null,
             division: DIVISION,
             matches: priced.length,
             events,

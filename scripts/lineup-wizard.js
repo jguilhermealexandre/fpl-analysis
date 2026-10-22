@@ -628,6 +628,39 @@
             return days;
         }
 
+        /* Why there are no prices, said from what we know rather than from a
+           publishing schedule we cannot see.
+         *
+         * This used to assert that "football-data.co.uk publishes a round's
+         * odds in the days before it starts, so these appear mid-week". That
+         * was a guess dressed as a fact, and on the Thursday before GW8 it was
+         * simply wrong: their fixtures.csv had not been rewritten since Tuesday
+         * morning and still held only the midweek slate. The odds job had run
+         * an hour earlier and succeeded.
+         *
+         * metadata.sourceUpdated is the Last-Modified on their file, which
+         * tells the two cases apart — a feed that has moved and has nothing for
+         * this round yet, against a feed that has not moved at all. Neither is
+         * something a reader can fix, but only one of them is worth waiting
+         * for, and saying the wrong one sends somebody to check a page that is
+         * working. */
+        function lwNoPricesLine() {
+            const meta = (typeof boOddsMeta === 'function' && boOddsMeta()) || {};
+            const src = meta.sourceUpdated ? new Date(meta.sourceUpdated) : null;
+            const stale = src && (Date.now() - src.getTime()) > 36 * 3600 * 1000;
+            const when = src ? src.toLocaleDateString(undefined, { weekday: 'long' }) : null;
+            const tail = ` EasyFPL's own clean-sheet and goal model is shown regardless, and nothing on this page depends on the market.`;
+            if (stale) {
+                return `No market prices for GW${planningGW}. The odds feed's own file has not been updated since ${escHTML(when)}`
+                    + `, so there is nothing newer to fetch — this is upstream of us and not a setting you can change.${tail}`;
+            }
+            if (src) {
+                return `No market prices for GW${planningGW} yet. The odds feed is current as of ${escHTML(when)} and does not`
+                    + ` carry this round, which usually means the bookmakers have not been published to it.${tail}`;
+            }
+            return `No market prices for GW${planningGW} yet.${tail}`;
+        }
+
         function lwRenderMatchday() {
             const rows = lwMatchdayRows();
             if (!rows.length) {
@@ -658,7 +691,7 @@
                     </section>`).join('')}
                 </div>
                 ${unpriced ? `<p class="lwm-foot">${unpriced === rows.length
-                    ? `No market prices for GW${planningGW} yet. football-data.co.uk publishes a round's odds in the days before it starts, so these appear mid-week; EasyFPL's own clean-sheet and goal model is shown regardless, and nothing on this page depends on them.`
+                    ? lwNoPricesLine()
                     : `${unpriced} of these ${unpriced === 1 ? 'fixtures has' : 'fixtures have'} no market price yet — bookmakers publish a round in instalments. Your players and EasyFPL's own numbers are shown regardless.`}</p>` : ''}
                 <p class="lwm-foot">Market numbers are derived from de-vigged 1X2 and over/under 2.5 prices, fitted to independent Poisson. Nobody quotes a clean-sheet percentage; those are derived the same way. Odds describe one gameweek only. Source: football-data.co.uk.</p>
             </section>`;
