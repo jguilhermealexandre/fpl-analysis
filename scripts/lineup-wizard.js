@@ -775,78 +775,9 @@
                 .sort((a, b) => b.gwScore - a.gwScore).slice(0, 5);
         }
 
-        /* ===== THE TWO CLOSE CALLS =====
 
-           Both of them are the same object: two players, a few tenths apart,
-           and a line saying what separates them. The armband call was a
-           paragraph and the bench call was a stack, so the page drew one
-           question two ways and spent three times the height on it. They are
-           one component now, side by side, with the faces doing the naming —
-           you recognise a player before you read him. */
-        function lwCallSide(p, value, unit, cls, label, tip) {
-            return `<span class="lw-call-i ${cls}" data-tooltip="${escHTML(tip)}">
-                ${lwFace(p)}<b>${escHTML(p.web_name)}</b><em>${value}<u>${escHTML(unit)}</u></em><i>${escHTML(label)}</i>
-            </span>`;
-        }
 
-        /* Whether the captaincy ranking below is a verdict or a coin toss —
-           and, when you have overruled it, by how much.
 
-           It lives in the Overview rather than on the captaincy panel. It is a
-           read on the week, not a control, and the Overview is where the reads
-           are: a sentence sitting above a grid of cards was competing with the
-           cards for the same glance. */
-        function lwArmbandRead() {
-            const candidates = lwCaptainCandidates();
-            if (!candidates.length) return '';
-            const top = candidates[0];
-            const next = candidates[1] || null;
-            const lead = next ? top.gwScore - next.gwScore : 0;
-            const picked = (lineupState.squad || []).find(p => p.id === lineupState.captain);
-            const topRisk = typeof optMinutesRisk === 'function' ? optMinutesRisk(top) : null;
-            const clear = lead > 0.8;
-            const owns = q => picked && picked.id === q.id;
-
-            /* The off-pick line reads by sign. A captained keeper is never in
-               the candidate list, so the subtraction can land either way and a
-               bare minus sign read as a bug. */
-            const notes = [];
-            if (!next) {
-                notes.push(`${escHTML(top.web_name)} is your only outfield option.`);
-            } else if (clear) {
-                notes.push(`<strong>${lead.toFixed(1)}</strong> clear before the armband doubles it.`);
-            } else {
-                notes.push(`<strong>${lead.toFixed(1)}</strong> apart — fixture and minutes risk decide it.`);
-            }
-            if (topRisk && topRisk.pct < 80) notes.push(`Only ${topRisk.pct}% likely to start.`);
-            if (picked && picked.id !== top.id && (!next || picked.id !== next.id)) {
-                const d = top.gwScore - picked.gwScore;
-                notes.push(`Yours is on <strong>${escHTML(picked.web_name)}</strong>, ${Math.abs(d) < 0.05
-                    ? 'level with him.'
-                    : d > 0
-                        ? `${d.toFixed(1)} behind.`
-                        : `${Math.abs(d).toFixed(1)} ahead — outside the list because of his position.`}`);
-            }
-
-            return `<div class="lw-sum-block lw-callbox">
-                <div class="lw-sum-h">${v2Icon('crown')} The armband call
-                    ${next ? `<span class="lw-sum-n ${clear ? 'is-clear' : 'is-close'}"
-                        data-tooltip="${escHTML(clear
-                            ? 'A gap wide enough that projection decides it on its own.'
-                            : 'Under 0.8 projected points between them, which is inside the noise of a single match.')}"
-                        >${clear ? 'Clear' : 'Close'} ${lead.toFixed(1)}</span>` : ''}</div>
-                <div class="lw-call">
-                    ${lwCallSide(top, top.gwScore.toFixed(1), 'pts', 'is-in', owns(top) ? 'yours' : 'top pick',
-                        `${top.web_name} projects ${top.gwScore.toFixed(1)} points this gameweek before the armband doubles it.`)}
-                    <span class="lw-call-v">over</span>
-                    ${next
-                        ? lwCallSide(next, next.gwScore.toFixed(1), 'pts', 'is-out', owns(next) ? 'yours' : 'next best',
-                            `${next.web_name} projects ${next.gwScore.toFixed(1)} points this gameweek.`)
-                        : `<span class="lw-call-i is-none">nobody else</span>`}
-                </div>
-                <div class="lw-sum-note">${notes.join(' ')}</div>
-            </div>`;
-        }
 
         function lwRenderCaptaincy() {
             /* Selecting players with the ℹ button used to swap the Overview
@@ -900,34 +831,7 @@
                 total: promoted.length + benched.length + (cap ? 1 : 0) + (vice ? 1 : 0) };
         }
 
-        function lwRenderChanges() {
-            const c = lwChangeList();
-            const pos = { 1: 'GK', 2: 'DEF', 3: 'MID', 4: 'FWD' };
-            const names = list => list.map(p =>
-                `<span class="lw-chg-p">${escHTML(p.web_name)} <em>${pos[p.pos] || ''}</em></span>`).join('');
-            /* The three groups run along one line and wrap only when they
-               have to, instead of each claiming a row of its own whether it
-               holds four names or none. */
-            const body = c.total
-                ? `<div class="lw-chg-list">
-                    ${c.promoted.length ? `<span class="lw-chg-row is-promoted">
-                        <span class="lw-chg-badge">IN</span><span class="lw-chg-names">${names(c.promoted)}</span></span>` : ''}
-                    ${c.benched.length ? `<span class="lw-chg-row is-benched">
-                        <span class="lw-chg-badge">OUT</span><span class="lw-chg-names">${names(c.benched)}</span></span>` : ''}
-                    ${(c.cap || c.vice) ? `<span class="lw-chg-row is-captain">
-                        <span class="lw-chg-badge">${v2Icon('crown')}</span>
-                        <span class="lw-chg-names">${[
-                            c.cap ? `<span class="lw-chg-p">${escHTML(c.cap.web_name)} <em>C</em></span>` : '',
-                            c.vice ? `<span class="lw-chg-p">${escHTML(c.vice.web_name)} <em>VC</em></span>` : ''
-                        ].filter(Boolean).join('')}</span></span>` : ''}
-                </div>`
-                : `<span class="lw-sum-quiet">${v2Icon('check')} Your FPL lineup already matches this one — nothing to change.</span>`;
-            return `<div class="lw-sum-block is-row">
-                <div class="lw-sum-h">${v2Icon('swap')} Optimiser changes <span class="lw-sum-sub">vs your live FPL team</span>
-                    ${c.total ? `<span class="lw-sum-n">${c.total}</span>` : ''}</div>
-                <div class="lw-sum-body">${body}</div>
-            </div>`;
-        }
+
 
         /* ===== THE OVERVIEW =====
 
@@ -954,10 +858,13 @@
         }
 
         /* Heading on the left, content on the right, on one line where the
-           content is one line — which, for a clean squad, it always is. Both
-           of these blocks used to put a heading on its own row above a body
-           that was often a single sentence, so two lists of nothing took as
-           much height as the eleven. */
+           content is one line — which, for a clean squad, it always is. It used
+           to put the heading on a row of its own above a body that was often a
+           single sentence, so a list of nothing took as much height as the
+           eleven.
+         *
+         * This is the only block left in the Overview, and it sits beside the
+         * three figures rather than under them — see lwRenderOverviewRow. */
         function lwRenderRisks() {
             const risks = lwRiskList();
             return `<div class="lw-sum-block is-row${risks.length ? ' is-alert' : ''}">
@@ -974,42 +881,7 @@
             </div>`;
         }
 
-        /* The tightest call the optimiser made, as its own block rather than a
-           figure in the summary bar — it is the one thing on this screen you
-           might actually overrule. */
-        function lwRenderClosestCall() {
-            const call = lwClosestCall();
-            if (!call) {
-                return `<div class="lw-sum-block lw-callbox">
-                    <div class="lw-sum-h">${v2Icon('scales')} Closest bench call</div>
-                    <div class="lw-sum-quiet">No outfield substitutes, so there is no bench call to make.</div>
-                </div>`;
-            }
-            const gap = call.margin;
-            const level = Math.abs(gap) < 0.05;
-            const line = level
-                ? `Level on this gameweek's projection, so the bench order is the only thing separating them.`
-                : gap > 0
-                    ? `<strong>${gap.toFixed(1)} xP</strong> between them.`
-                    /* A negative gap is not a bug: the XI is picked on the longer
-                       run, so the optimiser can start the man who projects lower
-                       this week. Say that rather than print a minus sign. */
-                    : `${escHTML(call.sub.web_name)} projects <strong>${Math.abs(gap).toFixed(1)}</strong> higher this week — the eleven is picked across the run, not on one week.`;
-            return `<div class="lw-sum-block lw-callbox">
-                <div class="lw-sum-h">${v2Icon('scales')} Closest bench call
-                    ${level ? '' : `<span class="lw-sum-n ${Math.abs(gap) < 0.5 ? 'is-close' : 'is-clear'}"
-                        data-tooltip="${escHTML('The projected points between the last man in the eleven and the first man out of it.')}"
-                        >${Math.abs(gap) < 0.5 ? 'Close' : 'Clear'} ${Math.abs(gap).toFixed(1)}</span>`}</div>
-                <div class="lw-call">
-                    ${lwCallSide(call.starter, call.starter.gwScore.toFixed(1), 'xP', 'is-in', 'starts',
-                        `${call.starter.web_name} is in the eleven, projecting ${call.starter.gwScore.toFixed(1)} points this gameweek.`)}
-                    <span class="lw-call-v">over</span>
-                    ${lwCallSide(call.sub, call.sub.gwScore.toFixed(1), 'xP', 'is-out', 'benched',
-                        `${call.sub.web_name} is the first man out of the eleven, projecting ${call.sub.gwScore.toFixed(1)} points this gameweek.`)}
-                </div>
-                <div class="lw-sum-note">${line}${call.legal ? '' : ' No legal formation lets them swap, so the shape is what decides it.'}</div>
-            </div>`;
-        }
+
 
         function lwRenderOverviewRow() {
             if (!lineupState.xi.length) return `<div id="lwKpis"></div>`;
@@ -1036,14 +908,17 @@
                     (element ${lineupState.missingPicks.join(', ')}), so ${lineupState.missingPicks.length === 1 ? 'he is' : 'they are'}
                     not on the pitch and not in any total below. This is a data gap, not a lineup you have made.</p>` : ''}
 
-                <!-- The summary bar: what the eleven is worth, what it gains
-                     over the team already saved on the FPL site, and how many
-                     players need a second look. Three figures, one row. -->
-                <!-- The figures and the two calls on one line: all three are
-                     things you take in at a glance, and stacking them made the
-                     panel three times as tall as any of them needed. The two
-                     calls are the same question asked twice — who, of two
-                     players a few tenths apart — so they sit together. -->
+                <!-- The whole Overview, on one line: what the eleven is worth,
+                     what it gains over the team already saved on the FPL site,
+                     how many players need a second look — and, in the space the
+                     armband and bench calls used to take, WHICH players those
+                     are and why.
+
+                     Risks & flags is to the right of the figures rather than in
+                     a row beneath them because it is the one thing here you act
+                     on, and it was below three blocks of commentary. The three
+                     it replaces are gone; the reasoning is in the section
+                     comment above. -->
                 <div class="lw-ov-head">
                 <div class="lw-kpis is-three">
                     ${lwKpiBox('green', 'target', 'Projected points', total.toFixed(1),
@@ -1056,13 +931,7 @@
                         risks.length ? risks.map(r => `${r.p.web_name} — ${r.why}`).join('\n') : 'No injuries, suspensions or rotation risks in the squad.')}
                 </div>
 
-                ${lwArmbandRead()}
-                ${lwRenderClosestCall()}
-                </div>
-
-                <div class="lw-ov-blocks">
-                    ${lwRenderRisks()}
-                    ${lwRenderChanges()}
+                ${lwRenderRisks()}
                 </div>
             </section>`;
         }
@@ -1163,18 +1032,30 @@
            gameweeks while the headline above them was one. Every one of those
            was true. None of them was a decision.
 
-           What is left is four blocks in the order you act on them: how good
-           the eleven is and whether it beats the team you already have, who
-           might not play, what the optimiser moved, and the one call it nearly
-           got the other way round.
+           What is left is three figures and one block, on one line: how good
+           the eleven is, whether it beats the team you already have, how many
+           players need a second look — and, beside them, which players those
+           are and why.
+
+           IT USED TO CARRY THREE MORE BLOCKS and they are gone deliberately:
+           an armband read-out, a closest-bench-call read-out, and a list of
+           what the optimiser had changed against the live FPL team. Each was
+           true and none was load-bearing. The armband read duplicated the
+           captaincy grid directly below it, which names the same candidates
+           with the same figures and has the buttons; the bench call answered a
+           question the pitch answers by being looked at; and the change list
+           re-stated the "vs live FPL team" figure as prose. Three blocks of
+           commentary stood between the figures and the only thing on this
+           screen you have to act on, which is a flagged player.
 
            Everything shown here is this gameweek alone. That is a deliberate
            narrowing and it has one consequence worth knowing: the XI is still
            SELECTED on the three-gameweek run (see the comment on lwScore
-           above), because who starts is not a one-week question. So the
+           above), because who starts is not a one-week question — so the
            optimiser can bench a player who out-projects a starter this week.
-           Rather than print a negative gap and let it read as a bug,
-           lwClosestCall() names the reason in the one place it can happen. */
+           The closest-call block was where that got explained; the explanation
+           now lives on the pitch card's own run tooltip, which is where
+           somebody looking at the swap actually is. */
 
         /* What the manager's saved FPL lineup projects for this gameweek —
            scored exactly the way lwTotalXP() scores the optimiser's, same
@@ -1223,26 +1104,7 @@
             return out.sort((a, b) => (b.inXI ? 1 : 0) - (a.inXI ? 1 : 0));
         }
 
-        /* The tightest call the optimiser made: the starter it trusts least
-           against the substitute it rates most, both in this gameweek's points.
 
-           `legal` is whether swapping them leaves a formation FPL would accept.
-           Without it the panel offers a button that cannot do anything, which
-           is how the old card ended up hedging in prose about shapes. */
-        function lwClosestCall() {
-            const xi = lineupState.xi;
-            const starter = xi.filter(p => p.pos !== 1).sort((a, b) => a.gwScore - b.gwScore)[0];
-            const sub = lineupState.bench
-                .filter(p => p.pos !== 1 && !lineupState.excluded.has(p.id))
-                .sort((a, b) => b.gwScore - a.gwScore)[0];
-            if (!starter || !sub) return null;
-            const candidate = xi.filter(p => p.id !== starter.id).concat([sub]);
-            return {
-                starter, sub,
-                margin: starter.gwScore - sub.gwScore,
-                legal: typeof isValidLWFormation !== 'function' || isValidLWFormation(candidate)
-            };
-        }
 
         function lwPosShort(p) {
             return (typeof POSITION_CONFIG !== 'undefined' && POSITION_CONFIG[p.pos] ? POSITION_CONFIG[p.pos].short : '') || '';

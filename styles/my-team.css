@@ -9203,7 +9203,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .insight-title,
 .lo-card-name,
 .lo-empty,
-.lw-call-i em,
 .lw-captain-name,
 .lw-ctx-compare-name,
 .lw-ctx-empty,
@@ -9373,14 +9372,12 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lo-card-reason,
 .lo-card-score,
 .lo-subtitle,
-.lw-call-i b,
 .lw-cap-btn,
 .lw-cap-lead-b,
 .lw-cap-name,
 .lw-cap-off,
 .lw-captain-meta,
 .lw-captain-rank,
-.lw-chg-p,
 .lw-ctx-compare-stat,
 .lw-ctx-compare-stat-val,
 .lw-deep-col-head,
@@ -9403,7 +9400,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-step,
 .lw-step-num,
 .lw-sum-flag,
-.lw-sum-note,
 .lw-sum-quiet,
 .lw-swap-hint,
 .lw-toggle,
@@ -9648,15 +9644,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .h2h-xg-stat-label,
 .insight-move-action,
 .insight-move-do,
-.lw-call-i i,
-.lw-call-i.is-none,
-.lw-call-v,
 .lw-cap-actions .lw-cap-btn,
 .lw-cap-foot,
 .lw-cap-row,
 .lw-change-badge,
-.lw-chg-badge,
-.lw-chg-p em,
 .lw-ctx-compare-meta,
 .lw-ctx-compare-stat-label,
 .lw-opt-report,
@@ -9668,9 +9659,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-row-player-team,
 .lw-sum-flag,
 .lw-sum-n,
-.lw-sum-note,
 .lw-sum-quiet,
-.lw-sum-sub,
 .lwc-btn,
 .lwc-chips .dp-fix-ha,
 .lwc-chips .lw-cap-fdr,
@@ -9853,12 +9842,10 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .h2h-power-label,
 .h2h-power-label-r,
 .hold-stat .lbl,
-.lw-call-i em u,
 .lw-cap-rank,
 .lw-cap-row .lw-cap-fdr,
 .lw-cap-team,
 .lw-cap-xp-u,
-.lw-chg-p em,
 .lw-ov-call-u,
 .lw-ovc-pos,
 .lw-ovc-same,
@@ -9982,9 +9969,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 }
 .dp-tool-all,
 .draft-stat-label,
-.lw-call-i i,
 .lw-cap-badge,
-.lw-chg-badge,
 .lw-chg-tag,
 .lw-ov-call-l,
 .lw-ov-risk-where,
@@ -10035,7 +10020,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .dc-diff-label,
 .eo-row-l,
 .fx-matrix-head,
-.lw-call-v,
 .lw-cap-lead-h,
 .lw-ov-h,
 .lw-summary-label,
@@ -10177,9 +10161,13 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-ov { container: lwov / inline-size; }
 /* The three figures and the read on the week, side by side. Stacked, they
    made the panel twice as tall as either of them needed to be. */
-/* Three things on one line: the figures, and the two close calls. The calls
-   get a shade more room than the figures because each holds two players. */
-.lw-ov-head { display: grid; grid-template-columns: minmax(0, 1.58fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: stretch; margin-bottom: 10px; }
+/* Two things on one line: the three figures, and Risks & flags beside them.
+ *
+ * It was three — the figures and two close-call cards. The figures keep their
+ * 1.58fr exactly, so the tiles do not change size; the flags block simply
+ * inherits the 2fr the two cards shared between them. That is the whole visual
+ * difference, which is why every KPI sizing rule below is untouched. */
+.lw-ov-head { display: grid; grid-template-columns: minmax(0, 1.58fr) minmax(0, 2fr); gap: 10px; align-items: stretch; margin-bottom: 10px; }
 
 /* Three figures sharing a line with two calls get a third of the room they
    have on Squad Analysis, where they are the whole band. The tile keeps its
@@ -10221,7 +10209,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 }
 .lw-ov-head .lw-kpis { margin-bottom: 0; }
 .lw-ov-head .lwc-insight { margin-bottom: 0; display: flex; flex-direction: column; justify-content: center; }
-@container lwov (max-width: 760px) { .lw-ov-head { grid-template-columns: minmax(0, 1fr); } }
 /* Three across, and the window is not consulted about it.
  *
  * There were two @media rules here, at 1100px and 520px of VIEWPORT, on a row
@@ -10232,35 +10219,21 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
  * container queries further down do, and they are the only ones left. */
 .lw-kpis.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
-/* Two blocks, not three — the closest call moved up beside the armband call —
-   and an even half each. They were 1fr and 1.45fr on the reasoning that a
-   round moves six players and a clean squad has nothing to report, which is
-   true of the content and wrong about the page: two panels of the same kind,
-   side by side, at two different widths read as a mistake. */
-.lw-ov-blocks { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: start; }
-/* Keyed to the panel, not the window — the overview is full width on a wide
-   screen and a stacked panel on a narrow one, and the viewport cannot tell
-   those apart on its own. These follow the base rule because a container query
-   carries no extra specificity: source order is what decides. */
-@container lwov (max-width: 620px) { .lw-ov-blocks { grid-template-columns: minmax(0, 1fr); } }
-/* The figures drop under the two calls first, then the calls under each
-   other — the pair is the last thing worth breaking up, because reading them
-   side by side is the whole point of putting them there. */
-/* 1250, because below it the three-up band leaves each call under ~340px and
-   the label beside the figure — "benched", "next best" — starts losing its
-   tail. Measured, not guessed. */
-@container lwov (max-width: 1250px) {
-    .lw-ov-head { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-    .lw-ov-head .lw-kpis { grid-column: 1 / -1; }
-}
-@container lwov (max-width: 620px) { .lw-ov-head { grid-template-columns: minmax(0, 1fr); } }
-/* Narrower than this and two players will not sit beside each other inside
-   one card either, so they go one above the other and "over" turns the
-   corner with them. */
-@container lwov (max-width: 480px) {
-    .lw-callbox .lw-call { flex-direction: column; align-items: stretch; gap: 5px; }
-    .lw-callbox .lw-call-v { align-self: flex-start; }
-}
+/* ONE breakpoint, where there were three overlapping ones.
+ *
+ * Keyed to the panel rather than the window — the Overview is full width on a
+ * wide screen and a stacked panel on a narrow one, and the viewport cannot tell
+ * those apart. It follows the base rule because a container query carries no
+ * specificity of its own: source order is what decides.
+ *
+ * 1000px, because the figures take 44% of it: at 1000 that is 440px, or 146px a
+ * tile, which is what they already live with. Below that the flags block goes
+ * under them full width, which is also where the long reasons ("rotation risk —
+ * 55% likely to start") stop being clipped. The old rules broke at 1250, 760
+ * and 620 — three thresholds for a row that now has two children, and the 1250
+ * one existed because a call card could not go under ~340px. Nothing on this
+ * row has that floor any more. */
+@container lwov (max-width: 1000px) { .lw-ov-head { grid-template-columns: minmax(0, 1fr); } }
 
 
 .lw-sum-block {
@@ -10290,25 +10263,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-sum-block.is-row .lw-sum-h { flex: 0 0 auto; max-width: 100%; margin-bottom: 0; padding-top: 1px; }
 .lw-sum-body { flex: 1 1 220px; min-width: 0; }
 
-/* The two close calls. Both cards are the same object — two players a few
-   tenths apart — so they are drawn by one rule and sit side by side. */
-.lw-callbox { display: flex; flex-direction: column; }
-.lw-callbox .lw-call { margin-bottom: 6px; }
-.lw-callbox .lw-sum-note { margin-top: auto; }
-.lw-call-i.is-none {
-    display: flex; align-items: center; justify-content: center;
-    font-size: 10.5px; color: var(--text-muted);
-}
-/* Clear or close, and by how much — the one thing you wanted from the
-   paragraph that used to be here. */
-.lw-sum-n.is-close {
-    background: color-mix(in srgb, var(--verdict-monitor) 20%, transparent);
-    color: var(--verdict-monitor-text, var(--verdict-monitor));
-}
-.lw-sum-n.is-clear {
-    background: color-mix(in srgb, var(--color-success) 20%, transparent);
-    color: var(--verdict-hold-text, var(--color-success));
-}
 .lw-sum-h {
     display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin-bottom: 8px;
     font-size: 11.5px; font-weight: 700; letter-spacing: .02em;
@@ -10320,14 +10274,11 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     background: color-mix(in srgb, var(--verdict-monitor) 8%, transparent);
 }
 .lw-sum-block.is-alert .lw-sum-h svg { color: var(--verdict-monitor); }
-.lw-sum-sub { flex-basis: 100%; order: 3; font-size: 9.5px; font-weight: 600; color: var(--text-muted); }
 .lw-sum-n {
     margin-left: auto; padding: 1px 7px; border-radius: var(--radius-full);
     font-size: 9.5px; font-weight: 700; font-family: var(--font-mono);
     background: var(--surface-3); color: var(--text-secondary);
 }
-.lw-sum-note { font-size: 10.5px; line-height: 1.55; color: var(--text-muted); overflow-wrap: anywhere; }
-.lw-sum-note strong { color: var(--text-primary); }
 .lw-sum-quiet {
     display: flex; align-items: center; gap: 6px;
     font-size: 10.5px; color: var(--text-muted);
@@ -10351,54 +10302,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 }
 .lw-sum-flag.is-xi .lw-sum-flag-x { background: color-mix(in srgb, var(--verdict-monitor) 18%, transparent); color: var(--verdict-monitor); }
 
-/* What the optimiser changed, grouped by what happened: the question is
-   "what do I go and change on the FPL site", and that answers in three lines. */
-.lw-chg-list { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 5px 16px; min-width: 0; }
-/* min-width:0 and shrink, or a group whose names are wider than the block
-   refuses to narrow and takes the whole list out of the panel with it. */
-.lw-chg-row { display: inline-flex; align-items: flex-start; gap: 7px; min-width: 0; flex: 0 1 auto; }
-.lw-chg-badge {
-    flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 3px;
-    min-width: 38px; padding: 2px 7px; border-radius: var(--radius-full);
-    font-size: 9.5px; font-weight: 800; letter-spacing: .04em; font-family: var(--font-mono);
-}
-.lw-chg-badge svg { width: 12px; height: 12px; }
-.lw-chg-row.is-promoted .lw-chg-badge { background: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--verdict-hold-text); }
-.lw-chg-row.is-benched  .lw-chg-badge { background: color-mix(in srgb, var(--color-error) 20%, transparent); color: var(--verdict-sell-text); }
-/* 1.38:1 — the worst pair on the site. Amber on a 24% wash of itself is
-   nearly invisible in the light theme; the fill stays, the ink moves. */
-.lw-chg-row.is-captain  .lw-chg-badge { background: color-mix(in srgb, var(--color-captain, #facc15) 24%, transparent); color: var(--verdict-monitor-text); }
-.lw-chg-names { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 10px; min-width: 0; }
-.lw-chg-p { font-size: 11.5px; font-weight: 700; color: var(--text-primary); }
-.lw-chg-p em { font-style: normal; margin-left: 3px; font-size: 9px; font-weight: 600; font-family: var(--font-mono); color: var(--text-muted); }
-
-/* The closest bench call: two players side by side, and which way it went. */
-.lw-call { display: flex; align-items: stretch; gap: 8px; margin-bottom: 7px; }
-.lw-call-i {
-    flex: 1 1 0; min-width: 0;
-    display: grid; grid-template-columns: auto auto minmax(0, 1fr);
-    grid-template-areas: 'face name name' 'face xp label';
-    align-items: center; gap: 0 7px;
-    padding: 7px 8px; border-radius: var(--radius-md); background: var(--surface-3);
-}
-/* The face, not the sentence. You know a player by his picture a beat before
-   you have read his name, which is the whole reason this card can be a third
-   the height of the paragraph it replaced. */
-.lw-call-i .lw-face { grid-area: face; --v2-pid-face: 30px; }
-.lw-call-i b { grid-area: name; min-width: 0; }
-.lw-call-i em { grid-area: xp; }
-.lw-call-i i { grid-area: label; }
-.lw-call-i b { font-size: 12px; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lw-call-i em { font-style: normal; font-size: 13px; font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); white-space: nowrap; }
-.lw-call-i em u { text-decoration: none; margin-left: 2px; font-size: 9px; font-weight: 600; color: var(--text-muted); }
-.lw-call-i i {
-    font-style: normal; font-size: 9px; font-weight: 700; letter-spacing: .04em;
-    text-transform: uppercase; color: var(--text-muted);
-}
-.lw-call-i.is-in { box-shadow: inset 2px 0 0 var(--color-success); }
-.lw-call-i.is-out { box-shadow: inset 2px 0 0 var(--border-emphasis); }
-.lw-call-i.is-out em { color: var(--text-secondary); }
-.lw-call-v { align-self: center; flex-shrink: 0; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
 
 /* ===== THE LAYOUT =====
 
@@ -11021,7 +10924,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* On a phone the qualifying figures get the same floor as everything else on
    the site: nothing under 10px, because nothing under 10px is read. */
 @media (max-width: 768px) {
-    .lw-sum-note, .lw-sum-flag, .lw-sum-quiet { font-size: 11px; }
+    .lw-sum-flag, .lw-sum-quiet { font-size: 11px; }
     .lwc-stat em, .lwc-stat b { font-size: 10.5px; }
     .lwc-insight-h, .lwc-team, .lwc-xp em, .lwc-btn, .lwc-rank { font-size: 10px; }
     .lwc-chips .lw-cap-fdr, .lwc-chips .dp-fix-ha { font-size: 10px; }
@@ -11031,9 +10934,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     .lwc-cards { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); }
     .lwm-m-l, .lwm-cs-n em, .lwm-ex-i em { font-size: 10px; }
     .lwm-m-l { width: 26px; }
-    .lw-sum-n, .lw-sum-sub, .lw-chg-badge, .lw-chg-p em, .lw-call-v { font-size: 10px; }
-    .lw-chg-p { font-size: 12px; }
-    .lw-call-i i { font-size: 10px; }
+    .lw-sum-n { font-size: 10px; }
     .lwc-foot, .lwm-foot, .lwm-key, .lwm-blend, .lwm-updated, .lwm-stale { font-size: 10.5px; }
     .lwm-ko, .lwm-p-pos, .lwm-wdl-i em, .lwm-side-t, .lwm-ha { font-size: 10px; }
 }
