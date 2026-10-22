@@ -1447,29 +1447,77 @@
             return predictedGWPoints(player);
         }
 
+        /* The smallest improving swap this bench can make, then the next one
+         * that is still possible once you have made it.
+         *
+         * THE BUG THIS REPLACES, reported from a live gameweek. "Do this week"
+         * offered two cards:
+         *
+         *     Start Hall over Gvardiol    +2.1  (3.9 xP vs 1.8 xP)
+         *     Start Egan over Gvardiol    +2.0  (3.8 xP vs 1.8 xP)
+         *
+         * Gvardiol can be benched once. The old loop walked the BENCH and gave
+         * each player the weakest starter in his position, independently — so
+         * two bench defenders who both beat the worst-starting defender both
+         * named him, and a list headed "Do this week" with a "Make the swap"
+         * button on each row contained a move that stops existing the moment
+         * you take the one above it.
+         *
+         * Two changes. Every improving pair is considered now, not just each
+         * bench player against the single weakest starter — because the weakest
+         * starter can only be replaced once, and the runner-up for him is
+         * usually better spent on somebody else. Then the list is built greedily
+         * with each player used at most once, on either side, so every row is
+         * still true after you have clicked the rows above it.
+         *
+         * GREEDY BY GAIN, not maximum total gain, and that is deliberate. These
+         * are separate one-click actions on a ranked list, and most people take
+         * the first one only — so the first row has to be the best single swap
+         * available. A maximum-weight matching can demote the best swap to make
+         * room for a second one; that is the right answer when you commit to the
+         * whole set, which is the Lineup Wizard's job and is what it already
+         * solves. Here the semantics are "the best move, then the best move that
+         * survives it".
+         *
+         * Same-position only, as before: it keeps the formation legal without
+         * having to check it, because a defender for a defender cannot change
+         * the shape. */
         function computeLineupSuggestions() {
             const starters = analysisResults.filter(a => !a.player.onBench);
             const bench = analysisResults.filter(a => a.player.onBench);
-            const suggestions = [];
 
+            const pairs = [];
             bench.forEach(benchA => {
-                const samePos = starters.filter(a => a.player.position === benchA.player.position);
-                if (!samePos.length) return;
-
                 const benchScore = projectedScore(benchA.player);
-                let weakest = null, weakestScore = Infinity;
-                samePos.forEach(starterA => {
-                    const score = projectedScore(starterA.player);
-                    if (score < weakestScore) { weakest = starterA; weakestScore = score; }
+                starters.forEach(starterA => {
+                    if (starterA.player.position !== benchA.player.position) return;
+                    const starterScore = projectedScore(starterA.player);
+                    const delta = benchScore - starterScore;
+                    if (delta >= 1.0) {
+                        pairs.push({ bench: benchA, starter: starterA, benchScore, starterScore, delta });
+                    }
                 });
-
-                if (weakest && benchScore - weakestScore >= 1.0) {
-                    suggestions.push({ bench: benchA, starter: weakest, benchScore, starterScore: weakestScore, delta: benchScore - weakestScore });
-                }
             });
 
-            suggestions.sort((a, b) => b.delta - a.delta);
-            return suggestions.slice(0, 5);
+            /* Deterministic to the last comparison. Two pairs can sit on the
+               same delta — a bench pair with identical projections is common at
+               the bottom of a squad — and an unstable order there would move
+               the cards about between renders of the same unchanged squad. */
+            pairs.sort((a, b) => (b.delta - a.delta)
+                || (a.starter.player.id - b.starter.player.id)
+                || (a.bench.player.id - b.bench.player.id));
+
+            const usedBench = new Set(), usedStarter = new Set();
+            const suggestions = [];
+            for (const pair of pairs) {
+                if (usedBench.has(pair.bench.player.id)) continue;
+                if (usedStarter.has(pair.starter.player.id)) continue;
+                usedBench.add(pair.bench.player.id);
+                usedStarter.add(pair.starter.player.id);
+                suggestions.push(pair);
+                if (suggestions.length >= 5) break;
+            }
+            return suggestions;
         }
 
         function lineupSwapReason(s) {
