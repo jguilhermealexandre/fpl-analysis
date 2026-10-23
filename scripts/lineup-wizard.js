@@ -897,19 +897,24 @@
            eleven.
          *
          * This is the only block left in the Overview, and it sits beside the
-         * three figures rather than under them — see lwRenderOverviewRow. */
+         * three figures rather than under them — see lwRenderOverviewRow.
+         *
+         * NOTHING AT ALL FOR A CLEAN SQUAD. The block used to stay and say "no
+         * injuries, suspensions or rotation risks", which put a box wider than
+         * the three figures on screen to hold one grey sentence. The Flagged
+         * figure beside it already reads "0 · nobody to check", so the figures
+         * take the whole row instead. */
         function lwRenderRisks() {
             const risks = lwRiskList();
-            return `<div class="lw-sum-block is-row${risks.length ? ' is-alert' : ''}">
+            if (!risks.length) return '';
+            return `<div class="lw-sum-block is-row is-alert">
                 <div class="lw-sum-h">${v2Icon('warn')} Risks &amp; flags
-                    ${risks.length ? `<span class="lw-sum-n">${risks.length}</span>` : ''}</div>
-                <div class="lw-sum-body">${risks.length
-                    ? risks.map(r => `<span class="lw-sum-flag${r.inXI ? ' is-xi' : ''}"
+                    <span class="lw-sum-n">${risks.length}</span></div>
+                <div class="lw-sum-body">${risks.map(r => `<span class="lw-sum-flag${r.inXI ? ' is-xi' : ''}"
                         data-tooltip="${escHTML(`${r.p.web_name} — ${r.why}. ${r.inXI ? 'In your XI.' : 'On your bench.'}`)}"
                         >${lwFace(r.p)}<strong>${escHTML(r.p.web_name)}</strong>
                         <span class="lw-sum-flag-w">${escHTML(r.why)}</span>
-                        <span class="lw-sum-flag-x">${r.inXI ? 'XI' : 'bench'}</span></span>`).join('')
-                    : `<span class="lw-sum-quiet">${v2Icon('check')} No injuries, suspensions or rotation risks to work around.</span>`}
+                        <span class="lw-sum-flag-x">${r.inXI ? 'XI' : 'bench'}</span></span>`).join('')}
                 </div>
             </div>`;
         }
