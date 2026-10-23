@@ -1274,7 +1274,7 @@
 .tm-pos-pill.def { background: rgba(52,211,153,0.18); color: #059669; }
 .tm-pos-pill.mid { background: rgba(96,165,250,0.18); color: #2563EB; }
 .tm-pos-pill.fwd { background: rgba(248,113,113,0.18); color: #DC2626; }
-.tm-team-name { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+.tm-team-name { font-size: 10.5px; color: var(--text-muted); font-weight: 600; }
 
 /* SQUAD Badge — Glowing */
 .tm-badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 4px; font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
@@ -1505,8 +1505,10 @@
 }
 
 /* The row's leading edge carries the position, so it needs the room the
-   removed pill used to take, and a little inset for the stripe. */
-.tm-watch-row.v2-pos-edge { padding-left: 26px; }
+   removed pill used to take — the same 24px .sq-row and the players table
+   give their 16px edge, so the edge sits the same distance from the face on
+   every list of players. */
+.tm-watch-row.v2-pos-edge { padding-left: 24px; }
 
 /* Bento Grid: Rising + Falling side-by-side */
 .tm-bento-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
@@ -4970,7 +4972,7 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 .tm-exp-safe { color: var(--text-muted); }
 
 .tm-watch-note { font-size: 10px; color: var(--text-muted); margin: 6px 0 8px; line-height: 1.5; }
-.tm-watch { display: flex; flex-direction: column; gap: 4px; }
+.tm-watch { display: flex; flex-direction: column; gap: 6px; }
 
 /* ---- the two columns scroll rather than the page ----
    Your squad is fifteen rows and the market opens on eight, so the panels
@@ -5052,19 +5054,29 @@ tr.planner-swap-ineligible { opacity: 0.35; }
 
 /* The column heading for the price meter. It names a column that had no name
    and gives the explanation one home, instead of the same tooltip repeating on
-   every row of the list. Its columns match .tm-watch-row's below. */
+   every row of the list. Its columns match .tm-watch-row's below.
+
+   Drawn as the site's table header — the band, size and hairline of a
+   .data-table <th> in v2-design.css and of the GW Draft table's head — not
+   as a line of 9.5px caps floating over the rows. It was the one list of
+   players on the site whose head was a different object from every other
+   table's. */
 .tm-watch-legend {
     display: grid;
     grid-template-columns: minmax(0, 1.4fr) minmax(150px, 1fr) auto;
     align-items: center;
     gap: 12px;
-    padding: 0 10px 5px;
-    margin-left: 3px;
-    font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    padding: 13px 10px 13px 24px;
+    margin: 0 0 6px;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border-emphasis);
+    font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
     color: var(--text-muted);
 }
 .tm-watch-legend-thr { display: inline-flex; align-items: center; gap: 5px; }
-.tm-watch-legend-thr i {
+/* The ? in both legends' heads — this one and .tm-tb-legend-vol's. */
+.tm-watch-legend-thr i,
+.tm-tb-legend-vol i {
     font-style: normal; width: 12px; height: 12px; border-radius: 50%;
     display: inline-flex; align-items: center; justify-content: center;
     background: var(--surface-3, var(--surface-2)); color: var(--text-secondary);
@@ -5076,17 +5088,19 @@ tr.planner-swap-ineligible { opacity: 0.35; }
     grid-template-columns: minmax(0, 1.4fr) minmax(150px, 1fr) auto;
     align-items: center;
     gap: 12px;
-    padding: 7px 10px;
-    /* The left edge stays: it is the position colour and the rise/drop marker,
-       which carry meaning. The other three sides do not. */
+    padding: 9px 10px;
+    /* No coloured left border. It was a 3px rise/drop stripe drawn beside the
+       position edge, so an imminent row carried two bars down its side and
+       sat 3px out of line with its neighbours. The meter, its percentage and
+       its label already say rise or drop in the same colour. */
     border: 1px solid transparent;
-    border-left: 3px solid transparent;
     border-radius: var(--radius-md);
 }
 
-.tm-watch-row.rise-imminent { border-left-color: var(--verdict-hold); }
-.tm-watch-row.drop-imminent { border-left-color: var(--verdict-sell); }
-.tm-watch-player { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tm-watch-player { display: flex; align-items: center; gap: 9px; min-width: 0; }
+/* The 28px face and 16px crest of .sq-row and the players table. */
+:is(.tm-watch-player, .tm-tb-ident) .v2-pid-avatar { width: 28px; height: 28px; }
+:is(.tm-watch-player, .tm-tb-ident) :is(.v2-pid-crest, .v2-pid-crest img) { width: 16px; height: 16px; }
 .tm-watch-thr { }
 .tm-thr-head { display: flex; align-items: baseline; gap: 6px; margin-bottom: 3px; }
 .tm-thr-pct { font-size: 12px; font-weight: 700; font-family: var(--font-mono); }
@@ -7778,42 +7792,38 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
    bought column it is transfers in, in the most-sold column transfers out,
    and the only thing saying so was the heading two rows up. Its columns
    match .tm-tb-row's below, the way .tm-watch-legend's match .tm-watch-row's. */
+/* The same table-header band as .tm-watch-legend. */
 .tm-tb-legend {
     display: grid;
     grid-template-columns: 18px minmax(0, 1.4fr) minmax(110px, 1fr) auto;
     align-items: center;
     gap: 10px;
-    margin-left: 3px;
-    padding: 0 10px 5px 26px;
-    font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    padding: 13px 10px 13px 24px;
+    margin: 0 0 6px;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border-emphasis);
+    font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
     color: var(--text-muted);
 }
 .tm-tb-legend-vol { display: inline-flex; align-items: center; gap: 5px; cursor: help; }
-.tm-tb-legend-vol i {
-    font-style: normal; width: 12px; height: 12px; border-radius: 50%;
-    display: inline-flex; align-items: center; justify-content: center;
-    background: var(--surface-3, var(--surface-2)); color: var(--text-secondary);
-    font-size: 8.5px; font-weight: 800; letter-spacing: 0;
-}
 .tm-tb-legend-n { min-width: 92px; text-align: right; }
 
-.tm-tb-rows { display: flex; flex-direction: column; gap: 4px; }
+.tm-tb-rows { display: flex; flex-direction: column; gap: 6px; }
 .tm-tb-row {
     display: grid; grid-template-columns: 18px minmax(0, 1.4fr) minmax(110px, 1fr) auto;
-    align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--radius-md);
-    /* The left edge stays — it is the position colour and its initial. The
-       other three sides do not, exactly as on .tm-watch-row. */
+    align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radius-md);
+    /* No coloured left border, exactly as on .tm-watch-row: the position
+       edge is the only thing down the side. */
     border: 1px solid transparent;
-    border-left: 3px solid transparent;
 }
 /* Room for the edge, same inset the price-watch rows use. */
-.tm-tb-row.v2-pos-edge { padding-left: 26px; }
+.tm-tb-row.v2-pos-edge { padding-left: 24px; }
 .tm-tb-rank { font-family: var(--font-display); font-size: 11px; font-weight: 700; color: var(--text-muted); text-align: center; }
-.tm-tb-ident { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tm-tb-ident { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .tm-tb-info { min-width: 0; }
 .tm-tb-name-row { display: flex; align-items: center; gap: 6px; }
-.tm-tb-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tm-tb-sub { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-muted); }
+.tm-tb-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-tb-sub { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--text-muted); }
 
 /* Where the price started against where it is. A player who has not moved
    prints one number rather than the same number twice with an arrow between. */
@@ -9244,6 +9254,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tm-player-name,
 .tm-price-main,
 .tm-tb-col-title,
+.tm-tb-name,
 .tp-head-title,
 .tr-move .tr-in,
 .tr-move .tr-out,
@@ -9491,7 +9502,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .tm-section-count,
 .tm-sell-btn,
 .tm-table,
-.tm-tb-name,
 .tm-tb-rank,
 .tm-tb-scope-btn,
 .tm-thr-pct,
