@@ -402,10 +402,10 @@
                 sellRating += sensAdj(teamFormPenalty);
 
                 if (ta.formRating < 30) {
-                    concerns.push({ type: 'warning', title: 'Team in Poor Form', text: `${player.team} form rating ${ta.formRating}/100 — team struggling (W${ta.wins} D${ta.draws} L${ta.losses} last 5)` });
+                    concerns.push({ type: 'warning', title: 'Team Out of Form', text: `${player.team} have won ${ta.wins} of their last 5 (W${ta.wins} D${ta.draws} L${ta.losses} last 5)` });
                     if (!reasons.length) reasons.push('Team in poor form');
                 } else if (ta.formRating >= 70) {
-                    positives.push({ type: 'positive', title: 'Team in Great Form', text: `${player.team} form rating ${ta.formRating}/100 — team on fire (W${ta.wins} D${ta.draws} L${ta.losses} last 5)` });
+                    positives.push({ type: 'positive', title: 'Team in Great Form', text: `${player.team} have won ${ta.wins} of their last 5 (W${ta.wins} D${ta.draws} L${ta.losses} last 5)` });
                 }
 
                 // Position-specific: attackers benefit from strong team attack
@@ -415,9 +415,9 @@
                     sellRating += sensAdj(teamAttPenalty);
 
                     if (ta.attackPower < 35) {
-                        concerns.push({ type: 'warning', title: 'Weak Team Attack', text: `${player.team} attack power ${ta.attackPower}/100 — limited goal threat (${ta.avgGoals.toFixed(1)} goals/game)` });
+                        concerns.push({ type: 'warning', title: 'Weak Team Attack', text: `${player.team} are scoring ${ta.avgGoals.toFixed(1)} goals a game — limited threat to feed off` });
                     } else if (ta.attackPower >= 65) {
-                        positives.push({ type: 'positive', title: 'Strong Team Attack', text: `${player.team} attack power ${ta.attackPower}/100 — high goal output (${ta.avgGoals.toFixed(1)} goals/game)` });
+                        positives.push({ type: 'positive', title: 'Strong Team Attack', text: `${player.team} are scoring ${ta.avgGoals.toFixed(1)} goals a game` });
                     }
                 }
 
@@ -428,19 +428,19 @@
                     sellRating += sensAdj(teamDefPenalty);
 
                     if (ta.defensePower < 35) {
-                        concerns.push({ type: 'warning', title: 'Weak Team Defence', text: `${player.team} defence power ${ta.defensePower}/100 — hard to keep clean sheets (${ta.avgConceded.toFixed(1)} conceded/game)` });
+                        concerns.push({ type: 'warning', title: 'Weak Team Defence', text: `${player.team} are conceding ${ta.avgConceded.toFixed(1)} a game — clean sheets are unlikely` });
                     } else if (ta.defensePower >= 65) {
-                        positives.push({ type: 'positive', title: 'Strong Team Defence', text: `${player.team} defence power ${ta.defensePower}/100 — clean sheet potential (${ta.csRate > 0 ? (ta.csRate * 100).toFixed(0) + '% CS rate' : ''})` });
+                        positives.push({ type: 'positive', title: 'Strong Team Defence', text: `${player.team} are conceding ${ta.avgConceded.toFixed(1)} a game${ta.csRate > 0 ? ` — a clean sheet in ${(ta.csRate * 100).toFixed(0)}% of them` : ''}` });
                     }
                 }
 
                 // Team fixture score impacts all players
                 if (ta.fixtureScore < 30) {
                     sellRating += sensAdj(4, settings.fixtureWeight);
-                    concerns.push({ type: 'info', title: 'Poor Team Fixture Score', text: `${player.team} fixture score ${ta.fixtureScore}/100 — tough schedule ahead` });
+                    concerns.push({ type: 'info', title: 'Tough Run Ahead', text: `${player.team} have a tough run of fixtures ahead` });
                 } else if (ta.fixtureScore >= 70) {
                     sellRating += sensAdj(-3, settings.fixtureWeight);
-                    positives.push({ type: 'positive', title: 'Great Team Fixture Score', text: `${player.team} fixture score ${ta.fixtureScore}/100 — favourable run, hold players` });
+                    positives.push({ type: 'positive', title: 'Kind Run Ahead', text: `${player.team} have a favourable run of fixtures ahead` });
                 }
             }
 
@@ -467,9 +467,34 @@
                 verdictReason = positives.length > 0 ? positives[0].text : 'Top performer — team cornerstone';
                 recommendation = `Captain candidate GW${nextGW}${nextOpp ? ` vs ${nextOpp}` : ''}. Lock in and don't overthink.`;
             } else {
+                /* HOLD IS THE DEFAULT BRANCH, not a finding, and it used to
+                 * talk like one: "Performing as expected" and "Keep starting.
+                 * Reliable performer". Reported against Gvardiol — benched,
+                 * projecting 1.8 for the round — and the complaint was right.
+                 *
+                 * Nothing above had fired, which is all this branch knows. Two
+                 * things it specifically does NOT know:
+                 *
+                 *   - the projection. predictedGWPoints() is not read anywhere
+                 *     in this verdict; it is decided by sellRating, form,
+                 *     minutes and FDR. So the number printed on the player's
+                 *     own card, and the one the optimiser ranks him on, has no
+                 *     vote in the headline judgement of him. That is the real
+                 *     defect and it needs a calibrated threshold on the
+                 *     PROJECTION's scale, which is not formMedian's: formMedian
+                 *     is a 30-day form average (DEF 3.5) and xP is one match, so
+                 *     gating at formMedian − 1.0 would have relabelled 48% of
+                 *     starting defenders and 55% of midfielders. Measured, not
+                 *     guessed, which is why it is not shipped here.
+                 *
+                 *   - whether you have him benched.
+                 *
+                 * Until the projection is wired in properly, the wording stops
+                 * asserting what was never checked. It says what is true: no
+                 * flag fired, and here is the one figure that moved. */
                 verdict = 'hold';
-                verdictReason = positives.length > 0 ? positives[0].text : 'Performing as expected';
-                recommendation = `Keep starting. Reliable performer${avgFDR <= 3.0 ? ' with decent fixtures ahead' : ''}.`;
+                verdictReason = positives.length > 0 ? positives[0].text : 'No flags on form, minutes or fixtures';
+                recommendation = `Nothing here argues for a transfer${avgFDR <= 3.0 ? `, and the next few fixtures are kind (FDR ${avgFDR.toFixed(1)})` : avgFDR >= 3.5 ? `, though the run is hard (FDR ${avgFDR.toFixed(1)})` : ''}. Check his projected points before you start him.`;
             }
 
             const keyMetric = buildKeyMetrics(player, posConfig, minsPerGame, avgFDR, effectiveForm, rawForm);
@@ -486,7 +511,10 @@
             if (player.position <= 2) {
                 return {
                     primary: { label: 'Form', value: form.toFixed(1), status: judged >= posConfig.formMedian + 1 ? 'good' : judged < posConfig.formMedian - 0.5 ? 'bad' : 'warning' },
-                    secondary: { label: 'Def', value: ta ? ta.defensePower.toString() : '-', status: ta ? (ta.defensePower >= 60 ? 'good' : ta.defensePower < 40 ? 'bad' : 'warning') : 'neutral' },
+                    /* Was the 0-100 defence index, printed as if "62" were a
+                       quantity of something. Goals conceded per game is the
+                       figure that index was built out of, and it has units. */
+                    secondary: { label: 'Conceded', value: ta ? ta.avgConceded.toFixed(1) : '-', status: ta ? (ta.avgConceded <= 1.0 ? 'good' : ta.avgConceded >= 1.6 ? 'bad' : 'warning') : 'neutral' },
                     tertiary: { label: 'FDR', value: avgFDR.toFixed(1), status: avgFDR <= 2.8 ? 'good' : avgFDR >= 3.5 ? 'bad' : 'warning' },
                     quaternary: { label: 'PPG', value: player.ppg.toFixed(1), status: player.ppg >= 5 ? 'good' : player.ppg < 3 ? 'bad' : 'neutral' }
                 };
@@ -494,7 +522,8 @@
                 const xGIPer90 = player.xGIPer90 || (player.minutes > 0 ? (player.xGI / player.minutes) * 90 : 0);
                 return {
                     primary: { label: 'Form', value: form.toFixed(1), status: judged >= posConfig.formMedian + 1.5 ? 'good' : judged < posConfig.formMedian - 0.5 ? 'bad' : 'warning' },
-                    secondary: { label: 'Att', value: ta ? ta.attackPower.toString() : '-', status: ta ? (ta.attackPower >= 60 ? 'good' : ta.attackPower < 40 ? 'bad' : 'warning') : 'neutral' },
+                    // Same again: the attack index out, goals per game in.
+                    secondary: { label: 'Team goals', value: ta ? ta.avgGoals.toFixed(1) : '-', status: ta ? (ta.avgGoals >= 1.8 ? 'good' : ta.avgGoals < 1.1 ? 'bad' : 'warning') : 'neutral' },
                     tertiary: { label: 'xGI/90', value: xGIPer90.toFixed(2), status: xGIPer90 >= 0.50 ? 'good' : xGIPer90 < 0.25 ? 'bad' : 'warning' },
                     quaternary: { label: 'FDR', value: avgFDR.toFixed(1), status: avgFDR <= 2.8 ? 'good' : avgFDR >= 3.5 ? 'bad' : 'warning' }
                 };
@@ -1137,9 +1166,9 @@
                     </div>
                     <div class="opp-card-stats">
                         ${oppTA ? `
-                        <span class="opp-stat" data-tooltip="${escHTML(fx.opponent)}'s form rating out of 100">Form <b>${oppTA.formRating}</b></span>
-                        <span class="opp-stat" data-tooltip="${escHTML(fx.opponent)}'s attack power out of 100">ATK <b>${oppTA.attackPower}</b></span>
-                        <span class="opp-stat" data-tooltip="${escHTML(fx.opponent)}'s defence power out of 100">DEF <b>${oppTA.defensePower}</b></span>` : ''}
+                        <span class="opp-stat" data-tooltip="${escHTML(fx.opponent)} have won ${oppTA.wins} of their last 5">Last 5 <b>${oppTA.wins}W</b></span>
+                        <span class="opp-stat" data-tooltip="${escHTML(fx.opponent)} score ${oppTA.avgGoals.toFixed(1)} goals a game">Scores <b>${oppTA.avgGoals.toFixed(1)}</b></span>
+                        <span class="opp-stat" data-tooltip="${escHTML(fx.opponent)} concede ${oppTA.avgConceded.toFixed(1)} goals a game">Concedes <b>${oppTA.avgConceded.toFixed(1)}</b></span>` : ''}
                         ${ctx && ctx.ranked ? `<span class="opp-stat" data-tooltip="Concedes ${ctx.conceded.toFixed(1)} a game \u2014 the ${ordinal(ctx.rank)} leakiest defence of ${ctx.total}">Concedes <b>${ctx.conceded.toFixed(1)}</b></span>` : ''}
                     </div>
                     <div class="opp-card-note">${formWord}${FDR_WORDS[fx.difficulty] ? ` \u00b7 ${FDR_WORDS[fx.difficulty]} fixture` : ''}</div>
@@ -1890,13 +1919,13 @@
                     <div class="detail-stats-grid">
                         ${renderDetailStat('Goals scored', detailTA.avgGoals.toFixed(1), detailTA.attackPower / 100,
                             ratingBand(detailTA.attackPower, 60, 40),
-                            `per game over the last ${last10} \u00b7 attack rated ${detailTA.attackPower}/100`)}
+                            `per game over the last ${last10}`)}
                         ${renderDetailStat('Clean sheets', `${teamCsPct}%`, detailTA.defensePower / 100,
                             ratingBand(detailTA.defensePower, 60, 40),
-                            `${detailTA.avgConceded.toFixed(1)} conceded/game over the last ${last10} \u00b7 defence rated ${detailTA.defensePower}/100`)}
+                            `${detailTA.avgConceded.toFixed(1)} conceded per game over the last ${last10}`)}
                         ${renderDetailStat('Results', `W${detailTA.wins} D${detailTA.draws} L${detailTA.losses}`, detailTA.formRating / 100,
                             ratingBand(detailTA.formRating, 60, 35),
-                            `last ${last5} matches \u00b7 form rated ${detailTA.formRating}/100`)}
+                            `last ${last5} matches`)}
                         ${renderDetailStat('Fixtures', detailTA.avgFdr.toFixed(1), detailTA.fixtureScore / 100,
                             ratingBand(detailTA.fixtureScore, 60, 35),
                             `average FDR over the next 5 \u00b7 1 is easiest, 5 hardest`)}
@@ -2004,7 +2033,7 @@
              * they did not when these were written. */
             const VERDICTS = {
                 star:    { chip: 'TOP PICK', tip: 'One of the best players in your squad right now — strong form, kind fixtures, and playing the full 90. A captain candidate.' },
-                hold:    { chip: 'HOLD',     tip: 'Performing as expected. Nothing here says sell — keep starting him.' },
+                hold:    { chip: 'HOLD',     tip: 'Nothing in the checks on form, minutes, fixtures or fitness fired for him. That is not the same as a recommendation to start him — read his projected points for the round beside this.' },
                 monitor: { chip: 'WATCH',    tip: 'Some concerns — form, minutes or fixtures. Not a sell yet, but worth reassessing after the next gameweek.' },
                 sell:    { chip: 'SELL',     tip: 'Poor form, hard fixtures or a fitness concern. Prioritise him for a transfer out.' }
             };
