@@ -2652,27 +2652,30 @@
                         >FDR ${fdr.toFixed(1)}</span>
                     </div>
                     <div class="rising-signals">
-                        ${/* ONE LINE EACH: icon, what moved, and what it moved
-                              from and to. "Points trending up · 1.0 to 5.7
-                              pts/g" reads as a sentence and takes a row.
+                        ${/* A TILE EACH, two to a row: the signal's colour on a
+                              disc behind its icon, what moved in that colour,
+                              the figure set large, and its units under it.
 
-                              It was three rows per signal — a head with the
-                              label, a 60px bar underneath it, and the detail on
-                              a line of its own — so six signals ran to eighteen
-                              rows and the cards were taller than the screen.
-                              The bar is gone rather than shrunk: it encoded
-                              s.strength, which is the same quantity the detail
-                              states in the units it is measured in, drawn to a
-                              scale (strength × 10, capped) that no legend ever
-                              explained. A number you can read beats a bar you
-                              have to interpret. */''}
-                        ${p.signals.map(s => `
-                            <div class="rising-signal">
-                                <span class="rising-signal-icon"><i data-lucide="${s.icon || 'activity'}" style="width:13px;height:13px;"></i></span>
-                                <span class="rising-signal-label">${s.label}</span>
-                                <span class="rising-signal-value positive">${s.detail}</span>
-                            </div>
-                        `).join('')}
+                              It was one line per signal on a grey bar — icon,
+                              label, then a sentence of green figures — and six
+                              of them stacked read as a spreadsheet. The figure
+                              is the finding, so it leads; the sentence it came
+                              from is the tooltip. The bars went before that,
+                              and for the same reason: a number you can read
+                              beats a bar you have to interpret. */''}
+                        ${p.signals.map(s => {
+                            const stat = escHTML(s.stat || s.detail || '').replace(/→/g, '<i class="rising-signal-arrow">→</i>');
+                            return `
+                            <div class="rising-signal" style="--sig:${s.color || 'var(--color-success)'}"
+                                 data-tooltip="${escHTML(s.label + ': ' + (s.detail || ''))}">
+                                <span class="rising-signal-icon"><i data-lucide="${s.icon || 'activity'}"></i></span>
+                                <span class="rising-signal-text">
+                                    <span class="rising-signal-label">${escHTML(s.label)}</span>
+                                    <span class="rising-signal-stat">${stat}</span>
+                                    ${s.unit ? `<span class="rising-signal-unit">${escHTML(s.unit)}</span>` : ''}
+                                </span>
+                            </div>`;
+                        }).join('')}
                     </div>
                     </div>
                 </div>

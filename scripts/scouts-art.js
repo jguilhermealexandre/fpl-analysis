@@ -80,31 +80,31 @@ function sdArtTemplate(category) {
 
 /* NO PHOTOGRAPH. The league's headshots are the league's, and the rest of the
    site now draws a player as the back of his club's shirt instead — see THE
-   SHIRT in common.js. The artwork takes that same drawing when it is there.
+   SHIRT in common.js. The artwork draws that same shirt, once, with his real
+   squad number on it.
 
-   It is not always there. This file is also loaded on its own by the static
-   article builder, which has no common.js and so no v2KitSVG, and the
-   archived posters it writes fall back to the monogram underneath. That
-   fallback is not new: the portrait has always been initials with something
-   laid over them, and `is-faceless` has always been a designed state rather
-   than a failure. */
+   It used to be three times: a blown-up grey copy behind the type, a monogram
+   of his initials, and the shirt over that — and the shirt was handed no
+   code, so it could not find his number and printed the initials as well.
+   The code is what lets v2KitSVG() find both the number and, for a stored
+   subject the builder wrote without one, his club.
+
+   The static article builder has no browser and so no common.js of its own;
+   it loads the same drawing through scripts/kit-node.js before it requires
+   this file. Without either there is no shirt, and the card stands on its
+   type the way a faceless one does. */
 function sdArtKitOr(subject) {
     if (!subject) return '';
     return typeof v2KitSVG === 'function'
-        ? v2KitSVG({ name: subject.name, team: subject.team, teamCode: subject.teamCode })
+        ? v2KitSVG({
+            name: subject.name,
+            code: subject.code,
+            team: subject.team,
+            teamCode: subject.teamCode,
+            pos: subject.pos,
+            shirt: subject.shirt
+        })
         : '';
-}
-
-/* The same rule as v2Initials() in common.js, written out because the static
-   article builder loads this file on its own. Two letters, split on the
-   separators a footballer's name actually uses. */
-function sdArtInitials(name) {
-    return String(name || '')
-        .split(/[\s.'\u2019-]+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map(w => w[0].toUpperCase())
-        .join('');
 }
 
 function sdArtEsc(s) {
@@ -121,35 +121,20 @@ function sdArtEsc(s) {
    the stat line survives differ, which is what keeps a grid of eight
    cards reading as a set rather than as eight posters.
 
-   The subject is optional: `{ name, code, stat }`. Without one the card
-   drops to its faceless state, which is why `is-faceless` is set here and
-   not only by the photo's error handler. */
+   The subject is optional: `{ name, code, team, teamCode, stat }`. Without
+   one the card drops to its faceless state. */
 function sdArtwork(article, variant) {
     const a = article || {};
     const key = sdArtKey(a.category);
     const t = SD_ART_TEMPLATES[key] || SD_ART_TEMPLATES.build;
     const subject = a.subject || null;
     const name = subject && subject.name ? String(subject.name) : '';
-    /* Faceless means the article has no subject at all — an explainer, a piece
-       about a club, a list. It does NOT mean the photograph failed to load.
-
-       That distinction was wrong and this is the fix. The league publishes no
-       shot for a player for days or weeks after he signs, and keeps serving
-       the old club's shot until they reshoot him; tools/check-player-photos.mjs
-       says so in as many words, and it is why every pitch card on this site
-       sets the player's initials behind the photo and lets the photo cover
-       them. The artwork removed its image and left a hole instead, so a
-       recent signing — Barcola, here — got a card with an empty frame where
-       the rest of the site would have shown a monogram.
-
-       Same construction as v2AvatarHTML(): the initials are always in the
-       markup, the photo sits over them, and a photo that cannot be fetched
-       takes itself out of the way rather than taking the portrait with it. */
-    const faceless = !name;
-    const portrait = faceless ? '' : `<span class="sd-art-portrait">`
-        + `<b class="sd-art-initials" aria-hidden="true">${sdArtEsc(sdArtInitials(name))}</b>`
-        + sdArtKitOr(subject)
-        + `</span>`;
+    /* Faceless means there is no shirt to draw: the article has no subject at
+       all — an explainer, a piece about a club, a list — or there is nothing
+       here to draw one with. Either way the type takes the whole frame. */
+    const kit = name ? sdArtKitOr(subject) : '';
+    const faceless = !kit;
+    const portrait = faceless ? '' : `<span class="sd-art-portrait">${kit}</span>`;
 
     /* The kicker carries the round when there is one. "Man of the Match"
        is a claim about a particular Saturday, and the archive is a stack
@@ -168,7 +153,6 @@ function sdArtwork(article, variant) {
         + ` style="--art-ink:${t.ink};--art-accent:${t.accent};--art-wash:${t.wash}"`
         + ` data-variant="${v}" aria-hidden="true">`
         + `<span class="sd-art-bars"></span>`
-        + (faceless ? '' : `<span class="sd-art-ghost">${sdArtKitOr(subject)}</span>`)
         + (isThumb ? '' : `<span class="sd-art-text">`
             + `<span class="sd-art-kicker">${sdArtEsc(kicker)}</span>`
             + (name ? `<span class="sd-art-name">${sdArtEsc(name)}</span>` : '')

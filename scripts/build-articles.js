@@ -26,8 +26,28 @@ const ARTICLE_DATA = path.join(DATA, 'articles');
 const ARTICLE_HTML = path.join(ROOT, 'articles');
 const SITE = 'https://easyfpl.com';
 
+const vm = require('vm');
 const sd = require('./scouts-desk.js');
 const art = require('./scouts-art.js');
+
+/* The artwork draws the subject's club shirt with his squad number on it, and
+   that drawing lives in common.js, which is a browser script. Its identity
+   block is self-contained — no DOM, no fetch; tests/club-kits.test.mjs
+   evaluates the same slice — so it is run on its own here and v2KitSVG put on
+   the global object, where scouts-art.js looks for it. The bootstrap is
+   learned the way DataCache learns it in the browser, so the numbers and the
+   clubs come from the one place they come from there. */
+function loadKit(boot) {
+    const src = fs.readFileSync(path.join(__dirname, 'common.js'), 'utf8');
+    const from = src.indexOf('const V2_POS_CLASS');
+    const to = src.indexOf("/* The class that paints a position colour down a row's leading edge");
+    if (from < 0 || to < from) throw new Error('the identity block in common.js has moved');
+    const ctx = { console, escHTML: esc, teams: {} };
+    vm.createContext(ctx);
+    new vm.Script(src.slice(from, to), { filename: 'scripts/common.js#identity' }).runInContext(ctx);
+    if (boot) ctx.v2LearnShirtNumbers(boot);
+    globalThis.v2KitSVG = ctx.v2KitSVG;
+}
 
 // Reading order within a single build. Evergreen explainer sits last.
 const SECTION_ORDER = ['Gameweek Debrief', 'Hall of Shame', 'Strategy', 'Fixture Watch', 'Data Deep-Dive',
@@ -103,15 +123,15 @@ function articlePage(a) {
 <meta name="twitter:description" content="${esc(a.dek)}">
 <meta name="twitter:image" content="${card}">
 <!-- The site's own typefaces, not Google's — see tools/fetch-fonts.mjs. -->
-<link rel="stylesheet" href="/styles/fonts.min.css?v=475" media="print" onload="this.media='all';this.onload=null">
-<noscript><link rel="stylesheet" href="/styles/fonts.min.css?v=475"></noscript>
+<link rel="stylesheet" href="/styles/fonts.min.css?v=476" media="print" onload="this.media='all';this.onload=null">
+<noscript><link rel="stylesheet" href="/styles/fonts.min.css?v=476"></noscript>
 <!-- Root-absolute, minified and versioned, like every other page. These were
      ../styles/*.css: relative, unminified and uncacheable, so an archive page
      shipped 161KB of raw v2-design.css and revalidated it on every visit. -->
-<link rel="stylesheet" href="/styles/common.min.css?v=475">
-<link rel="stylesheet" href="/styles/v2-design.min.css?v=475">
-<script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=475';document.head.appendChild(l)})();</script>
-<link rel="stylesheet" href="/styles/scouts-desk.min.css?v=475">
+<link rel="stylesheet" href="/styles/common.min.css?v=476">
+<link rel="stylesheet" href="/styles/v2-design.min.css?v=476">
+<script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=476';document.head.appendChild(l)})();</script>
+<link rel="stylesheet" href="/styles/scouts-desk.min.css?v=476">
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
 </head>
 <body>
@@ -151,6 +171,7 @@ function main() {
     const players = readJSON('players-data.json', { players: [] });
 
     sd.sdSetData(boot, fixtures, players);
+    loadKit(boot);
     fs.mkdirSync(ARTICLE_DATA, { recursive: true });
     fs.mkdirSync(ARTICLE_HTML, { recursive: true });
 
@@ -245,4 +266,7 @@ function main() {
     console.log(`Sitemap: ${urls.length} URLs.`);
 }
 
-main();
+/* Run, or lent to tools/rerender-articles.mjs for loadKit(). */
+if (require.main === module) main();
+
+module.exports = { loadKit };

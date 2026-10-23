@@ -13,7 +13,10 @@
  *
  * Writes `squad_number` straight into data/bootstrap-static.json, which every
  * page already loads — rather than a second file every page would have to
- * fetch. Run after the bootstrap is refreshed, like attach-minutes-form.mjs.
+ * fetch. And keeps them in data/shirt-numbers.json beside it, because the
+ * bootstrap is replaced wholesale by every data run: normalise-bootstrap.mjs
+ * lays the numbers from that file back over each fresh one. Without it the
+ * numbers survived until the next live refresh and no longer.
  *
  * Run:  node tools/fetch-shirt-numbers.mjs [data/bootstrap-static.json]
  *       node tools/fetch-shirt-numbers.mjs --dry-run    report, write nothing
@@ -117,3 +120,15 @@ console.log(`\n${set} set, ${unchanged} unchanged, ${boot.elements.length - set 
 if (DRY) { console.log('--dry-run: nothing written'); process.exit(0); }
 fs.writeFileSync(FILE, JSON.stringify(boot));
 console.log(`Wrote ${path.relative(ROOT, FILE)}`);
+
+/* Merged over what is there, for the same reason as above: a player this run
+   did not see keeps the number he had. One per line, so a renumbering reads
+   as a one-line diff. */
+const NUMBERS_FILE = path.join(path.dirname(FILE), 'shirt-numbers.json');
+let kept = {};
+try { kept = JSON.parse(fs.readFileSync(NUMBERS_FILE, 'utf8')); } catch { /* first run */ }
+for (const [code, n] of byCode) kept[String(code)] = n;
+const codes = Object.keys(kept).sort((a, b) => Number(a) - Number(b));
+fs.writeFileSync(NUMBERS_FILE,
+    `{\n${codes.map(c => `  "${c}": ${kept[c]}`).join(',\n')}\n}\n`);
+console.log(`Wrote ${path.relative(ROOT, NUMBERS_FILE)} (${codes.length} numbers)`);

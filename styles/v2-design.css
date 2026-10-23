@@ -1473,18 +1473,6 @@ select[data-tooltip]:not([data-tooltip=""]), select[title]:not([title=""]),
         linear-gradient(105deg, transparent 78%, color-mix(in srgb, var(--art-wash, #1F2937) 60%, transparent) 78%);
     opacity: .85;
 }
-/* The subject again, blown up and knocked back — the reference's trick for
-   filling the middle of the frame without competing with the type. */
-.sd-art-ghost {
-    position: absolute;
-    top: -18%; right: 26%;
-    height: 136%;
-    opacity: .16;
-    filter: grayscale(1) contrast(1.15);
-    pointer-events: none;
-}
-.sd-art-ghost-img { height: 100%; width: auto; display: block; object-fit: contain; }
-
 .sd-art-text {
     position: absolute;
     left: 0; top: 0; bottom: 0;
@@ -1518,53 +1506,42 @@ select[data-tooltip]:not([data-tooltip=""]), select[title]:not([title=""]),
     color: rgba(255,255,255,.72);
     margin-top: 10px;
 }
-/* The portrait slot. Anchored bottom-right so the head sits in the frame's
-   top half whatever the crop, which is where a portrait wants to be.
-
-   It holds the initials and the photograph, in that order. The league
-   publishes no shot for a player for some days after he signs, and this is
-   what the rest of the site does about that — see v2AvatarHTML(): the
-   monogram is always in the markup and the photo covers it, so a photo that
-   never arrives leaves a portrait rather than a hole. */
+/* The portrait slot: the subject's shirt, once, centred in the wash on the
+   right. Sized off the frame's height so it reads the same on a card, the
+   featured piece and the dashboard thumb. */
 .sd-art-portrait {
     position: absolute;
-    right: 0; bottom: 0;
-    width: 38%; height: 104%;
+    right: 0; top: 0; bottom: 0;
+    width: 38%;
     z-index: 1;
     display: flex; align-items: center; justify-content: center;
-    overflow: hidden;
 }
-.sd-art-initials {
-    font-family: var(--font-display);
-    font-weight: 800;
-    letter-spacing: -0.04em;
-    line-height: 1;
-    color: color-mix(in srgb, var(--art-accent, #9CA3AF) 38%, transparent);
-    user-select: none;
+.sd-art-portrait .v2-kit {
+    width: auto; height: 82%;
+    max-width: 100%;
+    filter: drop-shadow(-6px 4px 16px rgba(0,0,0,.35));
 }
-.sd-art-face {
-    position: absolute;
-    right: 0; bottom: 0;
-    height: 100%;
-    width: auto; max-width: 100%;
-    object-fit: contain; object-position: bottom right;
-    filter: drop-shadow(-8px 0 22px rgba(0,0,0,.4));
+/* The permalink pages load v2-app.css only for a signed-in reader, so the
+   shirt's own number and edge styles are repeated here for everyone else. */
+.sd-art-portrait .v2-kit-n {
+    font-family: var(--font-display, system-ui, sans-serif);
+    font-size: 21px; font-weight: 800;
+    stroke-width: 2.4; paint-order: stroke fill;
 }
+.sd-art-portrait .v2-kit-edge { stroke: rgba(0,0,0,.45); stroke-width: 1.3; stroke-linejoin: round; }
 
 /* ---- the two sizes ---- */
 .sd-art[data-variant="card"] { height: 132px; }
 .sd-art[data-variant="card"] .sd-art-text { left: 13px; right: 40%; }
 .sd-art[data-variant="card"] .sd-art-kicker { font-size: 14px; padding-bottom: 4px; }
 .sd-art[data-variant="card"] .sd-art-name { font-size: 19px; padding-bottom: 4px; margin-top: 6px; }
-.sd-art[data-variant="card"] .sd-art-initials { font-size: 44px; }
 
 .sd-art[data-variant="lead"] { min-height: 210px; height: 100%; }
 .sd-art[data-variant="lead"] .sd-art-text { left: 24px; right: 38%; }
 .sd-art[data-variant="lead"] .sd-art-kicker { font-size: 25px; padding-bottom: 7px; }
 .sd-art[data-variant="lead"] .sd-art-name { font-size: 33px; padding-bottom: 7px; margin-top: 10px; }
-.sd-art[data-variant="lead"] .sd-art-initials { font-size: 80px; }
 
-/* No photo — the archive, and every evergreen piece. The type takes the whole
+/* No shirt — the archive, and every evergreen piece. The type takes the whole
    frame rather than leaving a hole where a face would have been. */
 .sd-art.is-faceless .sd-art-text { right: 16px; }
 .sd-art.is-faceless .sd-art-bars { opacity: .6; }
@@ -1574,21 +1551,17 @@ select[data-tooltip]:not([data-tooltip=""]), select[title]:not([title=""]),
     .sd-art[data-variant="lead"] .sd-art-text { left: 18px; right: 44%; }
     .sd-art[data-variant="lead"] .sd-art-kicker { font-size: 21px; }
     .sd-art[data-variant="lead"] .sd-art-name { font-size: 27px; }
-    .sd-art[data-variant="lead"] .sd-art-initials { font-size: 52px; }
 }
 
 /* The dashboard's Scout's Desk card: art down the left, at the card's height,
    with no type of its own. */
 .sd-art[data-variant="thumb"] { height: 100%; min-height: 96px; }
 .sd-art[data-variant="thumb"] .sd-art-portrait { width: 62%; }
-.sd-art[data-variant="thumb"] .sd-art-ghost { right: 8%; opacity: .2; }
-.sd-art[data-variant="thumb"] .sd-art-initials { font-size: 34px; }
 
 /* === GENERATED: size-keyed tracking — node tools/gen-tracking.mjs === */
 /* Written by tools/gen-tracking.mjs — do not edit by hand. Every rule in
    this file that sets a font-size under 16px gets the tracking that size
    calls for; one that asked for more air than its band keeps its own. */
-.sd-art-initials,
 .sd-art-kicker,
 .sd-art-name {
     letter-spacing: inherit !important;

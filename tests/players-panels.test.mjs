@@ -256,14 +256,14 @@ test('an unpriced round no longer claims a publishing schedule', () => {
         'while making clear the page still works');
 });
 
-/* ---- 4. Rising Form: one row per signal --------------------------------- */
+/* ---- 4. Rising Form: a tile per signal ---------------------------------- */
 
 /* Each signal was three rows — a label, a 60px bar under it, and the detail on
    a line of its own — so a six-signal card ran to eighteen rows. Reported as
-   "each player signals are waaaay too long". It is icon, label and figures on
-   one line now, and the bar is gone rather than shrunk: it drew s.strength to
-   a scale of strength × 10 capped at 100 that no legend explained, beside a
-   detail stating the same movement in its own units. */
+   "each player signals are waaaay too long". Then it was one line each on a
+   grey bar, and six of those stacked were reported as looking "like an excel
+   sheet". It is a tile now: the signal's colour on a disc behind its icon, the
+   figure that moved set large, and what it is under it. No bar of any kind. */
 
 function risingCard(signals) {
     return loadFunction(CORE, 'renderRisingCard', {
@@ -278,50 +278,49 @@ function risingCard(signals) {
 }
 
 const SIGNALS = [
-    { label: 'Points trending up', detail: '1.0 to 5.7 pts/g', icon: 'trending-up', strength: 8, color: '#0f0' },
-    { label: 'Minutes secure', detail: '87 min/game', icon: 'clock', strength: 9, color: '#0f0' }
+    { label: 'Points trending up', detail: '1.0 → 5.7 pts/g', stat: '1.0 → 5.7', unit: 'pts a game',
+        icon: 'flame', strength: 8, color: '#FB923C' },
+    { label: 'Under the radar', detail: '4.1% owned', stat: '4.1%', unit: 'owned',
+        icon: 'eye-off', strength: 9, color: '#F472B6' }
 ];
 
-test('a signal is one line: icon, label, then the figures', () => {
+test('a signal is a tile: coloured icon, what moved, the figure large, its units', () => {
     const html = risingCard(SIGNALS);
-    const rows = [...html.matchAll(/<div class="rising-signal">([\s\S]*?)<\/div>/g)].map(m => m[1]);
-    assert.equal(rows.length, 2, 'one element per signal');
-    for (const row of rows) {
-        assert.match(row, /rising-signal-icon[\s\S]*rising-signal-label[\s\S]*rising-signal-value/,
-            'icon, then what moved, then what it moved between — in that order');
+    const tiles = [...html.matchAll(/<div class="rising-signal"([\s\S]*?)<\/div>/g)].map(m => m[1]);
+    assert.equal(tiles.length, 2, 'one element per signal');
+    for (const t of tiles) {
+        assert.match(t, /rising-signal-icon[\s\S]*rising-signal-label[\s\S]*rising-signal-stat[\s\S]*rising-signal-unit/,
+            'icon, what moved, the figure, then its units — in that order');
     }
-    assert.match(rows[0], /Points trending up/);
-    assert.match(rows[0], /1\.0 to 5\.7 pts\/g/, 'the figures are on the same row as the label');
+    assert.match(tiles[0], /--sig:#FB923C/, 'the tile wears its signal\u2019s colour');
+    assert.match(tiles[0], /1\.0 <i class="rising-signal-arrow">→<\/i> 5\.7/);
+    assert.match(tiles[0], /data-tooltip="Points trending up: 1\.0 → 5\.7 pts\/g"/,
+        'the full sentence is still there, on hover');
 });
 
-test('the bars and the wrapper row they needed are gone', () => {
+test('no bars, and nothing reads s.strength', () => {
     const html = risingCard(SIGNALS);
-    for (const cls of ['rising-signal-bar', 'rising-signal-bar-fill', 'rising-signal-head']) {
+    for (const cls of ['rising-signal-bar', 'rising-signal-bar-fill', 'rising-signal-head', 'rising-signal-value']) {
         assert.equal(html.includes(cls), false, `${cls} should not be rendered`);
     }
-    assert.equal(html.includes('strength'), false, 'and nothing reads s.strength any more');
+    assert.equal(html.includes('strength'), false);
 });
 
-test('the stylesheet draws the row as one line, with the bar rules deleted', () => {
+test('the stylesheet lays the tiles two to a row, with no bar behind them', () => {
     const css = read('styles/players.css');
-    const rule = /\.rising-signal \{([^}]*)\}/.exec(css);
-    assert.ok(rule, '.rising-signal must still have a rule');
-    assert.match(rule[1], /display: flex/, 'one line, not a grid of rows');
-    assert.match(rule[1], /align-items: baseline/, 'so icon, label and number share a text line');
-    assert.equal(/grid-template-columns/.test(rule[1]), false, 'the two-column grid is gone');
-    assert.equal(css.includes('.rising-signal-bar'), false, 'and the bar rules with it');
+    const grid = /\.rising-signals \{([^}]*)\}/.exec(css);
+    assert.match(grid[1], /grid-template-columns: repeat\(2/);
+    const tile = /\.rising-signal \{([^}]*)\}/.exec(css);
+    assert.ok(tile, '.rising-signal must still have a rule');
+    assert.equal(/background/.test(tile[1]), false, 'the grey bar behind each signal is gone');
+    assert.equal(css.includes('.rising-signal-bar'), false);
 });
 
-test('the font sizes on the keyed selectors are untouched', () => {
-    /* .rising-signal, -icon and -value are named in this file's generated
-       size-keyed tracking block, which only tools/gen-tracking.mjs may write
-       and which cannot run on this machine. Changing a font-size on one of
-       them would leave that block stale and fail check:tracking — so the
-       layout changed and the type did not. */
-    const css = read('styles/players.css');
-    assert.match(css, /\.rising-signal \{[^}]*font-size: 11px/);
-    assert.match(css, /\.rising-signal-icon \{[^}]*font-size: 12px/);
-    assert.match(css, /\.rising-signal-value \{[^}]*font-size: 11px/);
+test('every signal Rising Form can raise has a headline figure', () => {
+    const src = read('scripts/form-trend.js');
+    const pushes = src.split('signals.push(').length - 1;
+    const stats = (src.match(/\bstat: /g) || []).length;
+    assert.equal(stats, pushes, 'a signal without `stat` falls back to its whole sentence in large type');
 });
 
 /* ---- 1. the Teams ranked card loses its conversion rows ----------------- */

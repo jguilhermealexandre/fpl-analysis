@@ -3,7 +3,7 @@
  * Every face on the site used to be a club headshot from
  * resources.premierleague.com — the league's photographs, which we have no
  * licence to republish. A player is drawn now: the back of his club's shirt,
- * with his initials where the squad number goes.
+ * with his squad number on it.
  *
  * What these pin is the part that can quietly rot. The kit table is keyed by
  * the league's team code and has to cover whoever is actually in the division
@@ -134,13 +134,41 @@ test('the squad numbers are there, and enough of them to be the default', () => 
     }
 });
 
-test('a player the league has not numbered keeps his initials', () => {
+test('a player the league has not numbered wears a plain shirt', () => {
     /* A new signing or a youth call-up has no number for days or weeks, and
-       giving him one would be the invention this whole thing avoids. */
+       giving him one would be the invention this whole thing avoids. His
+       initials were tried in that place and read as a mistake beside thirty
+       real numbers, so the shirt is drawn without one. */
     const anon = bootstrap.elements.find(p => p.squad_number == null);
     assert.ok(anon, 'nobody is unnumbered, so this case is no longer reachable');
-    assert.equal(kit.v2KitNumber({ name: anon.web_name, code: anon.code }),
-        kit.v2Initials(anon.web_name));
+    assert.equal(kit.v2KitNumber({ name: anon.web_name, code: anon.code }), '');
+    assert.doesNotMatch(kit.v2KitSVG({ name: anon.web_name, code: anon.code }), /v2-kit-n/);
+});
+
+test('the numbers survive a data refresh', () => {
+    /* They lasted three hours a week: every live refresh copies a fresh
+       bootstrap over the file, and FPL's has no numbers in it. The normaliser
+       both data jobs run after the copy lays them back from their own file. */
+    const numbers = JSON.parse(read('data/shirt-numbers.json'));
+    assert.ok(Object.keys(numbers).length > bootstrap.elements.length * 0.6);
+    for (const wf of ['refresh-live-data.yml', 'update.player-data.yml']) {
+        const src = read(`.github/workflows/${wf}`);
+        const copy = src.indexOf('cp /tmp/bootstrap.json data/bootstrap-static.json');
+        const norm = src.indexOf('tools/normalise-bootstrap.mjs data/bootstrap-static.json');
+        assert.ok(copy > -1 && norm > copy, `${wf} must normalise the bootstrap after replacing it`);
+    }
+    assert.match(read('tools/normalise-bootstrap.mjs'), /shirt-numbers\.json/);
+});
+
+test('a code alone is enough to dress him in his club and number', () => {
+    /* A stored Scout's Desk subject carries a name and a code and nothing
+       else, and drew Haaland in the fallback purple with an H on it. */
+    const fresh = kitContext();
+    const boot = { teams: [{ id: 13, code: 43 }], elements: [{ code: 223094, team: 13, element_type: 4, squad_number: 9 }] };
+    fresh.v2LearnShirtNumbers(boot);
+    const svg = fresh.v2KitSVG({ name: 'Haaland', code: 223094 });
+    assert.match(svg, new RegExp(`fill="${fresh.CLUB_KITS[43][1]}"`));
+    assert.match(svg, />9<\/text>/);
 });
 
 test('the number is learned from the bootstrap, not threaded through the callers', () => {
@@ -150,9 +178,8 @@ test('the number is learned from the bootstrap, not threaded through the callers
         'DataCache.fetchJSON is the one seam every page\u2019s bootstrap passes through');
 });
 
-test('a real number wins, and the initials are the fallback', () => {
-    assert.equal(kit.v2KitNumber({ name: 'Bruno Fernandes' }), 'BF', 'nothing known about him');
-    assert.equal(kit.v2KitNumber({ name: 'Saka' }), 'S');
+test('a real number wins, and there is no fallback', () => {
+    assert.equal(kit.v2KitNumber({ name: 'Bruno Fernandes' }), '', 'nothing known about him');
     assert.equal(kit.v2KitNumber({ name: 'Bruno Fernandes', shirt: 8 }), '8',
         'a real number wins the moment one exists');
     assert.equal(kit.v2KitNumber({ name: 'Saka', squadNumber: 7 }), '7');
@@ -203,7 +230,7 @@ test('the shirt stays inside the circle the avatar crops it to', () => {
 
 test('the number can be left off where the shirt is too small to carry one', () => {
     assert.ok(!kit.v2KitSVG({ name: 'Isak', teamCode: 4 }, { number: false }).includes('v2-kit-n'));
-    assert.ok(kit.v2KitSVG({ name: 'Isak', teamCode: 4 }).includes('v2-kit-n'));
+    assert.ok(kit.v2KitSVG({ name: 'Isak', teamCode: 4, shirt: 14 }).includes('v2-kit-n'));
 });
 
 /* ===== And no photograph anywhere ===== */
