@@ -2503,35 +2503,29 @@
  * Label, then the bar, then the number it explains. Each signal is the same
  * height whatever it says, every card in a row lines up, and the detail gets
  * the card's full width because nothing is beside it. */
+/* ONE ROW PER SIGNAL: icon, what moved, and the figures it moved between.
+ *
+ * It was a two-column grid over two rows — label and a 60px bar on the first,
+ * the detail spanning both on the second — which is three lines of card per
+ * signal and six signals on a good card. Eighteen rows to say six things.
+ *
+ * The bar went with it, and not for space alone: it drew s.strength to a
+ * scale of strength × 10 capped at 100, which no legend explained, while the
+ * detail beside it stated the same movement in its own units. The figures win.
+ *
+ * align-items: baseline so the icon, the label and the number sit on one
+ * line of text rather than on three centred boxes. Font sizes are deliberately
+ * untouched here — these selectors are keyed in the generated tracking block
+ * below, and changing a size would make that block stale. */
 .rising-signal {
-    display: grid;
-    /* The bar shares the label's line rather than taking one of its own.
-       It used to be a third row because an earlier version had icon, label,
-       bar and value all competing for one line — the label wrapped on some
-       cards and not others and the green detail ran off the end. That was
-       the value's fault, not the bar's: the bar is a fixed 60px and the
-       label has a flexible column beside it, so these two sit together
-       without either pushing the other around. The detail still gets the
-       full width on its own row, which is what it needed.
-
-       Six signals a card, so nine pixels off each is a card that is 55px
-       shorter for free. */
-    grid-template-columns: minmax(0, 1fr) 60px;
-    align-items: center;
-    gap: 3px 9px;
-    padding: 6px 9px;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 2px 7px;
+    padding: 5px 9px;
     background: var(--surface-2);
     border-radius: 7px;
     font-size: 11px;
-}
-.rising-signal-head { grid-column: 1; grid-row: 1; }
-.rising-signal-bar { grid-column: 2; grid-row: 1; }
-.rising-signal-value { grid-column: 1 / -1; grid-row: 2; }
-.rising-signal-head {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
 }
 .rising-signal-icon {
     width: 18px;
@@ -2539,15 +2533,19 @@
     flex-shrink: 0;
     font-size: 12px;
 }
+/* The label does not stretch any more: the detail follows it directly, the
+   way the sentence reads, rather than being pushed to the far edge. */
 .rising-signal-label {
     color: var(--text-secondary);
-    flex: 1;
+    flex: 0 1 auto;
+    min-width: 0;
     font-weight: 600;
 }
 .rising-signal-value {
     font-weight: 600;
     font-size: 11px;
-    /* It has the whole row now, so it wraps rather than overflowing. */
+    /* Shares the row with the label and wraps under it when the pair will not
+       fit, which is what flex-wrap on the parent is for. */
     min-width: 0;
     overflow-wrap: anywhere;
     line-height: 1.35;
@@ -2577,19 +2575,6 @@
 .rising-signal-value.positive { color: var(--color-success); }
 .rising-signal-value.neutral { color: var(--text-secondary); }
 .rising-signal-value.negative { color: var(--color-error); }
-.rising-signal-bar {
-    width: 60px;
-    height: 5px;
-    background: var(--surface-3);
-    border-radius: 3px;
-    overflow: hidden;
-    flex-shrink: 0;
-}
-.rising-signal-bar-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width 300ms ease;
-}
 .rising-card-footer {
     display: flex;
     justify-content: space-between;

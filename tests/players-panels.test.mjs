@@ -255,3 +255,93 @@ test('an unpriced round no longer claims a publishing schedule', () => {
     assert.match(fn, /nothing on this page depends on the market/,
         'while making clear the page still works');
 });
+
+/* ---- 4. Rising Form: one row per signal --------------------------------- */
+
+/* Each signal was three rows — a label, a 60px bar under it, and the detail on
+   a line of its own — so a six-signal card ran to eighteen rows. Reported as
+   "each player signals are waaaay too long". It is icon, label and figures on
+   one line now, and the bar is gone rather than shrunk: it drew s.strength to
+   a scale of strength × 10 capped at 100 that no legend explained, beside a
+   detail stating the same movement in its own units. */
+
+function risingCard(signals) {
+    return loadFunction(CORE, 'renderRisingCard', {
+        v2PlayerHeroHTML: () => '<!--hero-->',
+        getStarHtml: () => '',
+        p: undefined,
+        escHTML: s => String(s)
+    })({
+        id: 7, pos: 'MID', signalCount: signals.length, signals,
+        fdrNear: 2.4, avgFDR: 2.4
+    }, 1);
+}
+
+const SIGNALS = [
+    { label: 'Points trending up', detail: '1.0 to 5.7 pts/g', icon: 'trending-up', strength: 8, color: '#0f0' },
+    { label: 'Minutes secure', detail: '87 min/game', icon: 'clock', strength: 9, color: '#0f0' }
+];
+
+test('a signal is one line: icon, label, then the figures', () => {
+    const html = risingCard(SIGNALS);
+    const rows = [...html.matchAll(/<div class="rising-signal">([\s\S]*?)<\/div>/g)].map(m => m[1]);
+    assert.equal(rows.length, 2, 'one element per signal');
+    for (const row of rows) {
+        assert.match(row, /rising-signal-icon[\s\S]*rising-signal-label[\s\S]*rising-signal-value/,
+            'icon, then what moved, then what it moved between — in that order');
+    }
+    assert.match(rows[0], /Points trending up/);
+    assert.match(rows[0], /1\.0 to 5\.7 pts\/g/, 'the figures are on the same row as the label');
+});
+
+test('the bars and the wrapper row they needed are gone', () => {
+    const html = risingCard(SIGNALS);
+    for (const cls of ['rising-signal-bar', 'rising-signal-bar-fill', 'rising-signal-head']) {
+        assert.equal(html.includes(cls), false, `${cls} should not be rendered`);
+    }
+    assert.equal(html.includes('strength'), false, 'and nothing reads s.strength any more');
+});
+
+test('the stylesheet draws the row as one line, with the bar rules deleted', () => {
+    const css = read('styles/players.css');
+    const rule = /\.rising-signal \{([^}]*)\}/.exec(css);
+    assert.ok(rule, '.rising-signal must still have a rule');
+    assert.match(rule[1], /display: flex/, 'one line, not a grid of rows');
+    assert.match(rule[1], /align-items: baseline/, 'so icon, label and number share a text line');
+    assert.equal(/grid-template-columns/.test(rule[1]), false, 'the two-column grid is gone');
+    assert.equal(css.includes('.rising-signal-bar'), false, 'and the bar rules with it');
+});
+
+test('the font sizes on the keyed selectors are untouched', () => {
+    /* .rising-signal, -icon and -value are named in this file's generated
+       size-keyed tracking block, which only tools/gen-tracking.mjs may write
+       and which cannot run on this machine. Changing a font-size on one of
+       them would leave that block stale and fail check:tracking — so the
+       layout changed and the type did not. */
+    const css = read('styles/players.css');
+    assert.match(css, /\.rising-signal \{[^}]*font-size: 11px/);
+    assert.match(css, /\.rising-signal-icon \{[^}]*font-size: 12px/);
+    assert.match(css, /\.rising-signal-value \{[^}]*font-size: 11px/);
+});
+
+/* ---- 1. the Teams ranked card loses its conversion rows ----------------- */
+
+test('the ranked club card no longer restates xG against goals', () => {
+    /* "2.20 xG → 2.71 scored +0.52" and the conceding row under it. Both
+       columns directly above the row already carry xG/game and goals/game. */
+    const page = read(TEAMS);
+    assert.equal(page.includes('tsb-conversion'), false, 'the row is gone from the card');
+    assert.equal(/const conversion = /.test(page), false, 'and the variable that built it');
+    assert.equal(/\$\{conversion\}/.test(page), false, 'and the slot it was dropped into');
+});
+
+test('but the club modal keeps the same comparison over the last five', () => {
+    /* renderXgVsActual() is shared. There the gap IS the point — it is not
+       repeating two figures printed an inch above it. */
+    const page = read(TEAMS);
+    assert.match(page, /function renderXgVsActual\(/, 'the helper stays');
+    const calls = (page.match(/\$\{renderXgVsActual\(/g) || []).length;
+    assert.equal(calls, 2, 'called twice, both in the modal');
+    assert.match(page, /renderXgVsActual\('Scored'/);
+    assert.match(page, /renderXgVsActual\('Conceded'/);
+});

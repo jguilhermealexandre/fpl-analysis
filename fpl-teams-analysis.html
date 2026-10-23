@@ -45,26 +45,26 @@
          waiting for the stylesheet to name them: same-origin now, so a
          preload here costs nothing and starts them with the CSS. -->
     <link rel="preload" as="font" type="font/woff2" href="/assets/fonts/inter-latin-ca11fe9ca5.woff2" crossorigin>
-    <link rel="stylesheet" href="/styles/fonts.min.css?v=473">
-    <script src="/scripts/dashboard-gate.min.js?v=473"></script>
-    <link rel="stylesheet" href="/styles/common.min.css?v=473">
-    <link rel="stylesheet" href="/styles/teams.min.css?v=473">
-    <link rel="stylesheet" href="/styles/v2-design.min.css?v=473">
+    <link rel="stylesheet" href="/styles/fonts.min.css?v=474">
+    <script src="/scripts/dashboard-gate.min.js?v=474"></script>
+    <link rel="stylesheet" href="/styles/common.min.css?v=474">
+    <link rel="stylesheet" href="/styles/teams.min.css?v=474">
+    <link rel="stylesheet" href="/styles/v2-design.min.css?v=474">
     <!-- v2-app.css is the signed-in half of v2-design.css. Asked for here, so
          that the cascade reads the same as it did when the two were one file,
          and only when there is a saved Team ID — see the note at the top of
          v2-design.css. Kept identical on every page by check:appcss. -->
-    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=473';document.head.appendChild(l)})();</script>
-    <link rel="stylesheet" href="/styles/responsive.min.css?v=473">
-    <script src="/scripts/error-monitor.min.js?v=473"></script>
-    <script src="/scripts/auth.min.js?v=473"></script>
-    <script src="/scripts/common.min.js?v=473"></script>
-    <script src="/scripts/team-xg.min.js?v=473"></script>
+    <script>(function(){var t=null;try{t=localStorage.getItem('fpl_team_id')}catch(e){}if(!t)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/styles/v2-app.min.css?v=474';document.head.appendChild(l)})();</script>
+    <link rel="stylesheet" href="/styles/responsive.min.css?v=474">
+    <script src="/scripts/error-monitor.min.js?v=474"></script>
+    <script src="/scripts/auth.min.js?v=474"></script>
+    <script src="/scripts/common.min.js?v=474"></script>
+    <script src="/scripts/team-xg.min.js?v=474"></script>
     <!-- The bell in the sidebar. The dashboard writes the feed; every
          page reads it, so the record is visible wherever you are. -->
-    <script src="/scripts/push-alerts.min.js?v=473"></script>
-    <script src="/scripts/notifications.min.js?v=473"></script>
-    <script src="/scripts/sidebar-nav.min.js?v=473"></script>
+    <script src="/scripts/push-alerts.min.js?v=474"></script>
+    <script src="/scripts/notifications.min.js?v=474"></script>
+    <script src="/scripts/sidebar-nav.min.js?v=474"></script>
 </head>
 <body>
     <!-- V2 sidebar is fetch-injected here by loadSidebarNav() (scripts/sidebar-nav.js) -->
@@ -1145,21 +1145,19 @@
                     </div>`).join('')}
                 </div>`;
 
-            /* The two comparisons that say whether the rates above are being
-               converted. Per game, so they can be read against the xG/game and
-               xGC/game directly above them rather than needing a season total
-               held in your head. */
-            const conversion = xg && xg.games ? `
-                <div class="tsb-conversion">
-                    ${renderXgVsActual('Scoring', xg.xGpg, xg.gpg, { per: true, expectedLabel: 'xG', actualLabel: 'scored' })}
-                    ${renderXgVsActual('Conceding', xg.xGCpg, xg.gapg, { per: true, lowerIsBetter: true, expectedLabel: 'xGC', actualLabel: 'let in' })}
-                </div>` : '';
+            /* The two conversion rows — "2.20 xG → 2.71 scored +0.52" and the
+               conceding one under it — are gone from the ranked card. Both
+               columns directly above already carry xG/game and goals/game, so
+               the row restated two figures the eye had just passed and spent a
+               third of the card's height drawing the arithmetic between them.
+               renderXgVsActual() stays: the club modal still uses it over the
+               last five, where the comparison is the point rather than a
+               repetition. */
 
             return `<div class="team-stat-block">
                 ${col('Attack', attack, 'atk', !!hl.highlightATK)}
                 ${col('Defence', defence, 'def', !!hl.highlightDEF)}
             </div>
-            ${conversion}
             ${games ? `<div class="tsb-sample">Season to date · ${games} game${games === 1 ? '' : 's'}</div>` : ''}`;
         }
 

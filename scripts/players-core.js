@@ -2652,15 +2652,24 @@
                         >FDR ${fdr.toFixed(1)}</span>
                     </div>
                     <div class="rising-signals">
+                        ${/* ONE LINE EACH: icon, what moved, and what it moved
+                              from and to. "Points trending up · 1.0 to 5.7
+                              pts/g" reads as a sentence and takes a row.
+
+                              It was three rows per signal — a head with the
+                              label, a 60px bar underneath it, and the detail on
+                              a line of its own — so six signals ran to eighteen
+                              rows and the cards were taller than the screen.
+                              The bar is gone rather than shrunk: it encoded
+                              s.strength, which is the same quantity the detail
+                              states in the units it is measured in, drawn to a
+                              scale (strength × 10, capped) that no legend ever
+                              explained. A number you can read beats a bar you
+                              have to interpret. */''}
                         ${p.signals.map(s => `
                             <div class="rising-signal">
-                                <div class="rising-signal-head">
-                                    <span class="rising-signal-icon"><i data-lucide="${s.icon || 'activity'}" style="width:13px;height:13px;"></i></span>
-                                    <span class="rising-signal-label">${s.label}</span>
-                                </div>
-                                <div class="rising-signal-bar">
-                                    <div class="rising-signal-bar-fill" style="width: ${Math.min(100, s.strength * 10)}%; background: ${s.color}"></div>
-                                </div>
+                                <span class="rising-signal-icon"><i data-lucide="${s.icon || 'activity'}" style="width:13px;height:13px;"></i></span>
+                                <span class="rising-signal-label">${s.label}</span>
                                 <span class="rising-signal-value positive">${s.detail}</span>
                             </div>
                         `).join('')}
