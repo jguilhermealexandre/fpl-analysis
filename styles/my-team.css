@@ -9400,7 +9400,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-step,
 .lw-step-num,
 .lw-sum-flag,
-.lw-sum-quiet,
 .lw-swap-hint,
 .lw-toggle,
 .lwc-insight-t,
@@ -9411,6 +9410,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lwm-draw.is-none,
 .lwm-ex-i b,
 .lwm-gw,
+.lwm-none,
 .lwm-p,
 .lwm-p-xp,
 .lwm-sub,
@@ -9659,7 +9659,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 .lw-row-player-team,
 .lw-sum-flag,
 .lw-sum-n,
-.lw-sum-quiet,
 .lwc-btn,
 .lwc-chips .dp-fix-ha,
 .lwc-chips .lw-cap-fdr,
@@ -10167,7 +10166,23 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
  * 1.58fr exactly, so the tiles do not change size; the flags block simply
  * inherits the 2fr the two cards shared between them. That is the whole visual
  * difference, which is why every KPI sizing rule below is untouched. */
-.lw-ov-head { display: grid; grid-template-columns: minmax(0, 1.58fr) minmax(0, 2fr); gap: 10px; align-items: stretch; margin-bottom: 10px; }
+/* COMPACT: the flags take the room their names need, not a fixed 2fr.
+ *
+ * The 2fr was the width of two cards that are gone, and handed to a block
+ * that usually holds one or two names it made a box wider than the three
+ * figures with most of it empty — while squeezing the figures until "nobody
+ * to check" wrapped. Flex instead: the figures grow into whatever the flags
+ * leave, the flags are sized to their names and capped at 46% so a long list
+ * wraps rather than taking the row. A clean squad renders no block at all
+ * (see lwRenderRisks), so the figures have the full width. */
+.lw-ov-head { display: flex; gap: 10px; align-items: stretch; margin-bottom: 10px; }
+.lw-ov-head > .lw-kpis { flex: 1 1 0; min-width: 0; }
+.lw-ov-head > .lw-sum-block.is-row {
+    flex: 0 1 auto; max-width: 46%;
+    flex-direction: column; flex-wrap: nowrap; justify-content: center; gap: 6px;
+}
+.lw-ov-head > .lw-sum-block .lw-sum-body { flex: 0 0 auto; }
+.lw-ov-head > .lw-sum-block .lw-sum-flag { margin: 2px 4px 2px 0; }
 
 /* Three figures sharing a line with two calls get a third of the room they
    have on Squad Analysis, where they are the whole band. The tile keeps its
@@ -10226,14 +10241,21 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
  * those apart. It follows the base rule because a container query carries no
  * specificity of its own: source order is what decides.
  *
- * 1000px, because the figures take 44% of it: at 1000 that is 440px, or 146px a
+ * 1000px, because the figures take at least 54% of it: at 1000 that is 540px, or 180px a
  * tile, which is what they already live with. Below that the flags block goes
  * under them full width, which is also where the long reasons ("rotation risk —
  * 55% likely to start") stop being clipped. The old rules broke at 1250, 760
  * and 620 — three thresholds for a row that now has two children, and the 1250
  * one existed because a call card could not go under ~340px. Nothing on this
  * row has that floor any more. */
-@container lwov (max-width: 1000px) { .lw-ov-head { grid-template-columns: minmax(0, 1fr); } }
+@container lwov (max-width: 1000px) {
+    .lw-ov-head { flex-direction: column; }
+    .lw-ov-head > .lw-kpis { flex: 0 0 auto; }
+    /* Under the figures, heading beside the names again: one line for a
+       couple of flags, which is the common case. */
+    .lw-ov-head > .lw-sum-block.is-row { max-width: none; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; }
+    .lw-ov-head > .lw-sum-block .lw-sum-body { flex: 1 1 220px; }
+}
 
 
 .lw-sum-block {
@@ -10279,11 +10301,6 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
     font-size: 9.5px; font-weight: 700; font-family: var(--font-mono);
     background: var(--surface-3); color: var(--text-secondary);
 }
-.lw-sum-quiet {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 10.5px; color: var(--text-muted);
-}
-.lw-sum-quiet svg { width: 13px; height: 13px; color: var(--color-success); flex-shrink: 0; }
 /* Everyone worth a second look, with the reason beside the name rather than
    behind a tooltip. */
 .lw-sum-flag {
@@ -10924,7 +10941,7 @@ th.gw-column-focus { box-shadow: inset 0 -2px 0 var(--color-primary); }
 /* On a phone the qualifying figures get the same floor as everything else on
    the site: nothing under 10px, because nothing under 10px is read. */
 @media (max-width: 768px) {
-    .lw-sum-flag, .lw-sum-quiet { font-size: 11px; }
+    .lw-sum-flag { font-size: 11px; }
     .lwc-stat em, .lwc-stat b { font-size: 10.5px; }
     .lwc-insight-h, .lwc-team, .lwc-xp em, .lwc-btn, .lwc-rank { font-size: 10px; }
     .lwc-chips .lw-cap-fdr, .lwc-chips .dp-fix-ha { font-size: 10px; }

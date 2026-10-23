@@ -143,31 +143,55 @@ test('the captaincy grid is untouched — that is where the armband is chosen', 
     assert.match(src, /setLWCaptain\(/, 'the buttons that actually move the armband');
 });
 
-test('a clean squad still gets the block, saying there is nothing to do', () => {
-    // The empty state is the common one, and an absent block is not an answer.
-    const html = overview({ risks: 0 });
-    assert.ok(html.includes(RISKS));
-    assert.ok(html.includes('data-label="Flagged" data-value="0"'));
+test('a clean squad gets no block — the Flagged figure already says so', () => {
+    /* It used to keep the block for an empty state, which put a box wider
+       than the three figures on screen to hold one grey sentence. The Flagged
+       figure reads "0 · nobody to check", and the figures take the row. */
+    const risks = loadFunction(SRC, 'lwRenderRisks', {
+        lwRiskList: () => [], v2Icon: () => '', escHTML: s => String(s), lwFace: () => ''
+    });
+    assert.equal(risks(), '', 'nothing to flag renders nothing');
+    assert.ok(overview({ risks: 0 }).includes('data-label="Flagged" data-value="0"'));
+    assert.ok(overview({ risks: 0 }).includes('data-sub="nobody to check"'));
+});
+
+test('a squad with flags gets the block, with the count and every name', () => {
+    const risks = loadFunction(SRC, 'lwRenderRisks', {
+        lwRiskList: () => [
+            { p: { web_name: 'Salah' }, why: 'doubtful', inXI: true },
+            { p: { web_name: 'Saka' }, why: 'suspended', inXI: false }
+        ],
+        v2Icon: () => '', escHTML: s => String(s), lwFace: () => ''
+    });
+    const html = risks();
+    assert.match(html, /lw-sum-block is-row is-alert/);
+    assert.match(html, /<span class="lw-sum-n">2<\/span>/);
+    assert.ok(html.includes('Salah') && html.includes('Saka'));
 });
 
 // ---- the stylesheet has to agree
 
-test('the head row is a two-column grid, and the dead rules are gone', () => {
+test('the head row sizes the flags to their names, and the dead rules are gone', () => {
     const css = read(CSS);
-    assert.match(css, /\.lw-ov-head \{[^}]*grid-template-columns: minmax\(0, 1\.58fr\) minmax\(0, 2fr\)/,
-        'the figures keep their 1.58fr; the flags inherit the 2fr the calls shared');
-    for (const sel of ['.lw-ov-blocks', '.lw-callbox', '.lw-call-i', '.lw-chg-p', '.lw-sum-note', '.lw-sum-sub']) {
+    /* Flex, not the old 1.58fr/2fr grid: the 2fr gave a block holding one or
+       two names more room than the three figures. */
+    assert.match(css, /\.lw-ov-head \{ display: flex;/);
+    assert.equal(/\.lw-ov-head \{[^}]*grid-template-columns/.test(css), false, 'no fixed column split');
+    assert.match(css, /\.lw-ov-head > \.lw-kpis \{ flex: 1 1 0;/, 'the figures grow into what is left');
+    assert.match(css, /\.lw-ov-head > \.lw-sum-block\.is-row \{[^}]*flex: 0 1 auto; max-width: 46%;/,
+        'the flags are content-sized and capped');
+    for (const sel of ['.lw-ov-blocks', '.lw-callbox', '.lw-call-i', '.lw-chg-p', '.lw-sum-note', '.lw-sum-sub', '.lw-sum-quiet']) {
         assert.equal(css.includes(sel), false, `${sel} is emitted by nothing now`);
     }
     // The survivors the block itself needs.
-    for (const sel of ['.lw-sum-block', '.lw-sum-flag', '.lw-sum-quiet', '.lw-sum-n']) {
+    for (const sel of ['.lw-sum-block', '.lw-sum-flag', '.lw-sum-n']) {
         assert.ok(css.includes(sel), `${sel} is still in use`);
     }
 });
 
 test('one stacking breakpoint, so the block cannot end up beside a squeezed figure', () => {
     const css = read(CSS);
-    assert.match(css, /@container lwov \(max-width: 1000px\) \{ \.lw-ov-head \{ grid-template-columns: minmax\(0, 1fr\); \} \}/);
+    assert.match(css, /@container lwov \(max-width: 1000px\) \{\s*\.lw-ov-head \{ flex-direction: column; \}/);
     assert.equal(/@container lwov \(max-width: 1250px\)/.test(css), false,
         'the 1250px rule existed for a call card that no longer exists');
 });
