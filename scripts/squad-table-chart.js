@@ -80,6 +80,16 @@
                         ? `Points per game last season (${bandHigh(formValue, FORM_BANDS)}). FPL resets form to zero before the season starts, so last year's rate stands in.`
                         : `Average points over the last 30 days (${bandHigh(formValue, FORM_BANDS)}). Above 4.5 is a player in good touch.`
                 },
+                /* Ownership, next to form, because the pair is one thought: a
+                   player in form that half the game owns is a different hold
+                   from one in form that nobody has. It is the global figure —
+                   effective ownership is a Rivals question and disagrees with
+                   this one, so the two are never printed as if they were the
+                   same number. */
+                own: {
+                    label: 'Own', value: `${(player.ownership != null ? player.ownership : 0).toFixed(1)}%`,
+                    tip: `Owned by ${(player.ownership != null ? player.ownership : 0).toFixed(1)}% of FPL managers. High ownership means a haul hurts less and a blank hurts more; a differential does the opposite.`
+                },
                 /* "FDR", like every other stat strip on the site, and not
                    "Nxt5 FDR": it was the one two-word label among eight
                    one-word ones, so it wrapped where none of the others did
@@ -272,25 +282,19 @@
                         </div>
                     </div>
                     <div class="sq-row-stats">
-                        ${[cols.xp, cols.form, cols.fdr, cols.stat3, cols.stat4, cols.stat5, cols.stat6, cols.stat7]
+                        ${[cols.xp, cols.form, cols.own, cols.fdr, cols.stat3, cols.stat4, cols.stat5, cols.stat6, cols.stat7]
                             .map(s => `<div class="sq-stat" data-tooltip="${escHTML(s.tip)}"><span class="sq-stat-label">${escHTML(s.label)}</span><span class="sq-stat-value">${escHTML(String(s.value))}</span></div>`).join('')}
                     </div>
                     <div class="sq-row-fixtures" onclick="event.stopPropagation(); openFixturePanel(${player.id})" title="View ${escHTML(player.team)}'s fixture calendar">${fixtureChips}</div>
                 </div>
-                <!-- The row's actions, in the order you reach for them:
-                     the armband, someone to replace him with, his full record.
-                     C and V were only settable on the pitch and in the lineup
-                     wizard, which meant leaving the table you were reading to
-                     act on what you had just read. -->
+                <!-- Replace him, or read his full record. The C and V buttons
+                     are gone: the armband is set on the pitch above and in the
+                     Lineup Wizard, both of which show the eleven it applies
+                     to, and a third control for it on every one of fifteen
+                     rows was the same decision offered in a place that cannot
+                     show its consequence. Who has it is still visible — the
+                     crown rides in the player's name. -->
                 <div class="sq-row-actions">
-                    <button class="sq-act sq-act-c${player.isCaptain ? ' on' : ''}"
-                        onclick="event.stopPropagation(); sqSetArmband(${player.id}, 'captain')"
-                        title="${player.isCaptain ? 'Remove the armband' : 'Make captain'}"
-                        aria-label="${player.isCaptain ? 'Remove the armband from' : 'Make captain:'} ${escHTML(player.name)}">C</button>
-                    <button class="sq-act sq-act-v${player.isVice ? ' on' : ''}"
-                        onclick="event.stopPropagation(); sqSetArmband(${player.id}, 'vice')"
-                        title="${player.isVice ? 'Remove the vice armband' : 'Make vice-captain'}"
-                        aria-label="${player.isVice ? 'Remove the vice armband from' : 'Make vice-captain:'} ${escHTML(player.name)}">V</button>
                     <button class="sq-act" onclick="event.stopPropagation(); openTransferPanel(${player.id})" title="Find replacements" aria-label="Find replacements for ${escHTML(player.name)}">
                         ${v2Icon('swap')}
                     </button>
@@ -303,72 +307,7 @@
             return row;
         }
 
-        /* Set or clear the armband from the squad table.
-         *
-         * This is your plan, not a change at FPL — nothing here can move the
-         * armband on their side, and the row is honest about that by simply
-         * showing what you have chosen. It is saved through the same lineup
-         * store the wizard uses, so the two views agree rather than each
-         * holding a private opinion about who is captain.
-         *
-         * Clicking the role a player already has takes it off him, which is
-         * the only way to end up with no captain — and that is a legitimate
-         * state to be in halfway through deciding.
-         */
-        /* The armband, from the table.
-         *
-         * This used to write isCaptain straight onto analysisResults and save
-         * from there, while the pitch above kept its own snapshotCaptainId. Two
-         * states for one decision: change it here and the pitch went on showing
-         * the old armband until the page was reloaded, and changing it there
-         * never reached this table at all.
-         *
-         * The pitch's state is the one the whole page is arranged around — it
-         * decides who is in the eleven, and the armband has to be inside it —
-         * so this defers to setSnapshotCaptain/setSnapshotVice, which commit,
-         * persist and redraw both views together. The direct write stays as the
-         * fallback for a page where the pitch is not loaded. */
-        function sqSetArmband(playerId, role) {
-            if (typeof analysisResults === 'undefined' || !Array.isArray(analysisResults)) return;
-            const target = analysisResults.find(a => a.player.id === playerId);
-            if (!target) return;
-
-            const key = role === 'vice' ? 'isVice' : 'isCaptain';
-            const other = role === 'vice' ? 'isCaptain' : 'isVice';
-            const hadIt = !!target.player[key];
-
-            const setter = role === 'vice' ? 'setSnapshotVice' : 'setSnapshotCaptain';
-            if (!hadIt && typeof window[setter] === 'function') {
-                window[setter](playerId);
-                return;
-            }
-
-            // One armband of each kind in a squad.
-            analysisResults.forEach(a => { a.player[key] = false; });
-            if (!hadIt) {
-                target.player[key] = true;
-                // Nobody is both, so taking one role gives up the other.
-                target.player[other] = false;
-            }
-
-            /* Taking an armband OFF leaves nobody holding it, which is not a
-               state FPL allows at a deadline. reconcileArmbands() hands it to
-               the best available starter and the pitch redraws with it; without
-               the pitch, the save below is still the honest record of what this
-               table now shows. */
-            if (typeof reconcileArmbands === 'function' && typeof snapshotCommit === 'function') {
-                if (typeof snapshotCaptainId !== 'undefined' && role !== 'vice') snapshotCaptainId = null;
-                if (typeof snapshotViceId !== 'undefined' && role === 'vice') snapshotViceId = null;
-                reconcileArmbands();
-                snapshotCommit();
-                return;
-            }
-
-            sqPersistArmbands();
-            rerenderSquadFilteredViews();
-        }
-
-        /* Through the lineup store, so the wizard and the pitch see the same
+/* Through the lineup store, so the wizard and the pitch see the same
            choice. Best-effort: without a team id, a gameweek or the store
            itself there is nowhere to put it, and the choice still stands for
            this render. */
@@ -531,7 +470,12 @@
                     <div class="sq-filter-pills">
                         ${positions.map(p => `<button class="sq-filter-pill ${p.c} ${squadFilterPos === p.v ? 'active' : ''}" onclick="setSquadFilterPos('${p.v}')">${p.l}</button>`).join('')}
                     </div>
-                    <div class="sq-panel-search">${typeof tlRenderPicker === 'function' ? tlRenderPicker() : ''}</div>
+                    <!-- The "search a player you do not own" box is gone from
+                         this header. Nothing can start a trial now, so the
+                         machinery in scripts/squad-trial.js is inert rather
+                         than broken: tlRenderInto() and tlBadge() both return
+                         empty with no trial active, and getFilteredSquad()
+                         falls through to analysisResults. -->
                     <button class="sq-chart-open" onclick="toggleSquadChart()" data-tooltip="Plot any two metrics against each other for your squad or the whole league">
                         <i data-lucide="bar-chart-3" style="width:15px;height:15px;"></i> Visual analysis
                     </button>

@@ -1596,7 +1596,6 @@ export default [
                 sqChartYMetric: 'writable',
                 sqHealthBand: 'writable',
                 sqPersistArmbands: 'writable',
-                sqSetArmband: 'writable',
                 sqToast: 'writable',
                 sqToastHide: 'writable',
                 sqToastTimer: 'writable',
