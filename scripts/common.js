@@ -959,28 +959,28 @@ const V2_KIT_SEAM_R = 'M47.4 15.2L46.4 31.4';
  * shirt and nine is a grey smudge. What is kept is what tells two clubs
  * apart at the size this is actually rendered.
  */
-/* MEASURED, WHERE WE CAN MEASURE.
- *
- * The table below is what I could remember about twenty shirts, which was
- * fine until it wasn't: Ipswich play in blue with white sleeves and were
- * drawn plain blue, because that is how I remembered them. Remembering is
- * not a maintenance strategy for a thing that changes every August.
+/* MEASURED AGAINST, NOT MEASURED FROM.
  *
  * FPL draws its own pitch from a per-club shirt sprite, the outfield twin of
- * the keeper sprite CLUB_GK_KITS is read off. So the real colours and the
- * real pattern are both there to be measured, and tools/fetch-kit-art.mjs
- * measures them into the block below. It wins over the hand-written row;
- * a club whose sprite could not be read keeps the row, so this can only
- * improve on what was there.
+ * the keeper sprite CLUB_GK_KITS below is read off, so the obvious move was
+ * to read this table off the art too and stop remembering twenty shirts.
+ * tools/fetch-kit-art.mjs does the reading, and the answer was no.
+ *
+ * Twelve of twenty agreed. Of the eight that did not, the sprite was right
+ * about one — Coventry are striped, and were drawn plain here for a month —
+ * and wrong about the rest: Villa's sky sleeves vanished, Palace came back
+ * as a white shirt, Leeds as hooped, City with the body and sleeves the
+ * wrong way round, and Liverpool as striped, because the shading down a
+ * plain red shirt is two different reds. Two more were the same kit with the
+ * two colours swapped.
+ *
+ * Which is a real result, not a failed experiment. The sprites carry
+ * shading, a sponsor and a fade at the hem, and a two-colour model of a
+ * photograph of a shirt is not the shirt. So the table below stays
+ * hand-written and the tool stays a watchdog: it runs monthly, prints both
+ * readings side by side, and is the only thing here that will ever notice a
+ * club changing kit.
  */
-/* === GENERATED: outfield kits — node tools/fetch-kit-art.mjs === */
-/* Measured off FPL's own outfield shirt sprites — see tools/fetch-kit-art.mjs.
-   Do not hand-edit: the next run overwrites it. A club missing from here
-   keeps its hand-written row in CLUB_KITS below. Empty until the first run. */
-const CLUB_KIT_ART = {
-};
-/* === END GENERATED OUTFIELD KITS === */
-
 const CLUB_KITS = {
     1:  ['plain',   '#DA291C', '#DA291C', '#FFFFFF', '#FFFFFF'],  // Man Utd
     2:  ['plain',   '#FFFFFF', '#FFFFFF', '#1D428A', '#1D428A'],  // Leeds
@@ -989,13 +989,13 @@ const CLUB_KITS = {
     6:  ['plain',   '#FFFFFF', '#FFFFFF', '#132257', '#132257'],  // Spurs
     7:  ['sleeves', '#670E36', '#95BFE5', '#FFFFFF', '#95BFE5'],  // Aston Villa
     8:  ['plain',   '#034694', '#034694', '#FFFFFF', '#FFFFFF'],  // Chelsea
-    9:  ['plain',   '#5FB3E4', '#5FB3E4', '#10233A', '#10233A'],  // Coventry
+    9:  ['stripes', '#5FB3E4', '#FFFFFF', '#10233A', '#10233A'],  // Coventry
     11: ['plain',   '#003399', '#003399', '#FFFFFF', '#FFFFFF'],  // Everton
     14: ['plain',   '#C8102E', '#C8102E', '#FFFFFF', '#FFFFFF'],  // Liverpool
     17: ['plain',   '#DD0000', '#DD0000', '#FFFFFF', '#FFFFFF'],  // Nott'm Forest
     31: ['stripes', '#1B458F', '#C4122E', '#FFFFFF', '#FFFFFF'],  // Crystal Palace
     36: ['stripes', '#0057B8', '#FFFFFF', '#FFFFFF', '#0057B8'],  // Brighton
-    40: ['plain',   '#3A64A3', '#FFFFFF', '#FFFFFF', '#FFFFFF'],  // Ipswich
+    40: ['sleeves', '#3A64A3', '#FFFFFF', '#FFFFFF', '#FFFFFF'],  // Ipswich
     43: ['plain',   '#6CABDD', '#6CABDD', '#0B1B3C', '#0B1B3C'],  // Man City
     54: ['plain',   '#FFFFFF', '#FFFFFF', '#1B1B1B', '#1B1B1B'],  // Fulham
     56: ['stripes', '#EB172B', '#FFFFFF', '#FFFFFF', '#1B1B1B'],  // Sunderland
@@ -1081,7 +1081,7 @@ function v2ColourGap(a, b) {
 
 function clubKit(player) {
     const code = v2TeamCode(player && player.teamId, player && player.teamCode);
-    const k = (code != null && (CLUB_KIT_ART[code] || CLUB_KITS[code])) || CLUB_KIT_FALLBACK;
+    const k = (code != null && CLUB_KITS[code]) || CLUB_KIT_FALLBACK;
     if (isGoalkeeper(player)) {
         /* His club's real keeper colours where we have them — read off the
            game's own shirt art by tools/fetch-gk-kits.mjs — and the generic
@@ -3106,7 +3106,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=481')
+    fetch('/footer.html?v=482')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

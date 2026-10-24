@@ -1,54 +1,54 @@
 #!/usr/bin/env node
-/* The clubs' real outfield colours and pattern, read off the game's own art.
+/* The clubs' outfield kits as FPL's own art has them, next to the table we
+ * draw from. A watchdog, not a source.
  *
- * CLUB_KITS was written by hand: twenty rows of "Arsenal is red with white
- * sleeves", which is right until a club changes kit, gets promoted, or was
- * never quite what I remembered — Ipswich play in blue with white sleeves and
- * were drawn plain blue for a month.
+ * It started as a source. CLUB_KITS was written by hand — twenty rows of
+ * "Arsenal is red with white sleeves", which is right until a club changes
+ * kit, gets promoted, or was never quite what I remembered — and FPL draws
+ * its own pitch from a per-club shirt sprite:
  *
- * FPL draws its own pitch with a per-club shirt sprite, the outfield twin of
- * the keeper sprite tools/fetch-gk-kits.mjs already reads:
+ *   /dist/img/shirts/standard/shirt_{team_code}-220.png
  *
- *   /dist/img/shirts/standard/shirt_{team_code}-110.png
+ * So both the colours and the pattern are there to be measured, and the
+ * obvious move was to measure them and stop remembering. The answer was no.
  *
- * So both the colours and the pattern are there to be measured.
+ * Twelve of twenty agreed. Of the eight that did not, the sprite was right
+ * about one — Coventry are striped, and were drawn plain for a month — and
+ * wrong about the rest: Villa's sky sleeves vanished, Palace came back as a
+ * white shirt, Leeds as hooped, City with the body and sleeves the wrong way
+ * round, and Liverpool as striped, because the shading down a plain red
+ * shirt is two different reds. Two more were the same kit with the two
+ * colours swapped. A two-colour model of a shaded, sponsored, hem-faded
+ * drawing of a shirt is not the shirt.
  *
- * THE FIRST VERSION OF THIS MEASURED THE WRONG THINGS, and the dry run said
- * so: Brentford came back white on white, Palace came back white, Newcastle
- * came back hooped. Three mistakes, all of them mine:
+ * So it writes nothing. It prints both readings side by side and marks the
+ * disagreements, which is the one thing in this repo that will ever notice a
+ * club changing kit. Adopting a row is a decision someone makes by looking.
  *
- *   - It read fixed coordinates out of a 64x64 box, assuming the shirt filled
- *     the frame. The sprites are padded, and by different amounts, so "the
- *     sleeves are the outer sixths" was sampling the body on some clubs and
- *     empty space on others. Everything is measured off the shirt's own
- *     bounding box now.
- *   - It took the second colour off a ranked list of every colour in the
- *     picture, so on a red-and-white striped shirt the runner-up was a second
- *     shade of white rather than the red. The second colour is now the
- *     dominant colour of the pixels that are *not* the first one.
+ * Two bugs were worth the trip, and both are fixed below because the report
+ * is only worth reading if the reading is sound:
+ *
+ *   - It resampled every sprite onto a 64x64 grid first. Nearest-neighbour
+ *     sampling of a 220px sprite takes every third or fourth pixel, so a
+ *     stripe three or four pixels wide is sampled at a constant phase and a
+ *     striped shirt aliases into a flat one. Brighton came back plain blue.
+ *     Nothing is resampled now; every region is asked for in fractions of
+ *     the shirt's own bounding box.
  *   - It dropped dark pixels wholesale to get rid of the sprite's keyline,
  *     which also dropped Newcastle's and Bournemouth's black. The keyline is
  *     eroded off the alpha edge instead, which is what it actually is.
  *
- * Writes a GENERATED block into scripts/common.js. A club it cannot read, or
- * reads badly enough to fail its own sanity checks, keeps its hand-written
- * row, so this can only improve on what is there.
- *
  * Run:  node tools/fetch-kit-art.mjs
- *       node tools/fetch-kit-art.mjs --dry-run   report, write nothing
- *       node tools/fetch-kit-art.mjs --debug     and show the working
- *       node tools/fetch-kit-art.mjs --map       and print the sprite itself
+ *       node tools/fetch-kit-art.mjs --debug   and show the working
+ *       node tools/fetch-kit-art.mjs --map     and print the sprite itself
  */
 import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const DRY = process.argv.includes('--dry-run');
 const DEBUG = process.argv.includes('--debug');
 const MAP = process.argv.includes('--map');
 const COMMON = path.join(ROOT, 'scripts', 'common.js');
-const OPEN = '/* === GENERATED: outfield kits — node tools/fetch-kit-art.mjs === */';
-const CLOSE = '/* === END GENERATED OUTFIELD KITS === */';
 
 const boot = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'bootstrap-static.json'), 'utf8'));
 const clubs = (boot.teams || []).map(t => ({ code: t.code, name: t.short_name }));
@@ -65,7 +65,12 @@ const lum = (r, g, b) => (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 const gap = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 const EDGE = 0.03;       // the keyline, as a fraction of the shirt's width
-const SPLIT = 70;        // far enough apart in RGB to be the shirt's two colours
+const SPLIT = 70;        // far enough apart in RGB to be a different colour at all
+const TWOTONE = 115;     /* ...and far enough apart to be the shirt's SECOND colour.
+                            Below this, what separates them is shading: the lit
+                            shoulder and the shadowed hem of one plain red shirt
+                            are 104 apart, which read as Liverpool playing in
+                            stripes until this was its own threshold. */
 
 /* The sprite, cropped to the shirt, at the resolution it was drawn at.
  *
@@ -235,15 +240,16 @@ for (const club of clubs) {
     const downC = crossings(art.down(0.50, 0.42, 0.92), main, other, art.run);
     const wide = crossings(art.across(0.66, 0.10, 0.90), main, other, Math.ceil(art.run / 2));
 
+    if (second && gap(main, second) < TWOTONE) second = null;
     if (second) {
         if (chest >= 3) pattern = wide >= 9 ? 'pinstripes' : 'stripes';
         else if (downC >= 3) pattern = 'hoops';
-        else if (dL && dR && gap(dL.rgb, dR.rgb) > SPLIT) pattern = 'halves';
+        else if (dL && dR && gap(dL.rgb, dR.rgb) > TWOTONE) pattern = 'halves';
     }
     /* Sleeves are read off the sleeves, so a plain body with contrast sleeves
        is found even when the body itself is one colour. */
     const dB = dominant(body).ranked[0].rgb;
-    if (pattern === 'plain' && dS && gap(dS.rgb, dB) > SPLIT) { pattern = 'sleeves'; second = dS.rgb; }
+    if (pattern === 'plain' && dS && gap(dS.rgb, dB) > TWOTONE) { pattern = 'sleeves'; second = dS.rgb; }
     if (pattern === 'halves' && dR) second = dR.rgb;
 
     const mainHex = hex(...dB);
@@ -280,10 +286,10 @@ for (const club of clubs) {
             + ` halfΔ ${dL && dR ? Math.round(gap(dL.rgb, dR.rgb)) : '-'}`);
     }
 
-    /* The guards. A patterned shirt whose two colours are the same colour is
-       the Brentford failure, and it is better to keep a hand-written row than
-       to ship a white shirt with white stripes. */
-    if (pattern !== 'plain' && gap(dB, second || dB) < SPLIT) {
+    /* A patterned shirt whose two colours turn out to be the same colour is
+       a bad reading rather than a finding, and a report that cries wolf is
+       not read twice. It is left off rather than printed as a disagreement. */
+    if (pattern !== 'plain' && gap(dB, second || dB) < TWOTONE) {
         give(`read ${pattern} in two colours that are the same colour`); continue;
     }
     rows.push({ code: club.code, name: club.name, pattern, main: mainHex, second: secondHex, ink, trim });
@@ -315,39 +321,6 @@ for (const r of [...rows].sort((a, b) => a.name.localeCompare(b.name))) {
         + `   ${h ? `${h[0].padEnd(10)} ${h[1]} / ${h[2]}` : '(none)'.padEnd(27)}`
         + `   ${same ? '' : '<- differs'}`);
 }
-console.log(`\n  ${differ} of ${rows.length} read differently from the hand-written table.`);
-
-const MIN = Math.ceil(clubs.length * 0.75);
-if (rows.length < MIN) {
-    console.error(`::error::only ${rows.length} of ${clubs.length} kits could be read; nothing written`);
-    process.exit(1);
-}
-
-const body = rows.sort((a, b) => a.code - b.code).map(r =>
-    `    ${String(r.code + ':').padEnd(4)} ['${r.pattern}',${' '.repeat(Math.max(0, 11 - r.pattern.length))}`
-        + `'${r.main}', '${r.second}', '${r.ink}', '${r.trim}'],  // ${r.name}`).join('\n');
-
-const block = `${OPEN}
-/* Measured off FPL's own outfield shirt sprites — see tools/fetch-kit-art.mjs.
-   Do not hand-edit: the next run overwrites it. A club missing from here
-   keeps its hand-written row in CLUB_KITS below. */
-const CLUB_KIT_ART = {
-${body}
-};
-${CLOSE}`;
-
-console.log(`\n${rows.length} read, ${skipped.length} left on the hand-written row`
-    + (skipped.length ? `: ${skipped.join(', ')}` : ''));
-if (DRY) { console.log('--dry-run: nothing written'); process.exit(0); }
-
-let src = fs.readFileSync(COMMON, 'utf8');
-if (src.includes(OPEN)) {
-    src = src.slice(0, src.indexOf(OPEN)) + block + src.slice(src.indexOf(CLOSE) + CLOSE.length);
-} else {
-    const anchor = 'const CLUB_KITS = {';
-    const at = src.indexOf(anchor);
-    if (at < 0) { console.error('::error::could not find where to write the block'); process.exit(1); }
-    src = src.slice(0, at) + block + '\n\n' + src.slice(at);
-}
-fs.writeFileSync(COMMON, src);
-console.log('Wrote scripts/common.js');
+console.log(`\n  ${differ} of ${rows.length} read differently from the hand-written table`
+    + `${skipped.length ? `, and ${skipped.length} could not be read: ${skipped.join(', ')}` : ''}.`);
+console.log('  Nothing is written. Adopting a row is a decision someone makes by looking.');

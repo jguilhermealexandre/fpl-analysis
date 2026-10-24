@@ -39,7 +39,7 @@ function kitContext(teams) {
        Handed over explicitly rather than rewritten as globals in the shipped
        file to suit the test. */
     new vm.Script(common.slice(from, to)
-        + ';globalThis.__kit = { CLUB_KITS, CLUB_KIT_ART, CLUB_KIT_FALLBACK,'
+        + ';globalThis.__kit = { CLUB_KITS, CLUB_KIT_FALLBACK,'
         + ' V2_KIT_SHIRT, V2_KIT_SLEEVE_L };',
     { filename: 'scripts/common.js#identity' }).runInContext(ctx);
     return Object.assign(ctx, ctx.__kit);
@@ -52,19 +52,15 @@ const kit = kitContext();
 
 test('every club in the division has a kit', () => {
     const missing = bootstrap.teams
-        .filter(t => !kit.CLUB_KIT_ART[t.code] && !kit.CLUB_KITS[t.code])
+        .filter(t => !kit.CLUB_KITS[t.code])
         .map(t => `${t.short_name} (code ${t.code})`);
     assert.deepEqual(missing, [],
         'a promoted club with no kit wears the league purple, which is wrong rather than merely plain');
 });
 
-/* Both tables, because the measured one is written by a tool and the tool is
-   the half nobody reads before it lands. A pattern the renderer does not
-   know draws a plain shirt and says nothing about it. */
-const everyKit = () => [
-    ...Object.entries(kit.CLUB_KIT_ART).map(([c, k]) => [`measured ${c}`, k]),
-    ...Object.entries(kit.CLUB_KITS).map(([c, k]) => [`hand-written ${c}`, k])
-];
+/* A pattern the renderer does not know draws a plain shirt and says nothing
+   about it, so the table is checked against what the renderer can draw. */
+const everyKit = () => Object.entries(kit.CLUB_KITS).map(([c, k]) => [`club ${c}`, k]);
 
 test('every kit names a pattern the renderer draws', () => {
     const drawn = new Set(['plain', 'stripes', 'pinstripes', 'hoops', 'halves', 'sash', 'sleeves']);

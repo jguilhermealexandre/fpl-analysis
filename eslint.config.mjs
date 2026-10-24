@@ -58,7 +58,6 @@ export default [
                 CLUB_COLOURS_FALLBACK: 'writable',
                 CLUB_GK_KITS: 'writable',
                 CLUB_KITS: 'writable',
-                CLUB_KIT_ART: 'writable',
                 CLUB_KIT_FALLBACK: 'writable',
                 COLS_STORAGE_KEY: 'writable',
                 COLUMN_DEFS: 'writable',
