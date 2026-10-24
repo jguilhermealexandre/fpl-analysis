@@ -1,0 +1,81 @@
+name: Update Outfield Kits
+
+# The clubs' real outfield colours and pattern, measured off FPL's own shirt
+# sprites. The table they replace was written from memory, which is accurate
+# right up to the point where a club changes kit or gets promoted — Ipswich
+# play in blue with white sleeves and were drawn plain blue for a month.
+#
+# Monthly and on demand, like the keeper kits. The manual trigger is the one
+# that matters: August, and whenever a shirt on the site looks wrong.
+on:
+  schedule:
+    - cron: '41 5 2 * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Report what it reads and write nothing'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kit-art-write
+  cancel-in-progress: false
+
+jobs:
+  update-kit-art:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+
+      - name: Install image tooling
+        run: npm install --no-save sharp@^0.35.4 esbuild@^0.25.0 lightningcss@^1.30.0
+
+      # Reports every club's detected pattern and both colours in the log, so
+      # a wrong reading is something you can see before it ships.
+      - name: Read the outfield kits
+        run: node tools/fetch-kit-art.mjs ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      # The generated block is in a source file, so the minified copy has to
+      # follow it or check:min goes red on the next push.
+      - name: Rebuild minified assets
+        if: ${{ !inputs.dry_run }}
+        run: node tools/minify.mjs
+
+      - name: Commit and push if changed
+        if: ${{ !inputs.dry_run }}
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+
+          cp scripts/common.js /tmp/common.js
+
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/common.js scripts/common.js
+            node tools/minify.mjs
+            git add scripts/common.js scripts/common.min.js
+            if git diff --staged --quiet; then
+              echo "No outfield kit changed"
+              exit 0
+            fi
+            git commit -m "Update outfield kits - $(date -u +'%Y-%m-%d %H:%M UTC')"
+            if git push; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected on attempt $attempt — main moved, re-applying."
+            sleep 5
+          done
+          echo "::error::Could not push after 5 attempts."
+          exit 1

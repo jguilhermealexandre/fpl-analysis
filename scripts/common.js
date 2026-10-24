@@ -911,22 +911,44 @@ function clubColours(player) {
    of a cuff at r=27.6 of 32, and the 3.4-wide cuff trim centred on that edge
    reaches 29.3. The first draft put it at 31.4 and the sleeves came back
    flattened on every card. */
-const V2_KIT_SHIRT = 'M23.5 14L17.2 15.4L6.4 21.6L10.8 33.2L18.2 26.6L17.2 56'
-    + 'L46.8 56L45.8 26.6L53.2 33.2L57.6 21.6L46.8 15.4L40.5 14C38 19.2 26 19.2 23.5 14Z';
-const V2_KIT_COLLAR = 'M23.5 14C26 19.2 38 19.2 40.5 14';
-const V2_KIT_SLEEVE_L = 'M17.2 15.4L6.4 21.6L10.8 33.2L18.2 26.6Z';
-const V2_KIT_SLEEVE_R = 'M46.8 15.4L57.6 21.6L53.2 33.2L45.8 26.6Z';
-const V2_KIT_CUFF_L = 'M6.4 21.6L10.8 33.2';
-const V2_KIT_CUFF_R = 'M57.6 21.6L53.2 33.2';
+/* The silhouette. Shaped rather than straight-sided: the shoulder drops into
+   the sleeve head on a curve, the sleeve tapers to its cuff, and the body
+   nips in at the waist before the hem. The first version was a polygon of
+   eleven straight lines, which reads as a shirt-shaped icon; a football shirt
+   has no straight edges on it anywhere. */
+const V2_KIT_SHIRT = 'M24 13.6C26.5 19.4 37.5 19.4 40 13.6L47.4 15.2'
+    + 'C51 16.2 55.6 18.4 58.2 21.4C58.9 22.2 59 23.1 58.6 24.1L54.6 33.6'
+    + 'C54.1 34.8 52.9 35.2 51.8 34.5L47.4 31.6L48.1 54.4C48.2 55.6 47.4 56.4 46.2 56.4'
+    + 'L17.8 56.4C16.6 56.4 15.8 55.6 15.9 54.4L16.6 31.6L12.2 34.5'
+    + 'C11.1 35.2 9.9 34.8 9.4 33.6L5.4 24.1C5 23.1 5.1 22.2 5.8 21.4'
+    + 'C8.4 18.4 13 16.2 16.6 15.2Z';
+const V2_KIT_COLLAR = 'M24 13.6C26.5 19.4 37.5 19.4 40 13.6';
+/* The collar's own shadow, a touch inside it — what stops the neck reading as
+   a hole cut in a sticker. */
+const V2_KIT_NECK = 'M24.4 15.6C26.8 20.6 37.2 20.6 39.6 15.6';
+const V2_KIT_SLEEVE_L = 'M16.6 15.2C13 16.2 8.4 18.4 5.8 21.4C5.1 22.2 5 23.1 5.4 24.1'
+    + 'L9.4 33.6C9.9 34.8 11.1 35.2 12.2 34.5L16.6 31.6Z';
+const V2_KIT_SLEEVE_R = 'M47.4 15.2C51 16.2 55.6 18.4 58.2 21.4C58.9 22.2 59 23.1 58.6 24.1'
+    + 'L54.6 33.6C54.1 34.8 52.9 35.2 51.8 34.5L47.4 31.6Z';
+const V2_KIT_CUFF_L = 'M8.6 20.6L12.6 32.4';
+const V2_KIT_CUFF_R = 'M55.4 20.6L51.4 32.4';
+/* Where the sleeve is sewn to the body. One line each, and it is most of what
+   makes the thing read as a garment rather than a silhouette. */
+const V2_KIT_SEAM_L = 'M16.6 15.2L17.6 31.4';
+const V2_KIT_SEAM_R = 'M47.4 15.2L46.4 31.4';
 
 /* [pattern, main, second, ink, trim] for each club's home shirt, keyed by the
  * league's team code like CLUB_COLOURS above — not by the FPL team id, which
  * is alphabetical position in this season's twenty and is reassigned every
  * August.
  *
- * pattern   'plain'   one colour
- *           'stripes' vertical stripes of `second` over `main`
- *           'sleeves' body `main`, sleeves `second`
+ * pattern   'plain'      one colour
+ *           'stripes'    vertical stripes of `second` over `main`
+ *           'pinstripes' the same, narrow and more of them
+ *           'hoops'      horizontal bands
+ *           'halves'     `second` over the right half
+ *           'sash'       a diagonal band
+ *           'sleeves'    body `main`, sleeves `second`
  * main      the shirt
  * second    whatever the pattern needs; same as `main` when it needs nothing
  * ink       the number, picked to read on the shirt rather than to be the
@@ -937,6 +959,28 @@ const V2_KIT_CUFF_R = 'M57.6 21.6L53.2 33.2';
  * shirt and nine is a grey smudge. What is kept is what tells two clubs
  * apart at the size this is actually rendered.
  */
+/* MEASURED, WHERE WE CAN MEASURE.
+ *
+ * The table below is what I could remember about twenty shirts, which was
+ * fine until it wasn't: Ipswich play in blue with white sleeves and were
+ * drawn plain blue, because that is how I remembered them. Remembering is
+ * not a maintenance strategy for a thing that changes every August.
+ *
+ * FPL draws its own pitch from a per-club shirt sprite, the outfield twin of
+ * the keeper sprite CLUB_GK_KITS is read off. So the real colours and the
+ * real pattern are both there to be measured, and tools/fetch-kit-art.mjs
+ * measures them into the block below. It wins over the hand-written row;
+ * a club whose sprite could not be read keeps the row, so this can only
+ * improve on what was there.
+ */
+/* === GENERATED: outfield kits — node tools/fetch-kit-art.mjs === */
+/* Measured off FPL's own outfield shirt sprites — see tools/fetch-kit-art.mjs.
+   Do not hand-edit: the next run overwrites it. A club missing from here
+   keeps its hand-written row in CLUB_KITS below. Empty until the first run. */
+const CLUB_KIT_ART = {
+};
+/* === END GENERATED OUTFIELD KITS === */
+
 const CLUB_KITS = {
     1:  ['plain',   '#DA291C', '#DA291C', '#FFFFFF', '#FFFFFF'],  // Man Utd
     2:  ['plain',   '#FFFFFF', '#FFFFFF', '#1D428A', '#1D428A'],  // Leeds
@@ -1037,7 +1081,7 @@ function v2ColourGap(a, b) {
 
 function clubKit(player) {
     const code = v2TeamCode(player && player.teamId, player && player.teamCode);
-    const k = (code != null && CLUB_KITS[code]) || CLUB_KIT_FALLBACK;
+    const k = (code != null && (CLUB_KIT_ART[code] || CLUB_KITS[code])) || CLUB_KIT_FALLBACK;
     if (isGoalkeeper(player)) {
         /* His club's real keeper colours where we have them — read off the
            game's own shirt art by tools/fetch-gk-kits.mjs — and the generic
@@ -1141,44 +1185,108 @@ function v2KitNumber(player) {
    rather than one shared id: these are rebuilt by innerHTML constantly, and
    two elements answering to the same id is the kind of thing that works until
    one page renders two lists at once. */
-let V2_KIT_SEQ = 0;
+/* THE PARTS THAT NEVER CHANGE, DRAWN ONCE PER PAGE.
+ *
+ * Only the colours and the pattern differ between clubs; the silhouette, the
+ * clip cut from it, the sleeve shading, the seams and the trim shapes are the
+ * same twenty times over. Spelling them out on every shirt took one from 904
+ * bytes to 1814 — and the Players tab draws 298 of them, which is half a
+ * megabyte of identical path data in the DOM.
+ *
+ * So they live in one hidden <svg> and each shirt is four <use> references
+ * into it. The trim shapes take their colour from `currentColor`, which a
+ * <use> can set, so the cuffs and collar are shared even though their colour
+ * is not.
+ *
+ * The static article builder has no document to put it in, so there it is
+ * inlined into the shirt instead — one or two on a page rather than three
+ * hundred, where the saving does not matter and a missing reference would.
+ */
+const V2_KIT_DEFS_ID = 'v2k-defs';
+const V2_KIT_DEFS = `<defs>`
+    + `<path id="v2k-shirt" d="${V2_KIT_SHIRT}"/>`
+    + `<clipPath id="v2k-clip"><use href="#v2k-shirt"/></clipPath>`
+    + `<g id="v2k-shade">`
+    + `<path d="${V2_KIT_SLEEVE_L}" fill="#000" opacity=".1"/>`
+    + `<path d="${V2_KIT_SLEEVE_R}" fill="#000" opacity=".1"/>`
+    + `<g fill="none" stroke="#000" stroke-opacity=".18" stroke-width="1">`
+    + `<path d="${V2_KIT_SEAM_L}"/><path d="${V2_KIT_SEAM_R}"/></g></g>`
+    + `<g id="v2k-trim">`
+    + `<g fill="none" stroke="currentColor">`
+    + `<path d="${V2_KIT_CUFF_L}" stroke-width="3.6"/>`
+    + `<path d="${V2_KIT_CUFF_R}" stroke-width="3.6"/>`
+    + `<path d="${V2_KIT_COLLAR}" stroke-width="4"/></g>`
+    + `<path d="${V2_KIT_NECK}" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="1.4"/>`
+    + `</g></defs>`;
+
+/* Checked on every render rather than remembered with a flag: a page that
+   rewrites document.body — which several of these tabs do — would take the
+   block with it, and every shirt after that would lose its silhouette. */
+function v2KitEnsureDefs() {
+    if (typeof document === 'undefined' || !document.body) return false;
+    if (document.getElementById(V2_KIT_DEFS_ID)) return true;
+    // Parsed as SVG rather than assigned as HTML: innerHTML on a created
+    // <svg> element goes through the HTML parser and silently mis-namespaces.
+    const frag = new DOMParser().parseFromString(
+        `<svg xmlns="http://www.w3.org/2000/svg" id="${V2_KIT_DEFS_ID}" `
+        + `aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">`
+        + `${V2_KIT_DEFS}</svg>`, 'image/svg+xml');
+    if (frag.querySelector('parsererror')) return false;
+    document.body.appendChild(document.importNode(frag.documentElement, true));
+    return true;
+}
+
 
 function v2KitSVG(subject, opts) {
     const o = opts || {};
     const player = v2KitPlayer(subject);
     const esc = typeof escHTML === 'function' ? escHTML : (t => String(t == null ? '' : t));
     const kit = clubKit(player);
-    const id = 'vk' + (++V2_KIT_SEQ);
     const club = (player && player.team) || '';
 
+    /* The patterns an English kit actually comes in. Stripes and contrast
+       sleeves were the only two the first version could draw, so a hooped or
+       a halved club was simply shown plain. */
+    const band = (x, w) => `<rect x="${x}" y="0" width="${w}" height="64" fill="${kit.second}"/>`;
     let pattern = '';
-    if (kit.pattern === 'stripes') {
-        // Period 8 across the 64-unit frame: four bands over the body at any
-        // size this renders at, and still four at 20px.
-        pattern = [4, 20, 36, 52].map(x =>
-            `<rect x="${x}" y="0" width="8" height="64" fill="${kit.second}"/>`).join('');
-    } else if (kit.pattern === 'sleeves') {
+    switch (kit.pattern) {
+    case 'stripes':
+        // Period 16, so four of the club's second colour cross the body at
+        // any size this renders at — and still four at 20px, where the nine
+        // a real shirt has would be a smudge.
+        pattern = [3, 19, 35, 51].map(x => band(x, 8)).join('');
+        break;
+    case 'pinstripes':
+        pattern = [10, 20, 30, 40, 50].map(x => band(x, 2)).join('');
+        break;
+    case 'hoops':
+        pattern = [15, 27, 39, 51].map(y =>
+            `<rect x="0" y="${y}" width="64" height="6" fill="${kit.second}"/>`).join('');
+        break;
+    case 'halves':
+        pattern = band(32, 32);
+        break;
+    case 'sash':
+        pattern = `<path d="M8 64L40 6L52 12L20 64Z" fill="${kit.second}"/>`;
+        break;
+    case 'sleeves':
         pattern = `<path d="${V2_KIT_SLEEVE_L}" fill="${kit.second}"/>`
             + `<path d="${V2_KIT_SLEEVE_R}" fill="${kit.second}"/>`;
+        break;
+    default:
+        break;
     }
 
-    /* The silhouette is written once, into <defs>, and the three places that
-       need it — the fill, the clip the pattern is cut to, and the outline —
-       are <use> references to it. Spelling the path out three times cost 270
-       bytes a shirt, and a list on the Players tab draws 275 of them. */
+    const shared = v2KitEnsureDefs();
     const num = o.number === false ? '' : esc(v2KitNumber(player));
-    const inner = pattern
-        + `<path d="${V2_KIT_CUFF_L}" fill="none" stroke="${kit.trim}" stroke-width="3.4"/>`
-        + `<path d="${V2_KIT_CUFF_R}" fill="none" stroke="${kit.trim}" stroke-width="3.4"/>`
-        + `<path d="${V2_KIT_COLLAR}" fill="none" stroke="${kit.trim}" stroke-width="3.6"/>`;
     return `<svg class="v2-kit" viewBox="0 0 64 64" role="img" aria-label="${
         esc(club ? `${club} shirt` : 'Club shirt')}">`
-        + `<defs><path id="${id}" d="${V2_KIT_SHIRT}"/>`
-        + `<clipPath id="${id}c"><use href="#${id}"/></clipPath></defs>`
-        + `<use href="#${id}" fill="${kit.main}"/>`
-        + `<g clip-path="url(#${id}c)">${inner}</g>`
-        + `<use href="#${id}" class="v2-kit-edge" fill="none"/>`
-        + (num ? `<text class="v2-kit-n" x="32" y="47" text-anchor="middle"`
+        + (shared ? '' : V2_KIT_DEFS)
+        + `<use href="#v2k-shirt" fill="${kit.main}"/>`
+        + `<g clip-path="url(#v2k-clip)">${pattern}`
+        + `<use href="#v2k-shade"/><use href="#v2k-trim" color="${kit.trim}"/></g>`
+        + `<use href="#v2k-shirt" class="v2-kit-edge" fill="none"/>`
+        + (num ? `<text class="v2-kit-n" x="32" y="47.5" text-anchor="middle"`
             + ` fill="${kit.ink}" stroke="${v2KitHalo(kit.ink)}">${num}</text>` : '')
         + `</svg>`;
 }
@@ -2989,7 +3097,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=479')
+    fetch('/footer.html?v=480')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

@@ -39,7 +39,8 @@ function kitContext(teams) {
        Handed over explicitly rather than rewritten as globals in the shipped
        file to suit the test. */
     new vm.Script(common.slice(from, to)
-        + ';globalThis.__kit = { CLUB_KITS, CLUB_KIT_FALLBACK, V2_KIT_SHIRT };',
+        + ';globalThis.__kit = { CLUB_KITS, CLUB_KIT_ART, CLUB_KIT_FALLBACK,'
+        + ' V2_KIT_SHIRT, V2_KIT_SLEEVE_L };',
     { filename: 'scripts/common.js#identity' }).runInContext(ctx);
     return Object.assign(ctx, ctx.__kit);
 }
@@ -51,24 +52,32 @@ const kit = kitContext();
 
 test('every club in the division has a kit', () => {
     const missing = bootstrap.teams
-        .filter(t => !kit.CLUB_KITS[t.code])
+        .filter(t => !kit.CLUB_KIT_ART[t.code] && !kit.CLUB_KITS[t.code])
         .map(t => `${t.short_name} (code ${t.code})`);
     assert.deepEqual(missing, [],
         'a promoted club with no kit wears the league purple, which is wrong rather than merely plain');
 });
 
+/* Both tables, because the measured one is written by a tool and the tool is
+   the half nobody reads before it lands. A pattern the renderer does not
+   know draws a plain shirt and says nothing about it. */
+const everyKit = () => [
+    ...Object.entries(kit.CLUB_KIT_ART).map(([c, k]) => [`measured ${c}`, k]),
+    ...Object.entries(kit.CLUB_KITS).map(([c, k]) => [`hand-written ${c}`, k])
+];
+
 test('every kit names a pattern the renderer draws', () => {
-    const drawn = new Set(['plain', 'stripes', 'sleeves']);
-    for (const [code, k] of Object.entries(kit.CLUB_KITS)) {
-        assert.ok(drawn.has(k[0]), `club ${code} asks for "${k[0]}", which nothing draws`);
+    const drawn = new Set(['plain', 'stripes', 'pinstripes', 'hoops', 'halves', 'sash', 'sleeves']);
+    for (const [where, k] of everyKit()) {
+        assert.ok(drawn.has(k[0]), `club ${where} asks for "${k[0]}", which nothing draws`);
     }
 });
 
 test('every kit is five entries of the shape the renderer reads', () => {
-    for (const [code, k] of Object.entries(kit.CLUB_KITS)) {
-        assert.equal(k.length, 5, `club ${code}`);
+    for (const [where, k] of everyKit()) {
+        assert.equal(k.length, 5, `club ${where}`);
         for (const c of k.slice(1)) {
-            assert.match(c, /^#[0-9A-F]{6}$/, `club ${code} has a colour that is not a six-digit hex`);
+            assert.match(c, /^#[0-9A-F]{6}$/, `club ${where} has a colour that is not a six-digit hex`);
         }
     }
 });
@@ -91,11 +100,12 @@ function contrast(a, b) {
 
 test('the number reads on every colour it is printed over', () => {
     const bad = [];
-    for (const [code, [pattern, main, second, ink]] of Object.entries(kit.CLUB_KITS)) {
-        /* Both colours for a striped shirt, because the number sits across the
-           stripes. Only the body for a sleeved one — the sleeves are nowhere
-           near it. */
-        const grounds = pattern === 'stripes' ? [main, second] : [main];
+    for (const [where, [pattern, main, second, ink]] of everyKit()) {
+        /* Every colour the number is actually printed over. Stripes, hoops,
+           halves and a sash all run under it, so both colours count; contrast
+           sleeves do not — they are nowhere near it. */
+        const across = new Set(['stripes', 'pinstripes', 'hoops', 'halves', 'sash']);
+        const grounds = across.has(pattern) ? [main, second] : [main];
         /* The glyph or its halo has to separate from the ground; a real
            outlined shirt number works the same way, which is why it is
            outlined. The halo is drawn at half to three-fifths alpha, so it is
@@ -104,7 +114,7 @@ test('the number reads on every colour it is printed over', () => {
         for (const g of grounds) {
             const best = Math.max(contrast(ink, g), contrast(halo, g));
             if (best < 3) {
-                bad.push(`club ${code}: neither ${ink} nor its halo separates from ${g}`);
+                bad.push(`club ${where}: neither ${ink} nor its halo separates from ${g}`);
             }
         }
     }
@@ -187,27 +197,67 @@ test('a real number wins, and there is no fallback', () => {
 
 /* ===== The drawing ===== */
 
-test('the silhouette is written once and referenced three times', () => {
+test('the silhouette is written once and referenced wherever it is needed', () => {
     const svg = kit.v2KitSVG({ name: 'Isak', teamCode: 4, team: 'NEW' });
-    assert.equal((svg.match(/M23\.5 14L/g) || []).length, 1,
-        'the path itself appears once — the fill, the clip and the outline are <use>');
-    assert.equal((svg.match(/<use /g) || []).length, 3);
+    assert.equal((svg.match(/48\.1 54\.4/g) || []).length, 1,
+        'the body outline is declared once — the fill, the clip and the edge are <use>');
+    assert.equal((svg.match(/<use href="#v2k-shirt"/g) || []).length, 3,
+        'clipped, filled, outlined');
+    assert.ok(svg.includes('<use href="#v2k-shade"/>'), 'and the shading is shared too');
+    assert.ok(svg.includes('<use href="#v2k-trim"'), 'and the collar and cuffs');
 });
 
-test('each shirt clips to its own copy, so two on a page cannot collide', () => {
-    const a = kit.v2KitSVG({ name: 'A', teamCode: 4 });
-    const b = kit.v2KitSVG({ name: 'B', teamCode: 4 });
-    const idOf = s => /<path id="(vk\d+)"/.exec(s)[1];
-    assert.notEqual(idOf(a), idOf(b));
-    assert.ok(a.includes(`url(#${idOf(a)}c)`), 'and each clips to its own');
+/* The geometry is fixed — only the colours and the number change — so a page
+   of eleven shirts should pay for the paths once. v2KitEnsureDefs() hoists them
+   into one hidden <svg> on the document and every shirt then refers to that.
+   Here there is no document, which is the other half of the contract: the
+   drawing still has to stand on its own for a statically rendered article. */
+test('with nowhere to hoist them, a shirt carries its own copy of the defs', () => {
+    assert.equal(typeof kit.document, 'undefined', 'no DOM in this context');
+    assert.equal(kit.v2KitEnsureDefs(), false);
+    const svg = kit.v2KitSVG({ name: 'A', teamCode: 4 });
+    assert.ok(svg.includes('<defs>'), 'so it writes them inline');
+    assert.ok(svg.includes('id="v2k-shirt"'));
+});
+
+test('two shirts on a page share one copy of the geometry', () => {
+    const a = kit.v2KitSVG({ name: 'A', teamCode: 4, shirt: 9 });
+    const b = kit.v2KitSVG({ name: 'B', teamCode: 4, shirt: 9 });
+    assert.equal(a, b, 'the same club and number is the same drawing, byte for byte');
+    assert.ok(a.includes('clip-path="url(#v2k-clip)"'),
+        'both clip to the one shared path rather than a per-shirt duplicate');
 });
 
 test('a striped club is drawn striped and a sleeved club sleeved', () => {
     const newcastle = kit.v2KitSVG({ name: 'Isak', teamCode: 4 });
     assert.equal((newcastle.match(/<rect x="\d+" y="0" width="8"/g) || []).length, 4, 'four stripes');
     const arsenal = kit.v2KitSVG({ name: 'Saka', teamCode: 3 });
-    assert.ok(arsenal.includes('M17.2 15.4L6.4 21.6'), 'the left sleeve is filled in its own colour');
+    assert.ok(arsenal.includes(`<path d="${kit.V2_KIT_SLEEVE_L}" fill="`),
+        'the left sleeve is filled in its own colour');
     assert.ok(!/width="8"/.test(arsenal), 'and nothing is striped');
+});
+
+/* Six patterns and a plain shirt. The table only reaches for a pattern when
+   the art it was measured from has one, so a pattern the renderer silently
+   ignored would show up as a plain shirt for one club and nothing else —
+   which is exactly the kind of wrong that goes unnoticed for a season. */
+test('every pattern the table can name draws something', () => {
+    const cases = {
+        plain:      null,
+        stripes:    /<rect x="\d+" y="0" width="8"/,
+        pinstripes: /<rect x="\d+" y="0" width="2"/,
+        hoops:      /<rect x="0" y="\d+" width="64" height="6"/,
+        halves:     /<rect x="32" y="0" width="32"/,
+        sash:       /<path d="M8 64L40 6/,
+        sleeves:    /<path d="M16\.6 15\.2C13/
+    };
+    for (const [pattern, shape] of Object.entries(cases)) {
+        kit.CLUB_KITS[777] = [pattern, '#101010', '#F0F0F0', '#FFFFFF', '#F0F0F0'];
+        const svg = kit.v2KitSVG({ name: 'Test', teamCode: 777 });
+        if (shape) assert.match(svg, shape, `"${pattern}" draws nothing`);
+        else assert.ok(!/<rect/.test(svg), 'a plain shirt is one fill and no pattern');
+    }
+    delete kit.CLUB_KITS[777];
 });
 
 test('a club we have never drawn gets the league purple, not an empty disc', () => {
