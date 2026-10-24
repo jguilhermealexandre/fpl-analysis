@@ -64,58 +64,78 @@ const hex = (r, g, b) => '#' + [r, g, b].map(v =>
 const lum = (r, g, b) => (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 const gap = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
-const N = 64;            // the normalised grid every measurement is taken on
-const EDGE = 2;          // how far in from the alpha edge the keyline reaches
+const EDGE = 0.03;       // the keyline, as a fraction of the shirt's width
 const SPLIT = 70;        // far enough apart in RGB to be the shirt's two colours
 
-/* The sprite, cropped to the shirt and squared off to NxN, with the keyline
-   eroded away. Returns a grid of [r,g,b] or null, so every measurement below
-   reads the same picture rather than re-deciding what counts as a pixel. */
-async function grid(sharp, buf) {
-    const first = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-    const { width: W, height: H, channels: C } = first.info;
-    const alphaAt = (x, y) => first.data[(y * W + x) * C + 3];
+/* The sprite, cropped to the shirt, at the resolution it was drawn at.
+ *
+ * AN EARLIER VERSION SQUASHED IT TO 64x64 FIRST, which is where Brighton
+ * came back as a plain blue shirt. Nearest-neighbour sampling of a 220px
+ * sprite onto a 64px grid takes every third or fourth pixel, and a stripe
+ * that happens to be three or four pixels wide is then sampled at a constant
+ * phase: a striped shirt aliases into a flat one. Averaging instead would
+ * have blended the stripes into a grey mush, which is no better. So nothing
+ * is resampled — everything below is measured in fractions of the shirt's
+ * own bounding box, at whatever size the sprite was drawn.
+ */
+async function sprite(sharp, buf) {
+    const { data, info } = await sharp(buf).ensureAlpha().raw()
+        .toBuffer({ resolveWithObject: true });
+    const { width: W, height: H, channels: C } = info;
+    const alpha = (x, y) => data[(y * W + x) * C + 3];
 
     let x0 = W, y0 = H, x1 = -1, y1 = -1;
     for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
-            if (alphaAt(x, y) < 200) continue;
+            if (alpha(x, y) < 200) continue;
             if (x < x0) x0 = x; if (x > x1) x1 = x;
             if (y < y0) y0 = y; if (y > y1) y1 = y;
         }
     }
     if (x1 < x0 || y1 < y0) throw new Error('nothing opaque in the sprite');
+    const w = x1 - x0 + 1, h = y1 - y0 + 1;
+    const edge = Math.max(2, Math.round(w * EDGE));
 
-    const { data, info } = await sharp(buf)
-        .extract({ left: x0, top: y0, width: x1 - x0 + 1, height: y1 - y0 + 1 })
-        .resize(N, N, { fit: 'fill', kernel: 'nearest' })
-        .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-
-    const solid = [];
-    for (let y = 0; y < N; y++) {
-        const row = [];
-        for (let x = 0; x < N; x++) row.push(data[(y * N + x) * info.channels + 3] >= 200);
-        solid.push(row);
-    }
-    /* Erode: a pixel within EDGE of a transparent one is keyline or the
-       antialiasing under it, and is neither of the shirt's colours. */
-    const px = [];
-    for (let y = 0; y < N; y++) {
-        const row = [];
-        for (let x = 0; x < N; x++) {
-            let ok = solid[y][x];
-            for (let dy = -EDGE; ok && dy <= EDGE; dy++) {
-                for (let dx = -EDGE; ok && dx <= EDGE; dx++) {
-                    const yy = y + dy, xx = x + dx;
-                    if (yy < 0 || xx < 0 || yy >= N || xx >= N || !solid[yy][xx]) ok = false;
-                }
+    /* Eroded: a pixel within `edge` of a transparent one is the sprite's dark
+       keyline or the antialiasing under it, and is neither of the shirt's
+       colours. Dropping dark pixels by luminance instead — which is what this
+       did first — also drops Newcastle's and Bournemouth's black. */
+    const at = (x, y) => {
+        for (let dy = -edge; dy <= edge; dy++) {
+            for (let dx = -edge; dx <= edge; dx++) {
+                const yy = y + dy, xx = x + dx;
+                if (yy < 0 || xx < 0 || yy >= H || xx >= W || alpha(xx, yy) < 200) return null;
             }
-            const i = (y * N + x) * info.channels;
-            row.push(ok ? [data[i], data[i + 1], data[i + 2]] : null);
         }
-        px.push(row);
-    }
-    return px;
+        const i = (y * W + x) * C;
+        return [data[i], data[i + 1], data[i + 2]];
+    };
+
+    /* Everything is asked for in fractions of the shirt, so no measurement
+       below has to know how big the sprite is. */
+    const px = (fx, fy) => at(x0 + Math.round(fx * (w - 1)), y0 + Math.round(fy * (h - 1)));
+    const region = (fx0, fx1, fy0, fy1, step = 1 / 48) => {
+        const out = [];
+        for (let fy = fy0; fy <= fy1; fy += step) {
+            for (let fx = fx0; fx <= fx1; fx += step) out.push(px(fx, fy));
+        }
+        return out;
+    };
+    const across = (fy, fx0, fx1) => {
+        const out = [];
+        for (let x = Math.round(fx0 * (w - 1)); x <= Math.round(fx1 * (w - 1)); x++) {
+            out.push(at(x0 + x, y0 + Math.round(fy * (h - 1))));
+        }
+        return out;
+    };
+    const down = (fx, fy0, fy1) => {
+        const out = [];
+        for (let y = Math.round(fy0 * (h - 1)); y <= Math.round(fy1 * (h - 1)); y++) {
+            out.push(at(x0 + Math.round(fx * (w - 1)), y0 + y));
+        }
+        return out;
+    };
+    return { w, h, px, region, across, down, run: Math.max(2, Math.round(w * 0.035)) };
 }
 
 /* Buckets to /24 so antialiasing lands with its own colour, then averages
@@ -147,22 +167,23 @@ function twoColours(pixels) {
     const main = ranked[0].rgb;
     const rest = pixels.filter(p => p && gap(p, main) > SPLIT);
     const other = dominant(rest).ranked[0];
-    const share = rest.length / (total || 1);
-    return { main, second: other && share > 0.08 ? other.rgb : null, share };
+    return { main, second: other && rest.length / (total || 1) > 0.08 ? other.rgb : null,
+        share: rest.length / (total || 1) };
 }
 
-/* How many times a line crosses between the two colours, ignoring the pixels
-   that are neither. A striped shirt alternates several times across the
-   chest; a plain one never does. */
-function crossings(line, a, b) {
-    let last = null, n = 0;
+/* How many times a line crosses between the two colours. A run has to last
+   `run` pixels to count, so a sponsor's lettering and the antialiasing either
+   side of a seam are not six stripes. */
+function crossings(line, a, b, run) {
+    let last = null, held = 0, n = 0;
     for (const p of line) {
         if (!p) continue;
         const da = gap(p, a), db = gap(p, b);
-        const near = da < db ? 'a' : 'b';
         if (Math.min(da, db) > SPLIT) continue;
-        if (last && near !== last) n++;
-        last = near;
+        const near = da < db ? 'a' : 'b';
+        if (near === last) { held++; continue; }
+        if (last && held >= run) n++;
+        last = near; held = 1;
     }
     return n;
 }
@@ -182,16 +203,17 @@ for (const club of clubs) {
     const give = why => { skipped.push(club.name); console.log(`  ${club.name.padEnd(4)} — ${why}`); };
     if (!buf) { give('no sprite'); continue; }
 
-    let px;
-    try { px = await grid(sharp, buf); } catch (e) { give(e.message); continue; }
+    let art;
+    try { art = await sprite(sharp, buf); } catch (e) { give(e.message); continue; }
 
-    /* Regions, now that the shirt fills the frame: the body is the middle
-       third, the sleeves are the outer fifths at shoulder height. */
-    const col = (r, lo, hi) => r.filter((p, x) => x >= lo && x <= hi);
-    const body = px.slice(34, 58).flatMap(r => col(r, 22, 42));
-    const sleeve = px.slice(14, 34).flatMap(r => r.filter((p, x) => x < 13 || x > 51));
-    const leftBody = px.slice(34, 58).flatMap(r => col(r, 22, 31));
-    const rightBody = px.slice(34, 58).flatMap(r => col(r, 33, 42));
+    /* The regions, in fractions of the shirt's own bounding box. The torso is
+       the middle two fifths; the sleeves are the outer fifths at shoulder
+       height; both are read low enough to clear the collar and high enough to
+       clear the hem. */
+    const body = art.region(0.30, 0.70, 0.45, 0.92);
+    const sleeve = [...art.region(0.00, 0.17, 0.25, 0.52), ...art.region(0.83, 1.00, 0.25, 0.52)];
+    const leftBody = art.region(0.30, 0.48, 0.45, 0.92);
+    const rightBody = art.region(0.52, 0.70, 0.45, 0.92);
 
     const pair = twoColours(body);
     if (!pair || dominant(body).total < 150) { give('too little shirt in the sprite'); continue; }
@@ -206,14 +228,16 @@ for (const club of clubs) {
     /* Three chest lines rather than one, because a single scanline can land
        between hoops or on a sponsor. The pattern has to hold on the middle
        one of the three. */
-    const chest = [38, 44, 50].map(y => crossings(col(px[y], 22, 42), main, second || main))
+    const other = second || main;
+    const chest = [0.52, 0.66, 0.80]
+        .map(fy => crossings(art.across(fy, 0.26, 0.74), main, other, art.run))
         .sort((a, b) => a - b)[1];
-    const down = crossings(px.map(r => r[32]).slice(30, 58), main, second || main);
-    const wide = crossings(px[44], main, second || main);
+    const downC = crossings(art.down(0.50, 0.42, 0.92), main, other, art.run);
+    const wide = crossings(art.across(0.66, 0.10, 0.90), main, other, Math.ceil(art.run / 2));
 
     if (second) {
         if (chest >= 3) pattern = wide >= 9 ? 'pinstripes' : 'stripes';
-        else if (down >= 3) pattern = 'hoops';
+        else if (downC >= 3) pattern = 'hoops';
         else if (dL && dR && gap(dL.rgb, dR.rgb) > SPLIT) pattern = 'halves';
     }
     /* Sleeves are read off the sleeves, so a plain body with contrast sleeves
@@ -228,25 +252,29 @@ for (const club of clubs) {
     const trim = pattern === 'plain' ? ink : secondHex;
 
     if (MAP) {
-        /* The sprite, printed. Four passes of tuning against numbers I could
-           not see was three passes too many: every reading below is a claim
+        /* The sprite, printed. Two rounds of tuning against numbers I could
+           not see was one round too many: every reading above is a claim
            about a picture, and this is the picture. One character per cell,
            the index into the club's own four commonest colours. */
-        const pal = dominant(px.flat()).ranked.slice(0, 4);
+        const all = art.region(0, 1, 0, 1, 1 / 64);
+        const pal = dominant(all).ranked.slice(0, 4);
+        const code = p => {
+            if (!p) return '.';
+            let best = 0, d = Infinity;
+            pal.forEach((c, i) => { const g = gap(p, c.rgb); if (g < d) { d = g; best = i; } });
+            return String(best);
+        };
         console.log(`  ${club.name} — ` + pal.map((c, i) =>
             `${i}=${hex(...c.rgb)} ${(c.share * 100).toFixed(0)}%`).join('  '));
-        for (let y = 0; y < N; y += 2) {
-            console.log('    ' + px[y].filter((p, x) => x % 2 === 0).map(p => {
-                if (!p) return '.';
-                let best = 0, d = Infinity;
-                pal.forEach((c, i) => { const g = gap(p, c.rgb); if (g < d) { d = g; best = i; } });
-                return String(best);
-            }).join(''));
+        for (let r = 0; r < 32; r++) {
+            let line = '';
+            for (let c = 0; c < 40; c++) line += code(art.px(c / 39, r / 31));
+            console.log('    ' + line);
         }
     }
     if (DEBUG) {
-        console.log(`  ${club.name.padEnd(4)} t${String(club.code).padEnd(4)}`
-            + ` chest ${chest} down ${down} wide ${wide}`
+        console.log(`  ${club.name.padEnd(4)} t${String(club.code).padEnd(4)} ${art.w}x${art.h}`
+            + ` chest ${chest} down ${downC} wide ${wide}`
             + ` secondShare ${(pair.share * 100).toFixed(0)}%`
             + ` sleeveΔ ${dS ? Math.round(gap(dS.rgb, dB)) : '-'}`
             + ` halfΔ ${dL && dR ? Math.round(gap(dL.rgb, dR.rgb)) : '-'}`);
