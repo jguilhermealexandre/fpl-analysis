@@ -37,6 +37,7 @@
  * Run:  node tools/fetch-kit-art.mjs
  *       node tools/fetch-kit-art.mjs --dry-run   report, write nothing
  *       node tools/fetch-kit-art.mjs --debug     and show the working
+ *       node tools/fetch-kit-art.mjs --map       and print the sprite itself
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -44,6 +45,7 @@ import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DRY = process.argv.includes('--dry-run');
 const DEBUG = process.argv.includes('--debug');
+const MAP = process.argv.includes('--map');
 const COMMON = path.join(ROOT, 'scripts', 'common.js');
 const OPEN = '/* === GENERATED: outfield kits — node tools/fetch-kit-art.mjs === */';
 const CLOSE = '/* === END GENERATED OUTFIELD KITS === */';
@@ -225,6 +227,23 @@ for (const club of clubs) {
     const ink = lum(...dB) > 0.55 ? '#1B1B1B' : '#FFFFFF';
     const trim = pattern === 'plain' ? ink : secondHex;
 
+    if (MAP) {
+        /* The sprite, printed. Four passes of tuning against numbers I could
+           not see was three passes too many: every reading below is a claim
+           about a picture, and this is the picture. One character per cell,
+           the index into the club's own four commonest colours. */
+        const pal = dominant(px.flat()).ranked.slice(0, 4);
+        console.log(`  ${club.name} — ` + pal.map((c, i) =>
+            `${i}=${hex(...c.rgb)} ${(c.share * 100).toFixed(0)}%`).join('  '));
+        for (let y = 0; y < N; y += 2) {
+            console.log('    ' + px[y].filter((p, x) => x % 2 === 0).map(p => {
+                if (!p) return '.';
+                let best = 0, d = Infinity;
+                pal.forEach((c, i) => { const g = gap(p, c.rgb); if (g < d) { d = g; best = i; } });
+                return String(best);
+            }).join(''));
+        }
+    }
     if (DEBUG) {
         console.log(`  ${club.name.padEnd(4)} t${String(club.code).padEnd(4)}`
             + ` chest ${chest} down ${down} wide ${wide}`
