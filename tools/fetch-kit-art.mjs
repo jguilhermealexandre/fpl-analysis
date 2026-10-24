@@ -292,6 +292,31 @@ for (const club of clubs) {
     await new Promise(r => setTimeout(r, 200));
 }
 
+/* THE REPORT, which is the point of the exercise even when nothing is
+   written. A disagreement is not automatically the table being wrong — the
+   sprite carries shading, a sponsor and a fade at the hem, and the table
+   carries the club's actual brand hex rather than the shaded average of it.
+   What it is, is the only thing that will ever notice a club changing kit. */
+const hand = new Map();
+for (const line of fs.readFileSync(COMMON, 'utf8').split('\n')) {
+    const m = /^\s{4}(\d+):\s+\['(\w+)',\s+'(#[0-9A-F]{6})', '(#[0-9A-F]{6})'/.exec(line);
+    if (m && !hand.has(Number(m[1]))) hand.set(Number(m[1]), [m[2], m[3], m[4]]);
+}
+const far = (a, b) => gap([1, 3, 5].map(i => parseInt(a.slice(i, i + 2), 16)),
+    [1, 3, 5].map(i => parseInt(b.slice(i, i + 2), 16))) > 90;
+
+console.log('\n  club  measured                          hand-written');
+let differ = 0;
+for (const r of [...rows].sort((a, b) => a.name.localeCompare(b.name))) {
+    const h = hand.get(r.code);
+    const same = h && h[0] === r.pattern && !far(h[1], r.main);
+    if (!same) differ++;
+    console.log(`  ${r.name.padEnd(5)} ${r.pattern.padEnd(10)} ${r.main} / ${r.second}`
+        + `   ${h ? `${h[0].padEnd(10)} ${h[1]} / ${h[2]}` : '(none)'.padEnd(27)}`
+        + `   ${same ? '' : '<- differs'}`);
+}
+console.log(`\n  ${differ} of ${rows.length} read differently from the hand-written table.`);
+
 const MIN = Math.ceil(clubs.length * 0.75);
 if (rows.length < MIN) {
     console.error(`::error::only ${rows.length} of ${clubs.length} kits could be read; nothing written`);
