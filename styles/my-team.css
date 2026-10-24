@@ -678,13 +678,23 @@
     margin-bottom: 14px;
 }
 
-/* Three zones on one row: filters left, search centre, chart right. */
+/* Filters left, chart button right, and whatever sits between them.
+   This was a three-column grid — auto / minmax(180px,1fr) / auto — back when
+   the middle column held the "search a player you do not own" box. That box
+   went; the grid did not, so the button fell into the stretchy middle column
+   and grew to 819px of solid green for two words. Flex sizes each control to
+   its own content, which is also what happens if the search box ever comes
+   back. */
 .sq-panel-controls {
-    display: grid;
-    grid-template-columns: auto minmax(180px, 1fr) auto;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
 }
+.sq-panel-controls > .sq-filter-pills { flex: 1 1 auto; min-width: 0; }
+.sq-panel-controls > .sq-panel-search { flex: 1 1 180px; }
+.sq-panel-controls > .sq-chart-open { flex: 0 0 auto; }
 
 .sq-panel-search { min-width: 0; }
 .sq-panel-search .tl-picker { display: flex; align-items: center; gap: 8px; margin: 0; }
@@ -2263,8 +2273,17 @@
    theme turns white on white the moment dark mode is on, and the number this
    card exists to show disappears. The name above already used a fixed colour
    for the same reason; these three did not. */
+/* Two lines, always: the figure and its unit, then the kick-off under them.
+   They used to share one nowrap row, which fits "3.7 xP FT" and does not fit
+   "3.7 xP Today 04:30 PM" — so on any card narrower than about 110px the
+   kick-off ran out past both edges of the tile and sat on the grass. Wrapping
+   only when it overflows would fix that and leave the row of cards at two
+   different heights, which is worse; the note gets its own line on every card
+   so an XI stays one height whatever the clock says. */
 .pcard-score {
     display: flex; align-items: baseline; justify-content: center; gap: 3px;
+    flex-wrap: wrap;
+    width: 100%;
     min-height: 20px;
     font-family: var(--font-mono);
     color: #17301F;
@@ -2273,10 +2292,23 @@
 .pcard-score b { font-size: 16px; font-weight: 800; line-height: 1.1; }
 .pcard-score-u { font-size: 9.5px; font-weight: 700; color: rgba(15,23,42,0.55); }
 .pcard-when {
+    flex: 0 0 100%;
+    max-width: 100%;
+    /* The parent sets nowrap so "2.8" and "xP" never part company. The note
+       is the one thing here that may wrap, and on the smallest cards it has
+       to: "Today 04:30 PM" does not fit 56px at any size worth reading. */
+    white-space: normal;
+    text-align: center;
     font-family: var(--font-body);
     font-size: 8.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    line-height: 1.3;
+    /* One line's worth, reserved whether or not there is a note, so an XI of
+       cards is one height when half of them say "FT" and half say nothing. */
+    min-height: 1.3em;
     color: rgba(15,23,42,0.5);
 }
+/* Empty on a card with nothing to say — FT with no note, a blank gameweek —
+   and an empty line is still a line, so it is taken out of the flow. */
 /* Only the two live states take a colour, and only on the label — the figure
    itself stays black so it reads as a number in every mode. */
 .pcard-score.live .pcard-when { color: var(--color-error); }
@@ -2360,6 +2392,7 @@
     .pitch-field .pcard-name { font-size: 11px; }
     .pitch-field .pcard-fixture { font-size: 9px; }
     .pitch-field .pcard-score b { font-size: 14px; }
+    .pitch-field .pcard-when { font-size: 8px; }
     .pitch-field .pitch-grass, .pitch-field .pitch-container, .pitch-field .v2-pitch { --pitch-min-h: 513px; }
 }
 
@@ -2369,6 +2402,7 @@
     .pitch-field .pcard-name { font-size: 10px; }
     .pitch-field .pcard-fixture { font-size: 8.5px; }
     .pitch-field .pcard-score b { font-size: 12px; }
+    .pitch-field .pcard-when { font-size: 7.5px; }
     .pitch-field .pitch-grass, .pitch-field .pitch-container, .pitch-field .v2-pitch { --pitch-min-h: 479px; }
 }
 
@@ -2378,6 +2412,7 @@
     .pitch-field .pcard-name { font-size: 9px; }
     .pitch-field .pcard-fixture { font-size: 8px; }
     .pitch-field .pcard-score b { font-size: 11px; }
+    .pitch-field .pcard-when { font-size: 7px; }
     .pitch-field .pitch-row { gap: 3px; }
     .pitch-field .pitch-grass, .pitch-field .pitch-container, .pitch-field .v2-pitch { --pitch-min-h: 396px; }
 }

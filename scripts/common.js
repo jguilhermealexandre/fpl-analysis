@@ -1487,6 +1487,12 @@ function v2MountAccount() {
     host.hidden = !teamId;
     if (!teamId) return;
 
+    /* Having a squad connected is this site's version of being signed in, and
+       this runs on every page that has the rail, so it is the one place that
+       sees it happen wherever it happens. v2MaybeWelcome() shows nothing to
+       anyone who has already dismissed it. */
+    v2MaybeWelcome();
+
     const name = v2AccountName();
     const st = v2Settings();
 
@@ -1707,6 +1713,263 @@ function openSettingsModal(section) {
     if (section === 'plan') {
         document.getElementById('v2SetPlan')?.scrollIntoView({ block: 'nearest' });
     }
+}
+
+/* ============================================================
+   REPORTING A BUG
+   ============================================================
+
+   One inbox, feedback@easyfpl.com, which is the address the contact page has
+   always printed. What this adds is a way to reach it from inside the thing
+   that just went wrong, with the details nobody remembers to include.
+
+   HOW IT SENDS
+
+   Through the reader's own mail app, by mailto:, with the whole report
+   already written. Not because that is the nicest flow — it is not — but
+   because it is the only one that works today: posting it somewhere would
+   want a server that can send mail, which means an API key, which is a
+   decision about this project's infrastructure rather than a line of
+   JavaScript. When that key exists this function gets a fetch() and the form
+   above it does not change. Until then the Copy button is the fallback for
+   anyone with no mail client wired up, and it is a real fallback rather than
+   a courtesy: on a work laptop with webmail only, mailto: does nothing at
+   all and the button is the whole feature.
+
+   WHAT GOES WITH IT
+
+   The page, the size of the window, the browser, the theme, the asset
+   version and the team ID. Every one of those is the difference between a
+   report we can reproduce and one we cannot, and all of them are shown in
+   the dialog before anything is sent — a report that quietly collects things
+   is not a report somebody sends twice. */
+const BUG_REPORT_TO = 'feedback@easyfpl.com';
+
+/* Everything about this visit that makes a report reproducible, as plain
+   lines. Each one is wrapped in its own try: a browser that refuses
+   localStorage must cost us that line and not the whole report. */
+function v2BugContext() {
+    const line = (k, v) => `${k}: ${v}`;
+    const out = [];
+    try { out.push(line('Page', `${document.title} — ${location.pathname}${location.search}`)); } catch (e) { /* no document */ }
+    try { out.push(line('Window', `${window.innerWidth}x${window.innerHeight}`)); } catch (e) { /* no window */ }
+    try { out.push(line('Browser', navigator.userAgent)); } catch (e) { /* no navigator */ }
+    try {
+        const dark = document.documentElement.classList.contains('dark-mode')
+            || document.documentElement.getAttribute('data-theme') === 'dark';
+        out.push(line('Theme', dark ? 'dark' : 'light'));
+    } catch (e) { /* no document */ }
+    /* Read off the page rather than stored in a constant: every asset here
+       is already stamped with ?v=NNN by `npm run stamp`, so the number is on
+       the document and cannot drift from what the reader actually loaded. */
+    try {
+        const stamped = [...document.querySelectorAll('script[src*="?v="],link[href*="?v="]')][0];
+        const url = stamped ? (stamped.src || stamped.href) : '';
+        out.push(line('Build', 'v' + (/[?&]v=(\d+)/.exec(url)?.[1] || 'unknown')));
+    } catch (e) { /* no document */ }
+    try {
+        const id = localStorage.getItem('fpl_team_id');
+        out.push(line('Team ID', id || 'none'));
+    } catch (e) { out.push(line('Team ID', 'unreadable')); }
+    try { out.push(line('When', new Date().toISOString())); } catch (e) { /* no clock */ }
+    return out;
+}
+
+/* The report as it will be sent, assembled from the form and the context.
+   One function, so the mail and the clipboard can never disagree about what
+   was reported — which is the bug this would otherwise grow. */
+function v2BugReportText() {
+    const val = id => (document.getElementById(id)?.value || '').trim();
+    const parts = [];
+    parts.push('WHAT WENT WRONG', val('v2BugWhat') || '(not filled in)', '');
+    if (val('v2BugSteps')) parts.push('WHAT I WAS DOING', val('v2BugSteps'), '');
+    if (val('v2BugEmail')) parts.push('REPLY TO', val('v2BugEmail'), '');
+    parts.push('CONTEXT', ...v2BugContext());
+    return parts.join('\n');
+}
+
+function openBugReport() {
+    if (typeof document === 'undefined') return;
+    const esc = typeof escHTML === 'function' ? escHTML : (t => String(t == null ? '' : t));
+    document.getElementById('v2BugModal')?.remove();
+
+    document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-overlay v2-modal v2-bug" id="v2BugModal" onclick="closeBugReport(event)">
+        <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="v2BugTitle">
+            <div class="v2-set-head">
+                <span class="v2-section-title" id="v2BugTitle">
+                    <svg class="v2-sec-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6a4 4 0 0 1 8 0"/><rect x="6" y="6" width="12" height="12" rx="6"/><path d="M3 11h3M18 11h3M3.6 16.5 6.3 15M20.4 16.5 17.7 15M4.6 6.5 7 8M19.4 6.5 17 8"/></svg>
+                    Report a bug
+                </span>
+                <button class="modal-close" onclick="closeBugReport()" aria-label="Close">&times;</button>
+            </div>
+            <div class="v2-set-body">
+                <p class="v2-bug-intro">EasyFPL is early, and most of what is broken is broken for everyone
+                    until somebody says so. Tell us what happened — a sentence is plenty.</p>
+
+                <div class="v2-set-group">
+                    <label class="v2-set-label" for="v2BugWhat">What went wrong</label>
+                    <textarea class="v2-set-input v2-bug-text" id="v2BugWhat" rows="3"
+                        placeholder="The captain button did nothing on my phone."></textarea>
+                </div>
+
+                <div class="v2-set-group">
+                    <label class="v2-set-label" for="v2BugSteps">What you were doing <span class="v2-bug-opt">optional</span></label>
+                    <textarea class="v2-set-input v2-bug-text" id="v2BugSteps" rows="2"
+                        placeholder="Opened My Team, tapped a player on the pitch, tapped C."></textarea>
+                </div>
+
+                <div class="v2-set-group">
+                    <label class="v2-set-label" for="v2BugEmail">Your email <span class="v2-bug-opt">optional — only so we can reply</span></label>
+                    <input class="v2-set-input" id="v2BugEmail" type="email" autocomplete="email" placeholder="you@example.com">
+                </div>
+
+                <!-- Shown, not hidden. A report that collects things quietly
+                     is a report somebody only sends once. -->
+                <div class="v2-set-group">
+                    <div class="v2-set-label">Sent with it</div>
+                    <ul class="v2-bug-ctx">${v2BugContext().map(l => `<li>${esc(l)}</li>`).join('')}</ul>
+                </div>
+            </div>
+            <div class="v2-bug-foot">
+                <span class="v2-bug-note">Goes to ${esc(BUG_REPORT_TO)}</span>
+                <span class="v2-bug-actions">
+                    <button type="button" class="v2-set-ghost" id="v2BugCopy" onclick="v2CopyBugReport()">Copy report</button>
+                    <button type="button" class="v2-bug-send" onclick="v2SendBugReport()">Open in email</button>
+                </span>
+            </div>
+        </div>
+    </div>`);
+
+    document.body.classList.add('v2-blurred');
+    const el = document.getElementById('v2BugModal');
+    if (el) requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
+    document.getElementById('v2BugWhat')?.focus();
+}
+
+function closeBugReport(event) {
+    // Only the backdrop dismisses, not a click inside the panel.
+    if (event && event.target !== event.currentTarget) return;
+    const el = document.getElementById('v2BugModal');
+    document.body.classList.remove('v2-blurred');
+    if (!el) return;
+    el.classList.remove('open');
+    let done = false;
+    const drop = () => { if (done) return; done = true; el.remove(); };
+    el.addEventListener('transitionend', drop, { once: true });
+    setTimeout(drop, 320);
+}
+
+function v2SendBugReport() {
+    const what = (document.getElementById('v2BugWhat')?.value || '').trim();
+    if (!what) { document.getElementById('v2BugWhat')?.focus(); return; }
+    /* A subject that says which page, so a morning's reports sort themselves
+       in the inbox without anybody opening them. The path, not the title:
+       every title on this site starts with "EasyFPL —", so a subject built
+       from one would say "EasyFPL" twenty-seven different times. */
+    let where = 'EasyFPL';
+    try { where = location.pathname.replace(/\.html$/, '') || '/'; } catch (e) { /* no location */ }
+    const href = `mailto:${BUG_REPORT_TO}`
+        + `?subject=${encodeURIComponent(`Bug report — ${where}`)}`
+        + `&body=${encodeURIComponent(v2BugReportText())}`;
+    try { window.location.href = href; } catch (e) { /* no mail client wired up */ }
+}
+
+function v2CopyBugReport() {
+    const btn = document.getElementById('v2BugCopy');
+    const done = ok => {
+        if (!btn) return;
+        btn.textContent = ok ? 'Copied' : 'Press Ctrl+C';
+        setTimeout(() => { btn.textContent = 'Copy report'; }, 2200);
+    };
+    const text = v2BugReportText();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => done(true), () => done(false));
+        return;
+    }
+    /* No clipboard API — an insecure origin, or a browser old enough to
+       predate it. Select it instead and say so, which is still a way out. */
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('style', 'position:fixed;top:0;left:0;opacity:0');
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove();
+    done(ok);
+}
+
+/* ============================================================
+   THE FIRST HELLO
+   ============================================================
+
+   Shown once, the first time somebody has a squad connected — which is this
+   site's version of signing in, since every page in the rail is about a
+   team and none of them do anything without one.
+
+   It says two things and stops: the site is early, and here is where to tell
+   us when it breaks. The whole point is that the second one is findable
+   afterwards, so the note names the sidebar row rather than being the only
+   way anybody ever reaches the form.
+
+   Keyed by version, so a later one can be shown to people who have already
+   seen this one without clearing what they have dismissed. */
+const V2_WELCOME_KEY = 'easyfpl-welcome-v1';
+
+function v2WelcomeSeen() {
+    try { return localStorage.getItem(V2_WELCOME_KEY) === '1'; } catch (e) { return true; }
+}
+
+function v2DismissWelcome(event) {
+    if (event && event.target !== event.currentTarget) return;
+    try { localStorage.setItem(V2_WELCOME_KEY, '1'); } catch (e) { /* private mode: it shows again */ }
+    const el = document.getElementById('v2WelcomeModal');
+    document.body.classList.remove('v2-blurred');
+    if (!el) return;
+    el.classList.remove('open');
+    let done = false;
+    const drop = () => { if (done) return; done = true; el.remove(); };
+    el.addEventListener('transitionend', drop, { once: true });
+    setTimeout(drop, 320);
+}
+
+function v2WelcomeToBugs() {
+    v2DismissWelcome();
+    /* After the dismissal has had its frame, so the two panels do not cross
+       on the way past each other. */
+    setTimeout(openBugReport, 220);
+}
+
+function v2MaybeWelcome() {
+    if (typeof document === 'undefined' || !document.body) return;
+    if (v2WelcomeSeen()) return;
+    if (document.getElementById('v2WelcomeModal')) return;
+
+    document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal-overlay v2-modal v2-welcome" id="v2WelcomeModal" onclick="v2DismissWelcome(event)">
+        <div class="modal-container" role="dialog" aria-modal="true" aria-labelledby="v2WelcomeTitle">
+            <div class="v2-welcome-body">
+                <span class="v2-welcome-mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 14.5 9 21 9.6l-4.9 4.3 1.5 6.4L12 17l-5.6 3.3 1.5-6.4L3 9.6 9.5 9 12 3Z"/></svg>
+                </span>
+                <h2 class="v2-welcome-title" id="v2WelcomeTitle">Welcome in — mind the paint</h2>
+                <p class="v2-welcome-text">EasyFPL is at a very early stage. Things will be wrong, and
+                    most of them stay wrong until someone tells us.</p>
+                <p class="v2-welcome-text">If something looks broken or just odd, send it over —
+                    <strong>Report a bug</strong> is in the sidebar, under Settings, on every page.
+                    It takes a sentence and we read all of them.</p>
+                <div class="v2-welcome-actions">
+                    <button type="button" class="v2-set-ghost" onclick="v2DismissWelcome()">Got it</button>
+                    <button type="button" class="v2-bug-send" onclick="v2WelcomeToBugs()">Report something now</button>
+                </div>
+            </div>
+        </div>
+    </div>`);
+
+    document.body.classList.add('v2-blurred');
+    const el = document.getElementById('v2WelcomeModal');
+    if (el) requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('open')));
 }
 
 /* Back to the Team ID input, from wherever you asked. The account block hides
@@ -3106,7 +3369,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=482')
+    fetch('/footer.html?v=483')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
