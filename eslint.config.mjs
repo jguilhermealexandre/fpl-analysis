@@ -300,6 +300,8 @@ export default [
                 V2_KIT_CUFF_R: 'writable',
                 V2_KIT_DEFS: 'writable',
                 V2_KIT_DEFS_ID: 'writable',
+                V2_KIT_FOLD_L: 'writable',
+                V2_KIT_FOLD_R: 'writable',
                 V2_KIT_NECK: 'writable',
                 V2_KIT_SEAM_L: 'writable',
                 V2_KIT_SEAM_R: 'writable',

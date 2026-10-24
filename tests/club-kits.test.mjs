@@ -195,7 +195,7 @@ test('a real number wins, and there is no fallback', () => {
 
 test('the silhouette is written once and referenced wherever it is needed', () => {
     const svg = kit.v2KitSVG({ name: 'Isak', teamCode: 4, team: 'NEW' });
-    assert.equal((svg.match(/48\.1 54\.4/g) || []).length, 1,
+    assert.equal((svg.match(/47\.8 54\.6/g) || []).length, 1,
         'the body outline is declared once — the fill, the clip and the edge are <use>');
     assert.equal((svg.match(/<use href="#v2k-shirt"/g) || []).length, 3,
         'clipped, filled, outlined');
@@ -245,7 +245,7 @@ test('every pattern the table can name draws something', () => {
         hoops:      /<rect x="0" y="\d+" width="64" height="6"/,
         halves:     /<rect x="32" y="0" width="32"/,
         sash:       /<path d="M8 64L40 6/,
-        sleeves:    /<path d="M16\.6 15\.2C13/
+        sleeves:    /<path d="M16\.4 14\.2C12\.6/
     };
     for (const [pattern, shape] of Object.entries(cases)) {
         kit.CLUB_KITS[777] = [pattern, '#101010', '#F0F0F0', '#FFFFFF', '#F0F0F0'];

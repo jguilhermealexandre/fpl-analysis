@@ -916,26 +916,32 @@ function clubColours(player) {
    nips in at the waist before the hem. The first version was a polygon of
    eleven straight lines, which reads as a shirt-shaped icon; a football shirt
    has no straight edges on it anywhere. */
-const V2_KIT_SHIRT = 'M24 13.6C26.5 19.4 37.5 19.4 40 13.6L47.4 15.2'
-    + 'C51 16.2 55.6 18.4 58.2 21.4C58.9 22.2 59 23.1 58.6 24.1L54.6 33.6'
-    + 'C54.1 34.8 52.9 35.2 51.8 34.5L47.4 31.6L48.1 54.4C48.2 55.6 47.4 56.4 46.2 56.4'
-    + 'L17.8 56.4C16.6 56.4 15.8 55.6 15.9 54.4L16.6 31.6L12.2 34.5'
-    + 'C11.1 35.2 9.9 34.8 9.4 33.6L5.4 24.1C5 23.1 5.1 22.2 5.8 21.4'
-    + 'C8.4 18.4 13 16.2 16.6 15.2Z';
-const V2_KIT_COLLAR = 'M24 13.6C26.5 19.4 37.5 19.4 40 13.6';
+const V2_KIT_SHIRT = 'M24.2 12.4C26.8 18.8 37.2 18.8 39.8 12.4L47.6 14.2'
+    + 'C51.4 15.2 55.8 17.6 58.4 20.8C59.2 21.7 59.3 22.7 58.8 23.8L54.4 33.8'
+    + 'C53.8 35.1 52.5 35.5 51.4 34.7L47.6 31.8'
+    + 'C47.2 39.8 47.2 48.2 47.8 54.6C47.9 55.9 47.1 56.8 45.8 56.8'
+    + 'L18.2 56.8C16.9 56.8 16.1 55.9 16.2 54.6C16.8 48.2 16.8 39.8 16.4 31.8'
+    + 'L12.6 34.7C11.5 35.5 10.2 35.1 9.6 33.8L5.2 23.8'
+    + 'C4.7 22.7 4.8 21.7 5.6 20.8C8.2 17.6 12.6 15.2 16.4 14.2Z';
+const V2_KIT_COLLAR = 'M24.2 12.4C26.8 18.8 37.2 18.8 39.8 12.4';
 /* The collar's own shadow, a touch inside it — what stops the neck reading as
    a hole cut in a sticker. */
-const V2_KIT_NECK = 'M24.4 15.6C26.8 20.6 37.2 20.6 39.6 15.6';
-const V2_KIT_SLEEVE_L = 'M16.6 15.2C13 16.2 8.4 18.4 5.8 21.4C5.1 22.2 5 23.1 5.4 24.1'
-    + 'L9.4 33.6C9.9 34.8 11.1 35.2 12.2 34.5L16.6 31.6Z';
-const V2_KIT_SLEEVE_R = 'M47.4 15.2C51 16.2 55.6 18.4 58.2 21.4C58.9 22.2 59 23.1 58.6 24.1'
-    + 'L54.6 33.6C54.1 34.8 52.9 35.2 51.8 34.5L47.4 31.6Z';
-const V2_KIT_CUFF_L = 'M8.6 20.6L12.6 32.4';
-const V2_KIT_CUFF_R = 'M55.4 20.6L51.4 32.4';
+const V2_KIT_NECK = 'M24.8 14.4C27.2 19.8 36.8 19.8 39.2 14.4';
+const V2_KIT_SLEEVE_L = 'M16.4 14.2C12.6 15.2 8.2 17.6 5.6 20.8C4.8 21.7 4.7 22.7 5.2 23.8'
+    + 'L9.6 33.8C10.2 35.1 11.5 35.5 12.6 34.7L16.4 31.8Z';
+const V2_KIT_SLEEVE_R = 'M47.6 14.2C51.4 15.2 55.8 17.6 58.4 20.8C59.2 21.7 59.3 22.7 58.8 23.8'
+    + 'L54.4 33.8C53.8 35.1 52.5 35.5 51.4 34.7L47.6 31.8Z';
+const V2_KIT_CUFF_L = 'M8.4 20.2L12.8 32.6';
+const V2_KIT_CUFF_R = 'M55.6 20.2L51.2 32.6';
 /* Where the sleeve is sewn to the body. One line each, and it is most of what
    makes the thing read as a garment rather than a silhouette. */
-const V2_KIT_SEAM_L = 'M16.6 15.2L17.6 31.4';
-const V2_KIT_SEAM_R = 'M47.4 15.2L46.4 31.4';
+const V2_KIT_SEAM_L = 'M16.4 14.2L17.4 31.6';
+const V2_KIT_SEAM_R = 'M47.6 14.2L46.6 31.6';
+/* Two creases falling from the waist to the hem. A flat shape with a gradient
+   on it is a lit flat shape; what says cloth is that the cloth is doing
+   something, and the cheapest thing it can be doing is hanging. */
+const V2_KIT_FOLD_L = 'M22 56.6C22.6 51 22.8 46 22.6 41';
+const V2_KIT_FOLD_R = 'M42 56.6C41.4 51 41.2 46 41.4 41';
 
 /* [pattern, main, second, ink, trim] for each club's home shirt, keyed by the
  * league's team code like CLUB_COLOURS above — not by the FPL team id, which
@@ -1211,21 +1217,34 @@ const V2_KIT_DEFS = `<defs>`
        on a stripe and a plain shirt alike. It is most of the difference
        between a flat shape and a piece of cloth. */
     + `<linearGradient id="v2k-lit" x1="0" y1="0" x2="0" y2="1">`
-    + `<stop offset="0" stop-color="#FFF" stop-opacity=".17"/>`
-    + `<stop offset=".44" stop-color="#FFF" stop-opacity="0"/>`
-    + `<stop offset="1" stop-color="#000" stop-opacity=".17"/></linearGradient>`
+    + `<stop offset="0" stop-color="#FFF" stop-opacity=".2"/>`
+    + `<stop offset=".42" stop-color="#FFF" stop-opacity="0"/>`
+    + `<stop offset="1" stop-color="#000" stop-opacity=".2"/></linearGradient>`
+    /* And darker down both edges. The vertical gradient alone lights a flat
+       shape from above; this is what turns it from a sheet into something
+       with a body inside it. */
+    + `<linearGradient id="v2k-round" x1="0" y1="0" x2="1" y2="0">`
+    + `<stop offset="0" stop-color="#000" stop-opacity=".22"/>`
+    + `<stop offset=".22" stop-color="#000" stop-opacity="0"/>`
+    + `<stop offset=".78" stop-color="#000" stop-opacity="0"/>`
+    + `<stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient>`
     + `<g id="v2k-shade">`
-    + `<rect x="0" y="0" width="64" height="64" fill="url(#v2k-lit)"/>`
     + `<path d="${V2_KIT_SLEEVE_L}" fill="#000" opacity=".1"/>`
     + `<path d="${V2_KIT_SLEEVE_R}" fill="#000" opacity=".1"/>`
-    + `<g fill="none" stroke="#000" stroke-opacity=".18" stroke-width="1">`
-    + `<path d="${V2_KIT_SEAM_L}"/><path d="${V2_KIT_SEAM_R}"/></g></g>`
+    + `<rect x="0" y="0" width="64" height="64" fill="url(#v2k-lit)"/>`
+    + `<rect x="0" y="0" width="64" height="64" fill="url(#v2k-round)"/>`
+    + `<g fill="none" stroke="#000" stroke-opacity=".2" stroke-width="1">`
+    + `<path d="${V2_KIT_SEAM_L}"/><path d="${V2_KIT_SEAM_R}"/></g>`
+    + `<g fill="none" stroke="#000" stroke-opacity=".1" stroke-width="1.1">`
+    + `<path d="${V2_KIT_FOLD_L}"/><path d="${V2_KIT_FOLD_R}"/></g></g>`
     + `<g id="v2k-trim">`
     + `<g fill="none" stroke="currentColor">`
     + `<path d="${V2_KIT_CUFF_L}" stroke-width="3.2"/>`
     + `<path d="${V2_KIT_CUFF_R}" stroke-width="3.2"/>`
-    + `<path d="${V2_KIT_COLLAR}" stroke-width="4"/></g>`
-    + `<path d="${V2_KIT_NECK}" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="1.4"/>`
+    /* A ribbed crew band rather than a hairline arc. At five units it is a
+       collar you can see at pitch size, which the 4-unit one was not. */
+    + `<path d="${V2_KIT_COLLAR}" stroke-width="5"/></g>`
+    + `<path d="${V2_KIT_NECK}" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="1.3"/>`
     + `</g></defs>`;
 
 /* Checked on every render rather than remembered with a flag: a page that
@@ -1295,7 +1314,7 @@ function v2KitSVG(subject, opts) {
         + `<g clip-path="url(#v2k-clip)">${pattern}`
         + `<use href="#v2k-shade"/><use href="#v2k-trim" color="${kit.trim}"/></g>`
         + `<use href="#v2k-shirt" class="v2-kit-edge" fill="none"/>`
-        + (num ? `<text class="v2-kit-n" x="32" y="47.5" text-anchor="middle"`
+        + (num ? `<text class="v2-kit-n" x="32" y="46" text-anchor="middle"`
             + ` fill="${kit.ink}" stroke="${v2KitHalo(kit.ink)}">${num}</text>` : '')
         + `</svg>`;
 }
@@ -3369,7 +3388,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=483')
+    fetch('/footer.html?v=484')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
