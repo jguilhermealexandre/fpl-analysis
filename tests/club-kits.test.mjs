@@ -255,7 +255,9 @@ test('every pattern the table can name draws something', () => {
         kit.CLUB_KITS[777] = [pattern, '#101010', '#F0F0F0', '#FFFFFF', '#F0F0F0'];
         const svg = kit.v2KitSVG({ name: 'Test', teamCode: 777 });
         if (shape) assert.match(svg, shape, `"${pattern}" draws nothing`);
-        else assert.ok(!/<rect/.test(svg), 'a plain shirt is one fill and no pattern');
+        /* The shared shading rect is in every shirt, so a plain one is
+           pinned by the absence of anything painted in the second colour. */
+        else assert.ok(!svg.includes('fill="#F0F0F0"'), 'a plain shirt wears one colour');
     }
     delete kit.CLUB_KITS[777];
 });

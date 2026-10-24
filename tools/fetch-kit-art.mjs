@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /* The clubs' real outfield colours and pattern, read off the game's own art.
  *
  * CLUB_KITS was written by hand: twenty rows of "Arsenal is red with white
@@ -10,23 +11,39 @@
  *
  *   /dist/img/shirts/standard/shirt_{team_code}-110.png
  *
- * So both the colours and the pattern are there to be measured. The colours
- * are the two the shirt is made of; the pattern is read off scanlines — a
- * chest line that alternates is stripes, a centre line that alternates is
- * hoops, a left half that differs from the right is halves, and sleeves that
- * differ from the body is contrast sleeves.
+ * So both the colours and the pattern are there to be measured.
  *
- * Writes a GENERATED block into scripts/common.js. A club it cannot read
- * keeps its hand-written row, so this can only improve on what is there.
+ * THE FIRST VERSION OF THIS MEASURED THE WRONG THINGS, and the dry run said
+ * so: Brentford came back white on white, Palace came back white, Newcastle
+ * came back hooped. Three mistakes, all of them mine:
+ *
+ *   - It read fixed coordinates out of a 64x64 box, assuming the shirt filled
+ *     the frame. The sprites are padded, and by different amounts, so "the
+ *     sleeves are the outer sixths" was sampling the body on some clubs and
+ *     empty space on others. Everything is measured off the shirt's own
+ *     bounding box now.
+ *   - It took the second colour off a ranked list of every colour in the
+ *     picture, so on a red-and-white striped shirt the runner-up was a second
+ *     shade of white rather than the red. The second colour is now the
+ *     dominant colour of the pixels that are *not* the first one.
+ *   - It dropped dark pixels wholesale to get rid of the sprite's keyline,
+ *     which also dropped Newcastle's and Bournemouth's black. The keyline is
+ *     eroded off the alpha edge instead, which is what it actually is.
+ *
+ * Writes a GENERATED block into scripts/common.js. A club it cannot read, or
+ * reads badly enough to fail its own sanity checks, keeps its hand-written
+ * row, so this can only improve on what is there.
  *
  * Run:  node tools/fetch-kit-art.mjs
  *       node tools/fetch-kit-art.mjs --dry-run   report, write nothing
+ *       node tools/fetch-kit-art.mjs --debug     and show the working
  */
 import fs from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DRY = process.argv.includes('--dry-run');
+const DEBUG = process.argv.includes('--debug');
 const COMMON = path.join(ROOT, 'scripts', 'common.js');
 const OPEN = '/* === GENERATED: outfield kits — node tools/fetch-kit-art.mjs === */';
 const CLOSE = '/* === END GENERATED OUTFIELD KITS === */';
@@ -45,49 +62,103 @@ const hex = (r, g, b) => '#' + [r, g, b].map(v =>
 const lum = (r, g, b) => (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 const gap = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
-/* A grid of opaque pixels, so every measurement below reads the same picture
-   rather than re-decoding it. Outline and shadow are dropped: the sprites are
-   drawn with a dark keyline that would otherwise count as one of the shirt's
-   two colours on every club. */
+const N = 64;            // the normalised grid every measurement is taken on
+const EDGE = 2;          // how far in from the alpha edge the keyline reaches
+const SPLIT = 70;        // far enough apart in RGB to be the shirt's two colours
+
+/* The sprite, cropped to the shirt and squared off to NxN, with the keyline
+   eroded away. Returns a grid of [r,g,b] or null, so every measurement below
+   reads the same picture rather than re-deciding what counts as a pixel. */
 async function grid(sharp, buf) {
-    const N = 64;
-    const { data, info } = await sharp(buf).resize(N, N, { fit: 'fill' })
+    const first = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const { width: W, height: H, channels: C } = first.info;
+    const alphaAt = (x, y) => first.data[(y * W + x) * C + 3];
+
+    let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+            if (alphaAt(x, y) < 200) continue;
+            if (x < x0) x0 = x; if (x > x1) x1 = x;
+            if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+    }
+    if (x1 < x0 || y1 < y0) throw new Error('nothing opaque in the sprite');
+
+    const { data, info } = await sharp(buf)
+        .extract({ left: x0, top: y0, width: x1 - x0 + 1, height: y1 - y0 + 1 })
+        .resize(N, N, { fit: 'fill', kernel: 'nearest' })
         .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+
+    const solid = [];
+    for (let y = 0; y < N; y++) {
+        const row = [];
+        for (let x = 0; x < N; x++) row.push(data[(y * N + x) * info.channels + 3] >= 200);
+        solid.push(row);
+    }
+    /* Erode: a pixel within EDGE of a transparent one is keyline or the
+       antialiasing under it, and is neither of the shirt's colours. */
     const px = [];
     for (let y = 0; y < N; y++) {
         const row = [];
         for (let x = 0; x < N; x++) {
+            let ok = solid[y][x];
+            for (let dy = -EDGE; ok && dy <= EDGE; dy++) {
+                for (let dx = -EDGE; ok && dx <= EDGE; dx++) {
+                    const yy = y + dy, xx = x + dx;
+                    if (yy < 0 || xx < 0 || yy >= N || xx >= N || !solid[yy][xx]) ok = false;
+                }
+            }
             const i = (y * N + x) * info.channels;
-            const [r, g, b, a] = [data[i], data[i + 1], data[i + 2], data[i + 3]];
-            const l = lum(r, g, b);
-            row.push(a < 200 || l < 0.07 || l > 0.97 ? null : [r, g, b]);
+            row.push(ok ? [data[i], data[i + 1], data[i + 2]] : null);
         }
         px.push(row);
     }
     return px;
 }
 
+/* Buckets to /24 so antialiasing lands with its own colour, then averages
+   each bucket back to the colour it actually was. */
 function dominant(pixels) {
     const counts = new Map();
+    let total = 0;
     for (const p of pixels) {
         if (!p) continue;
-        const key = p.map(v => Math.round(v / 16) * 16).join(',');
+        total++;
+        const key = p.map(v => Math.round(v / 24) * 24).join(',');
         const row = counts.get(key) || { n: 0, r: 0, g: 0, b: 0 };
         row.n++; row.r += p[0]; row.g += p[1]; row.b += p[2];
         counts.set(key, row);
     }
-    return [...counts.values()].sort((a, b) => b.n - a.n)
-        .map(c => ({ n: c.n, rgb: [c.r / c.n, c.g / c.n, c.b / c.n] }));
+    return {
+        total,
+        ranked: [...counts.values()].sort((a, b) => b.n - a.n)
+            .map(c => ({ share: c.n / (total || 1), rgb: [c.r / c.n, c.g / c.n, c.b / c.n] }))
+    };
 }
 
-/* How many times a line crosses between the two colours. A striped shirt
-   alternates several times across the chest; a plain one never does. */
+/* The two colours the shirt is made of. The second is the dominant colour of
+   what is left once the first is taken out — not the runner-up in a ranked
+   list, which on a striped shirt is another shade of the first. */
+function twoColours(pixels) {
+    const { ranked, total } = dominant(pixels);
+    if (!ranked.length) return null;
+    const main = ranked[0].rgb;
+    const rest = pixels.filter(p => p && gap(p, main) > SPLIT);
+    const other = dominant(rest).ranked[0];
+    const share = rest.length / (total || 1);
+    return { main, second: other && share > 0.08 ? other.rgb : null, share };
+}
+
+/* How many times a line crosses between the two colours, ignoring the pixels
+   that are neither. A striped shirt alternates several times across the
+   chest; a plain one never does. */
 function crossings(line, a, b) {
     let last = null, n = 0;
     for (const p of line) {
         if (!p) continue;
-        const near = gap(p, a) < gap(p, b) ? 'a' : 'b';
-        if (gap(p, near === 'a' ? a : b) > 110) continue;
+        const da = gap(p, a), db = gap(p, b);
+        const near = da < db ? 'a' : 'b';
+        if (Math.min(da, db) > SPLIT) continue;
         if (last && near !== last) n++;
         last = near;
     }
@@ -106,54 +177,71 @@ for (const club of clubs) {
             if (res.ok) { buf = Buffer.from(await res.arrayBuffer()); break; }
         } catch { /* try the next size */ }
     }
-    if (!buf) { skipped.push(club.name); console.log(`  ${club.name} — no sprite`); continue; }
+    const give = why => { skipped.push(club.name); console.log(`  ${club.name.padEnd(4)} — ${why}`); };
+    if (!buf) { give('no sprite'); continue; }
 
     let px;
-    try { px = await grid(sharp, buf); } catch (e) { skipped.push(club.name); console.log(`  ${club.name} — ${e.message}`); continue; }
+    try { px = await grid(sharp, buf); } catch (e) { give(e.message); continue; }
 
-    const all = px.flat();
-    const ranked = dominant(all);
-    if (!ranked.length || ranked.reduce((s, c) => s + c.n, 0) < 400) {
-        skipped.push(club.name); console.log(`  ${club.name} — too little shirt in the sprite`); continue;
-    }
-    const main = ranked[0].rgb;
-    const secondEntry = ranked.find(c => gap(c.rgb, main) > 90 && c.n > ranked[0].n * 0.08);
-    const second = secondEntry ? secondEntry.rgb : main;
-    const twoTone = !!secondEntry;
+    /* Regions, now that the shirt fills the frame: the body is the middle
+       third, the sleeves are the outer fifths at shoulder height. */
+    const col = (r, lo, hi) => r.filter((p, x) => x >= lo && x <= hi);
+    const body = px.slice(34, 58).flatMap(r => col(r, 22, 42));
+    const sleeve = px.slice(14, 34).flatMap(r => r.filter((p, x) => x < 13 || x > 51));
+    const leftBody = px.slice(34, 58).flatMap(r => col(r, 22, 31));
+    const rightBody = px.slice(34, 58).flatMap(r => col(r, 33, 42));
 
-    /* The regions. The sprite is a front-on shirt filling the frame, so the
-       body is the middle half and the sleeves are the outer sixths. */
-    const chest = px[36];
-    const centre = px.map(r => r[32]);
-    const bodyX = (x) => x >= 22 && x <= 42;
-    const leftHalf = px.flatMap(r => r.filter((p, x) => bodyX(x) && x < 32));
-    const rightHalf = px.flatMap(r => r.filter((p, x) => bodyX(x) && x >= 32));
-    const sleeves = px.slice(18, 34).flatMap(r => r.filter((p, x) => x < 14 || x > 50));
-    const body = px.slice(30, 50).flatMap(r => r.filter((p, x) => bodyX(x)));
+    const pair = twoColours(body);
+    if (!pair || dominant(body).total < 150) { give('too little shirt in the sprite'); continue; }
 
-    const chestX = twoTone ? crossings(chest.filter((p, x) => bodyX(x)), main, second) : 0;
-    const chestXWide = twoTone ? crossings(chest, main, second) : 0;
-    const centreX = twoTone ? crossings(centre.slice(28, 54), main, second) : 0;
-    const dL = dominant(leftHalf)[0], dR = dominant(rightHalf)[0];
-    const dS = dominant(sleeves)[0], dB = dominant(body)[0];
-
+    const main = pair.main;
+    let second = pair.second;
     let pattern = 'plain';
-    if (twoTone && chestX >= 3) pattern = chestXWide >= 8 ? 'pinstripes' : 'stripes';
-    else if (twoTone && centreX >= 3) pattern = 'hoops';
-    else if (twoTone && dL && dR && gap(dL.rgb, dR.rgb) > 90) pattern = 'halves';
-    else if (twoTone && dS && dB && gap(dS.rgb, dB.rgb) > 90) pattern = 'sleeves';
+    const dS = dominant(sleeve).ranked[0];
+    const dL = dominant(leftBody).ranked[0];
+    const dR = dominant(rightBody).ranked[0];
 
-    const mainHex = hex(...(dB ? dB.rgb : main));
-    const secondHex = pattern === 'sleeves' && dS ? hex(...dS.rgb) : hex(...second);
-    const ink = lum(...(dB ? dB.rgb : main)) > 0.55 ? '#1B1B1B' : '#FFFFFF';
+    /* Three chest lines rather than one, because a single scanline can land
+       between hoops or on a sponsor. The pattern has to hold on the middle
+       one of the three. */
+    const chest = [38, 44, 50].map(y => crossings(col(px[y], 22, 42), main, second || main))
+        .sort((a, b) => a - b)[1];
+    const down = crossings(px.map(r => r[32]).slice(30, 58), main, second || main);
+    const wide = crossings(px[44], main, second || main);
+
+    if (second) {
+        if (chest >= 3) pattern = wide >= 9 ? 'pinstripes' : 'stripes';
+        else if (down >= 3) pattern = 'hoops';
+        else if (dL && dR && gap(dL.rgb, dR.rgb) > SPLIT) pattern = 'halves';
+    }
+    /* Sleeves are read off the sleeves, so a plain body with contrast sleeves
+       is found even when the body itself is one colour. */
+    const dB = dominant(body).ranked[0].rgb;
+    if (pattern === 'plain' && dS && gap(dS.rgb, dB) > SPLIT) { pattern = 'sleeves'; second = dS.rgb; }
+    if (pattern === 'halves' && dR) second = dR.rgb;
+
+    const mainHex = hex(...dB);
+    const secondHex = hex(...(pattern === 'plain' ? dB : second || dB));
+    const ink = lum(...dB) > 0.55 ? '#1B1B1B' : '#FFFFFF';
     const trim = pattern === 'plain' ? ink : secondHex;
 
+    if (DEBUG) {
+        console.log(`  ${club.name.padEnd(4)} t${String(club.code).padEnd(4)}`
+            + ` chest ${chest} down ${down} wide ${wide}`
+            + ` secondShare ${(pair.share * 100).toFixed(0)}%`
+            + ` sleeveΔ ${dS ? Math.round(gap(dS.rgb, dB)) : '-'}`
+            + ` halfΔ ${dL && dR ? Math.round(gap(dL.rgb, dR.rgb)) : '-'}`);
+    }
+
+    /* The guards. A patterned shirt whose two colours are the same colour is
+       the Brentford failure, and it is better to keep a hand-written row than
+       to ship a white shirt with white stripes. */
+    if (pattern !== 'plain' && gap(dB, second || dB) < SPLIT) {
+        give(`read ${pattern} in two colours that are the same colour`); continue;
+    }
     rows.push({ code: club.code, name: club.name, pattern, main: mainHex, second: secondHex, ink, trim });
-    console.log(`  ${club.name.padEnd(4)} t${String(club.code).padEnd(3)} ${pattern.padEnd(10)}`
-        + ` ${mainHex} / ${secondHex}  ink ${ink}`
-        + `   [chest ${chestX}/${chestXWide} centre ${centreX}`
-        + ` sleeveΔ ${dS && dB ? Math.round(gap(dS.rgb, dB.rgb)) : '-'}`
-        + ` halfΔ ${dL && dR ? Math.round(gap(dL.rgb, dR.rgb)) : '-'}]`);
+    console.log(`  ${club.name.padEnd(4)} t${String(club.code).padEnd(4)} ${pattern.padEnd(10)}`
+        + ` ${mainHex} / ${secondHex}  ink ${ink}`);
     await new Promise(r => setTimeout(r, 200));
 }
 

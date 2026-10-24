@@ -1206,15 +1206,24 @@ const V2_KIT_DEFS_ID = 'v2k-defs';
 const V2_KIT_DEFS = `<defs>`
     + `<path id="v2k-shirt" d="${V2_KIT_SHIRT}"/>`
     + `<clipPath id="v2k-clip"><use href="#v2k-shirt"/></clipPath>`
+    /* Light off the shoulders, shadow into the hem. Laid over the pattern
+       rather than mixed into the colours, so it costs one rectangle and works
+       on a stripe and a plain shirt alike. It is most of the difference
+       between a flat shape and a piece of cloth. */
+    + `<linearGradient id="v2k-lit" x1="0" y1="0" x2="0" y2="1">`
+    + `<stop offset="0" stop-color="#FFF" stop-opacity=".17"/>`
+    + `<stop offset=".44" stop-color="#FFF" stop-opacity="0"/>`
+    + `<stop offset="1" stop-color="#000" stop-opacity=".17"/></linearGradient>`
     + `<g id="v2k-shade">`
+    + `<rect x="0" y="0" width="64" height="64" fill="url(#v2k-lit)"/>`
     + `<path d="${V2_KIT_SLEEVE_L}" fill="#000" opacity=".1"/>`
     + `<path d="${V2_KIT_SLEEVE_R}" fill="#000" opacity=".1"/>`
     + `<g fill="none" stroke="#000" stroke-opacity=".18" stroke-width="1">`
     + `<path d="${V2_KIT_SEAM_L}"/><path d="${V2_KIT_SEAM_R}"/></g></g>`
     + `<g id="v2k-trim">`
     + `<g fill="none" stroke="currentColor">`
-    + `<path d="${V2_KIT_CUFF_L}" stroke-width="3.6"/>`
-    + `<path d="${V2_KIT_CUFF_R}" stroke-width="3.6"/>`
+    + `<path d="${V2_KIT_CUFF_L}" stroke-width="3.2"/>`
+    + `<path d="${V2_KIT_CUFF_R}" stroke-width="3.2"/>`
     + `<path d="${V2_KIT_COLLAR}" stroke-width="4"/></g>`
     + `<path d="${V2_KIT_NECK}" fill="none" stroke="#000" stroke-opacity=".22" stroke-width="1.4"/>`
     + `</g></defs>`;
@@ -3097,7 +3106,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=480')
+    fetch('/footer.html?v=481')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);
