@@ -20,6 +20,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { sdMarkdown, sdSetData } = require('../scripts/scouts-desk.js');
 const { sdArtwork } = require('../scripts/scouts-art.js');
+const { loadKit } = require('../scripts/build-articles.js');
 
 /* sdMarkdown puts a player's face beside the name in a table's first column,
    and it finds the photo id in bootstrap. This tool used to run without any
@@ -32,6 +33,8 @@ try {
         JSON.parse(fs.readFileSync('data/fixtures.json', 'utf8')),
         null
     );
+    /* And the shirt the hero artwork draws, with his number on it. */
+    loadKit(JSON.parse(fs.readFileSync('data/bootstrap-static.json', 'utf8')));
 } catch (e) {
     console.warn(`  ! no bootstrap loaded (${e.message}) — tables will re-render without faces`);
 }

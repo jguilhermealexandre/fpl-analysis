@@ -992,7 +992,7 @@ function updateCompareBar() {
                 return `
                     <div class="report-player-card">
                         <div class="report-player-card-header">
-                            <div class="report-player-avatar pos-${p.pos}">${p.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
+                            <div class="report-player-avatar pos-${p.pos}">${typeof v2KitSVG === 'function' ? v2KitSVG(p) : ''}</div>
                             <div class="report-player-info">
                                 <h4>${escHTML(p.name)}</h4>
                                 <div class="meta">${escHTML(p.team)} · ${p.pos} · £${p.price.toFixed(1)}m · ${p.selectedBy.toFixed(1)}% owned</div>

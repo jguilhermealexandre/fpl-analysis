@@ -355,6 +355,8 @@
                     detail: oneHaul
                         ? `${split.ppgPrior.toFixed(1)} → ${split.ppgRecent.toFixed(1)} pts/g, on one big score`
                         : `${split.ppgPrior.toFixed(1)} → ${split.ppgRecent.toFixed(1)} pts/g`,
+                    stat: `${split.ppgPrior.toFixed(1)} → ${split.ppgRecent.toFixed(1)}`,
+                    unit: oneHaul ? 'pts a game · one big score' : 'pts a game',
                     strength: Math.min(10, v) });
             }
 
@@ -366,6 +368,7 @@
             const before = rfPer90(split.prior, keys);
             let uplift = 0;
             const parts = [];
+            let top = null;   // the biggest rise, for the card's headline figure
             if (before.__minutes >= RF_MIN_PRIOR_MINUTES) {
                 metrics.forEach(m => {
                     const base = before[m.k] || 0;
@@ -378,7 +381,10 @@
                            printed number reads as a glitch rather than a finding. */
                         const capped = Math.min(pct, 2);
                         uplift += capped * m.w * 4;
-                        if (pct > 0.10) parts.push(`${m.label} +${(capped * 100).toFixed(0)}%${pct > 2 ? '+' : ''} per 90`);
+                        if (pct > 0.10) {
+                            parts.push(`${m.label} +${(capped * 100).toFixed(0)}%${pct > 2 ? '+' : ''} per 90`);
+                            if (!top || pct > top.pct) top = { pct, capped, label: m.label };
+                        }
                     }
                 });
             }
@@ -387,7 +393,10 @@
                 score += v;
                 if (parts.length) {
                     signals.push({ label: 'Stats improving', icon: 'zap', color: '#FBBF24',
-                        detail: parts.slice(0, 2).join(', '), strength: Math.min(10, v) });
+                        detail: parts.slice(0, 2).join(', '),
+                        stat: `+${(top.capped * 100).toFixed(0)}%${top.pct > 2 ? '+' : ''}`,
+                        unit: `${top.label} per 90`,
+                        strength: Math.min(10, v) });
                 }
             }
 
@@ -400,6 +409,8 @@
                     score += v;
                     signals.push({ label: 'More minutes', icon: 'clock', color: '#A78BFA',
                         detail: `${split.mpgPrior.toFixed(0)} → ${split.mpgRecent.toFixed(0)} mpg`,
+                        stat: `${split.mpgPrior.toFixed(0)} → ${split.mpgRecent.toFixed(0)}`,
+                        unit: 'mins a game',
                         strength: Math.min(10, v) });
                 }
             }
@@ -412,6 +423,8 @@
                 score += v;
                 signals.push({ label: 'Team in form', icon: 'trending-up', color: '#4ADE80',
                     detail: `${club} ${ts.wins}W ${ts.draws}D ${ts.losses}L`,
+                    stat: `${ts.wins}W ${ts.draws}D ${ts.losses}L`,
+                    unit: `${club} form`,
                     strength: Math.min(10, v) });
             }
 
@@ -430,6 +443,10 @@
                         detail: isDefPos
                             ? `${club} ${trend.xgcRecent.toFixed(2)} xGC a game over ${trend.recentGames}, against ${trend.xgcPrior.toFixed(2)} over ${trend.priorGames}`
                             : `${club} ${trend.xgRecent.toFixed(2)} xG a game over ${trend.recentGames}, against ${trend.xgPrior.toFixed(2)} over ${trend.priorGames}`,
+                        stat: isDefPos
+                            ? `${trend.xgcPrior.toFixed(2)} → ${trend.xgcRecent.toFixed(2)}`
+                            : `${trend.xgPrior.toFixed(2)} → ${trend.xgRecent.toFixed(2)}`,
+                        unit: `${club} ${isDefPos ? 'xGC' : 'xG'} a game`,
                         strength: Math.min(10, v) });
                 }
             }
@@ -451,6 +468,10 @@
                         detail: isDefPos
                             ? `${club} have conceded ${seasonXg.totalConceded} against ${seasonXg.totalXgc.toFixed(1)} xGC in ${seasonXg.games}`
                             : `${club} have scored ${seasonXg.totalGoals} against ${seasonXg.totalXg.toFixed(1)} xG in ${seasonXg.games}`,
+                        stat: isDefPos
+                            ? `${seasonXg.totalConceded} v ${seasonXg.totalXgc.toFixed(1)}`
+                            : `${seasonXg.totalGoals} v ${seasonXg.totalXg.toFixed(1)}`,
+                        unit: isDefPos ? `${club} conceded v xGC` : `${club} goals v xG`,
                         strength: Math.min(10, v) });
                 }
             }
@@ -463,12 +484,16 @@
                 score += v;
                 signals.push({ label: 'Fixtures easing', icon: 'calendar', color: '#60A5FA',
                     detail: `${club} FDR ${outlook.fdrPast.toFixed(1)} behind, ${outlook.fdrNear.toFixed(1)} in front`,
+                    stat: `${outlook.fdrPast.toFixed(1)} → ${outlook.fdrNear.toFixed(1)}`,
+                    unit: 'FDR, past to next',
                     strength: Math.min(10, v) });
             } else if (outlook && outlook.fdrNear <= 2.5) {
                 const v = Math.min(6, (3 - outlook.fdrNear) * 5);
                 score += v;
                 signals.push({ label: 'Kind run now', icon: 'circle-check', color: '#4ADE80',
                     detail: `FDR ${outlook.fdrNear.toFixed(1)} over the next three`,
+                    stat: outlook.fdrNear.toFixed(1),
+                    unit: 'FDR, next three',
                     strength: Math.min(10, v) });
             }
 
@@ -518,7 +543,9 @@
             const own = Number(player.selectedBy);
             if (isFinite(own) && own <= 5) {
                 signals.push({ label: 'Under the radar', icon: 'eye-off', color: '#F472B6',
-                    detail: `${own.toFixed(1)}% owned`, strength: Math.min(10, (5 - own) * 2) });
+                    detail: `${own.toFixed(1)}% owned`,
+                    stat: `${own.toFixed(1)}%`, unit: 'owned',
+                    strength: Math.min(10, (5 - own) * 2) });
             }
 
             if (signals.length < RF_MIN_SIGNALS || score < RF_SCORE_FLOOR) {

@@ -662,8 +662,7 @@ function newsThumbnail(article, source) {
  *
  * Written to be called from anywhere: the club code is looked up through the
  * page's `teams` map when there is one, and everything degrades rather than
- * throwing when there is not. The initials sit under the photo and surface
- * only when the league has published none for that player.
+ * throwing when there is not.
  */
 const V2_POS_CLASS = { 1: 'gk', 2: 'def', 3: 'mid', 4: 'fwd' };
 
@@ -698,15 +697,6 @@ function v2Ident(p) {
             : p.element_type != null ? p.element_type : p.elementType,
         shirt: p.shirt != null ? p.shirt : p.squadNumber
     };
-}
-
-function v2Initials(name) {
-    return String(name || '')
-        .split(/[\s.'\u2019-]+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map(w => w[0].toUpperCase())
-        .join('');
 }
 
 /* The avatar on its own — the back of the player's club shirt. See THE SHIRT
@@ -896,7 +886,7 @@ function clubColours(player) {
  * licence to republish them, and the chain of fallback URLs around them was
  * four requests deep for a player the library had never shot. So there are no
  * photographs here any more: a player is drawn as the back of his club's
- * shirt, with his initials where the squad number goes.
+ * shirt, with his squad number on it.
  *
  * Drawn rather than fetched, which buys three things beyond the licence. It
  * is about 700 bytes of inline SVG and no request, so a list of thirty is
@@ -905,12 +895,12 @@ function clubColours(player) {
  * goes with it. And it is legible at 20px, which a cropped head never was.
  *
  * ON THE NUMBER. FPL publishes a squad_number field and it is null for all
- * 667 players in this season's bootstrap — the game stopped filling it in. A
- * number would therefore have to be invented, and an invented squad number
- * printed on a shirt is a lie that looks exactly like a fact. The initials go
- * there instead: same two letters the old no-photo fallback showed, in the
- * place and the weight a number would have had. v2KitNumber() takes a real
- * one the moment there is a real one to take.
+ * of them — the game stopped filling it in. The real ones come from the
+ * league's own squad pages (tools/fetch-shirt-numbers.mjs, kept in
+ * data/shirt-numbers.json and laid over every fresh bootstrap). A player the
+ * league has not numbered yet wears a plain shirt: an invented number would
+ * be a lie that looks exactly like a fact, and his initials were tried and
+ * read as a mistake beside thirty real numbers.
  */
 
 /* ONE SILHOUETTE, drawn once and shared. Back view, set-in sleeves: collar
@@ -1097,23 +1087,44 @@ function v2KitHalo(ink) {
  * number is simply one that has not been given it. */
 const V2_SHIRT_BY_CODE = new Map();
 
+/* His club and position by the same code, learned in the same pass. A caller
+   that holds only a name and a code — a stored Scout's Desk subject, written
+   by the article builder where there is no teams map — otherwise drew every
+   player in the fallback purple, Haaland included. */
+const V2_KIT_BY_CODE = new Map();
+
 function v2LearnShirtNumbers(boot) {
     const els = boot && Array.isArray(boot.elements) ? boot.elements : null;
     if (!els) return;
+    const clubs = new Map((boot.teams || []).map(t => [t.id, t.code]));
     for (const el of els) {
-        if (el && el.code != null && el.squad_number != null) {
+        if (!el || el.code == null) continue;
+        if (el.squad_number != null) {
             V2_SHIRT_BY_CODE.set(Number(el.code), Number(el.squad_number));
         }
+        V2_KIT_BY_CODE.set(Number(el.code), { teamCode: clubs.get(el.team), pos: el.element_type });
     }
 }
 
-/* What goes where the squad number goes.
+/* The player with his club and position filled in from the code, where the
+   caller did not say. What the caller did say always wins. */
+function v2KitPlayer(player) {
+    const known = player && player.code != null && V2_KIT_BY_CODE.get(Number(player.code));
+    if (!known) return player;
+    const out = Object.assign({}, player);
+    if (v2TeamCode(out.teamId, out.teamCode) == null && known.teamCode != null) out.teamCode = known.teamCode;
+    if (out.pos == null && out.position == null && out.element_type == null && out.elementType == null) {
+        out.pos = known.pos;
+    }
+    return out;
+}
+
+/* What goes where the squad number goes: a real number, or nothing.
  *
- * A real number whenever there is one, and his initials until then. FPL's own
- * squad_number has been null for every player for seasons; the numbers come
- * from the league's squad pages via the job above, and a player it has not
- * numbered yet — a new signing, a youth call-up — keeps the two letters
- * rather than being given a number nobody gave him. */
+ * FPL's own squad_number has been null for every player for seasons; the
+ * numbers come from the league's squad pages via the job above. A player it
+ * has not numbered yet — a new signing, a youth call-up — gets an empty
+ * string, and the shirt is drawn without one. */
 function v2KitNumber(player) {
     const explicit = player && (player.shirt != null ? player.shirt : player.squadNumber);
     if (explicit != null && explicit !== '' && Number.isFinite(Number(explicit))) {
@@ -1123,7 +1134,7 @@ function v2KitNumber(player) {
     if (code != null && V2_SHIRT_BY_CODE.has(Number(code))) {
         return String(V2_SHIRT_BY_CODE.get(Number(code)));
     }
-    return v2Initials(player && player.name);
+    return '';
 }
 
 /* Each instance clips to its own copy of the silhouette. An id per render
@@ -1132,8 +1143,9 @@ function v2KitNumber(player) {
    one page renders two lists at once. */
 let V2_KIT_SEQ = 0;
 
-function v2KitSVG(player, opts) {
+function v2KitSVG(subject, opts) {
     const o = opts || {};
+    const player = v2KitPlayer(subject);
     const esc = typeof escHTML === 'function' ? escHTML : (t => String(t == null ? '' : t));
     const kit = clubKit(player);
     const id = 'vk' + (++V2_KIT_SEQ);
@@ -2977,7 +2989,7 @@ function loadFooter() {
     // Stamped by tools/stamp-version.mjs. This read window.ASSET_V, which
     // nothing in the codebase ever assigned — so the footer sat on the '62'
     // fallback permanently and could not be cache-busted at all.
-    fetch('/footer.html?v=478')
+    fetch('/footer.html?v=479')
         .then(r => r.text())
         .then(h => {
             document.body.insertAdjacentHTML('beforeend', h);

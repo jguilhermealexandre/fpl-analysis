@@ -8,7 +8,9 @@ name: Update Squad Numbers
 #
 # Weekly, because a number changes when a player signs or a squad is
 # renumbered in the window, and neither happens on a Tuesday. The result is
-# written into data/bootstrap-static.json, which every page already loads.
+# kept in data/shirt-numbers.json and laid over data/bootstrap-static.json,
+# which every page already loads, by tools/normalise-bootstrap.mjs — here and
+# after every data run, which replaces the bootstrap wholesale.
 on:
   schedule:
     - cron: '41 5 * * 2'
@@ -46,30 +48,19 @@ jobs:
           git config --global user.name 'GitHub Action'
           git config --global user.email 'action@github.com'
 
-          cp data/bootstrap-static.json /tmp/bootstrap.json
+          cp data/shirt-numbers.json /tmp/shirt-numbers.json
 
           for attempt in 1 2 3 4 5; do
             git fetch origin main
             git reset --hard origin/main
             # Re-applied on top of wherever main has moved to: the data jobs
-            # rewrite this file every few hours and a plain push would lose a
-            # whole run to whoever landed first.
-            node tools/fetch-shirt-numbers.mjs /tmp/bootstrap.json --dry-run > /dev/null || true
-            node -e '
-              const fs = require("fs");
-              const fresh = JSON.parse(fs.readFileSync("/tmp/bootstrap.json", "utf8"));
-              const live = JSON.parse(fs.readFileSync("data/bootstrap-static.json", "utf8"));
-              const byCode = new Map(fresh.elements.filter(e => e.squad_number != null)
-                .map(e => [e.code, e.squad_number]));
-              let n = 0;
-              for (const el of live.elements) {
-                const s = byCode.get(el.code);
-                if (s != null && el.squad_number !== s) { el.squad_number = s; n++; }
-              }
-              fs.writeFileSync("data/bootstrap-static.json", JSON.stringify(live));
-              console.log(`${n} number(s) applied to the current bootstrap`);
-            '
-            git add data/bootstrap-static.json
+            # rewrite the bootstrap every few hours and a plain push would lose
+            # a whole run to whoever landed first. The numbers file is ours
+            # alone, and the normaliser lays it over whatever bootstrap is there
+            # — the same step the data jobs run, so the two cannot disagree.
+            cp /tmp/shirt-numbers.json data/shirt-numbers.json
+            node tools/normalise-bootstrap.mjs data/bootstrap-static.json
+            git add data/shirt-numbers.json data/bootstrap-static.json
             if git diff --staged --quiet; then
               echo "No number changed"
               exit 0

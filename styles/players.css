@@ -2487,68 +2487,76 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+/* TILES, two to a row, on the card itself — no bar behind each one.
+ *
+ * Each signal was a grey bar holding a label and a green sentence, and six of
+ * them stacked read as a spreadsheet. Now the figure that moved is the thing
+ * you see, set large, with what it is under it and the signal's own colour
+ * on a disc behind its icon — the same colours the Legend names. The full
+ * sentence is the tooltip. */
 .rising-signals {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 14px;
+    margin-top: 4px;
 }
-/* Stacked, not a row.
- *
- * This was icon | label | bar | value on one line, and the four fought each
- * other for a width none of them could have: the label wrapped to two lines on
- * some cards and one on others, so no two signals in a column lined up, and
- * the green detail on the end — "+2.1 pts per game since GW4" — had whatever
- * was left, which was usually not enough, so it ran out past the card.
- *
- * Label, then the bar, then the number it explains. Each signal is the same
- * height whatever it says, every card in a row lines up, and the detail gets
- * the card's full width because nothing is beside it. */
-/* ONE ROW PER SIGNAL: icon, what moved, and the figures it moved between.
- *
- * It was a two-column grid over two rows — label and a 60px bar on the first,
- * the detail spanning both on the second — which is three lines of card per
- * signal and six signals on a good card. Eighteen rows to say six things.
- *
- * The bar went with it, and not for space alone: it drew s.strength to a
- * scale of strength × 10 capped at 100, which no legend explained, while the
- * detail beside it stated the same movement in its own units. The figures win.
- *
- * align-items: baseline so the icon, the label and the number sit on one
- * line of text rather than on three centred boxes. Font sizes are deliberately
- * untouched here — these selectors are keyed in the generated tracking block
- * below, and changing a size would make that block stale. */
 .rising-signal {
     display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: 2px 7px;
-    padding: 5px 9px;
-    background: var(--surface-2);
-    border-radius: 7px;
-    font-size: 11px;
+    align-items: flex-start;
+    gap: 9px;
+    min-width: 0;
+    cursor: help;
 }
 .rising-signal-icon {
-    width: 18px;
-    text-align: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
     flex-shrink: 0;
-    font-size: 12px;
+    display: grid;
+    place-items: center;
+    color: var(--sig);
+    background: color-mix(in srgb, var(--sig) 16%, transparent);
 }
-/* The label does not stretch any more: the detail follows it directly, the
-   way the sentence reads, rather than being pushed to the far edge. */
+.rising-signal-icon svg { width: 15px; height: 15px; }
+.rising-signal-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+.rising-signal-stat {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.15;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rising-signal-unit {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.rising-signal-arrow {
+    font-style: normal;
+    color: var(--sig);
+    margin: 0 1px;
+}
 .rising-signal-label {
-    color: var(--text-secondary);
-    flex: 0 1 auto;
-    min-width: 0;
-    font-weight: 600;
-}
-.rising-signal-value {
-    font-weight: 600;
-    font-size: 11px;
-    /* Shares the row with the label and wraps under it when the pair will not
-       fit, which is what flex-wrap on the parent is for. */
-    min-width: 0;
-    overflow-wrap: anywhere;
-    line-height: 1.35;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--sig);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* The count and the fixture rating, on one line above the signals. */
@@ -2572,9 +2580,6 @@
     /* It carries a tooltip, so it has to look like something you can ask. */
     cursor: help;
 }
-.rising-signal-value.positive { color: var(--color-success); }
-.rising-signal-value.neutral { color: var(--text-secondary); }
-.rising-signal-value.negative { color: var(--color-error); }
 .rising-card-footer {
     display: flex;
     justify-content: space-between;
@@ -3331,7 +3336,10 @@
     font-weight: 600;
     font-size: 15px;
     flex-shrink: 0;
+    padding: 4px;
 }
+/* His shirt and number, as everywhere else — it was his initials. */
+.report-player-avatar .v2-kit { width: 100%; height: 100%; }
 .report-player-avatar.pos-GK { background: rgba(251,191,36,0.15); color: #FBBF24; }
 .report-player-avatar.pos-DEF { background: rgba(52,211,153,0.15); color: #34D399; }
 .report-player-avatar.pos-MID { background: rgba(96,165,250,0.15); color: #60A5FA; }
@@ -5194,9 +5202,6 @@ tr.pl-row-click .row-action { cursor: pointer; }
 .rising-card-rank,
 .rising-fixture-opp,
 .rising-legend,
-.rising-signal,
-.rising-signal-icon,
-.rising-signal-value,
 .rising-stat-label,
 .route-bar-detail,
 .route-bar-icon,
@@ -5254,6 +5259,7 @@ tr.pl-row-click .row-action { cursor: pointer; }
 .report-route-value,
 .rising-card-footer,
 .rising-meta-fdr,
+.rising-signal-unit,
 .route-bar-row,
 .route-card-footer,
 .route-pos-badge,
@@ -5340,7 +5346,8 @@ tr.pl-row-click .row-action { cursor: pointer; }
     letter-spacing: 0.0521em !important;
 }
 .chart-modal-metrics label,
-.rec-rank-chip {
+.rec-rank-chip,
+.rising-signal-label {
     letter-spacing: 0.06em !important;
 }
 .apf-label,
